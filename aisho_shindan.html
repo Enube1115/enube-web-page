@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💑 相性診断ツール</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #ffecd2 100%);
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 60px rgba(255, 100, 130, 0.25);
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.6rem;
+      color: #e05080;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #aaa;
+      font-size: 0.85rem;
+      margin-bottom: 32px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap label {
+      display: block;
+      font-size: 0.8rem;
+      color: #e05080;
+      font-weight: bold;
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #ffd0dc;
+      border-radius: 12px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+      color: #333;
+    }
+
+    .input-wrap input:focus {
+      border-color: #e05080;
+    }
+
+    .heart-divider {
+      text-align: center;
+      font-size: 1.4rem;
+      color: #e05080;
+      margin: 4px 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #e05080, #ff7aa2);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.05em;
+    }
+
+    button:hover  { opacity: 0.9; }
+    button:active { transform: scale(0.98); }
+
+    /* ---- Result ---- */
+    #result {
+      display: none;
+      margin-top: 32px;
+      animation: fadeUp 0.5s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .names {
+      text-align: center;
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .names span { color: #e05080; }
+
+    .score-label {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #aaa;
+      margin-bottom: 6px;
+    }
+
+    .score-number {
+      text-align: center;
+      font-size: 3.5rem;
+      font-weight: bold;
+      color: #e05080;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .bar-track {
+      background: #ffe0ea;
+      border-radius: 99px;
+      height: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #ff7aa2, #e05080);
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 0%;
+    }
+
+    .comment-box {
+      background: #fff5f8;
+      border: 2px solid #ffd0dc;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .comment-emoji {
+      font-size: 2.8rem;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .comment-text {
+      font-size: 0.95rem;
+      color: #555;
+      line-height: 1.7;
+    }
+
+    .error {
+      color: #e05080;
+      font-size: 0.85rem;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>💑 相性診断ツール</h1>
+    <p class="subtitle">2人の名前を入力して相性を診断しよう</p>
+
+    <div class="input-group">
+      <div class="input-wrap">
+        <label>1人目の名前</label>
+        <input type="text" id="name1" placeholder="例：田中太郎" maxlength="30">
+      </div>
+      <div class="heart-divider">💗</div>
+      <div class="input-wrap">
+        <label>2人目の名前</label>
+        <input type="text" id="name2" placeholder="例：鈴木花子" maxlength="30">
+      </div>
+    </div>
+
+    <button onclick="diagnose()">診断する</button>
+    <p class="error" id="error"></p>
+
+    <div id="result">
+      <div class="names"><span id="rName1"></span> × <span id="rName2"></span></div>
+      <div class="score-label">相性スコア</div>
+      <div class="score-number"><span id="scoreNum">0</span>%</div>
+      <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+      <div class="comment-box">
+        <span class="comment-emoji" id="commentEmoji"></span>
+        <p class="comment-text" id="commentText"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // MD5 implementation (Joseph Myers, public domain)
+    function md5(inputStr) {
+      function safeAdd(x, y) {
+        const lsw = (x & 0xffff) + (y & 0xffff);
+        return (((x >> 16) + (y >> 16) + (lsw >> 16)) << 16) | (lsw & 0xffff);
+      }
+      function bitRotateLeft(num, cnt) { return (num << cnt) | (num >>> (32 - cnt)); }
+      function md5cmn(q, a, b, x, s, t) { return safeAdd(bitRotateLeft(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b); }
+      function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|((~b)&d),a,b,x,s,t);}
+      function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+      function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t);}
+      function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|(~d)),a,b,x,s,t);}
+
+      const str8 = unescape(encodeURIComponent(inputStr));
+      const len8 = str8.length;
+      const blocks = [];
+      for (let i = 0; i < len8 + 8; i += 4) {
+        blocks[i >> 2] = (str8.charCodeAt(i) | (str8.charCodeAt(i+1) << 8) | (str8.charCodeAt(i+2) << 16) | (str8.charCodeAt(i+3) << 24)) >>> 0;
+      }
+      blocks[len8 >> 2] |= 0x80 << (8 * (len8 % 4));
+      blocks[(((len8 + 64) >> 6) << 4) + 14] = len8 * 8;
+
+      let a = 1732584193, b = -271733879, c = -1732584194, d = 271733878;
+      for (let i = 0; i < blocks.length; i += 16) {
+        const [oa,ob,oc,od]=[a,b,c,d];
+        a=md5ff(a,b,c,d,blocks[i],7,-680876936);d=md5ff(d,a,b,c,blocks[i+1],12,-389564586);c=md5ff(c,d,a,b,blocks[i+2],17,606105819);b=md5ff(b,c,d,a,blocks[i+3],22,-1044525330);
+        a=md5ff(a,b,c,d,blocks[i+4],7,-176418897);d=md5ff(d,a,b,c,blocks[i+5],12,1200080426);c=md5ff(c,d,a,b,blocks[i+6],17,-1473231341);b=md5ff(b,c,d,a,blocks[i+7],22,-45705983);
+        a=md5ff(a,b,c,d,blocks[i+8],7,1770035416);d=md5ff(d,a,b,c,blocks[i+9],12,-1958414417);c=md5ff(c,d,a,b,blocks[i+10],17,-42063);b=md5ff(b,c,d,a,blocks[i+11],22,-1990404162);
+        a=md5ff(a,b,c,d,blocks[i+12],7,1804603682);d=md5ff(d,a,b,c,blocks[i+13],12,-40341101);c=md5ff(c,d,a,b,blocks[i+14],17,-1502002290);b=md5ff(b,c,d,a,blocks[i+15],22,1236535329);
+        a=md5gg(a,b,c,d,blocks[i+1],5,-165796510);d=md5gg(d,a,b,c,blocks[i+6],9,-1069501632);c=md5gg(c,d,a,b,blocks[i+11],14,643717713);b=md5gg(b,c,d,a,blocks[i],20,-373897302);
+        a=md5gg(a,b,c,d,blocks[i+5],5,-701558691);d=md5gg(d,a,b,c,blocks[i+10],9,38016083);c=md5gg(c,d,a,b,blocks[i+15],14,-660478335);b=md5gg(b,c,d,a,blocks[i+4],20,-405537848);
+        a=md5gg(a,b,c,d,blocks[i+9],5,568446438);d=md5gg(d,a,b,c,blocks[i+14],9,-1019803690);c=md5gg(c,d,a,b,blocks[i+3],14,-187363961);b=md5gg(b,c,d,a,blocks[i+8],20,1163531501);
+        a=md5gg(a,b,c,d,blocks[i+13],5,-1444681467);d=md5gg(d,a,b,c,blocks[i+2],9,-51403784);c=md5gg(c,d,a,b,blocks[i+7],14,1735328473);b=md5gg(b,c,d,a,blocks[i+12],20,-1926607734);
+        a=md5hh(a,b,c,d,blocks[i+5],4,-378558);d=md5hh(d,a,b,c,blocks[i+8],11,-2022574463);c=md5hh(c,d,a,b,blocks[i+11],16,1839030562);b=md5hh(b,c,d,a,blocks[i+14],23,-35309556);
+        a=md5hh(a,b,c,d,blocks[i+1],4,-1530992060);d=md5hh(d,a,b,c,blocks[i+4],11,1272893353);c=md5hh(c,d,a,b,blocks[i+7],16,-155497632);b=md5hh(b,c,d,a,blocks[i+10],23,-1094730640);
+        a=md5hh(a,b,c,d,blocks[i+13],4,681279174);d=md5hh(d,a,b,c,blocks[i],11,-358537222);c=md5hh(c,d,a,b,blocks[i+3],16,-722521979);b=md5hh(b,c,d,a,blocks[i+6],23,76029189);
+        a=md5hh(a,b,c,d,blocks[i+9],4,-640364487);d=md5hh(d,a,b,c,blocks[i+12],11,-421815835);c=md5hh(c,d,a,b,blocks[i+15],16,530742520);b=md5hh(b,c,d,a,blocks[i+2],23,-995338651);
+        a=md5ii(a,b,c,d,blocks[i],6,-198630844);d=md5ii(d,a,b,c,blocks[i+7],10,1126891415);c=md5ii(c,d,a,b,blocks[i+14],15,-1416354905);b=md5ii(b,c,d,a,blocks[i+5],21,-57434055);
+        a=md5ii(a,b,c,d,blocks[i+12],6,1700485571);d=md5ii(d,a,b,c,blocks[i+3],10,-1894986606);c=md5ii(c,d,a,b,blocks[i+10],15,-1051523);b=md5ii(b,c,d,a,blocks[i+1],21,-2054922799);
+        a=md5ii(a,b,c,d,blocks[i+8],6,1873313359);d=md5ii(d,a,b,c,blocks[i+15],10,-30611744);c=md5ii(c,d,a,b,blocks[i+6],15,-1560198380);b=md5ii(b,c,d,a,blocks[i+13],21,1309151649);
+        a=md5ii(a,b,c,d,blocks[i+4],6,-145523070);d=md5ii(d,a,b,c,blocks[i+11],10,-1120210379);c=md5ii(c,d,a,b,blocks[i+2],15,718787259);b=md5ii(b,c,d,a,blocks[i+9],21,-343485551);
+        a=safeAdd(a,oa);b=safeAdd(b,ob);c=safeAdd(c,oc);d=safeAdd(d,od);
+      }
+      // return first 4 hex chars of digest
+      function toHex(n) {
+        let s=''; for(let i=0;i<4;i++) s+=('0'+((n>>>(i*8))&0xff).toString(16)).slice(-2);
+        return s;
+      }
+      return toHex(a)+toHex(b)+toHex(c)+toHex(d);
+    }
+
+    function calcScore(name1, name2) {
+      const sorted = [name1.toLowerCase(), name2.toLowerCase()].sort().join('');
+      const hex = md5(sorted).slice(0, 4);
+      return parseInt(hex, 16) % 101;
+    }
+
+    function getComment(score) {
+      if (score >= 90) return { emoji: '💞', text: '運命の出会い！ 2人は天生のパートナーです。どこにいても引き寄せられる強い絆があります。' };
+      if (score >= 75) return { emoji: '💖', text: '最高の相性！ 互いを高め合える素晴らしい関係です。一緒にいると自然と笑顔になれます。' };
+      if (score >= 60) return { emoji: '😊', text: '良い相性です。価値観が合う部分が多く、長く付き合えるパートナーになれそうです。' };
+      if (score >= 45) return { emoji: '🙂', text: '普通の相性。お互いの違いを尊重することで、さらに深い関係に発展できます。' };
+      if (score >= 30) return { emoji: '😅', text: '少し難しいかも。意識的にコミュニケーションを取ることで関係は改善できます。' };
+      if (score >= 15) return { emoji: '😬', text: 'かなりの努力が必要です。衝突することも多いかもしれませんが、乗り越えれば絆が深まります。' };
+      return { emoji: '💀', text: '正反対の2人…。でも反発し合う磁石が最終的にくっつくことも。奇跡を信じて！' };
+    }
+
+    function animateNumber(el, target, duration) {
+      const start = Date.now();
+      const tick = () => {
+        const progress = Math.min((Date.now() - start) / duration, 1);
+        el.textContent = Math.round(progress * target);
+        if (progress < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function diagnose() {
+      const name1 = document.getElementById('name1').value.trim();
+      const name2 = document.getElementById('name2').value.trim();
+      const errorEl = document.getElementById('error');
+
+      if (!name1 || !name2) {
+        errorEl.textContent = '2人の名前を入力してください';
+        return;
+      }
+      errorEl.textContent = '';
+
+      const score = calcScore(name1, name2);
+      const { emoji, text } = getComment(score);
+
+      document.getElementById('rName1').textContent = name1;
+      document.getElementById('rName2').textContent = name2;
+      document.getElementById('commentEmoji').textContent = emoji;
+      document.getElementById('commentText').textContent = text;
+
+      const resultEl = document.getElementById('result');
+      resultEl.style.display = 'block';
+
+      // reset bar before animating
+      const bar = document.getElementById('barFill');
+      bar.style.width = '0%';
+
+      const scoreNumEl = document.getElementById('scoreNum');
+      scoreNumEl.textContent = '0';
+
+      // animate after short delay so CSS transition fires
+      setTimeout(() => {
+        bar.style.width = score + '%';
+        animateNumber(scoreNumEl, score, 1000);
+      }, 50);
+    }
+
+    // Enterキーで診断実行
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') diagnose();
+    });
+  </script>
+</body>
+</html>
