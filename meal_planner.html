@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日の献立プランナー</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    background: #f5f0e8;
+    color: #333;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  header h1 {
+    font-size: 1.8rem;
+    color: #5a3e28;
+    letter-spacing: 0.05em;
+  }
+  header p {
+    margin-top: 6px;
+    color: #8a7060;
+    font-size: 0.9rem;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+  }
+
+  .card h2 {
+    font-size: 1rem;
+    color: #5a3e28;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+  }
+  .input-row input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1.5px solid #d9c8b4;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fdf8f2;
+  }
+  .input-row input:focus { border-color: #c0824a; }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    min-height: 24px;
+  }
+  .tag {
+    background: #fce8d5;
+    color: #a0522d;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tag button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #c0824a;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+  }
+  .tag button:hover { color: #a0522d; }
+
+  .btn-add {
+    padding: 10px 18px;
+    background: #e8d5c0;
+    color: #5a3e28;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .btn-add:hover { background: #d9c4a8; }
+
+  .btn-generate {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #c0824a, #a0522d);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-bottom: 20px;
+  }
+  .btn-generate:hover { opacity: 0.9; }
+  .btn-generate:active { transform: scale(0.98); }
+
+  .result { display: none; }
+
+  .meal-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin-bottom: 16px;
+    border-left: 5px solid #c0824a;
+    animation: fadeIn 0.4s ease;
+  }
+  .meal-card.warn {
+    border-left-color: #e0b080;
+    background: #fffbf5;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .meal-type {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #c0824a;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .meal-name {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #3a2a1a;
+    margin-bottom: 14px;
+    line-height: 1.4;
+  }
+
+  .nutrients {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .nutrient {
+    background: #fdf6ee;
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .nutrient-label {
+    font-size: 0.7rem;
+    color: #a08060;
+    margin-bottom: 3px;
+  }
+  .nutrient-value {
+    font-size: 0.82rem;
+    color: #5a3e28;
+    font-weight: bold;
+    line-height: 1.3;
+  }
+
+  .comment {
+    font-size: 0.88rem;
+    color: #6a5040;
+    background: #fef9f4;
+    border-radius: 8px;
+    padding: 8px 12px;
+    border-left: 3px solid #e8c8a0;
+    line-height: 1.6;
+  }
+
+  .warn-msg {
+    color: #b07020;
+    font-size: 0.9rem;
+  }
+
+  .balance-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 18px 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.5s ease;
+  }
+  .balance-icon { font-size: 2rem; }
+  .balance-text { font-size: 0.95rem; color: #4a3020; line-height: 1.5; }
+
+  .water-note {
+    text-align: center;
+    color: #8a7060;
+    font-size: 0.85rem;
+    padding: 8px;
+    animation: fadeIn 0.6s ease;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 32px;
+    color: #b0a090;
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🍽️ 今日の献立プランナー</h1>
+    <p>栄養バランスを考えた朝・昼・夜の献立をランダムに提案します</p>
+  </header>
+
+  <div class="card">
+    <h2>🚫 嫌いな食べ物・苦手な食材</h2>
+    <div class="input-row">
+      <input type="text" id="dislikedInput" placeholder="例：納豆、エビ、ピーマン" />
+      <button class="btn-add" onclick="addDisliked()">追加</button>
+    </div>
+    <div class="tags" id="tagList"></div>
+  </div>
+
+  <button class="btn-generate" onclick="generate()">✨ 献立を提案する</button>
+
+  <div class="result" id="result"></div>
+
+  <footer>水分補給もお忘れなく！1日2Lを目安に 💧</footer>
+
+</div>
+
+<script>
+const MEALS = {
+  朝食: [
+    {
+      name: "和定食（ご飯・味噌汁・焼き魚・納豆）",
+      carb: "ご飯", protein: "焼き魚・納豆", veggie: "味噌汁の具",
+      comment: "発酵食品で腸活！朝から日本の伝統食でエネルギーチャージ。"
+    },
+    {
+      name: "オートミール＋ゆで卵＋バナナ",
+      carb: "オートミール・バナナ", protein: "ゆで卵", veggie: "—",
+      comment: "食物繊維たっぷりで腹持ち抜群。忙しい朝にも手軽に栄養補給。"
+    },
+    {
+      name: "全粒粉トースト＋スクランブルエッグ＋サラダ",
+      carb: "全粒粉トースト", protein: "スクランブルエッグ", veggie: "サラダ",
+      comment: "欧米スタイルの朝食。GI値低めのパンで血糖値の急上昇を防ぐ。"
+    },
+    {
+      name: "おにぎり（鮭）＋豆腐の味噌汁＋ほうれん草のお浸し",
+      carb: "おにぎり", protein: "鮭・豆腐", veggie: "ほうれん草",
+      comment: "鉄分・カルシウムが豊富。シンプルだけど栄養価の高い朝ごはん。"
+    },
+    {
+      name: "ヨーグルト＋グラノーラ＋フルーツ",
+      carb: "グラノーラ・フルーツ", protein: "ヨーグルト", veggie: "—",
+      comment: "乳酸菌と食物繊維で免疫力UP！カラフルなフルーツで気分も明るく。"
+    },
+    {
+      name: "玄米ご飯＋卵焼き＋ひじきの煮物",
+      carb: "玄米ご飯", protein: "卵焼き", veggie: "ひじき",
+      comment: "玄米のミネラルとひじきの鉄分で貧血予防。体の内側から整える朝食。"
+    },
+  ],
+  昼食: [
+    {
+      name: "鶏むね肉の塩焼き定食（ご飯・サラダ付き）",
+      carb: "ご飯", protein: "鶏むね肉", veggie: "サラダ",
+      comment: "高たんぱく・低脂質の王道メニュー。午後の集中力を維持するのに最適。"
+    },
+    {
+      name: "豚肉と野菜の炒め物＋ご飯＋わかめスープ",
+      carb: "ご飯", protein: "豚肉", veggie: "野菜・わかめ",
+      comment: "ビタミンB1が豊富な豚肉で疲労回復。昼食にしっかり食べて午後を乗り切ろう。"
+    },
+    {
+      name: "ざるそば＋天ぷら（エビ・野菜）＋小鉢",
+      carb: "そば", protein: "エビ", veggie: "天ぷらの野菜",
+      comment: "そばのルチンで血管を強化！夏は特に食欲が進む爽やかな一品。"
+    },
+    {
+      name: "豆腐と野菜のあんかけ丼",
+      carb: "ご飯", protein: "豆腐", veggie: "にんじん・ほうれん草・しいたけ",
+      comment: "植物性たんぱく質中心でヘルシー。あんかけのとろみで満足感も高め。"
+    },
+    {
+      name: "サーモンとアボカドのポキボウル",
+      carb: "玄米ご飯", protein: "サーモン", veggie: "アボカド・きゅうり・枝豆",
+      comment: "オメガ3脂肪酸とビタミンEのコンビで美容効果も期待できるおしゃれ丼。"
+    },
+    {
+      name: "チキンカレー（野菜たっぷり）",
+      carb: "ご飯", protein: "鶏肉", veggie: "じゃがいも・にんじん・玉ねぎ",
+      comment: "スパイスで代謝アップ！野菜を大量に摂れるカレーは実は栄養バランス優秀。"
+    },
+    {
+      name: "鮭のちゃんちゃん焼き定食",
+      carb: "ご飯", protein: "鮭", veggie: "キャベツ・もやし・ピーマン",
+      comment: "北海道の郷土料理。味噌ベースの旨みと野菜の甘みが絶妙にマッチ。"
+    },
+  ],
+  夕食: [
+    {
+      name: "豚汁＋焼き鳥（塩）＋ご飯",
+      carb: "ご飯", protein: "豚肉・鶏肉", veggie: "根菜類",
+      comment: "体が温まる根菜たっぷりの豚汁で一日の疲れを癒やして。"
+    },
+    {
+      name: "タラのホイル蒸し＋玄米ご飯＋野菜スープ",
+      carb: "玄米ご飯", protein: "タラ", veggie: "きのこ・ブロッコリー",
+      comment: "低カロリーで高たんぱく。夜は消化の良い白身魚がおすすめ。"
+    },
+    {
+      name: "麻婆豆腐＋ご飯＋中華スープ",
+      carb: "ご飯", protein: "豆腐・豚ひき肉", veggie: "ねぎ・にんにく",
+      comment: "花椒の痺れで基礎代謝UP！豆腐と肉のWたんぱくで筋肉の回復を促進。"
+    },
+    {
+      name: "鶏のから揚げ＋キャベツの千切り＋味噌汁＋ご飯",
+      carb: "ご飯", protein: "鶏もも肉", veggie: "キャベツ",
+      comment: "定番人気おかず。レモンを絞ってビタミンCを加えると鉄分吸収率UP！"
+    },
+    {
+      name: "サバの味噌煮＋ほうれん草のごまあえ＋ご飯＋味噌汁",
+      carb: "ご飯", protein: "サバ", veggie: "ほうれん草",
+      comment: "DHA・EPAで脳と血管をケア。ごまのセサミンで抗酸化効果も期待。"
+    },
+    {
+      name: "牛肉と根菜の煮物＋ご飯＋豆腐の味噌汁",
+      carb: "ご飯", protein: "牛肉", veggie: "ごぼう・こんにゃく・にんじん",
+      comment: "食物繊維が豊富な根菜でデトックス効果。体の芯から温まる和の夕食。"
+    },
+    {
+      name: "えびとブロッコリーのガーリック炒め＋パスタ",
+      carb: "パスタ", protein: "えび", veggie: "ブロッコリー・にんにく",
+      comment: "えびのアスタキサンチンで抗酸化。にんにくのアリシンで免疫力強化！"
+    },
+  ],
+};
+
+// ひらがな→カタカナに変換して表記ゆれを吸収
+function normalize(str) {
+  return str.replace(/[\u3041-\u3096]/g, c =>
+    String.fromCharCode(c.charCodeAt(0) + 0x60)
+  ).toLowerCase();
+}
+
+function isExcluded(meal, disliked) {
+  const target = normalize([meal.name, meal.carb, meal.protein, meal.veggie].join(" "));
+  return disliked.some(kw => normalize(kw) !== "" && target.includes(normalize(kw)));
+}
+
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// --- 嫌いな食べ物タグ管理 ---
+let dislikedList = [];
+
+function addDisliked() {
+  const input = document.getElementById("dislikedInput");
+  const raw = input.value.trim();
+  if (!raw) return;
+  // 読点・スペース・カンマで分割
+  const keywords = raw.split(/[、,\s　]+/).map(k => k.trim()).filter(k => k);
+  keywords.forEach(kw => {
+    if (!dislikedList.includes(kw)) dislikedList.push(kw);
+  });
+  input.value = "";
+  renderTags();
+}
+
+function removeDisliked(kw) {
+  dislikedList = dislikedList.filter(k => k !== kw);
+  renderTags();
+}
+
+function renderTags() {
+  const el = document.getElementById("tagList");
+  el.innerHTML = dislikedList.map(kw =>
+    `<span class="tag">${kw}<button onclick="removeDisliked('${kw}')" title="削除">×</button></span>`
+  ).join("");
+}
+
+// Enterキーでも追加できるように
+document.getElementById("dislikedInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") addDisliked();
+});
+
+// --- 献立生成 ---
+function balanceMessage(meals) {
+  const withVeggie = meals.filter(m => m.veggie !== "—").length;
+  const withProtein = meals.filter(m => m.protein).length;
+  const score = withVeggie + withProtein;
+  if (score >= 5) return { icon: "🌟", text: "◎ 優秀！一日を通じて栄養バランスが非常に良好です。" };
+  if (score >= 3) return { icon: "✅", text: "○ 良好。全体的にバランスの取れた食事ができています。" };
+  return { icon: "⚠️", text: "△ 野菜・たんぱく質をもう少し意識して摂りましょう。" };
+}
+
+function generate() {
+  const result = document.getElementById("result");
+  result.style.display = "block";
+  result.innerHTML = "";
+
+  const mealTypes = Object.keys(MEALS);
+  const colors = ["#c0824a", "#8aab68", "#6a9abf"];
+  const icons  = ["☀️", "🌤️", "🌙"];
+  const labels = ["朝食", "昼食", "夕食"];
+
+  const selected = [];
+
+  mealTypes.forEach((type, i) => {
+    const options = MEALS[type].filter(m => !isExcluded(m, dislikedList));
+    const card = document.createElement("div");
+    card.className = "meal-card";
+    // アニメーション遅延
+    card.style.animationDelay = `${i * 0.1}s`;
+    card.style.borderLeftColor = colors[i];
+
+    if (options.length === 0) {
+      card.classList.add("warn");
+      card.innerHTML = `
+        <div class="meal-type">${icons[i]} ${labels[i]}</div>
+        <div class="warn-msg">⚠️ 条件に合うメニューがありませんでした。<br>除外食材を減らして再度お試しください。</div>
+      `;
+    } else {
+      const meal = pickRandom(options);
+      selected.push(meal);
+      card.innerHTML = `
+        <div class="meal-type" style="color:${colors[i]}">${icons[i]} ${labels[i]}</div>
+        <div class="meal-name">${meal.name}</div>
+        <div class="nutrients">
+          <div class="nutrient">
+            <div class="nutrient-label">🌾 炭水化物</div>
+            <div class="nutrient-value">${meal.carb}</div>
+          </div>
+          <div class="nutrient">
+            <div class="nutrient-label">🥩 たんぱく質</div>
+            <div class="nutrient-value">${meal.protein}</div>
+          </div>
+          <div class="nutrient">
+            <div class="nutrient-label">🥦 野菜</div>
+            <div class="nutrient-value">${meal.veggie}</div>
+          </div>
+        </div>
+        <div class="comment">💬 ${meal.comment}</div>
+      `;
+    }
+    result.appendChild(card);
+  });
+
+  if (selected.length > 0) {
+    const bal = balanceMessage(selected);
+    const balCard = document.createElement("div");
+    balCard.className = "balance-card";
+    balCard.style.animationDelay = "0.35s";
+    balCard.innerHTML = `
+      <div class="balance-icon">${bal.icon}</div>
+      <div class="balance-text"><strong>栄養バランス評価</strong><br>${bal.text}</div>
+    `;
+    result.appendChild(balCard);
+  }
+
+  const note = document.createElement("div");
+  note.className = "water-note";
+  note.textContent = "💧 水分補給もお忘れなく！1日2Lを目安に。";
+  result.appendChild(note);
+
+  // スクロール
+  result.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+</script>
+</body>
+</html>
