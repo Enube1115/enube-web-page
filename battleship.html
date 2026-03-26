@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バトルシップ</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a1628;
+    color: #e0f0ff;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    letter-spacing: 4px;
+    text-align: center;
+    margin-bottom: 6px;
+    color: #7dd3fc;
+    text-shadow: 0 0 20px #38bdf8;
+  }
+
+  .subtitle {
+    color: #64748b;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  /* ===== PHASE SCREENS ===== */
+  .screen { display: none; width: 100%; max-width: 900px; }
+  .screen.active { display: block; }
+
+  /* ===== SETUP SCREEN ===== */
+  #setup-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  #setup-screen.active { display: flex; }
+
+  .setup-panels {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .ship-list {
+    background: #0f2133;
+    border: 1px solid #1e3a5f;
+    border-radius: 10px;
+    padding: 16px;
+    min-width: 200px;
+  }
+
+  .ship-list h3 { color: #7dd3fc; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 2px; }
+
+  .ship-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid #1e3a5f;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 6px 8px;
+    transition: background 0.15s;
+  }
+  .ship-item:last-child { border-bottom: none; }
+  .ship-item:hover { background: #1e3a5f; }
+  .ship-item.selected { background: #1e4d7b; border-radius: 6px; }
+  .ship-item.placed { opacity: 0.4; cursor: default; }
+  .ship-item.placed:hover { background: transparent; }
+
+  .ship-blocks {
+    display: flex;
+    gap: 2px;
+  }
+  .ship-block {
+    width: 14px; height: 14px;
+    background: #3b82f6;
+    border-radius: 2px;
+  }
+  .ship-name { flex: 1; }
+
+  .setup-instructions {
+    background: #0f2133;
+    border: 1px solid #1e3a5f;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* ===== GRID ===== */
+  .board-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .board-title {
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+
+  .grid-container {
+    display: grid;
+    grid-template-columns: 22px repeat(10, 1fr);
+    grid-template-rows: 22px repeat(10, 1fr);
+    gap: 2px;
+    user-select: none;
+  }
+
+  .grid-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #475569;
+  }
+
+  .cell {
+    width: 36px; height: 36px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.15s;
+    border: 1px solid #1e3a5f;
+    background: #0d1f35;
+    cursor: default;
+  }
+
+  /* Setup grid cells */
+  .cell.empty-setup { cursor: pointer; }
+  .cell.empty-setup:hover { background: #1e3a5f; border-color: #3b82f6; }
+  .cell.preview { background: #1e4d7b; border-color: #60a5fa; }
+  .cell.preview-invalid { background: #3b1515; border-color: #ef4444; }
+  .cell.ship { background: #1d4ed8; border-color: #3b82f6; }
+  .cell.ship-selected { background: #2563eb; border-color: #93c5fd; box-shadow: 0 0 8px #3b82f6; }
+
+  /* Game cells */
+  .cell.hit {
+    background: #7f1d1d;
+    border-color: #ef4444;
+    color: #fca5a5;
+  }
+  .cell.miss {
+    background: #0d2540;
+    border-color: #1e40af;
+    color: #3b82f6;
+  }
+  .cell.enemy-clickable { cursor: crosshair; }
+  .cell.enemy-clickable:hover { background: #1e3a5f; border-color: #f59e0b; transform: scale(1.05); }
+
+  /* ===== GAME SCREEN ===== */
+  #game-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  #game-screen.active { display: flex; }
+
+  .boards-row {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  /* ===== MESSAGE LOG ===== */
+  .log-box {
+    background: #0a1628;
+    border: 1px solid #1e3a5f;
+    border-radius: 8px;
+    padding: 12px 16px;
+    min-height: 80px;
+    max-height: 100px;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 640px;
+    font-size: 0.85rem;
+  }
+
+  .log-entry { padding: 2px 0; line-height: 1.5; }
+  .log-hit { color: #f87171; }
+  .log-miss { color: #60a5fa; }
+  .log-cpu { color: #fb923c; }
+  .log-system { color: #a3e635; }
+
+  /* ===== STATUS BAR ===== */
+  .status-bar {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .stat-box {
+    background: #0f2133;
+    border: 1px solid #1e3a5f;
+    border-radius: 8px;
+    padding: 10px 18px;
+    text-align: center;
+    min-width: 120px;
+  }
+
+  .stat-label { font-size: 0.7rem; color: #64748b; letter-spacing: 1px; }
+  .stat-value { font-size: 1.4rem; font-weight: bold; color: #7dd3fc; }
+
+  /* ===== TURN INDICATOR ===== */
+  .turn-indicator {
+    font-size: 1rem;
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+
+  .turn-player {
+    background: #1e3a5f;
+    border: 1px solid #3b82f6;
+    color: #7dd3fc;
+  }
+
+  .turn-cpu {
+    background: #3b1515;
+    border: 1px solid #ef4444;
+    color: #fca5a5;
+    animation: pulse 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: #1d4ed8;
+    color: white;
+  }
+  .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+  .btn-primary:disabled { background: #1e3a5f; color: #475569; cursor: default; transform: none; }
+
+  .btn-secondary {
+    background: #0f2133;
+    color: #94a3b8;
+    border: 1px solid #1e3a5f;
+  }
+  .btn-secondary:hover { background: #1e3a5f; color: #e0f0ff; }
+
+  .btn-danger {
+    background: #7f1d1d;
+    color: #fca5a5;
+    border: 1px solid #ef4444;
+  }
+  .btn-danger:hover { background: #991b1b; }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ===== RESULT OVERLAY ===== */
+  #result-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    flex-direction: column;
+    gap: 20px;
+  }
+  #result-overlay.show { display: flex; }
+
+  .result-box {
+    background: #0f2133;
+    border: 2px solid #3b82f6;
+    border-radius: 16px;
+    padding: 40px 60px;
+    text-align: center;
+  }
+
+  .result-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  .result-win { color: #a3e635; text-shadow: 0 0 30px #84cc16; }
+  .result-lose { color: #f87171; text-shadow: 0 0 30px #ef4444; }
+
+  .result-sub { color: #94a3b8; font-size: 1rem; margin-bottom: 20px; }
+
+  /* ===== ORIENT TOGGLE ===== */
+  .orient-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 6px 12px;
+    border: 1px solid #1e3a5f;
+    border-radius: 6px;
+    background: #0f2133;
+    transition: all 0.15s;
+  }
+  .orient-toggle:hover { border-color: #3b82f6; color: #7dd3fc; }
+  .orient-toggle .arrow { font-size: 1.2rem; }
+
+  /* ===== TITLE SCREEN ===== */
+  #title-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  #title-screen.active { display: flex; }
+
+  .title-panels {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .title-ship-list {
+    background: #0f2133;
+    border: 1px solid #1e3a5f;
+    border-radius: 10px;
+    padding: 16px 24px;
+    min-width: 230px;
+  }
+
+  .title-ship-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 5px 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #1e3a5f;
+  }
+  .title-ship-row:last-child { border-bottom: none; }
+
+  /* ===== RULES BOX ===== */
+  .rules-box {
+    background: #0f2133;
+    border: 1px solid #1e3a5f;
+    border-radius: 10px;
+    padding: 16px 20px;
+    min-width: 260px;
+    max-width: 320px;
+  }
+
+  .rules-box h3 {
+    color: #7dd3fc;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+
+  .rules-step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 5px 0;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    border-bottom: 1px solid #1a2f4a;
+    line-height: 1.5;
+  }
+  .rules-step:last-child { border-bottom: none; }
+
+  .rules-num {
+    min-width: 20px;
+    height: 20px;
+    background: #1d4ed8;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #bfdbfe;
+    margin-top: 1px;
+  }
+
+  .rules-legend {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #1e3a5f;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
+  .rules-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+  }
+
+  .legend-symbol {
+    min-width: 22px;
+    text-align: center;
+    font-size: 1rem;
+  }
+
+  /* ===== MUTE BUTTON ===== */
+  #mute-btn {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    z-index: 200;
+    background: #0f2133;
+    border: 1px solid #1e3a5f;
+    color: #94a3b8;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+  }
+  #mute-btn:hover { border-color: #3b82f6; color: #7dd3fc; }
+
+  /* ===== DIFFICULTY SELECTOR ===== */
+  .diff-section {
+    width: 100%;
+    max-width: 700px;
+    text-align: center;
+  }
+
+  .diff-section-label {
+    font-size: 0.8rem;
+    letter-spacing: 3px;
+    color: #64748b;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .diff-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .diff-btn {
+    background: #0a1628;
+    border: 2px solid #1e3a5f;
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    text-align: center;
+    min-width: 110px;
+    max-width: 130px;
+    flex: 1;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .diff-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .diff-btn:hover { transform: translateY(-2px); }
+  .diff-btn:hover::before { opacity: 0.06; }
+  .diff-btn.active { transform: translateY(-2px); }
+  .diff-btn.active::before { opacity: 0.1; }
+
+  .diff-rank {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #e0f0ff;
+    margin-bottom: 2px;
+  }
+
+  .diff-tag {
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+
+  .diff-desc {
+    font-size: 0.68rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+
+  .diff-btn.active .diff-desc { color: #94a3b8; }
+
+  /* ===== DIFFICULTY BADGE (in-game) ===== */
+  .diff-badge {
+    font-size: 0.9rem;
+    font-weight: bold;
+    padding: 2px 0;
+  }
+
+  .diff-stars {
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<h1>⚓ BATTLESHIP</h1>
+<p class="subtitle">バトルシップ</p>
+
+<button id="mute-btn" onclick="toggleMute()">🔊 サウンドON</button>
+
+<!-- Title Screen -->
+<div id="title-screen" class="screen">
+  <div class="title-panels">
+    <!-- Ship list -->
+    <div class="title-ship-list">
+      <h3 style="color:#7dd3fc;margin-bottom:12px;font-size:0.9rem;letter-spacing:2px;">艦船一覧</h3>
+      <div class="title-ship-row"><span>空母</span><div class="ship-blocks" id="ts-0"></div><span style="color:#64748b;font-size:0.75rem;">×5マス</span></div>
+      <div class="title-ship-row"><span>戦艦</span><div class="ship-blocks" id="ts-1"></div><span style="color:#64748b;font-size:0.75rem;">×4マス</span></div>
+      <div class="title-ship-row"><span>巡洋艦</span><div class="ship-blocks" id="ts-2"></div><span style="color:#64748b;font-size:0.75rem;">×3マス</span></div>
+      <div class="title-ship-row"><span>潜水艦</span><div class="ship-blocks" id="ts-3"></div><span style="color:#64748b;font-size:0.75rem;">×3マス</span></div>
+      <div class="title-ship-row"><span>駆逐艦</span><div class="ship-blocks" id="ts-4"></div><span style="color:#64748b;font-size:0.75rem;">×2マス</span></div>
+    </div>
+
+    <!-- Rules -->
+    <div class="rules-box">
+      <h3>ゲームのルール</h3>
+      <div class="rules-step">
+        <div class="rules-num">1</div>
+        <div>5種類の艦船を10×10のグリッドに配置する。艦船は縦・横どちらにも置ける。</div>
+      </div>
+      <div class="rules-step">
+        <div class="rules-num">2</div>
+        <div>プレイヤーとCPUが交互に相手の海域へ攻撃する。座標を選んでクリックするだけ。</div>
+      </div>
+      <div class="rules-step">
+        <div class="rules-num">3</div>
+        <div>攻撃が艦船に当たれば「命中」、外れれば「外れ」。結果はグリッド上に表示される。</div>
+      </div>
+      <div class="rules-step">
+        <div class="rules-num">4</div>
+        <div>先に相手の艦船を<strong style="color:#7dd3fc;">全マス命中</strong>させた方が勝利！艦船の全マスを撃沈すると沈没。</div>
+      </div>
+      <div class="rules-step">
+        <div class="rules-num">5</div>
+        <div>CPUはスマートAIを搭載。命中後は周辺を重点的に攻撃してくる！</div>
+      </div>
+      <div class="rules-legend">
+        <div class="rules-legend-row"><span class="legend-symbol">💥</span><span>命中 — 艦船に当たった</span></div>
+        <div class="rules-legend-row"><span class="legend-symbol" style="color:#3b82f6;font-weight:bold;">•</span><span>外れ — 海に落ちた</span></div>
+        <div class="rules-legend-row"><span class="legend-symbol" style="background:#1d4ed8;border-radius:3px;width:18px;height:14px;display:inline-block;"></span><span style="margin-left:4px;">艦船 — あなたの艦船マス</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Difficulty selector -->
+  <div class="diff-section">
+    <div class="diff-section-label">難易度選択</div>
+    <div class="diff-selector" id="diff-selector"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="startSetup()">ゲーム開始</button>
+  </div>
+</div>
+
+<!-- Setup Screen -->
+<div id="setup-screen" class="screen">
+  <div class="setup-panels">
+    <!-- Ship selector -->
+    <div class="ship-list">
+      <h3>艦船を選択</h3>
+      <div id="ship-selector"></div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+        <button class="orient-toggle" onclick="toggleOrient()" id="orient-btn">
+          <span class="arrow" id="orient-arrow">→</span>
+          <span id="orient-label">横向き</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Player setup grid -->
+    <div class="board-wrap">
+      <div class="board-title">あなたの海域</div>
+      <div class="grid-container" id="setup-grid"></div>
+    </div>
+  </div>
+
+  <div class="setup-instructions" id="setup-inst">
+    艦船を選んでグリッドに配置してください。クリックで配置 / Rキーで向き変更
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="randomPlacement()">ランダム配置</button>
+    <button class="btn btn-secondary" onclick="resetSetup()">リセット</button>
+    <button class="btn btn-primary" id="start-btn" onclick="startGame()" disabled>ゲーム開始！</button>
+  </div>
+</div>
+
+<!-- Game Screen -->
+<div id="game-screen" class="screen">
+  <div id="turn-indicator" class="turn-indicator turn-player">あなたのターン — 敵の海域を攻撃してください</div>
+
+  <div class="status-bar">
+    <div class="stat-box">
+      <div class="stat-label">あなたの残存艦</div>
+      <div class="stat-value" id="player-hp">17</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">難易度</div>
+      <div class="stat-value diff-badge" id="diff-badge">伍長</div>
+      <div class="diff-stars" id="diff-stars" style="color:#eab308;">★★★☆☆</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">ターン</div>
+      <div class="stat-value" id="turn-count">1</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">敵の残存艦</div>
+      <div class="stat-value" id="cpu-hp">17</div>
+    </div>
+  </div>
+
+  <div class="boards-row">
+    <div class="board-wrap">
+      <div class="board-title">あなたの海域</div>
+      <div class="grid-container" id="player-grid"></div>
+    </div>
+    <div class="board-wrap">
+      <div class="board-title">敵の海域 ← 攻撃対象</div>
+      <div class="grid-container" id="enemy-grid"></div>
+    </div>
+  </div>
+
+  <div class="log-box" id="log-box"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goTitle()">タイトルに戻る</button>
+  </div>
+</div>
+
+<!-- Result Overlay -->
+<div id="result-overlay">
+  <div class="result-box">
+    <div class="result-title" id="result-title"></div>
+    <div class="result-sub" id="result-sub"></div>
+    <button class="btn btn-primary" onclick="goTitle()">もう一度プレイ</button>
+  </div>
+</div>
+
+<script>
+// ========================
+// AUDIO ENGINE
+// ========================
+let audioCtx = null;
+let masterGain = null;
+let bgmGainNode = null;
+let isMuted = false;
+let bgmActive = false;
+let bgmTimer = null;
+let bgmNoteIdx = 0;
+
+const BEAT = 60 / 116; // BPM 116
+// BGM: ミリタリーマーチ風 Aマイナー
+// [melody_hz, bass_hz, beats]  0 = rest
+const BGM_SEQ = [
+  [440.00, 110.00, 1], [392.00, 110.00, 1], [349.23, 130.81, 1], [329.63, 130.81, 1],
+  [349.23, 110.00, 2], [0,      110.00, 1], [329.63, 110.00, 1],
+  [293.66,  98.00, 1], [261.63,  98.00, 1], [246.94, 110.00, 1], [220.00, 110.00, 1],
+  [220.00, 110.00, 2], [0,      110.00, 2],
+  [261.63, 130.81, 1], [293.66, 130.81, 1], [329.63, 146.83, 1], [349.23, 146.83, 1],
+  [392.00, 110.00, 2], [0,      110.00, 1], [440.00, 110.00, 1],
+  [392.00, 130.81, 1], [349.23, 130.81, 1], [329.63, 110.00, 1], [293.66, 110.00, 1],
+  [261.63, 110.00, 3], [0,      110.00, 1],
+];
+
+function initAudio() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return;
+  }
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = isMuted ? 0 : 1;
+  masterGain.connect(audioCtx.destination);
+
+  bgmGainNode = audioCtx.createGain();
+  bgmGainNode.gain.value = 0.12;
+  bgmGainNode.connect(masterGain);
+}
+
+function playBgmNote(freq, type, duration) {
+  if (!audioCtx || freq === 0) return;
+  const osc = audioCtx.createOscillator();
+  const g   = audioCtx.createGain();
+  osc.type = type === 'bass' ? 'sawtooth' : 'triangle';
+  osc.frequency.value = freq;
+  const t = audioCtx.currentTime;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(type === 'bass' ? 0.35 : 0.55, t + 0.02);
+  g.gain.linearRampToValueAtTime(0.08, t + duration * 0.75);
+  g.gain.linearRampToValueAtTime(0, t + duration);
+  osc.connect(g);
+  g.connect(bgmGainNode);
+  osc.start(t);
+  osc.stop(t + duration);
+}
+
+function scheduleBgmStep() {
+  if (!bgmActive) return;
+  const [mel, bas, beats] = BGM_SEQ[bgmNoteIdx];
+  const dur = beats * BEAT;
+  playBgmNote(mel, 'melody', dur);
+  playBgmNote(bas, 'bass',   dur);
+  bgmNoteIdx = (bgmNoteIdx + 1) % BGM_SEQ.length;
+  bgmTimer = setTimeout(scheduleBgmStep, dur * 1000);
+}
+
+function startBgm() {
+  if (bgmActive) return;
+  initAudio();
+  bgmActive  = true;
+  bgmNoteIdx = 0;
+  scheduleBgmStep();
+}
+
+function stopBgm() {
+  bgmActive = false;
+  if (bgmTimer) { clearTimeout(bgmTimer); bgmTimer = null; }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  if (masterGain) masterGain.gain.value = isMuted ? 0 : 1;
+  document.getElementById('mute-btn').textContent = isMuted ? '🔇 ミュート中' : '🔊 サウンドON';
+}
+
+// 命中音 — 爆発
+function sfxHit(isPlayerHit) {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+
+  // ノイズバースト（爆発）
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.55);
+  const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'lowpass';
+  filt.frequency.setValueAtTime(1200, now);
+  filt.frequency.exponentialRampToValueAtTime(80, now + 0.55);
+
+  const ng = audioCtx.createGain();
+  ng.gain.setValueAtTime(isPlayerHit ? 0.5 : 0.9, now);
+  ng.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+  noise.connect(filt); filt.connect(ng); ng.connect(masterGain);
+  noise.start(now); noise.stop(now + 0.55);
+
+  // 低音ランブル
+  const osc = audioCtx.createOscillator();
+  const og  = audioCtx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(isPlayerHit ? 60 : 90, now);
+  osc.frequency.exponentialRampToValueAtTime(20, now + 0.45);
+  og.gain.setValueAtTime(isPlayerHit ? 0.35 : 0.6, now);
+  og.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+  osc.connect(og); og.connect(masterGain);
+  osc.start(now); osc.stop(now + 0.45);
+}
+
+// 外れ音 — 水しぶき
+function sfxMiss() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.38);
+  const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'bandpass';
+  filt.frequency.value = 1800;
+  filt.Q.value = 0.6;
+
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.35, now + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+  noise.connect(filt); filt.connect(g); g.connect(masterGain);
+  noise.start(now); noise.stop(now + 0.38);
+}
+
+// 勝利・敗北音
+function sfxResult(win) {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const notes = win
+    ? [[523.25,0.18],[659.25,0.18],[783.99,0.18],[1046.50,0.36]]   // C5,E5,G5,C6
+    : [[220.00,0.3],[196.00,0.3],[174.61,0.3],[164.81,0.6]];        // A3,G3,F3,E3
+
+  notes.forEach(([freq, dur], i) => {
+    const offset = notes.slice(0, i).reduce((s, n) => s + n[1], 0);
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    const t = now + offset;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.5, t + 0.02);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(t); osc.stop(t + dur);
+  });
+}
+
+// ========================
+// DIFFICULTY
+// ========================
+const DIFFICULTIES = [
+  { id: 0, name: '二等兵', tag: 'PRIVATE 2nd', color: '#22c55e', stars: '★☆☆☆☆',
+    desc: '完全ランダム攻撃。\n命中しても追撃しない。' },
+  { id: 1, name: '一等兵', tag: 'PRIVATE 1st', color: '#84cc16', stars: '★★☆☆☆',
+    desc: '命中後に追撃する\nことも…忘れることも。' },
+  { id: 2, name: '伍長',   tag: 'CORPORAL',    color: '#eab308', stars: '★★★☆☆',
+    desc: '命中後は必ず\n隣接マスを追撃。' },
+  { id: 3, name: '軍曹',   tag: 'SERGEANT',    color: '#f97316', stars: '★★★★☆',
+    desc: 'チェッカー探索＋\n方向追跡戦術。' },
+  { id: 4, name: '大佐',   tag: 'COLONEL',     color: '#ef4444', stars: '★★★★★',
+    desc: '確率密度マップで\n最適座標を選択。' },
+];
+let difficulty = 2; // default: 伍長
+
+function renderDiffSelector() {
+  const el = document.getElementById('diff-selector');
+  el.innerHTML = '';
+  DIFFICULTIES.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'diff-btn' + (d.id === difficulty ? ' active' : '');
+    btn.style.setProperty('--diff-color', d.color);
+    btn.style.borderColor = d.id === difficulty ? d.color : '';
+    btn.style.boxShadow  = d.id === difficulty ? `0 0 14px ${d.color}55` : '';
+    btn.innerHTML = `
+      <div class="diff-rank">${d.name}</div>
+      <div class="diff-tag" style="color:${d.color}">${d.tag}</div>
+      <div class="diff-desc">${d.desc.replace(/\n/g,'<br>')}</div>
+    `;
+    btn.onclick = () => {
+      difficulty = d.id;
+      renderDiffSelector();
+    };
+    el.appendChild(btn);
+  });
+}
+
+// ========================
+// CONSTANTS
+// ========================
+const SIZE = 10;
+const SHIPS = [
+  { name: "空母",   size: 5 },
+  { name: "戦艦",   size: 4 },
+  { name: "巡洋艦", size: 3 },
+  { name: "潜水艦", size: 3 },
+  { name: "駆逐艦", size: 2 },
+];
+const TOTAL_HP = SHIPS.reduce((s, sh) => s + sh.size, 0);
+
+const LABELS = Array.from({length: SIZE}, (_, i) => String.fromCharCode(65 + i));
+
+// ========================
+// STATE
+// ========================
+let setupGrid = [];       // player placement grid (true=ship)
+let placedShips = [];     // array of {shipIdx, cells:[{r,c}]}
+let selectedShipIdx = -1;
+let horizontal = true;
+let playerGrid = [];      // game grids: 'empty'|'ship'|'hit'|'miss'
+let cpuGrid = [];
+let playerHP = 0;
+let cpuHP = 0;
+let turn = 1;
+let gamePhase = 'title';  // 'title'|'setup'|'game'|'over'
+
+// CPU AI state
+let cpuAttacked = new Set();
+let cpuTargets = [];
+let cpuHitChain  = [];   // hits from current unsunk ship (for levels 3-4)
+let cpuHuntDir   = null; // [dr,dc] direction being pursued, or null
+let playerShipCells = []; // [[r,c],...] per ship, for sinking detection
+
+// ========================
+// TITLE
+// ========================
+function showTitle() {
+  gamePhase = 'title';
+  document.getElementById('title-screen').classList.add('active');
+  document.getElementById('setup-screen').classList.remove('active');
+  document.getElementById('game-screen').classList.remove('active');
+  document.getElementById('result-overlay').classList.remove('show');
+
+  renderDiffSelector();
+
+  // Draw ship blocks in title
+  SHIPS.forEach((sh, i) => {
+    const el = document.getElementById('ts-' + i);
+    el.innerHTML = '';
+    for (let j = 0; j < sh.size; j++) {
+      const b = document.createElement('div');
+      b.className = 'ship-block';
+      el.appendChild(b);
+    }
+  });
+}
+
+function goTitle() {
+  stopBgm();
+  showTitle();
+}
+
+function startSetup() {
+  initAudio(); // ユーザー操作後に AudioContext を起動
+  gamePhase = 'setup';
+  document.getElementById('title-screen').classList.remove('active');
+  document.getElementById('setup-screen').classList.add('active');
+  initSetup();
+}
+
+// ========================
+// SETUP PHASE
+// ========================
+function initSetup() {
+  setupGrid = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
+  placedShips = [];
+  selectedShipIdx = -1;
+  horizontal = true;
+  updateOrientBtn();
+  buildShipSelector();
+  buildSetupGrid();
+  document.getElementById('start-btn').disabled = true;
+}
+
+function buildShipSelector() {
+  const el = document.getElementById('ship-selector');
+  el.innerHTML = '';
+  SHIPS.forEach((sh, i) => {
+    const div = document.createElement('div');
+    div.className = 'ship-item';
+    div.id = 'ship-sel-' + i;
+    div.onclick = () => selectShip(i);
+
+    const blocks = document.createElement('div');
+    blocks.className = 'ship-blocks';
+    for (let j = 0; j < sh.size; j++) {
+      const b = document.createElement('div');
+      b.className = 'ship-block';
+      blocks.appendChild(b);
+    }
+
+    const name = document.createElement('span');
+    name.className = 'ship-name';
+    name.textContent = sh.name;
+
+    div.appendChild(name);
+    div.appendChild(blocks);
+    el.appendChild(div);
+  });
+}
+
+function selectShip(idx) {
+  const already = placedShips.find(p => p.shipIdx === idx);
+  if (already) return;
+  selectedShipIdx = idx;
+  document.querySelectorAll('.ship-item').forEach((el, i) => {
+    el.classList.toggle('selected', i === idx);
+  });
+}
+
+function buildSetupGrid() {
+  const grid = document.getElementById('setup-grid');
+  grid.innerHTML = '';
+
+  // corner
+  addLabel(grid, '');
+  // col labels
+  for (let c = 0; c < SIZE; c++) addLabel(grid, c);
+
+  for (let r = 0; r < SIZE; r++) {
+    addLabel(grid, LABELS[r]);
+    for (let c = 0; c < SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell empty-setup';
+      cell.id = `sc-${r}-${c}`;
+      cell.addEventListener('click', () => onSetupClick(r, c));
+      cell.addEventListener('mouseenter', () => onSetupHover(r, c));
+      cell.addEventListener('mouseleave', () => clearPreview());
+      grid.appendChild(cell);
+    }
+  }
+  renderSetupGrid();
+}
+
+function addLabel(parent, text) {
+  const el = document.createElement('div');
+  el.className = 'grid-label';
+  el.textContent = text;
+  parent.appendChild(el);
+}
+
+function renderSetupGrid() {
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const cell = document.getElementById(`sc-${r}-${c}`);
+      if (!cell) continue;
+      cell.className = 'cell';
+      if (setupGrid[r][c]) {
+        const placed = placedShips.find(p => p.cells.some(cl => cl.r===r && cl.c===c));
+        if (placed && placed.shipIdx === selectedShipIdx) {
+          cell.className = 'cell ship-selected';
+        } else {
+          cell.className = 'cell ship';
+        }
+      } else {
+        cell.className = 'cell empty-setup';
+      }
+    }
+  }
+}
+
+function getPreviewCells(r, c) {
+  if (selectedShipIdx < 0) return null;
+  const size = SHIPS[selectedShipIdx].size;
+  const cells = [];
+  for (let i = 0; i < size; i++) {
+    const pr = horizontal ? r : r + i;
+    const pc = horizontal ? c + i : c;
+    cells.push({r: pr, c: pc});
+  }
+  return cells;
+}
+
+function isValidPlacement(cells) {
+  for (const {r, c} of cells) {
+    if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) return false;
+    if (setupGrid[r][c]) return false;
+  }
+  return true;
+}
+
+function onSetupHover(r, c) {
+  clearPreview();
+  if (selectedShipIdx < 0) return;
+  const cells = getPreviewCells(r, c);
+  const valid = isValidPlacement(cells);
+  for (const {r: pr, c: pc} of cells) {
+    if (pr < 0 || pr >= SIZE || pc < 0 || pc >= SIZE) continue;
+    const cell = document.getElementById(`sc-${pr}-${pc}`);
+    if (cell && !setupGrid[pr][pc]) {
+      cell.classList.add(valid ? 'preview' : 'preview-invalid');
+    }
+  }
+}
+
+function clearPreview() {
+  document.querySelectorAll('.preview, .preview-invalid').forEach(el => {
+    el.classList.remove('preview', 'preview-invalid');
+  });
+}
+
+function onSetupClick(r, c) {
+  if (selectedShipIdx < 0) return;
+  if (placedShips.find(p => p.shipIdx === selectedShipIdx)) return;
+  const cells = getPreviewCells(r, c);
+  if (!isValidPlacement(cells)) return;
+
+  for (const {r: pr, c: pc} of cells) {
+    setupGrid[pr][pc] = true;
+  }
+  placedShips.push({ shipIdx: selectedShipIdx, cells });
+
+  document.getElementById('ship-sel-' + selectedShipIdx).classList.add('placed');
+
+  // Auto-select next unplaced ship
+  selectedShipIdx = -1;
+  for (let i = 0; i < SHIPS.length; i++) {
+    if (!placedShips.find(p => p.shipIdx === i)) {
+      selectShip(i);
+      break;
+    }
+  }
+
+  renderSetupGrid();
+
+  if (placedShips.length === SHIPS.length) {
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('setup-inst').textContent = '全艦船の配置が完了しました！「ゲーム開始！」を押してください。';
+    selectedShipIdx = -1;
+    document.querySelectorAll('.ship-item').forEach(el => el.classList.remove('selected'));
+  }
+}
+
+function toggleOrient() {
+  horizontal = !horizontal;
+  updateOrientBtn();
+}
+
+function updateOrientBtn() {
+  document.getElementById('orient-arrow').textContent = horizontal ? '→' : '↓';
+  document.getElementById('orient-label').textContent = horizontal ? '横向き' : '縦向き';
+}
+
+function randomPlacement() {
+  resetSetup();
+  for (let i = 0; i < SHIPS.length; i++) {
+    let placed = false;
+    let attempts = 0;
+    while (!placed && attempts < 1000) {
+      attempts++;
+      const h = Math.random() < 0.5;
+      const r = Math.floor(Math.random() * SIZE);
+      const c = Math.floor(Math.random() * SIZE);
+      const size = SHIPS[i].size;
+      const cells = [];
+      for (let k = 0; k < size; k++) {
+        cells.push({ r: h ? r : r + k, c: h ? c + k : c });
+      }
+      if (isValidPlacement(cells)) {
+        for (const {r: pr, c: pc} of cells) setupGrid[pr][pc] = true;
+        placedShips.push({ shipIdx: i, cells });
+        document.getElementById('ship-sel-' + i).classList.add('placed');
+        placed = true;
+      }
+    }
+  }
+  selectedShipIdx = -1;
+  document.querySelectorAll('.ship-item').forEach(el => el.classList.remove('selected'));
+  renderSetupGrid();
+  document.getElementById('start-btn').disabled = false;
+  document.getElementById('setup-inst').textContent = 'ランダムに配置しました！必要なら再配置、またはゲーム開始してください。';
+}
+
+function resetSetup() {
+  setupGrid = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
+  placedShips = [];
+  selectedShipIdx = -1;
+  document.querySelectorAll('.ship-item').forEach(el => {
+    el.classList.remove('placed', 'selected');
+  });
+  renderSetupGrid();
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('setup-inst').textContent = '艦船を選んでグリッドに配置してください。クリックで配置 / Rキーで向き変更';
+  selectShip(0);
+}
+
+// ========================
+// GAME PHASE
+// ========================
+function startGame() {
+  gamePhase = 'game';
+  document.getElementById('setup-screen').classList.remove('active');
+  document.getElementById('game-screen').classList.add('active');
+
+  // Build player grid from setup
+  playerGrid = Array.from({length: SIZE}, (_, r) =>
+    Array.from({length: SIZE}, (_, c) => setupGrid[r][c] ? 'ship' : 'empty')
+  );
+
+  // CPU grid
+  cpuGrid = Array.from({length: SIZE}, () => Array(SIZE).fill('empty'));
+  cpuPlaceShips();
+
+  // Store player ship cells for sinking detection
+  playerShipCells = placedShips.map(ps => ps.cells.map(({r, c}) => [r, c]));
+
+  playerHP = TOTAL_HP;
+  cpuHP = TOTAL_HP;
+  turn = 1;
+  cpuAttacked = new Set();
+  cpuTargets   = [];
+  cpuHitChain  = [];
+  cpuHuntDir   = null;
+
+  // Update difficulty badge
+  const d = DIFFICULTIES[difficulty];
+  const badge = document.getElementById('diff-badge');
+  const stars = document.getElementById('diff-stars');
+  badge.textContent = d.name;
+  badge.style.color = d.color;
+  stars.textContent = d.stars;
+  stars.style.color  = d.color;
+
+  document.getElementById('log-box').innerHTML = '';
+  document.getElementById('turn-count').textContent = turn;
+  document.getElementById('player-hp').textContent = playerHP;
+  document.getElementById('cpu-hp').textContent = cpuHP;
+
+  buildGameGrid('player-grid', playerGrid, false);
+  buildGameGrid('enemy-grid', cpuGrid, true);
+
+  setTurnIndicator('player');
+  const dname = DIFFICULTIES[difficulty].name;
+  addLog(`ゲーム開始！難易度：${dname}  敵の海域を攻撃してください。`, 'system');
+  startBgm();
+}
+
+function cpuPlaceShips() {
+  for (const sh of SHIPS) {
+    let placed = false;
+    while (!placed) {
+      const h = Math.random() < 0.5;
+      const r = Math.floor(Math.random() * SIZE);
+      const c = Math.floor(Math.random() * SIZE);
+      let ok = true;
+      const cells = [];
+      for (let k = 0; k < sh.size; k++) {
+        const pr = h ? r : r + k;
+        const pc = h ? c + k : c;
+        if (pr >= SIZE || pc >= SIZE || cpuGrid[pr][pc] !== 'empty') { ok = false; break; }
+        cells.push([pr, pc]);
+      }
+      if (ok) {
+        for (const [pr, pc] of cells) cpuGrid[pr][pc] = 'ship';
+        placed = true;
+      }
+    }
+  }
+}
+
+function buildGameGrid(id, grid, isEnemy) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+
+  addLabel(el, '');
+  for (let c = 0; c < SIZE; c++) addLabel(el, c);
+
+  for (let r = 0; r < SIZE; r++) {
+    addLabel(el, LABELS[r]);
+    for (let c = 0; c < SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.id = `${id}-${r}-${c}`;
+      cell.className = 'cell';
+      if (isEnemy) {
+        cell.addEventListener('click', () => playerAttack(r, c));
+      }
+      el.appendChild(cell);
+    }
+  }
+  refreshGameGrid(id, grid, isEnemy);
+}
+
+function refreshGameGrid(id, grid, isEnemy) {
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const cell = document.getElementById(`${id}-${r}-${c}`);
+      if (!cell) continue;
+      const state = grid[r][c];
+      cell.className = 'cell';
+      cell.textContent = '';
+
+      if (state === 'hit') {
+        cell.classList.add('hit');
+        cell.textContent = '💥';
+      } else if (state === 'miss') {
+        cell.classList.add('miss');
+        cell.textContent = '•';
+      } else if (state === 'ship' && !isEnemy) {
+        cell.classList.add('ship');
+      } else if ((state === 'empty' || state === 'ship') && isEnemy && gamePhase === 'game') {
+        cell.classList.add('enemy-clickable');
+      }
+    }
+  }
+}
+
+function playerAttack(r, c) {
+  if (gamePhase !== 'game') return;
+  const state = cpuGrid[r][c];
+  if (state === 'hit' || state === 'miss') return;
+
+  const coord = LABELS[r] + c;
+
+  if (state === 'ship') {
+    cpuGrid[r][c] = 'hit';
+    cpuHP--;
+    document.getElementById('cpu-hp').textContent = cpuHP;
+    addLog(`【あなた】${coord} → 命中！💥`, 'hit');
+    sfxHit(false);
+  } else {
+    cpuGrid[r][c] = 'miss';
+    addLog(`【あなた】${coord} → 外れ...`, 'miss');
+    sfxMiss();
+  }
+
+  refreshGameGrid('enemy-grid', cpuGrid, true);
+
+  if (cpuHP <= 0) {
+    endGame(true);
+    return;
+  }
+
+  // CPU turn
+  setTurnIndicator('cpu');
+  setTimeout(cpuAttackTurn, 700);
+}
+
+function cpuAttackTurn() {
+  if (gamePhase !== 'game') return;
+
+  const [r, c] = cpuGetAttack();
+  cpuAttacked.add(`${r},${c}`);
+  const coord = LABELS[r] + c;
+
+  if (playerGrid[r][c] === 'ship') {
+    playerGrid[r][c] = 'hit';
+    playerHP--;
+    document.getElementById('player-hp').textContent = playerHP;
+
+    const sunk = isSunk(r, c);
+    const dname = DIFFICULTIES[difficulty].name;
+
+    if (sunk) {
+      addLog(`【${dname}】${coord} → 命中！艦船撃沈！💥`, 'cpu');
+      // Reset targeting state — that ship is done
+      cpuTargets  = [];
+      cpuHitChain = [];
+      cpuHuntDir  = null;
+    } else {
+      addLog(`【${dname}】${coord} → 命中！あなたの艦船が被弾！💥`, 'cpu');
+      // Add targets based on difficulty
+      if (difficulty === 0) {
+        // 二等兵: no targeting at all
+      } else if (difficulty === 1) {
+        // 一等兵: 50% chance to bother chasing
+        if (Math.random() < 0.5) cpuTargets.push(...getAdjacent(r, c));
+      } else if (difficulty === 2) {
+        // 伍長: always chase adjacent
+        cpuTargets.push(...getAdjacent(r, c));
+      } else {
+        // 軍曹 / 大佐: direction-aware targeting
+        cpuHitChain.push([r, c]);
+        if (cpuHitChain.length >= 2 && cpuHuntDir === null) {
+          // Detect direction from last two hits (only if adjacent)
+          const [pr, pc] = cpuHitChain[cpuHitChain.length - 2];
+          const dr = r - pr, dc = c - pc;
+          if (Math.abs(dr) + Math.abs(dc) === 1) {
+            cpuHuntDir = [dr, dc];
+            // Rebuild target queue along this axis only
+            cpuTargets = [];
+            // Forward from current hit
+            let nr = r + dr, nc = c + dc;
+            while (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+              if (!cpuAttacked.has(`${nr},${nc}`)) cpuTargets.push([nr, nc]);
+              nr += dr; nc += dc;
+            }
+            // Backward from first hit in chain
+            const [fr, fc] = cpuHitChain[0];
+            nr = fr - dr; nc = fc - dc;
+            while (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+              if (!cpuAttacked.has(`${nr},${nc}`)) cpuTargets.push([nr, nc]);
+              nr -= dr; nc -= dc;
+            }
+          }
+        } else if (cpuHuntDir !== null) {
+          // Known direction — push next cell ahead
+          const [dr, dc] = cpuHuntDir;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && !cpuAttacked.has(`${nr},${nc}`)) {
+            cpuTargets.unshift([nr, nc]);
+          }
+        } else {
+          // First hit in chain, no direction yet — add all adjacent
+          cpuTargets.push(...getAdjacent(r, c));
+        }
+      }
+    }
+    sfxHit(true);
+  } else {
+    if (playerGrid[r][c] !== 'hit') playerGrid[r][c] = 'miss';
+    addLog(`【${DIFFICULTIES[difficulty].name}】${coord} → 外れ`, 'cpu');
+    sfxMiss();
+  }
+
+  refreshGameGrid('player-grid', playerGrid, false);
+
+  if (playerHP <= 0) {
+    endGame(false);
+    return;
+  }
+
+  turn++;
+  document.getElementById('turn-count').textContent = turn;
+  setTurnIndicator('player');
+}
+
+// Returns true if the ship containing (hitR, hitC) is fully sunk
+function isSunk(hitR, hitC) {
+  const ship = playerShipCells.find(cells =>
+    cells.some(([r, c]) => r === hitR && c === hitC)
+  );
+  return ship ? ship.every(([r, c]) => playerGrid[r][c] === 'hit') : false;
+}
+
+function cpuGetAttack() {
+  switch (difficulty) {
+    case 0: return aiRandom();
+    case 1: return aiPrivate();
+    case 2: return aiCorporal();
+    case 3: return aiSergeant();
+    case 4: return aiColonel();
+    default: return aiCorporal();
+  }
+}
+
+// ---- Level 0: 二等兵 — 完全ランダム ----
+function aiRandom() {
+  let r, c;
+  do {
+    r = Math.floor(Math.random() * SIZE);
+    c = Math.floor(Math.random() * SIZE);
+  } while (cpuAttacked.has(`${r},${c}`));
+  return [r, c];
+}
+
+// ---- Level 1: 一等兵 — 50%で追撃、残りはランダム ----
+function aiPrivate() {
+  if (cpuTargets.length > 0 && Math.random() < 0.5) {
+    while (cpuTargets.length > 0) {
+      const pos = cpuTargets.shift();
+      if (!cpuAttacked.has(`${pos[0]},${pos[1]}`)) return pos;
+    }
+  }
+  return aiRandom();
+}
+
+// ---- Level 2: 伍長 — 標準 Hunt & Target ----
+function aiCorporal() {
+  while (cpuTargets.length > 0) {
+    const pos = cpuTargets.shift();
+    if (!cpuAttacked.has(`${pos[0]},${pos[1]}`)) return pos;
+  }
+  return aiRandom();
+}
+
+// ---- Level 3: 軍曹 — チェッカーボード探索 ＋ 方向追跡 ----
+function aiSergeant() {
+  // Target mode: use direction-aware queue built in cpuAttackTurn
+  while (cpuTargets.length > 0) {
+    const pos = cpuTargets.shift();
+    if (!cpuAttacked.has(`${pos[0]},${pos[1]}`)) return pos;
+  }
+  // Hunt mode: checkerboard (r+c)%2===0 guarantees hitting every ship ≥2
+  const candidates = [];
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (!cpuAttacked.has(`${r},${c}`) && (r + c) % 2 === 0)
+        candidates.push([r, c]);
+  if (candidates.length > 0)
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  return aiRandom(); // fallback when checkerboard exhausted
+}
+
+// ---- Level 4: 大佐 — 確率密度マップ ＋ 方向追跡 ----
+function aiColonel() {
+  // Target mode first
+  while (cpuTargets.length > 0) {
+    const pos = cpuTargets.shift();
+    if (!cpuAttacked.has(`${pos[0]},${pos[1]}`)) return pos;
+  }
+  // Hunt mode: probability density map
+  return aiProbabilityMap();
+}
+
+function aiProbabilityMap() {
+  const prob = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+  const sizes = getRemainingShipSizes();
+
+  for (const size of sizes) {
+    // Horizontal
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c <= SIZE - size; c++) {
+        if (canFitShip(r, c, size, true))
+          for (let k = 0; k < size; k++) prob[r][c + k]++;
+      }
+    }
+    // Vertical
+    for (let r = 0; r <= SIZE - size; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (canFitShip(r, c, size, false))
+          for (let k = 0; k < size; k++) prob[r + k][c]++;
+      }
+    }
+  }
+
+  // Pick highest-probability unattacked cell
+  let best = -1, bestCells = [];
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (cpuAttacked.has(`${r},${c}`)) continue;
+      if (prob[r][c] > best) { best = prob[r][c]; bestCells = [[r, c]]; }
+      else if (prob[r][c] === best) bestCells.push([r, c]);
+    }
+  }
+  if (bestCells.length > 0)
+    return bestCells[Math.floor(Math.random() * bestCells.length)];
+  return aiRandom();
+}
+
+// True if a ship of `size` can be placed at (r,c) given the CPU's observations
+function canFitShip(r, c, size, horiz) {
+  for (let k = 0; k < size; k++) {
+    const pr = horiz ? r : r + k;
+    const pc = horiz ? c + k : c;
+    if (pr >= SIZE || pc >= SIZE) return false;
+    const key = `${pr},${pc}`;
+    // Cell already attacked and was a miss → can't place ship here
+    if (cpuAttacked.has(key) && playerGrid[pr][pc] === 'miss') return false;
+  }
+  return true;
+}
+
+// Return sizes of ships not yet fully sunk
+function getRemainingShipSizes() {
+  return playerShipCells
+    .filter(cells => !cells.every(([r, c]) => playerGrid[r][c] === 'hit'))
+    .map(cells => cells.length);
+}
+
+function getAdjacent(r, c) {
+  const result = [];
+  for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+    const nr = r + dr, nc = c + dc;
+    if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && !cpuAttacked.has(`${nr},${nc}`)) {
+      result.push([nr, nc]);
+    }
+  }
+  return result;
+}
+
+function setTurnIndicator(who) {
+  const el = document.getElementById('turn-indicator');
+  if (who === 'player') {
+    el.className = 'turn-indicator turn-player';
+    el.textContent = 'あなたのターン — 敵の海域を攻撃してください';
+  } else {
+    el.className = 'turn-indicator turn-cpu';
+    el.textContent = 'CPUのターン — 攻撃中...';
+  }
+}
+
+function addLog(msg, type) {
+  const box = document.getElementById('log-box');
+  const div = document.createElement('div');
+  div.className = `log-entry log-${type}`;
+  div.textContent = msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function endGame(playerWon) {
+  gamePhase = 'over';
+
+  // Reveal CPU ships
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (cpuGrid[r][c] === 'ship') {
+        const cell = document.getElementById(`enemy-grid-${r}-${c}`);
+        if (cell) { cell.className = 'cell ship'; cell.textContent = ''; }
+      }
+    }
+  }
+
+  stopBgm();
+
+  setTimeout(() => {
+    sfxResult(playerWon);
+    const overlay = document.getElementById('result-overlay');
+    const title = document.getElementById('result-title');
+    const sub = document.getElementById('result-sub');
+
+    if (playerWon) {
+      title.textContent = '勝利！';
+      title.className = 'result-title result-win';
+      sub.textContent = `${turn}ターンで全ての敵艦を撃沈しました！`;
+    } else {
+      title.textContent = 'ゲームオーバー';
+      title.className = 'result-title result-lose';
+      sub.textContent = 'あなたの全艦船が撃沈されました...';
+    }
+    overlay.classList.add('show');
+  }, 500);
+}
+
+// ========================
+// KEYBOARD
+// ========================
+document.addEventListener('keydown', e => {
+  if (gamePhase === 'setup' && (e.key === 'r' || e.key === 'R')) {
+    toggleOrient();
+  }
+});
+
+// ========================
+// INIT
+// ========================
+showTitle();
+</script>
+</body>
+</html>
