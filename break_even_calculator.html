@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>元取り計算ツール</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f0f4f8;
+    color: #1a202c;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #718096;
+    font-size: 0.85rem;
+    margin-bottom: 32px;
+  }
+
+  .container { max-width: 760px; margin: 0 auto; }
+
+  /* カード */
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    padding: 24px 28px;
+    margin-bottom: 24px;
+  }
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 18px;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* フォーム */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 0.82rem; font-weight: 600; color: #4a5568; }
+
+  input[type="text"], input[type="number"] {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  input:focus { outline: none; border-color: #667eea; }
+
+  .period-row { display: flex; gap: 8px; }
+  .period-row input[type="number"] { flex: 1; }
+
+  .unit-group { display: flex; gap: 0; }
+  .unit-group label {
+    flex: 1;
+    cursor: pointer;
+    text-align: center;
+    padding: 10px 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1.5px solid #e2e8f0;
+    color: #718096;
+    transition: all .15s;
+  }
+  .unit-group label:first-child { border-radius: 8px 0 0 8px; }
+  .unit-group label:last-child  { border-radius: 0 8px 8px 0; border-left: none; }
+  .unit-group label:nth-child(2) { border-left: none; }
+  .unit-group input[type="radio"] { display: none; }
+  .unit-group input[type="radio"]:checked + label {
+    background: #667eea;
+    border-color: #667eea;
+    color: #fff;
+  }
+
+  .btn-add {
+    width: 100%;
+    margin-top: 18px;
+    padding: 12px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .btn-add:hover { opacity: .88; }
+
+  .error {
+    color: #e53e3e;
+    font-size: 0.82rem;
+    margin-top: 8px;
+    min-height: 18px;
+  }
+
+  /* 商品カード一覧 */
+  .items-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .item-card {
+    background: #f7fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px 18px;
+    position: relative;
+    transition: box-shadow .2s;
+  }
+  .item-card.best {
+    border-color: #667eea;
+    background: linear-gradient(135deg, #ebf4ff, #f0f0ff);
+  }
+  .item-card .badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #667eea;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 99px;
+  }
+  .item-card .item-name {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #2d3748;
+    padding-right: 70px;
+  }
+  .item-meta {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-bottom: 12px;
+  }
+  .breakdown {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .breakdown-item {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+  }
+  .breakdown-item .unit { font-size: 0.72rem; color: #718096; margin-bottom: 4px; }
+  .breakdown-item .amount { font-size: 1rem; font-weight: 700; color: #2d3748; }
+  .breakdown-item.highlight .amount { color: #667eea; }
+
+  .btn-remove {
+    margin-top: 12px;
+    background: none;
+    border: 1px solid #fc8181;
+    color: #e53e3e;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-remove:hover { background: #fff5f5; }
+
+  /* 比較テーブル */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .compare-table th {
+    background: #edf2f7;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #4a5568;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .compare-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #2d3748;
+  }
+  .compare-table tr.rank1 td { background: #ebf4ff; font-weight: 600; }
+  .compare-table .rank-badge {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 50%;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: #e2e8f0;
+    color: #4a5568;
+  }
+  .compare-table tr.rank1 .rank-badge { background: #667eea; color: #fff; }
+
+  .empty-state {
+    text-align: center;
+    color: #a0aec0;
+    padding: 32px 0;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 500px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+    .breakdown { grid-template-columns: 1fr; }
+    .compare-table { font-size: 0.78rem; }
+    .compare-table th, .compare-table td { padding: 8px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>元取り計算ツール</h1>
+  <p class="subtitle">購入価格 ÷ 使用期間 → 元を取るための1時間・1日・1ヶ月あたりの必要利益を逆算します</p>
+
+  <!-- 入力フォーム -->
+  <div class="card">
+    <h2>🛒 商品を追加</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label for="name">商品名</label>
+        <input type="text" id="name" placeholder="例: MacBook Pro">
+      </div>
+      <div class="form-group">
+        <label for="price">価格（円）</label>
+        <input type="number" id="price" placeholder="例: 300000" min="1">
+      </div>
+      <div class="form-group">
+        <label>使用期間</label>
+        <div class="period-row">
+          <input type="number" id="period" placeholder="例: 3" min="0.1" step="any">
+          <div class="unit-group">
+            <input type="radio" name="unit" id="u-day"   value="day">
+            <label for="u-day">日</label>
+            <input type="radio" name="unit" id="u-month" value="month" checked>
+            <label for="u-month">ヶ月</label>
+            <input type="radio" name="unit" id="u-year"  value="year">
+            <label for="u-year">年</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="error" id="error-msg"></p>
+    <button class="btn-add" onclick="addItem()">＋ 追加して計算</button>
+  </div>
+
+  <!-- 商品一覧 -->
+  <div class="card">
+    <h2>📦 登録済み商品</h2>
+    <div class="items-list" id="items-list">
+      <p class="empty-state">まだ商品が追加されていません</p>
+    </div>
+  </div>
+
+  <!-- 比較テーブル -->
+  <div class="card" id="compare-card" style="display:none">
+    <h2>📊 比較一覧（1日あたりコスト 安い順）</h2>
+    <div style="overflow-x:auto">
+      <table class="compare-table" id="compare-table">
+        <thead>
+          <tr>
+            <th>順位</th>
+            <th>商品名</th>
+            <th>価格</th>
+            <th>使用期間</th>
+            <th>1時間</th>
+            <th>1日</th>
+            <th>1ヶ月</th>
+          </tr>
+        </thead>
+        <tbody id="compare-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DAYS_PER_MONTH = 30;
+  const HOURS_PER_DAY  = 24;
+
+  let items = [];
+
+  function toDays(value, unit) {
+    if (unit === 'day')   return value;
+    if (unit === 'month') return value * DAYS_PER_MONTH;
+    if (unit === 'year')  return value * 365;
+  }
+
+  function calcBreakEven(price, days) {
+    return {
+      perHour:  price / (days * HOURS_PER_DAY),
+      perDay:   price / days,
+      perMonth: price / (days / DAYS_PER_MONTH),
+    };
+  }
+
+  function formatYen(amount) {
+    if (amount >= 1)    return amount.toLocaleString('ja-JP', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' 円';
+    if (amount >= 0.01) return amount.toFixed(2) + ' 円';
+    return amount.toFixed(4) + ' 円';
+  }
+
+  function periodLabel(days, unit, value) {
+    const labels = { day: '日', month: 'ヶ月', year: '年' };
+    return `${value} ${labels[unit]}（${Math.round(days)} 日）`;
+  }
+
+  function addItem() {
+    const name   = document.getElementById('name').value.trim() || '商品';
+    const price  = parseFloat(document.getElementById('price').value);
+    const period = parseFloat(document.getElementById('period').value);
+    const unit   = document.querySelector('input[name="unit"]:checked').value;
+    const errEl  = document.getElementById('error-msg');
+
+    if (!price || price <= 0)  { errEl.textContent = '価格を正しく入力してください'; return; }
+    if (!period || period <= 0) { errEl.textContent = '使用期間を正しく入力してください'; return; }
+    errEl.textContent = '';
+
+    const days = toDays(period, unit);
+    const { perHour, perDay, perMonth } = calcBreakEven(price, days);
+
+    items.push({ id: Date.now(), name, price, days, unit, periodValue: period, perHour, perDay, perMonth });
+
+    document.getElementById('name').value   = '';
+    document.getElementById('price').value  = '';
+    document.getElementById('period').value = '';
+
+    render();
+  }
+
+  function removeItem(id) {
+    items = items.filter(it => it.id !== id);
+    render();
+  }
+
+  function render() {
+    renderItems();
+    renderCompare();
+  }
+
+  function renderItems() {
+    const el = document.getElementById('items-list');
+    if (items.length === 0) {
+      el.innerHTML = '<p class="empty-state">まだ商品が追加されていません</p>';
+      return;
+    }
+    const bestId = [...items].sort((a, b) => a.perDay - b.perDay)[0].id;
+    el.innerHTML = items.map(it => `
+      <div class="item-card ${it.id === bestId && items.length > 1 ? 'best' : ''}">
+        ${it.id === bestId && items.length > 1 ? '<span class="badge">最もお得</span>' : ''}
+        <div class="item-name">${escHtml(it.name)}</div>
+        <div class="item-meta">
+          価格: ${it.price.toLocaleString('ja-JP')} 円 ／ 使用期間: ${periodLabel(it.days, it.unit, it.periodValue)}
+        </div>
+        <div class="breakdown">
+          <div class="breakdown-item">
+            <div class="unit">1時間あたり</div>
+            <div class="amount">${formatYen(it.perHour)}</div>
+          </div>
+          <div class="breakdown-item highlight">
+            <div class="unit">1日あたり</div>
+            <div class="amount">${formatYen(it.perDay)}</div>
+          </div>
+          <div class="breakdown-item">
+            <div class="unit">1ヶ月あたり</div>
+            <div class="amount">${formatYen(it.perMonth)}</div>
+          </div>
+        </div>
+        <button class="btn-remove" onclick="removeItem(${it.id})">削除</button>
+      </div>
+    `).join('');
+  }
+
+  function renderCompare() {
+    const card = document.getElementById('compare-card');
+    if (items.length < 2) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+
+    const ranked = [...items].sort((a, b) => a.perDay - b.perDay);
+    document.getElementById('compare-body').innerHTML = ranked.map((it, i) => `
+      <tr class="${i === 0 ? 'rank1' : ''}">
+        <td><span class="rank-badge">${i + 1}</span></td>
+        <td>${escHtml(it.name)}</td>
+        <td>${it.price.toLocaleString('ja-JP')} 円</td>
+        <td>${periodLabel(it.days, it.unit, it.periodValue)}</td>
+        <td>${formatYen(it.perHour)}</td>
+        <td>${formatYen(it.perDay)}</td>
+        <td>${formatYen(it.perMonth)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function escHtml(str) {
+    return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // Enterキーで追加
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && ['name','price','period'].includes(e.target.id)) addItem();
+  });
+</script>
+</body>
+</html>
