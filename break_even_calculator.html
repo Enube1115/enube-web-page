@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>元取り計算ツール</title>
-<style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -418,6 +419,67 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && ['name','price','period'].includes(e.target.id)) addItem();
   });
+</script>
+ <div id="auth-section" style="position:fixed;top:16px;right:16px;background:white;padding:16px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.15);z-index:999;min-width:280px;">
+  <div id="auth-form">
+    <input id="email-input" type="email" placeholder="メールアドレス" style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+    <input id="password-input" type="password" placeholder="パスワード（6文字以上）" style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+    <button onclick="signUp()" style="width:100%;padding:8px;margin-bottom:4px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;">新規登録</button>
+    <button onclick="signIn()" style="width:100%;padding:8px;margin-bottom:4px;background:#48bb78;color:white;border:none;border-radius:6px;cursor:pointer;">メールでログイン</button>
+    <button onclick="signInWithGoogle()" style="width:100%;padding:8px;background:#4285f4;color:white;border:none;border-radius:6px;cursor:pointer;">Googleでログイン</button>
+  </div>
+  <div id="user-info" style="display:none;">
+    <span id="user-email-display" style="font-size:0.85rem;color:#4a5568;"></span>
+    <button onclick="signOut()" style="width:100%;margin-top:8px;padding:8px;background:#e53e3e;color:white;border:none;border-radius:6px;cursor:pointer;">ログアウト</button>
+  </div>
+  <p id="auth-message" style="color:red;font-size:12px;margin-top:4px;"></p>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://fadtttgkzyryzja.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_JVfGO7BS_IhZnHhLRQZlDw_CdCbwIx6';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    document.getElementById('auth-form').style.display = 'none';
+    document.getElementById('user-info').style.display = 'block';
+    document.getElementById('user-email-display').textContent = session.user.email;
+  } else {
+    document.getElementById('auth-form').style.display = 'block';
+    document.getElementById('user-info').style.display = 'none';
+  }
+});
+
+async function signUp() {
+  const email = document.getElementById('email-input').value;
+  const password = document.getElementById('password-input').value;
+  const { error } = await sb.auth.signUp({ email, password });
+  document.getElementById('auth-message').textContent =
+    error ? error.message : '確認メールを送信しました。メールを確認してください。';
+}
+
+async function signIn() {
+  const email = document.getElementById('email-input').value;
+  const password = document.getElementById('password-input').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  document.getElementById('auth-message').textContent = error ? error.message : '';
+}
+
+async function signInWithGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://enube1115.github.io/aisho-shindan/break_even_calculator.html'
+    }
+  });
+  if (error) document.getElementById('auth-message').textContent = error.message;
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+}
 </script>
 </body>
 </html>
