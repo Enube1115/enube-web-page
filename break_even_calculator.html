@@ -420,19 +420,25 @@
     if (e.key === 'Enter' && ['name','price','period'].includes(e.target.id)) addItem();
   });
 </script>
- <div id="auth-section" style="position:fixed;top:16px;right:16px;background:white;padding:16px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.15);z-index:999;min-width:280px;">
-  <div id="auth-form">
-    <input id="email-input" type="email" placeholder="メールアドレス" style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
-    <input id="password-input" type="password" placeholder="パスワード（6文字以上）" style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
-    <button onclick="signUp()" style="width:100%;padding:8px;margin-bottom:4px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;">新規登録</button>
-    <button onclick="signIn()" style="width:100%;padding:8px;margin-bottom:4px;background:#48bb78;color:white;border:none;border-radius:6px;cursor:pointer;">メールでログイン</button>
-    <button onclick="signInWithGoogle()" style="width:100%;padding:8px;background:#4285f4;color:white;border:none;border-radius:6px;cursor:pointer;">Googleでログイン</button>
-  </div>
-  <div id="user-info" style="display:none;">
+ <div id="auth-btn-area" style="position:fixed;top:16px;right:16px;z-index:999;">
+  <button onclick="toggleAuthModal()" id="auth-toggle-btn" style="padding:8px 20px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;">ログイン / 新規登録</button>
+  <div id="user-info" style="display:none;background:white;padding:8px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.12);align-items:center;gap:8px;">
     <span id="user-email-display" style="font-size:0.85rem;color:#4a5568;"></span>
-    <button onclick="signOut()" style="width:100%;margin-top:8px;padding:8px;background:#e53e3e;color:white;border:none;border-radius:6px;cursor:pointer;">ログアウト</button>
+    <button onclick="signOut()" style="padding:4px 12px;background:#e53e3e;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem;">ログアウト</button>
   </div>
-  <p id="auth-message" style="color:red;font-size:12px;margin-top:4px;"></p>
+</div>
+
+<div id="auth-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:1000;justify-content:center;align-items:center;">
+  <div style="background:white;padding:28px;border-radius:14px;width:320px;">
+    <h3 style="margin-bottom:16px;font-size:1rem;">ログイン / 新規登録</h3>
+    <input id="email-input" type="email" placeholder="メールアドレス" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+    <input id="password-input" type="password" placeholder="パスワード（6文字以上）" style="width:100%;padding:10px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+    <button onclick="signUp()" style="width:100%;padding:10px;margin-bottom:6px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;">新規登録</button>
+    <button onclick="signIn()" style="width:100%;padding:10px;margin-bottom:6px;background:#48bb78;color:white;border:none;border-radius:6px;cursor:pointer;">メールでログイン</button>
+    <button onclick="signInWithGoogle()" style="width:100%;padding:10px;background:#4285f4;color:white;border:none;border-radius:6px;cursor:pointer;">Googleでログイン</button>
+    <p id="auth-message" style="color:red;font-size:12px;margin-top:8px;"></p>
+    <button onclick="toggleAuthModal()" style="width:100%;padding:8px;margin-top:8px;background:#eee;border:none;border-radius:6px;cursor:pointer;">閉じる</button>
+  </div>
 </div>
 
 <script>
@@ -467,7 +473,11 @@ async function signIn() {
   document.getElementById('auth-message').textContent = error ? error.message : '';
 }
 
-async function signInWithGoogle() {
+function toggleAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+}
+ async function signInWithGoogle() {
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
