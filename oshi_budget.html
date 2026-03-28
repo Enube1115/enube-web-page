@@ -726,13 +726,14 @@ initMonth();
 updateHeader();
 renderSummary();
 </script>
-<div id="auth-btn-area" style="position:fixed;top:16px;right:16px;z-index:999;">
-  <button onclick="toggleAuthModal()" id="auth-toggle-btn" style="padding:8px 20px;background:#f472b6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;">ログイン / 新規登録</button>
-  <div id="user-info" style="display:none;background:white;padding:8px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.12);align-items:center;gap:8px;">
-    <span id="user-email-display" style="font-size:0.85rem;color:#4a5568;"></span>
+<div id="auth-btn-area" style="display:flex;align-items:center;gap:8px;">
+  <button onclick="toggleAuthModal()" id="auth-toggle-btn" style="padding:6px 14px;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.5);border-radius:8px;cursor:pointer;font-size:0.85rem;">ログイン</button>
+  <div id="user-info" style="display:none;align-items:center;gap:8px;">
+    <span id="user-email-display" style="font-size:0.8rem;color:white;"></span>
     <button onclick="signOut()" style="padding:4px 12px;background:#e53e3e;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem;">ログアウト</button>
   </div>
 </div>
+
 
 <div id="auth-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:1000;justify-content:center;align-items:center;">
   <div style="background:white;padding:28px;border-radius:14px;width:320px;">
