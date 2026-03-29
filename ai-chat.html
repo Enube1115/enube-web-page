@@ -179,9 +179,14 @@
 
 <script>
 const GEMINI_API_KEY = 'AIzaSyAfSAOcZjihJNK52NlLJ-E88J617UtwRIA';
-let history = [];
+const HISTORY_KEY = 'family_ai_history';
+let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
 let recognition = null;
 let isRecording = false;
+
+function saveHistory() {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
 
 // --- メッセージ表示 ---
 const msgsEl = document.getElementById('messages');
@@ -197,6 +202,9 @@ function addBubble(role, text, cls) {
   msgsEl.scrollTop = msgsEl.scrollHeight;
   return d;
 }
+
+// 保存済み履歴を画面に復元
+history.forEach(m => addBubble(m.role === 'user' ? 'user' : 'ai', m.content));
 
 // --- API送信 ---
 async function send(text) {
@@ -231,6 +239,7 @@ async function send(text) {
     thinking.classList.remove('thinking');
     history.push({ role: 'assistant', content: reply });
     if (history.length > 20) history = history.slice(-20);
+    saveHistory();
   } catch {
     thinking.textContent = 'エラーが起きました。もう一度お試しください。';
     thinking.classList.remove('thinking');
