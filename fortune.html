@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>今日の運勢占い ✨</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -560,5 +561,23 @@ document.getElementById("bday").addEventListener("keydown", e => {
 // 日付の上限をtoday に
 document.getElementById("bday").max = new Date().toISOString().slice(0, 10);
 </script>
+<div id="auth-btn-area" style="position:fixed;top:16px;right:16px;z-index:999;">
+  <button onclick="toggleAuthModal()" id="auth-toggle-btn" style="padding:8px 20px;background:rgba(155,89,208,0.3);color:#f0e6ff;border:1px solid rgba(255,255,255,.2);border-radius:20px;cursor:pointer;font-size:0.85rem;">ログイン / 新規登録</button>
+  <div id="user-info" style="display:none;align-items:center;gap:8px;background:rgba(255,255,255,.06);padding:8px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.12);">
+    <span id="user-email-display" style="font-size:0.8rem;color:#c0aee0;"></span>
+    <button onclick="signOut()" style="padding:4px 12px;background:#e53e3e;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem;">ログアウト</button>
+  </div>
+</div>
+
+<div id="auth-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:1000;justify-content:center;align-items:center;">
+  <div style="background:#1a0533;border:1px solid rgba(255,255,255,.15);padding:28px;border-radius:14px;width:320px;">
+    <h3 style="margin-bottom:16px;font-size:1rem;color:#f9d976;">ログイン / 新規登録</h3>
+    <input id="email-input" type="email" placeholder="メールアドレス" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid rgba(255,255,255,.2);border-radius:6px;box-sizing:border-box;background:rgba(255,255,255,.08);color:#f0e6ff;">
+    <input id="password-input" type="password" placeholder="パスワード（6文字以上）" style="width:100%;padding:10px;margin-bottom:12px;border:1px solid rgba(255,255,255,.2);border-radius:6px;box-sizing:border-box;background:rgba(255,255,255,.08);color:#f0e6ff;">
+    <button onclick="signUp()" style="width:100%;padding:10px;margin-bottom:6px;background:linear-gradient(135deg,#9b59d0,#6c3cb8);color:white;border:none;border-radius:6px;cursor:pointer;">新規登録</button>
+    <button onclick="signIn()" style="width:100%;padding:10px;margin-bottom:6px;background:rgba(155,89,208,0.3);color:#f0e6ff;border:1px solid rgba(255,255,255,.2);border-radius:6px;cursor:pointer;">メールでログイン</button>
+    <button onclick="signInWithGoogle()" style="width:100%;padding:10px;background:#4285f4;color:white;border:none;border-radius:6px;cursor:pointer;">Googleでログイン</button>
+    <p id="auth-message" style="color:#f9a8a8;font-size:12px;margin-top:8px;"></p>
+    <button onclick="toggleAuthModal()" style="width:100%;padding:8px;margin-top:8px;background:rgba(255,2
 </body>
 </html>
