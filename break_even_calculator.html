@@ -487,9 +487,8 @@ async function saveToSupabase(name, price, period_value, unit) {
 async function deleteFromSupabase(localId) {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
-  // ローカルIDとSupabaseのIDは別なので名前で削除（暫定）
+  await sb.from('products').delete().eq('id', localId).eq('user_id', session.user.id);
 }
-
 async function loadFromSupabase() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
