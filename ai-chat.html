@@ -155,65 +155,11 @@
 
   #sendbtn:active { opacity: 0.8; }
 
-  #apikey-screen {
-    position: fixed;
-    inset: 0;
-    background: #f5f5f0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 32px 24px;
-    gap: 20px;
-    z-index: 100;
-  }
 
-  #apikey-screen h2 {
-    font-size: 22px;
-    color: #333;
-    text-align: center;
-  }
-
-  #apikey-screen p {
-    font-size: 16px;
-    color: #666;
-    text-align: center;
-    line-height: 1.7;
-  }
-
-  #apikey-input {
-    width: 100%;
-    font-size: 16px;
-    padding: 14px;
-    border: 1.5px solid #ccc;
-    border-radius: 12px;
-    font-family: monospace;
-    outline: none;
-  }
-
-  #apikey-save {
-    width: 100%;
-    padding: 16px;
-    font-size: 18px;
-    font-weight: bold;
-    background: #0071c2;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    font-family: inherit;
-  }
 </style>
 </head>
 <body>
 
-<!-- APIキー設定画面（初回のみ） -->
-<div id="apikey-screen">
-  <h2>最初に一度だけ設定が必要です</h2>
-  <p>Anthropic APIキーを入力してください。<br>入力後はこの画面は出ません。</p>
-  <input id="apikey-input" type="password" placeholder="sk-ant-..." autocomplete="off">
-  <button id="apikey-save" onclick="saveApiKey()">保存して始める</button>
-</div>
 
 <!-- メイン画面 -->
 <div id="header">AIに聞く</div>
@@ -232,29 +178,10 @@
 </div>
 
 <script>
-const STORAGE_KEY = 'family_ai_apikey';
+const GEMINI_API_KEY = 'AIzaSyAfSAOcZjihJNK52NlLJ-E88J617UtwRIA';
 let history = [];
 let recognition = null;
 let isRecording = false;
-
-// --- APIキー管理 ---
-function getApiKey() {
-  return localStorage.getItem(STORAGE_KEY) || '';
-}
-
-function saveApiKey() {
-  const key = document.getElementById('apikey-input').value.trim();
-  if (!key.startsWith('sk-ant-')) {
-    alert('APIキーは「sk-ant-」から始まる文字列です。確認してください。');
-    return;
-  }
-  localStorage.setItem(STORAGE_KEY, key);
-  document.getElementById('apikey-screen').style.display = 'none';
-}
-
-if (getApiKey()) {
-  document.getElementById('apikey-screen').style.display = 'none';
-}
 
 // --- メッセージ表示 ---
 const msgsEl = document.getElementById('messages');
@@ -283,23 +210,23 @@ async function send(text) {
   statusEl.textContent = '';
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': getApiKey(),
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: 'あなたは高齢者の家族のための、やさしいAIアシスタントです。難しい言葉は使わず、短くわかりやすく答えてください。スマホの使い方やWi-Fiの質問にも丁寧に答えてください。専門用語は使わず、やさしい日本語で話してください。',
-        messages: history
-      })
-    });
+    const contents = history.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: 'あなたは高齢者の家族のための、やさしいAIアシスタントです。難しい言葉は使わず、短くわかりやすく答えてください。スマホの使い方やWi-Fiの質問にも丁寧に答えてください。専門用語は使わず、やさしい日本語で話してください。' }] },
+          contents
+        })
+      }
+    );
     const data = await res.json();
-    const reply = data.content?.find(b => b.type === 'text')?.text || '（うまく聞き取れませんでした）';
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '（うまく聞き取れませんでした）';
     thinking.textContent = reply;
     thinking.classList.remove('thinking');
     history.push({ role: 'assistant', content: reply });
