@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>タイパ計算ツール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --text: #e2e8f0;
+      --muted: #7c849b;
+      --s-color: #fbbf24;
+      --a-color: #34d399;
+      --b-color: #60a5fa;
+      --c-color: #f97316;
+      --d-color: #f87171;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-bottom: 28px;
+    }
+
+    .container { max-width: 680px; margin: 0 auto; }
+
+    /* ── カード ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent2);
+    }
+
+    .delete-btn {
+      background: none;
+      border: 1px solid #3f4560;
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .delete-btn:hover { border-color: var(--d-color); color: var(--d-color); }
+
+    /* ── フォーム ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      width: 100%;
+      transition: border-color .15s;
+      font-family: inherit;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .time-row { display: flex; gap: 8px; align-items: center; }
+    .time-row input { flex: 1; }
+    .time-sep { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+
+    /* ── スライダー ── */
+    .slider-group { grid-column: 1 / -1; }
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .slider-hint { font-size: 0.72rem; color: var(--muted); }
+    .slider-val {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent2);
+      min-width: 20px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    /* ── プレビュー ── */
+    .preview {
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: var(--surface2);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-score { font-size: 1.4rem; font-weight: 800; }
+    .preview-rank-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 8px;
+    }
+    .preview-info { text-align: right; }
+    .preview-stars { font-size: 0.85rem; letter-spacing: 1px; }
+    .preview-comment { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── ボタン ── */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s, transform .1s;
+      font-family: inherit;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-add {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .btn-add:hover { border-color: var(--accent); color: var(--accent2); }
+
+    .btn-compare {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      color: #fff;
+      margin-bottom: 16px;
+    }
+    .btn-compare:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .btn-reset {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding: 8px;
+    }
+    .btn-reset:hover { color: var(--d-color); border-color: var(--d-color); }
+
+    /* ── 比較結果 ── */
+    #result { display: none; }
+
+    .result-header {
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-bottom: 16px;
+    }
+
+    .ranking-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 10px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+    .ranking-item.rank-1 { border-color: #fbbf24; }
+    .ranking-item.rank-2 { border-color: #94a3b8; }
+    .ranking-item.rank-3 { border-color: #b45309; }
+
+    .medal { font-size: 1.5rem; text-align: center; }
+    .rank-info { }
+    .rank-name { font-size: 0.95rem; font-weight: 600; margin-bottom: 3px; }
+    .rank-meta { font-size: 0.75rem; color: var(--muted); }
+    .rank-comment { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+    .rank-score-col { text-align: right; }
+    .rank-score { font-size: 1.3rem; font-weight: 800; }
+    .rank-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 999px;
+      margin-top: 3px;
+    }
+    .rank-stars { font-size: 0.8rem; margin-top: 2px; }
+
+    /* バーチャート */
+    .chart-section { margin: 20px 0; }
+    .chart-title { font-size: 0.8rem; color: var(--muted); margin-bottom: 10px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .bar-label { font-size: 0.78rem; width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+    .bar-track { flex: 1; height: 18px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding-left: 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #fff;
+      transition: width .6s cubic-bezier(.4,0,.2,1);
+      white-space: nowrap;
+    }
+
+    /* サマリーカード */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+    .summary-label { font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; }
+    .summary-value { font-size: 1.2rem; font-weight: 700; color: var(--accent2); }
+    .summary-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+    /* ランクカラー */
+    .s { color: var(--s-color); }
+    .a { color: var(--a-color); }
+    .b { color: var(--b-color); }
+    .c { color: var(--c-color); }
+    .d { color: var(--d-color); }
+    .bg-s { background: var(--s-color); }
+    .bg-a { background: var(--a-color); }
+    .bg-b { background: var(--b-color); }
+    .bg-c { background: var(--c-color); }
+    .bg-d { background: var(--d-color); }
+    .bar-s { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .bar-a { background: linear-gradient(90deg, #10b981, #34d399); }
+    .bar-b { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .bar-c { background: linear-gradient(90deg, #ea580c, #f97316); }
+    .bar-d { background: linear-gradient(90deg, #dc2626, #f87171); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>タイパ計算ツール</h1>
+    <p class="subtitle">作業時間と成果を入力して、タイムパフォーマンスを可視化します</p>
+
+    <div id="tasks-container"></div>
+
+    <button class="btn btn-add" onclick="addTask()">＋ 作業を追加</button>
+    <button class="btn btn-compare" id="compare-btn" onclick="compare()" disabled>比較・分析する</button>
+
+    <div id="result">
+      <div class="result-header">タイパ比較ランキング</div>
+      <div id="ranking-list"></div>
+      <div class="chart-section">
+        <div class="chart-title">スコア比較チャート</div>
+        <div id="bar-chart"></div>
+      </div>
+      <div class="summary-grid" id="summary-grid"></div>
+    </div>
+
+    <button class="btn btn-reset" onclick="resetAll()" style="margin-top:20px">リセットしてやり直す</button>
+  </div>
+
+  <script>
+    let taskCount = 0;
+    const tasks = {};
+
+    const RANK_THRESHOLDS = [
+      { min: 800, rank: 'S', stars: '★★★★★', comment: '最高のタイパ！時間を超えた成果です' },
+      { min: 600, rank: 'A', stars: '★★★★☆', comment: 'かなり効率的。時間対効果が高い作業です' },
+      { min: 400, rank: 'B', stars: '★★★☆☆', comment: '標準的なタイパ。改善の余地あり' },
+      { min: 200, rank: 'C', stars: '★★☆☆☆', comment: 'やや低め。作業の見直しを検討しましょう' },
+      { min: 0,   rank: 'D', stars: '★☆☆☆☆', comment: 'タイパが低い。方法や優先度を再考してみて' },
+    ];
+
+    const MEDALS = ['🥇', '🥈', '🥉'];
+
+    function calcScore(mins, outcome, difficulty, satisfaction) {
+      const hours = mins / 60;
+      const diffBonus = 1 + (difficulty - 5) * 0.05;
+      return Math.round((outcome * diffBonus * satisfaction) / hours * 10 * 10) / 10;
+    }
+
+    function getRankInfo(score) {
+      return RANK_THRESHOLDS.find(t => score >= t.min) || RANK_THRESHOLDS.at(-1);
+    }
+
+    function fmtTime(mins) {
+      const h = Math.floor(mins / 60), m = mins % 60;
+      return h > 0 ? `${h}時間${m}分` : `${m}分`;
+    }
+
+    function addTask() {
+      taskCount++;
+      const id = taskCount;
+      tasks[id] = { name: '', hours: 0, mins: 0, outcome: 5, difficulty: 5, satisfaction: 5 };
+
+      const wrap = document.createElement('div');
+      wrap.className = 'card';
+      wrap.id = `task-card-${id}`;
+      wrap.innerHTML = taskHTML(id);
+      document.getElementById('tasks-container').appendChild(wrap);
+
+      updatePreview(id);
+      updateCompareBtn();
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function taskHTML(id) {
+      return `
+        <div class="card-header">
+          <span class="card-title">作業 ${id}</span>
+          <button class="delete-btn" onclick="removeTask(${id})">削除</button>
+        </div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>作業名</label>
+            <input type="text" placeholder="例：プレゼン資料作成"
+              oninput="tasks[${id}].name=this.value; updatePreview(${id})">
+          </div>
+          <div class="form-group full">
+            <label>作業時間</label>
+            <div class="time-row">
+              <input type="number" min="0" max="99" value="0" placeholder="0"
+                oninput="tasks[${id}].hours=+this.value||0; updatePreview(${id})">
+              <span class="time-sep">時間</span>
+              <input type="number" min="0" max="59" value="0" placeholder="0"
+                oninput="tasks[${id}].mins=+this.value||0; updatePreview(${id})">
+              <span class="time-sep">分</span>
+            </div>
+          </div>
+          <div class="form-group slider-group">
+            <div class="slider-label-row">
+              <label>成果レベル <span class="slider-hint">1=ほぼ無意味 ／ 10=完璧な成果</span></label>
+              <span class="slider-val" id="outcome-val-${id}">5</span>
+            </div>
+            <input type="range" min="1" max="10" value="5"
+              oninput="tasks[${id}].outcome=+this.value; document.getElementById('outcome-val-${id}').textContent=this.value; updatePreview(${id})">
+          </div>
+          <div class="form-group slider-group">
+            <div class="slider-label-row">
+              <label>難易度 <span class="slider-hint">1=簡単 ／ 10=非常に難しい</span></label>
+              <span class="slider-val" id="diff-val-${id}">5</span>
+            </div>
+            <input type="range" min="1" max="10" value="5"
+              oninput="tasks[${id}].difficulty=+this.value; document.getElementById('diff-val-${id}').textContent=this.value; updatePreview(${id})">
+          </div>
+          <div class="form-group slider-group">
+            <div class="slider-label-row">
+              <label>満足度 <span class="slider-hint">1=不満 ／ 10=大満足</span></label>
+              <span class="slider-val" id="sat-val-${id}">5</span>
+            </div>
+            <input type="range" min="1" max="10" value="5"
+              oninput="tasks[${id}].satisfaction=+this.value; document.getElementById('sat-val-${id}').textContent=this.value; updatePreview(${id})">
+          </div>
+        </div>
+        <div class="preview" id="preview-${id}"></div>
+      `;
+    }
+
+    function updatePreview(id) {
+      const t = tasks[id];
+      const totalMins = t.hours * 60 + t.mins;
+      const el = document.getElementById(`preview-${id}`);
+      if (!el) return;
+
+      if (totalMins < 1) {
+        el.innerHTML = `<span style="color:var(--muted);font-size:0.82rem">作業時間を入力するとスコアが表示されます</span>`;
+        return;
+      }
+
+      const score = calcScore(totalMins, t.outcome, t.difficulty, t.satisfaction);
+      const ri = getRankInfo(score);
+      const cls = ri.rank.toLowerCase();
+
+      el.innerHTML = `
+        <div>
+          <span class="preview-score ${cls}">${score} pt</span>
+          <span class="preview-rank-badge bg-${cls}" style="color:#fff">ランク ${ri.rank}</span>
+        </div>
+        <div class="preview-info">
+          <div class="preview-stars">${ri.stars}</div>
+          <div class="preview-comment">${ri.comment}</div>
+        </div>
+      `;
+    }
+
+    function removeTask(id) {
+      delete tasks[id];
+      const card = document.getElementById(`task-card-${id}`);
+      if (card) card.remove();
+      updateCompareBtn();
+    }
+
+    function updateCompareBtn() {
+      const valid = Object.keys(tasks).filter(id => {
+        const t = tasks[id];
+        return (t.hours * 60 + t.mins) >= 1;
+      });
+      document.getElementById('compare-btn').disabled = valid.length < 1;
+    }
+
+    function compare() {
+      const valid = Object.entries(tasks)
+        .filter(([, t]) => (t.hours * 60 + t.mins) >= 1)
+        .map(([id, t]) => {
+          const totalMins = t.hours * 60 + t.mins;
+          const score = calcScore(totalMins, t.outcome, t.difficulty, t.satisfaction);
+          const ri = getRankInfo(score);
+          return { id, name: t.name || `作業${id}`, totalMins, score, ...ri,
+                   outcome: t.outcome, difficulty: t.difficulty, satisfaction: t.satisfaction };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      if (!valid.length) return;
+
+      renderRanking(valid);
+      renderChart(valid);
+      renderSummary(valid);
+
+      const resultEl = document.getElementById('result');
+      resultEl.style.display = 'block';
+      resultEl.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderRanking(sorted) {
+      const el = document.getElementById('ranking-list');
+      el.innerHTML = sorted.map((t, i) => {
+        const cls = t.rank.toLowerCase();
+        const medal = MEDALS[i] ?? `${i + 1}位`;
+        return `
+          <div class="ranking-item ${i < 3 ? 'rank-' + (i + 1) : ''}">
+            <div class="medal">${medal}</div>
+            <div class="rank-info">
+              <div class="rank-name">${esc(t.name)}</div>
+              <div class="rank-meta">
+                ${fmtTime(t.totalMins)}　成果 ${t.outcome}/10　満足度 ${t.satisfaction}/10　難易度 ${t.difficulty}/10
+              </div>
+              <div class="rank-comment">${t.comment}</div>
+            </div>
+            <div class="rank-score-col">
+              <div class="rank-score ${cls}">${t.score} pt</div>
+              <div><span class="rank-badge bg-${cls}" style="color:#fff">ランク ${t.rank}</span></div>
+              <div class="rank-stars">${t.stars}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderChart(sorted) {
+      const maxScore = sorted[0].score;
+      const el = document.getElementById('bar-chart');
+      el.innerHTML = sorted.map(t => {
+        const pct = Math.max(4, Math.round(t.score / maxScore * 100));
+        const cls = t.rank.toLowerCase();
+        return `
+          <div class="bar-row">
+            <div class="bar-label" title="${esc(t.name)}">${esc(t.name)}</div>
+            <div class="bar-track">
+              <div class="bar-fill bar-${cls}" style="width:${pct}%">${t.score} pt</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSummary(sorted) {
+      const avg = Math.round(sorted.reduce((s, t) => s + t.score, 0) / sorted.length * 10) / 10;
+      const best = sorted[0], worst = sorted.at(-1);
+      const ratio = worst.score > 0 ? Math.round(best.score / worst.score * 10) / 10 : '—';
+
+      document.getElementById('summary-grid').innerHTML = `
+        <div class="summary-card">
+          <div class="summary-label">平均タイパスコア</div>
+          <div class="summary-value">${avg} pt</div>
+          <div class="summary-sub">${getRankInfo(avg).stars}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">最高タイパ比</div>
+          <div class="summary-value">${ratio}×</div>
+          <div class="summary-sub">1位 vs 最下位</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">最高効率</div>
+          <div class="summary-value ${best.rank.toLowerCase()}">${esc(best.name)}</div>
+          <div class="summary-sub">${best.score} pt</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">改善候補</div>
+          <div class="summary-value ${worst.rank.toLowerCase()}">${esc(worst.name)}</div>
+          <div class="summary-sub">${worst.score} pt</div>
+        </div>
+      `;
+    }
+
+    function resetAll() {
+      if (!confirm('入力内容と結果をすべてリセットしますか？')) return;
+      Object.keys(tasks).forEach(id => delete tasks[id]);
+      taskCount = 0;
+      document.getElementById('tasks-container').innerHTML = '';
+      document.getElementById('result').style.display = 'none';
+      updateCompareBtn();
+    }
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // 起動時に1件追加
+    addTask();
+  </script>
+</body>
+</html>
