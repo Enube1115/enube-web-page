@@ -474,12 +474,14 @@ async function send(text) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: 'あなたは高齢者の家族のための、やさしいAIアシスタントです。難しい言葉は使わず、短くわかりやすく答えてください。スマホの使い方やWi-Fiの質問にも丁寧に答えてください。専門用語は使わず、やさしい日本語で話してください。' }] },
-          contents
+          messages: [
+            { role: 'system', content: 'あなたは高齢者の家族のための、やさしいAIアシスタントです。難しい言葉は使わず、短くわかりやすく答えてください。スマホの使い方やWi-Fiの質問にも丁寧に答えてください。専門用語は使わず、やさしい日本語で話してください。' },
+            ...contents.map(m => ({ role: m.role === 'model' ? 'assistant' : m.role, content: m.parts[0].text }))
+          ]
         })
       });
     const data = await res.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '（うまく聞き取れませんでした）';
+    const reply = data.reply || '（うまく聞き取れませんでした）';
     thinking.textContent = reply;
     thinking.classList.remove('thinking');
     chat.messages.push({ role: 'assistant', content: reply });
