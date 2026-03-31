@@ -482,10 +482,24 @@ async function send(text) {
     chat.messages.push({ role: 'assistant', content: reply });
     if (chat.messages.length > 40) chat.messages = chat.messages.slice(-40);
     saveChats();
+    speak(reply);
   } catch {
     thinking.textContent = 'エラーが起きました。もう一度お試しください。';
     thinking.classList.remove('thinking');
   }
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ja-JP';
+  utter.rate = 0.95;
+  utter.pitch = 1;
+  const voices = window.speechSynthesis.getVoices();
+  const jaVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (jaVoice) utter.voice = jaVoice;
+  window.speechSynthesis.speak(utter);
 }
 
 function sendFromText() { send(textinput.value); }
