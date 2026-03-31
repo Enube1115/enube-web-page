@@ -466,19 +466,14 @@ async function send(text) {
   statusEl.textContent = '';
 
   try {
-    const contents = chat.messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
+    const messages = [
+      { role: 'system', content: 'あなたは高齢者の家族のための、やさしいAIアシスタントです。難しい言葉は使わず、短くわかりやすく答えてください。スマホの使い方やWi-Fiの質問にも丁寧に答えてください。専門用語は使わず、やさしい日本語で話してください。' },
+      ...chat.messages.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }))
+    ];
     const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: 'あなたは高齢者の家族のための、やさしいAIアシスタントです。難しい言葉は使わず、短くわかりやすく答えてください。スマホの使い方やWi-Fiの質問にも丁寧に答えてください。専門用語は使わず、やさしい日本語で話してください。' },
-            ...contents.map(m => ({ role: m.role === 'model' ? 'assistant' : m.role, content: m.parts[0].text }))
-          ]
-        })
+        body: JSON.stringify({ messages })
       });
     const data = await res.json();
     const reply = data.reply || '（うまく聞き取れませんでした）';
