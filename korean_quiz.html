@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🇰🇷 韓国語クイズ</title>
+<style>
+  :root {
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --border: #475569;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 4px;
+    letter-spacing: 0.02em;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  /* ===== SCREEN: START ===== */
+  #screen-start .section-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .mode-btn {
+    background: var(--surface2);
+    border: 2px solid transparent;
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    padding: 14px 18px;
+    text-align: left;
+    font-size: 0.95rem;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mode-btn:hover { border-color: var(--primary); }
+  .mode-btn.selected {
+    border-color: var(--primary);
+    background: #1d3a6e;
+  }
+  .mode-icon { font-size: 1.3rem; }
+  .mode-text strong { display: block; margin-bottom: 2px; }
+  .mode-text span { font-size: 0.8rem; color: var(--text-muted); }
+
+  .count-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .count-row label { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  .count-badge {
+    background: var(--primary);
+    border-radius: 20px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 2px 12px;
+    min-width: 44px;
+    text-align: center;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius);
+    color: #fff;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 14px;
+    width: 100%;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: var(--surface2); color: var(--text-muted); cursor: default; }
+
+  /* ===== SCREEN: QUIZ ===== */
+  .progress-bar-wrap {
+    background: var(--surface2);
+    border-radius: 99px;
+    height: 6px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .progress-bar-fill {
+    background: var(--primary);
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+  .q-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .q-counter { font-size: 0.85rem; color: var(--text-muted); }
+  .q-score-badge {
+    background: var(--surface2);
+    border-radius: 99px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 3px 12px;
+  }
+  .direction-tag {
+    display: inline-block;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    margin-bottom: 12px;
+    letter-spacing: 0.04em;
+  }
+  .tag-jp { background: #422006; color: #fbbf24; }
+  .tag-kr { background: #0c2a4a; color: #60a5fa; }
+
+  .question-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 28px;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+  .choices-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .choice-btn {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 14px 12px;
+    text-align: center;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    word-break: break-all;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .choice-btn:hover:not(:disabled) { border-color: var(--primary); background: #1d3a6e; }
+  .choice-btn:active:not(:disabled) { transform: scale(0.97); }
+  .choice-btn:disabled { cursor: default; }
+  .choice-btn.correct { border-color: var(--success); background: #14532d; color: #86efac; }
+  .choice-btn.wrong   { border-color: var(--danger);  background: #450a0a; color: #fca5a5; }
+  .choice-num {
+    flex-shrink: 0;
+    background: var(--border);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 2px 7px;
+  }
+  .choice-btn.correct .choice-num { background: #16a34a; color: #fff; }
+  .choice-btn.wrong   .choice-num { background: #b91c1c; color: #fff; }
+
+  .feedback-box {
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .feedback-box.visible { opacity: 1; }
+  .feedback-box.ok  { background: #14532d; border: 1px solid var(--success); color: #86efac; }
+  .feedback-box.ng  { background: #450a0a; border: 1px solid var(--danger);  color: #fca5a5; }
+
+  .btn-next {
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius);
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 12px;
+    width: 100%;
+    transition: background 0.15s;
+    display: none;
+  }
+  .btn-next.visible { display: block; }
+  .btn-next:hover { background: var(--primary-dark); }
+
+  /* ===== SCREEN: RESULT ===== */
+  #screen-result { text-align: center; }
+  .result-emoji { font-size: 4rem; margin-bottom: 12px; }
+  .result-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
+  .result-sub { color: var(--text-muted); margin-bottom: 28px; }
+  .score-circle {
+    background: conic-gradient(var(--primary) calc(var(--pct) * 3.6deg), var(--surface2) 0deg);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 140px;
+    width: 140px;
+    margin-bottom: 28px;
+    position: relative;
+  }
+  .score-circle::before {
+    background: var(--surface);
+    border-radius: 50%;
+    content: "";
+    height: 110px;
+    left: 15px;
+    position: absolute;
+    top: 15px;
+    width: 110px;
+  }
+  .score-inner { position: relative; z-index: 1; line-height: 1.2; }
+  .score-num { font-size: 2rem; font-weight: 800; }
+  .score-denom { color: var(--text-muted); font-size: 0.85rem; }
+  .result-message { font-size: 1rem; margin-bottom: 28px; color: var(--warning); font-weight: 600; }
+  .result-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 12px;
+    transition: background 0.15s;
+  }
+  .btn-secondary:hover { background: var(--border); }
+
+  /* hidden */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  @media (max-width: 400px) {
+    .choices-grid { grid-template-columns: 1fr; }
+    .card { padding: 20px 16px; }
+    .question-text { font-size: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🇰🇷 韓国語クイズ 🇯🇵</h1>
+<p class="subtitle">日常会話フレーズ 50 問収録</p>
+
+<!-- ===== START ===== -->
+<div id="screen-start" class="card screen active">
+  <div class="section-label">出題モード</div>
+  <div class="mode-grid">
+    <button class="mode-btn selected" data-mode="random" onclick="selectMode(this)">
+      <span class="mode-icon">🔀</span>
+      <div class="mode-text">
+        <strong>ランダムミックス</strong>
+        <span>日本語 ↔ 韓国語を両方向で出題</span>
+      </div>
+    </button>
+    <button class="mode-btn" data-mode="jp_to_kr" onclick="selectMode(this)">
+      <span class="mode-icon">🇯🇵</span>
+      <div class="mode-text">
+        <strong>日本語 → 韓国語</strong>
+        <span>日本語を見て韓国語を選ぶ</span>
+      </div>
+    </button>
+    <button class="mode-btn" data-mode="kr_to_jp" onclick="selectMode(this)">
+      <span class="mode-icon">🇰🇷</span>
+      <div class="mode-text">
+        <strong>韓国語 → 日本語</strong>
+        <span>韓国語を見て日本語を選ぶ</span>
+      </div>
+    </button>
+  </div>
+
+  <div class="section-label">問題数</div>
+  <div class="count-row">
+    <label>問題数</label>
+    <input type="range" id="count-slider" min="5" max="50" step="5" value="10" oninput="updateCount(this.value)">
+    <span class="count-badge" id="count-label">10</span>
+  </div>
+
+  <button class="btn-primary" onclick="startQuiz()">クイズをはじめる</button>
+</div>
+
+<!-- ===== QUIZ ===== -->
+<div id="screen-quiz" class="card screen">
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+  </div>
+  <div class="q-meta">
+    <span class="q-counter" id="q-counter">1 / 10</span>
+    <span class="q-score-badge" id="q-score">正解 0</span>
+  </div>
+  <div class="direction-tag" id="direction-tag"></div>
+  <div class="question-text" id="question-text"></div>
+  <div class="choices-grid" id="choices-grid"></div>
+  <div class="feedback-box" id="feedback-box"></div>
+  <button class="btn-next" id="btn-next" onclick="nextQuestion()">次の問題 →</button>
+</div>
+
+<!-- ===== RESULT ===== -->
+<div id="screen-result" class="card screen">
+  <div class="result-emoji" id="result-emoji"></div>
+  <div class="result-title" id="result-title"></div>
+  <div class="result-sub" id="result-sub"></div>
+  <div class="score-circle" id="score-circle">
+    <div class="score-inner">
+      <div class="score-num" id="result-num"></div>
+      <div class="score-denom" id="result-denom"></div>
+    </div>
+  </div>
+  <div class="result-message" id="result-message"></div>
+  <div class="result-buttons">
+    <button class="btn-secondary" onclick="retryQuiz()">もう一度</button>
+    <button class="btn-primary" onclick="goHome()">トップへ</button>
+  </div>
+</div>
+
+<script>
+const PHRASES = [
+  // 挨拶・基本
+  {jp:"こんにちは",               kr:"안녕하세요"},
+  {jp:"おはようございます",       kr:"좋은 아침이에요"},
+  {jp:"こんばんは",               kr:"안녕하세요 (夜の挨拶)"},
+  {jp:"さようなら",               kr:"안녕히 가세요"},
+  {jp:"また会いましょう",         kr:"또 만나요"},
+  {jp:"お元気ですか？",           kr:"잘 지내요?"},
+  {jp:"元気です",                 kr:"잘 지내요"},
+  {jp:"はじめまして",             kr:"처음 뵙겠습니다"},
+  {jp:"よろしくお願いします",     kr:"잘 부탁드립니다"},
+  {jp:"おやすみなさい",           kr:"잘 자요"},
+  // お礼・謝罪
+  {jp:"ありがとうございます",     kr:"감사합니다"},
+  {jp:"どういたしまして",         kr:"천만에요"},
+  {jp:"すみません",               kr:"죄송합니다"},
+  {jp:"ごめんなさい",             kr:"미안해요"},
+  {jp:"お願いします",             kr:"부탁합니다"},
+  // 返事・相槌
+  {jp:"はい",                     kr:"네"},
+  {jp:"いいえ",                   kr:"아니요"},
+  {jp:"わかりました",             kr:"알겠습니다"},
+  {jp:"わかりません",             kr:"모르겠어요"},
+  {jp:"そうですね",               kr:"그렇네요"},
+  {jp:"本当ですか？",             kr:"정말요?"},
+  {jp:"大丈夫ですか？",           kr:"괜찮아요?"},
+  {jp:"大丈夫です",               kr:"괜찮아요"},
+  // 場所・移動
+  {jp:"どこですか？",             kr:"어디예요?"},
+  {jp:"トイレはどこですか？",     kr:"화장실이 어디예요?"},
+  {jp:"駅はどこですか？",         kr:"역이 어디예요?"},
+  {jp:"ここはどこですか？",       kr:"여기가 어디예요?"},
+  // 買い物・食事
+  {jp:"いくらですか？",           kr:"얼마예요?"},
+  {jp:"これをください",           kr:"이것 주세요"},
+  {jp:"水をください",             kr:"물 주세요"},
+  {jp:"メニューをください",       kr:"메뉴 주세요"},
+  {jp:"おいしいです",             kr:"맛있어요"},
+  {jp:"辛いです",                 kr:"매워요"},
+  {jp:"おすすめは何ですか？",     kr:"추천은 뭐예요?"},
+  {jp:"お会計をお願いします",     kr:"계산해 주세요"},
+  // 感情・感想
+  {jp:"かわいいです",             kr:"귀여워요"},
+  {jp:"好きです",                 kr:"좋아해요"},
+  {jp:"楽しいです",               kr:"즐거워요"},
+  {jp:"嬉しいです",               kr:"기뻐요"},
+  {jp:"疲れました",               kr:"피곤해요"},
+  {jp:"眠いです",                 kr:"졸려요"},
+  {jp:"暑いです",                 kr:"더워요"},
+  {jp:"寒いです",                 kr:"추워요"},
+  // 時間・日常
+  {jp:"今何時ですか？",           kr:"지금 몇 시예요?"},
+  {jp:"頑張ってください",         kr:"파이팅!"},
+  {jp:"写真を撮ってもいいですか？",kr:"사진 찍어도 돼요?"},
+  {jp:"日本語が話せますか？",     kr:"일본어 할 수 있어요?"},
+  {jp:"ゆっくり話してください",   kr:"천천히 말해 주세요"},
+  {jp:"もう一度言ってください",   kr:"다시 한번 말해 주세요"},
+  {jp:"電話番号を教えてください", kr:"전화번호 알려 주세요"},
+];
+
+// ===== State =====
+let selectedMode = "random";
+let questionCount = 10;
+let questions = [];
+let currentIdx = 0;
+let score = 0;
+let answered = false;
+
+// ===== Helpers =====
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function makeChoices(correctPhrase, direction) {
+  const correct = direction === "jp_to_kr" ? correctPhrase.kr : correctPhrase.jp;
+  const pool = PHRASES
+    .filter(p => (direction === "jp_to_kr" ? p.kr : p.jp) !== correct)
+    .map(p => direction === "jp_to_kr" ? p.kr : p.jp);
+  const distractors = shuffle(pool).slice(0, 3);
+  return shuffle([correct, ...distractors]);
+}
+
+function selectMode(btn) {
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedMode = btn.dataset.mode;
+}
+
+function updateCount(v) {
+  questionCount = parseInt(v);
+  document.getElementById("count-label").textContent = v;
+}
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ===== Quiz flow =====
+function startQuiz() {
+  const pool = shuffle(PHRASES).slice(0, Math.min(questionCount, PHRASES.length));
+  questions = pool.map(p => {
+    const dir = selectedMode === "random"
+      ? (Math.random() < 0.5 ? "jp_to_kr" : "kr_to_jp")
+      : selectedMode;
+    return { phrase: p, direction: dir };
+  });
+  currentIdx = 0;
+  score = 0;
+  showScreen("screen-quiz");
+  renderQuestion();
+}
+
+function renderQuestion() {
+  answered = false;
+  const { phrase, direction } = questions[currentIdx];
+  const total = questions.length;
+
+  // progress
+  document.getElementById("progress-bar").style.width = `${(currentIdx / total) * 100}%`;
+  document.getElementById("q-counter").textContent = `${currentIdx + 1} / ${total}`;
+  document.getElementById("q-score").textContent = `正解 ${score}`;
+
+  // direction tag
+  const tag = document.getElementById("direction-tag");
+  if (direction === "jp_to_kr") {
+    tag.textContent = "🇯🇵 日本語 → 🇰🇷 韓国語";
+    tag.className = "direction-tag tag-jp";
+  } else {
+    tag.textContent = "🇰🇷 韓国語 → 🇯🇵 日本語";
+    tag.className = "direction-tag tag-kr";
+  }
+
+  // question
+  document.getElementById("question-text").textContent =
+    direction === "jp_to_kr" ? phrase.jp : phrase.kr;
+
+  // choices
+  const correct = direction === "jp_to_kr" ? phrase.kr : phrase.jp;
+  const choices = makeChoices(phrase, direction);
+  const grid = document.getElementById("choices-grid");
+  grid.innerHTML = "";
+  choices.forEach((c, i) => {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn";
+    btn.innerHTML = `<span class="choice-num">${i + 1}</span>${c}`;
+    btn.dataset.value = c;
+    btn.dataset.correct = correct;
+    btn.onclick = () => selectChoice(btn, c === correct, correct);
+    grid.appendChild(btn);
+  });
+
+  // feedback & next
+  const fb = document.getElementById("feedback-box");
+  fb.className = "feedback-box";
+  fb.textContent = "";
+  const nx = document.getElementById("btn-next");
+  nx.classList.remove("visible");
+  nx.textContent = currentIdx + 1 < total ? "次の問題 →" : "結果を見る";
+}
+
+function selectChoice(btn, isCorrect, correct) {
+  if (answered) return;
+  answered = true;
+
+  // mark all buttons
+  const btns = document.querySelectorAll(".choice-btn");
+  btns.forEach(b => {
+    b.disabled = true;
+    if (b.dataset.value === correct) b.classList.add("correct");
+  });
+  if (!isCorrect) btn.classList.add("wrong");
+
+  // feedback
+  const fb = document.getElementById("feedback-box");
+  if (isCorrect) {
+    fb.textContent = "✅ 正解！";
+    fb.className = "feedback-box ok visible";
+    score++;
+  } else {
+    fb.innerHTML = `❌ 不正解。正解は「${correct}」`;
+    fb.className = "feedback-box ng visible";
+  }
+  document.getElementById("q-score").textContent = `正解 ${score}`;
+  document.getElementById("btn-next").classList.add("visible");
+}
+
+function nextQuestion() {
+  currentIdx++;
+  if (currentIdx >= questions.length) {
+    showResult();
+  } else {
+    renderQuestion();
+  }
+}
+
+function showResult() {
+  const total = questions.length;
+  const pct = Math.round((score / total) * 100);
+
+  document.getElementById("score-circle").style.setProperty("--pct", pct);
+  document.getElementById("result-num").textContent = score;
+  document.getElementById("result-denom").textContent = `/ ${total}`;
+
+  let emoji, title, sub, msg;
+  if (pct === 100) {
+    emoji = "🏆"; title = "満点！완벽해요！";
+    sub = "全問正解、素晴らしい！";
+    msg = "ネイティブレベルに近づいています！";
+  } else if (pct >= 80) {
+    emoji = "🎉"; title = "素晴らしい！잘했어요！";
+    sub = "もう少しで満点です！";
+    msg = "韓国語の実力がしっかり身についています！";
+  } else if (pct >= 60) {
+    emoji = "👍"; title = "よくできました！좋아요！";
+    sub = "着実に力がついています！";
+    msg = "苦手なフレーズを中心に復習しましょう。";
+  } else if (pct >= 40) {
+    emoji = "📚"; title = "もう少し！조금 더！";
+    sub = "練習を重ねればきっと伸びます。";
+    msg = "繰り返し挑戦してみましょう！";
+  } else {
+    emoji = "💪"; title = "頑張って！파이팅！";
+    sub = "諦めずに挑戦し続けましょう。";
+    msg = "日々の積み重ねが大切です！";
+  }
+
+  document.getElementById("result-emoji").textContent = emoji;
+  document.getElementById("result-title").textContent = title;
+  document.getElementById("result-sub").textContent = sub;
+  document.getElementById("result-message").textContent = msg;
+  document.getElementById("progress-bar").style.width = "100%";
+
+  showScreen("screen-result");
+}
+
+function retryQuiz() {
+  startQuiz();
+}
+
+function goHome() {
+  showScreen("screen-start");
+}
+
+// keyboard support
+document.addEventListener("keydown", e => {
+  if (document.getElementById("screen-quiz").classList.contains("active")) {
+    if (!answered && ["1","2","3","4"].includes(e.key)) {
+      const btns = document.querySelectorAll(".choice-btn");
+      const idx = parseInt(e.key) - 1;
+      if (btns[idx]) btns[idx].click();
+    }
+    if (answered && (e.key === "Enter" || e.key === " ")) {
+      document.getElementById("btn-next").click();
+    }
+  }
+});
+</script>
+</body>
+</html>
