@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>モンスターカード ガチャシミュレーター</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #0d0d1a;
@@ -1709,6 +1710,81 @@ if (state.starterReceived) {
   const sb = document.getElementById("starter-btn");
   sb.disabled = true;
   sb.textContent = "🎁 スターターパック（受取済）";
+}
+</script>
+<div id="auth-btn-area" style="position:fixed;top:16px;right:16px;z-index:999;">
+  <button onclick="toggleAuthModal()" id="auth-toggle-btn" style="padding:8px 20px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;">ログイン / 新規登録</button>
+  <div id="user-info" style="display:none;background:white;padding:8px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.12);align-items:center;gap:8px;">
+    <span id="user-email-display" style="font-size:0.85rem;color:#4a5568;"></span>
+    <button onclick="signOut()" style="padding:4px 12px;background:#e53e3e;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem;">ログアウト</button>
+  </div>
+</div>
+
+<div id="auth-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:1000;justify-content:center;align-items:center;">
+  <div style="background:white;padding:28px;border-radius:14px;width:320px;">
+    <h3 style="margin-bottom:16px;font-size:1rem;">ログイン / 新規登録</h3>
+    <input id="email-input" type="email" placeholder="メールアドレス" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+    <input id="password-input" type="password" placeholder="パスワード（6文字以上）" style="width:100%;padding:10px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">
+    <button onclick="signUp()" style="width:100%;padding:10px;margin-bottom:6px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;">新規登録</button>
+    <button onclick="signIn()" style="width:100%;padding:10px;margin-bottom:6px;background:#48bb78;color:white;border:none;border-radius:6px;cursor:pointer;">メールでログイン</button>
+    <button onclick="signInWithGoogle()" style="width:100%;padding:10px;background:#4285f4;color:white;border:none;border-radius:6px;cursor:pointer;">Googleでログイン</button>
+    <p id="auth-message" style="color:red;font-size:12px;margin-top:8px;"></p>
+    <button onclick="toggleAuthModal()" style="width:100%;padding:8px;margin-top:8px;background:#eee;border:none;border-radius:6px;cursor:pointer;">閉じる</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://fadtttgkzyryzjakvrva.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_JVfGO7BS_IhZnHhLRQZlDw_CdCbwIx6';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function toggleAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+  const toggleBtn = document.getElementById('auth-toggle-btn');
+  const userInfo = document.getElementById('user-info');
+  if (session) {
+    toggleBtn.style.display = 'none';
+    userInfo.style.display = 'flex';
+    document.getElementById('user-email-display').textContent = session.user.email;
+    document.getElementById('auth-modal').style.display = 'none';
+  } else {
+    toggleBtn.style.display = 'block';
+    userInfo.style.display = 'none';
+  }
+});
+
+async function signUp() {
+  const email = document.getElementById('email-input').value;
+  const password = document.getElementById('password-input').value;
+  const { error } = await sb.auth.signUp({ email, password });
+  document.getElementById('auth-message').textContent =
+    error ? error.message : '確認メールを送信しました。';
+}
+
+async function signIn() {
+  const email = document.getElementById('email-input').value;
+  const password = document.getElementById('password-input').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  document.getElementById('auth-message').textContent = error ? error.message : '';
+}
+
+async function signInWithGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://enube1115.github.io/enube-web-page/gacha_simulator.html'
+    }
+  });
+  if (error) document.getElementById('auth-message').textContent = error.message;
+}
+
+async function signOut() {
+  await sb.auth.signOut();
 }
 </script>
 </body>
