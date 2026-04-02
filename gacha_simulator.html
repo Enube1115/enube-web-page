@@ -129,8 +129,12 @@
   .btn-green:hover:not(:disabled) { box-shadow: 0 0 12px rgba(0,204,68,0.4); }
   .btn-red { background: linear-gradient(135deg, #660011, #cc0033); color: #fff; }
   .btn-red:hover:not(:disabled) { box-shadow: 0 0 12px rgba(204,0,51,0.4); }
-  .btn-cyan { background: linear-gradient(135deg, #004455, #00ccee); color: #fff; }
-  .btn-gray { background: #333355; color: var(--text2); border: 1px solid var(--border); }
+  .btn-cyan   { background: linear-gradient(135deg, #004455, #00ccee); color: #fff; }
+  .btn-orange { background: linear-gradient(135deg, #7a3a00, #ff6d00); color: #fff; }
+  .btn-orange:hover:not(:disabled) { box-shadow: 0 0 12px rgba(255,109,0,0.4); }
+  .btn-purple { background: linear-gradient(135deg, #44006a, #cc44ff); color: #fff; }
+  .btn-purple:hover:not(:disabled) { box-shadow: 0 0 12px rgba(204,68,255,0.4); }
+  .btn-gray   { background: #333355; color: var(--text2); border: 1px solid var(--border); }
   .btn-sm { padding: 6px 12px; font-size: 0.82em; }
 
   /* Section box */
@@ -275,7 +279,39 @@
   .log-lose { color: var(--red); font-weight: bold; font-size: 1.1em; }
   .log-draw { color: var(--cyan); font-weight: bold; }
 
-  .battle-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .battle-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .log-crit    { color: #ff9100; font-weight: bold; }
+  .log-dodge   { color: #00e676; font-weight: bold; }
+  .log-item    { color: #40c4ff; font-weight: bold; }
+  .potion-shop-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg3); border-radius: 8px;
+    padding: 10px 14px; margin-top: 8px;
+    border: 1px solid var(--border);
+  }
+  .potion-count-badge {
+    background: #1a3a1a; color: var(--green);
+    border: 1px solid var(--green);
+    border-radius: 6px; padding: 2px 10px;
+    font-weight: bold; font-size: 0.9em;
+  }
+  #potion-btn { position: relative; }
+  #potion-btn .badge {
+    display: inline-block; background: var(--green); color: #000;
+    border-radius: 10px; padding: 0 6px; font-size: 0.8em;
+    margin-left: 4px; font-weight: bold;
+  }
+  #potion-btn:disabled { opacity: 0.4; }
+  .log-skill { color: #ea80fc; font-weight: bold; }
+  .log-buff  { color: #ff9100; font-weight: bold; }
+  .statbuff-shop { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .statbuff-item { flex:1; min-width:160px; background:var(--bg3); border-radius:8px; padding:10px 12px; border:1px solid var(--border); }
+  .statbuff-item.chosen { border-color: var(--yellow); }
+  .buff-bring-row { margin-top:8px; padding:6px 12px; background:var(--bg3); border-radius:6px; border:1px solid var(--border); font-size:0.88em; }
+  .battle-buff-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; min-height:20px; }
+  .buff-tag { font-size:0.8em; padding:2px 8px; border-radius:4px; font-weight:bold; }
+  .buff-tag.atk { background:#3a2000; color:var(--orange); border:1px solid var(--orange); }
+  .buff-tag.def { background:#001a3a; color:var(--cyan); border:1px solid var(--cyan); }
 
   /* Info panel */
   .info-section { margin-bottom: 16px; }
@@ -460,6 +496,46 @@
         </div>
       </div>
 
+      <div class="box" id="potion-shop-box" style="display:none;">
+        <div class="box-title">💊 回復アイテムショップ</div>
+        <p style="color:var(--text2); font-size:0.85em; margin-bottom:6px;">
+          バトルに最大3個まで持ち込めます。使うと現在のカードのHPを50回復。
+        </p>
+        <div class="potion-shop-row">
+          <span>所持: <span class="potion-count-badge" id="potion-count">0</span> 個</span>
+          <button class="btn btn-green btn-sm" onclick="buyPotion()">💊 購入（10コイン）</button>
+          <span style="color:var(--text2); font-size:0.82em;">持込上限: <b id="potion-bring-max">0</b>/3個</span>
+        </div>
+      </div>
+
+      <div class="box" id="statbuff-shop-box" style="display:none;">
+        <div class="box-title">⚡ ステータスアップショップ（1バトル1個まで）</div>
+        <p style="color:var(--text2); font-size:0.85em; margin-bottom:6px;">
+          次の攻撃/被ダメに自動発動。1バトルに持込1個まで。
+        </p>
+        <div class="statbuff-shop">
+          <div class="statbuff-item" id="atkbuff-card">
+            <div style="font-weight:bold; margin-bottom:4px;">⚔ 攻撃アップ</div>
+            <div style="font-size:0.82em; color:var(--text2); margin-bottom:6px;">次の攻撃ダメージ ×2</div>
+            <div style="font-size:0.85em; margin-bottom:6px;">所持: <span id="atkbuff-count">0</span>個</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn btn-orange btn-sm" onclick="buyStatBuff('atk')">購入（10コイン）</button>
+              <button class="btn btn-gray btn-sm" id="bring-atk-btn" onclick="bringStatBuff('atk')">持込む</button>
+            </div>
+          </div>
+          <div class="statbuff-item" id="defbuff-card">
+            <div style="font-weight:bold; margin-bottom:4px;">🛡 防御アップ</div>
+            <div style="font-size:0.82em; color:var(--text2); margin-bottom:6px;">次の被ダメージ ×0.5</div>
+            <div style="font-size:0.85em; margin-bottom:6px;">所持: <span id="defbuff-count">0</span>個</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn btn-cyan btn-sm" onclick="buyStatBuff('def')">購入（10コイン）</button>
+              <button class="btn btn-gray btn-sm" id="bring-def-btn" onclick="bringStatBuff('def')">持込む</button>
+            </div>
+          </div>
+        </div>
+        <div class="buff-bring-row">持込予定: <span id="buff-bring-label" style="color:var(--yellow); font-weight:bold;">なし</span></div>
+      </div>
+
       <div class="box" id="deck-select-box" style="display:none;">
         <div class="box-title">デッキ選択（5枚）</div>
         <div class="deck-auto-btns">
@@ -515,8 +591,16 @@
 
         <div class="battle-log-wrap" id="battle-log"></div>
 
+        <div class="battle-buff-bar" id="battle-buff-bar"></div>
+
         <div class="battle-btns">
           <button class="btn btn-red" id="attack-btn" onclick="doAttack()">⚔ 攻撃！</button>
+          <button class="btn btn-green btn-sm" id="potion-btn" onclick="usePotion()" disabled>
+            💊 回復薬 <span class="badge" id="potion-left">0</span>
+          </button>
+          <button class="btn btn-purple btn-sm" id="skill-btn" onclick="useSkill()" disabled>
+            ✨ <span id="skill-btn-label">スキルなし</span>
+          </button>
           <button class="btn btn-gray btn-sm" id="flee-btn" onclick="endBattle(true)">逃げる</button>
         </div>
       </div>
@@ -732,7 +816,10 @@ function defaultState() {
   return {
     coins: 100,
     collection: {}, // { name: { rarity, level, element } }
-    starterReceived: false
+    starterReceived: false,
+    potions: 0,    // 所持回復薬数
+    atkBuffs: 0,   // 所持攻撃アップ数
+    defBuffs: 0    // 所持防御アップ数
   };
 }
 
@@ -777,6 +864,14 @@ function updateDisplay() {
     sb.disabled = true;
     sb.textContent = "🎁 スターターパック（受取済）";
   }
+  // Update potion display
+  const potions = state.potions || 0;
+  const pcEl = document.getElementById("potion-count");
+  if (pcEl) pcEl.textContent = potions;
+  const pbEl = document.getElementById("potion-bring-max");
+  if (pbEl) pbEl.textContent = Math.min(potions, 3);
+  // Update stat buff display
+  updateStatBuffUI();
 }
 
 // ============================================================
@@ -969,6 +1064,50 @@ function renderCollection() {
 let selectedDiff = null;
 let selectedDeckNames = new Set();
 let battleState = null;
+let selectedBuff = null; // 'atk' | 'def' | null — chosen in pre-battle shop
+
+// ---- Skills per rarity ----
+const SKILLS = {
+  N: null,
+  R: { name: "強打", desc: "ATK×2.0", type: "strike" },
+  SR: { name: "属性爆発", desc: "ATK×3.0（相性◎なら×4.0）", type: "elem" },
+  UR: { name: "天地無用", desc: "相手HP×60%ダメージ（最低100）", type: "omega" }
+};
+
+// ── アイテム ──────────────────────────────────
+function buyPotion() {
+  if (state.coins < 10) { showToast("コインが足りません（10コイン必要）"); return; }
+  state.coins -= 10;
+  state.potions = (state.potions || 0) + 1;
+  saveState();
+  updateDisplay();
+  showToast(`回復薬を購入！ 所持: ${state.potions}個`);
+}
+
+function usePotion() {
+  const bs = battleState;
+  if (!bs || bs.over || bs.potionsLeft <= 0) return;
+  const pCard = bs.pHand[bs.pIdx];
+  const before = pCard.hp;
+  pCard.hp = Math.min(pCard.hp + 50, pCard.maxHp);
+  const healed = pCard.hp - before;
+  bs.potionsLeft--;
+  state.potions = Math.max(0, (state.potions || 0) - 1);
+  saveState();
+  updateDisplay();
+  addLog(`<span class="log-item">💊 回復薬を使用！ ${pCard.name} のHP +${healed} 回復 → (${pCard.hp}/${pCard.maxHp})</span>`);
+  updateHPBar("p", pCard.hp, pCard.maxHp);
+  updatePotionBtn();
+}
+
+function updatePotionBtn() {
+  const bs = battleState;
+  const left = bs ? (bs.potionsLeft || 0) : 0;
+  const btn = document.getElementById("potion-btn");
+  if (!btn) return;
+  btn.disabled = !bs || bs.over || left <= 0;
+  document.getElementById("potion-left").textContent = left;
+}
 
 function selectDiff(el, diff) {
   selectedDiff = diff;
@@ -982,6 +1121,9 @@ function selectDiff(el, diff) {
     el.classList.remove("selected");
     return;
   }
+  document.getElementById("potion-shop-box").style.display = "block";
+  document.getElementById("statbuff-shop-box").style.display = "block";
+  updateDisplay();
   const deckBox = document.getElementById("deck-select-box");
   deckBox.style.display = "block";
   renderDeckList();
@@ -1079,6 +1221,131 @@ function autoSelectBalance() {
   renderDeckList();
 }
 
+// ---- Stat buff shop ----
+function buyStatBuff(type) {
+  if (state.coins < 10) { showToast("コインが足りません（必要: 10コイン）"); return; }
+  state.coins -= 10;
+  if (type === 'atk') state.atkBuffs = (state.atkBuffs || 0) + 1;
+  else                state.defBuffs = (state.defBuffs || 0) + 1;
+  saveState();
+  updateDisplay();
+}
+
+function bringStatBuff(type) {
+  const has = type === 'atk' ? (state.atkBuffs || 0) : (state.defBuffs || 0);
+  if (has <= 0) { showToast("持込む" + (type === 'atk' ? "攻撃アップ" : "防御アップ") + "がありません"); return; }
+  selectedBuff = (selectedBuff === type) ? null : type;
+  updateStatBuffUI();
+}
+
+function updateStatBuffUI() {
+  const atkEl = document.getElementById("atkbuff-count");
+  const defEl = document.getElementById("defbuff-count");
+  if (atkEl) atkEl.textContent = state.atkBuffs || 0;
+  if (defEl) defEl.textContent = state.defBuffs || 0;
+
+  const atkCard = document.getElementById("atkbuff-card");
+  const defCard = document.getElementById("defbuff-card");
+  if (atkCard) atkCard.classList.toggle("chosen", selectedBuff === 'atk');
+  if (defCard) defCard.classList.toggle("chosen", selectedBuff === 'def');
+
+  const label = document.getElementById("buff-bring-label");
+  if (label) {
+    if (selectedBuff === 'atk') label.textContent = "⚔ 攻撃アップ";
+    else if (selectedBuff === 'def') label.textContent = "🛡 防御アップ";
+    else label.textContent = "なし";
+  }
+}
+
+// ---- Skills ----
+function useSkill() {
+  const bs = battleState;
+  if (!bs || bs.over) return;
+  const pCard = bs.pHand[bs.pIdx];
+  const cCard = bs.cHand[bs.cIdx];
+  const skill = SKILLS[pCard.rarity];
+  if (!skill || pCard.skillUsed) return;
+
+  pCard.skillUsed = true;
+  const pm = elemMult(pCard.element, cCard.element);
+  let skillDmg = 0;
+  let skillTag = "";
+
+  if (skill.type === "strike") {
+    // R: ATK×2.0
+    skillDmg = Math.max(1, Math.floor(pCard.atk * 2.0 * randFloat(0.9, 1.1) * pm));
+    skillTag = `<span class="log-skill">✨ 小技「${skill.name}」発動！</span>`;
+  } else if (skill.type === "elem") {
+    // SR: ATK×3.0、相性◎なら×4.0
+    const mult = pm >= 1.5 ? 4.0 : 3.0;
+    skillDmg = Math.max(1, Math.floor(pCard.atk * mult * randFloat(0.9, 1.1)));
+    skillTag = `<span class="log-skill">✨✨ 中技「${skill.name}」発動！（×${mult}）</span>`;
+  } else if (skill.type === "omega") {
+    // UR: 相手HP×60%（最低100）
+    skillDmg = Math.max(100, Math.floor(cCard.hp * 0.60));
+    skillTag = `<span class="log-skill">✨✨✨ 大技「${skill.name}」発動！</span>`;
+  }
+
+  // 攻撃アップバフ適用
+  let buffAtkTag = "";
+  if (!bs.buffUsed && bs.activeBuff === 'atk') {
+    skillDmg = skillDmg * 2;
+    bs.buffUsed = true;
+    buffAtkTag = `<span class="log-buff"> ⚔バフ発動！×2！</span>`;
+  }
+
+  cCard.hp -= skillDmg;
+  addLog(`${skillTag} ` +
+    `<span style="color:${elementColor(pCard.element)}">${pCard.element}</span>${pCard.name} → ` +
+    `<span style="color:${elementColor(cCard.element)}">${cCard.element}</span>${cCard.name} に ` +
+    `<b>${skillDmg}</b>ダメージ！${buffAtkTag} (残HP:${Math.max(0,cCard.hp)})`);
+
+  if (cCard.hp <= 0) {
+    const pts = BATTLE_POINTS[cCard.rarity];
+    bs.pPts += pts;
+    addLog(`<span class="log-pt">✓ ${cCard.name}を倒した！ あなた +${pts}pt → ${bs.pPts}pt</span>`);
+    bs.cIdx++;
+    updateDisplay();
+    if (bs.pPts >= WIN_POINTS) { endBattle(false); return; }
+    if (bs.cIdx >= 5)          { endBattle(false); return; }
+    const nxt = bs.cHand[bs.cIdx];
+    addLog(`<span class="log-system">CPUの次のモンスター: <span style="color:${elementColor(nxt.element)}">${nxt.name}[${nxt.element}]</span>が登場！</span>`);
+    renderBattleField();
+    return;
+  }
+
+  // CPU counter-attacks after skill (no dodge — skill disrupts)
+  const cm = elemMult(cCard.element, pCard.element);
+  let cDmg = Math.max(1, Math.floor(cCard.atk * randFloat(0.85, 1.15) * cm));
+  let buffDefTag = "";
+  if (!bs.buffUsed && bs.activeBuff === 'def') {
+    cDmg = Math.max(1, Math.floor(cDmg * 0.5));
+    bs.buffUsed = true;
+    buffDefTag = `<span class="log-buff"> 🛡バフ発動！×0.5！</span>`;
+  }
+  pCard.hp -= cDmg;
+  let cEffTag = "";
+  if (cm > 1.0) cEffTag += `<span class="log-disadvantage"> 相性◎×${cm}！</span>`;
+  else if (cm < 1.0) cEffTag += `<span class="log-advantage"> 相性×${cm}</span>`;
+  addLog(`<span class="log-cpu">【CPUの反撃】</span> ` +
+    `<span style="color:${elementColor(cCard.element)}">${cCard.element}</span>${cCard.name} → ` +
+    `<span style="color:${elementColor(pCard.element)}">${pCard.element}</span>${pCard.name} に ` +
+    `<b>${cDmg}</b>ダメージ！${cEffTag}${buffDefTag} (残HP:${Math.max(0,pCard.hp)})`);
+
+  if (pCard.hp <= 0) {
+    const pts = BATTLE_POINTS[pCard.rarity];
+    bs.cPts += pts;
+    addLog(`<span class="log-cpu">✗ ${pCard.name}が倒れた！ CPU +${pts}pt → ${bs.cPts}pt</span>`);
+    bs.pIdx++;
+    updatePotionBtn();
+    if (bs.cPts >= WIN_POINTS) { renderBattleField(); endBattle(false); return; }
+    if (bs.pIdx >= 5)          { renderBattleField(); endBattle(false); return; }
+    const nxt = bs.pHand[bs.pIdx];
+    addLog(`<span class="log-system">あなたの次のモンスター: <span style="color:${elementColor(nxt.element)}">${nxt.name}[${nxt.element}]</span>が登場！</span>`);
+  }
+  renderBattleField();
+}
+
 // ---- Battle logic ----
 function makeCPUCard(name, rarity, maxLv) {
   const lv = randInt(Math.max(1, maxLv - 20), maxLv);
@@ -1095,7 +1362,7 @@ function toHandCard(name) {
   const d = state.collection[name];
   const atk = getCardATK(name);
   const hp = getCardHP(name);
-  return { name, rarity: d.rarity, level: d.level, atk, maxHp: hp, hp, element: d.element };
+  return { name, rarity: d.rarity, level: d.level, atk, maxHp: hp, hp, element: d.element, skillUsed: false };
 }
 
 function startBattle() {
@@ -1121,14 +1388,31 @@ function startBattle() {
     cHand.push(makeCPUCard(pick.name, pick.rarity, cfg.maxLv));
   }
 
+  const potionsBrought = Math.min(state.potions || 0, 3);
+  // Consume stat buff item
+  let activeBuff = null;
+  if (selectedBuff === 'atk' && (state.atkBuffs || 0) > 0) {
+    state.atkBuffs--;
+    activeBuff = 'atk';
+  } else if (selectedBuff === 'def' && (state.defBuffs || 0) > 0) {
+    state.defBuffs--;
+    activeBuff = 'def';
+  }
+  selectedBuff = null;
+  saveState();
+
   battleState = {
     pHand, cHand,
     pIdx: 0, cIdx: 0,
     pPts: 0, cPts: 0,
     diff: selectedDiff,
     cost: cfg.cost,
-    over: false
+    over: false,
+    potionsLeft: potionsBrought,
+    activeBuff,       // 'atk' | 'def' | null — fires on next relevant hit
+    buffUsed: false   // true once the buff has triggered
   };
+  updatePotionBtn();
 
   // Switch to battle UI
   document.getElementById("battle-setup").style.display = "none";
@@ -1169,6 +1453,29 @@ function renderBattleField() {
   // Queues
   renderQueue("p-queue", bs.pHand, bs.pIdx);
   renderQueue("c-queue", bs.cHand, bs.cIdx);
+
+  // Skill button
+  const skillBtn = document.getElementById("skill-btn");
+  const skillLabel = document.getElementById("skill-btn-label");
+  const skill = SKILLS[pCard.rarity];
+  if (skill) {
+    skillLabel.textContent = skill.name;
+    skillBtn.disabled = pCard.skillUsed || bs.over;
+  } else {
+    skillLabel.textContent = "スキルなし";
+    skillBtn.disabled = true;
+  }
+
+  // Buff bar
+  const buffBar = document.getElementById("battle-buff-bar");
+  let buffHtml = "";
+  if (!bs.buffUsed && bs.activeBuff === 'atk') {
+    buffHtml += `<span class="buff-tag atk">⚔ 攻撃アップ 待機中</span>`;
+  }
+  if (!bs.buffUsed && bs.activeBuff === 'def') {
+    buffHtml += `<span class="buff-tag def">🛡 防御アップ 待機中</span>`;
+  }
+  buffBar.innerHTML = buffHtml;
 }
 
 function updateHPBar(side, hp, maxHp) {
@@ -1204,19 +1511,30 @@ function doAttack() {
   const pCard = bs.pHand[bs.pIdx];
   const cCard = bs.cHand[bs.cIdx];
 
-  // Player attacks CPU
+  // Player attacks CPU ── 急所チェック（10%でクリティカル×2）
   const pm = elemMult(pCard.element, cCard.element);
-  const pDmg = Math.max(1, Math.floor(pCard.atk * randFloat(0.85, 1.15) * pm));
+  const isCrit = Math.random() < 0.10;
+  let pDmg = Math.max(1, Math.floor(pCard.atk * randFloat(0.85, 1.15) * pm));
+  if (isCrit) pDmg = pDmg * 2;
+
+  // 攻撃アップバフ適用（次の攻撃×2、1回限り）
+  let buffAtkTag = "";
+  if (!bs.buffUsed && bs.activeBuff === 'atk') {
+    pDmg = pDmg * 2;
+    bs.buffUsed = true;
+    buffAtkTag = `<span class="log-buff"> ⚔バフ発動！×2！</span>`;
+  }
   cCard.hp -= pDmg;
 
   let effTag = "";
-  if (pm > 1.0) effTag = `<span class="log-advantage"> 相性◎×${pm}！</span>`;
-  else if (pm < 1.0) effTag = `<span class="log-disadvantage"> 相性×${pm}</span>`;
+  if (pm > 1.0) effTag += `<span class="log-advantage"> 相性◎×${pm}！</span>`;
+  else if (pm < 1.0) effTag += `<span class="log-disadvantage"> 相性×${pm}</span>`;
+  if (isCrit) effTag += `<span class="log-crit"> 急所！×2！</span>`;
 
   addLog(`<span class="log-player">【あなたの攻撃】</span> ` +
     `<span style="color:${elementColor(pCard.element)}">${pCard.element}</span>${pCard.name} → ` +
     `<span style="color:${elementColor(cCard.element)}">${cCard.element}</span>${cCard.name} に ` +
-    `<b>${pDmg}</b>ダメージ！${effTag} (残HP:${Math.max(0,cCard.hp)})`);
+    `<b>${pDmg}</b>ダメージ！${effTag}${buffAtkTag} (残HP:${Math.max(0,cCard.hp)})`);
 
   if (cCard.hp <= 0) {
     const pts = BATTLE_POINTS[cCard.rarity];
@@ -1225,50 +1543,50 @@ function doAttack() {
     bs.cIdx++;
     updateDisplay();
 
-    if (bs.pPts >= WIN_POINTS) {
-      endBattle(false);
-      return;
-    }
-    if (bs.cIdx >= 5) {
-      endBattle(false);
-      return;
-    }
+    if (bs.pPts >= WIN_POINTS) { endBattle(false); return; }
+    if (bs.cIdx >= 5)          { endBattle(false); return; }
     const nxt = bs.cHand[bs.cIdx];
     addLog(`<span class="log-system">CPUの次のモンスター: <span style="color:${elementColor(nxt.element)}">${nxt.name}[${nxt.element}]</span>が登場！</span>`);
     renderBattleField();
     return;
   }
 
-  // CPU counter-attacks
+  // CPU counter-attacks ── 回避チェック（5%でダメージ0）
   const cm = elemMult(cCard.element, pCard.element);
-  const cDmg = Math.max(1, Math.floor(cCard.atk * randFloat(0.85, 1.15) * cm));
+  const isDodge = Math.random() < 0.05;
+  let cDmg = isDodge ? 0 : Math.max(1, Math.floor(cCard.atk * randFloat(0.85, 1.15) * cm));
+
+  // 防御アップバフ適用（次の被ダメ×0.5、1回限り）
+  let buffDefTag = "";
+  if (!isDodge && !bs.buffUsed && bs.activeBuff === 'def') {
+    cDmg = Math.max(1, Math.floor(cDmg * 0.5));
+    bs.buffUsed = true;
+    buffDefTag = `<span class="log-buff"> 🛡バフ発動！×0.5！</span>`;
+  }
   pCard.hp -= cDmg;
 
   let cEffTag = "";
-  if (cm > 1.0) cEffTag = `<span class="log-disadvantage"> 相性◎×${cm}！</span>`;
-  else if (cm < 1.0) cEffTag = `<span class="log-advantage"> 相性×${cm}</span>`;
+  if (isDodge) {
+    cEffTag = `<span class="log-dodge"> 回避！ダメージ0！</span>`;
+  } else {
+    if (cm > 1.0) cEffTag += `<span class="log-disadvantage"> 相性◎×${cm}！</span>`;
+    else if (cm < 1.0) cEffTag += `<span class="log-advantage"> 相性×${cm}</span>`;
+  }
 
   addLog(`<span class="log-cpu">【CPUの反撃】</span> ` +
     `<span style="color:${elementColor(cCard.element)}">${cCard.element}</span>${cCard.name} → ` +
     `<span style="color:${elementColor(pCard.element)}">${pCard.element}</span>${pCard.name} に ` +
-    `<b>${cDmg}</b>ダメージ！${cEffTag} (残HP:${Math.max(0,pCard.hp)})`);
+    `<b>${isDodge ? 0 : cDmg}</b>ダメージ！${cEffTag}${buffDefTag} (残HP:${Math.max(0,pCard.hp)})`);
 
-  if (pCard.hp <= 0) {
+  if (!isDodge && pCard.hp <= 0) {
     const pts = BATTLE_POINTS[pCard.rarity];
     bs.cPts += pts;
     addLog(`<span class="log-cpu">✗ ${pCard.name}が倒れた！ CPU +${pts}pt → ${bs.cPts}pt</span>`);
     bs.pIdx++;
+    updatePotionBtn();
 
-    if (bs.cPts >= WIN_POINTS) {
-      renderBattleField();
-      endBattle(false);
-      return;
-    }
-    if (bs.pIdx >= 5) {
-      renderBattleField();
-      endBattle(false);
-      return;
-    }
+    if (bs.cPts >= WIN_POINTS) { renderBattleField(); endBattle(false); return; }
+    if (bs.pIdx >= 5)          { renderBattleField(); endBattle(false); return; }
     const nxt = bs.pHand[bs.pIdx];
     addLog(`<span class="log-system">あなたの次のモンスター: <span style="color:${elementColor(nxt.element)}">${nxt.name}[${nxt.element}]</span>が登場！</span>`);
   }
@@ -1349,8 +1667,13 @@ function closeResult() {
   selectedDiff = null;
   document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("selected"));
   document.getElementById("deck-select-box").style.display = "none";
+  document.getElementById("potion-shop-box").style.display = "none";
+  document.getElementById("statbuff-shop-box").style.display = "none";
+  selectedBuff = null;
   updateDeckCount();
   battleState = null;
+  updatePotionBtn();
+  document.getElementById("battle-buff-bar").innerHTML = "";
 }
 
 // ============================================================
