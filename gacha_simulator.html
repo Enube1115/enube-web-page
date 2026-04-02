@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>モンスターカード ガチャシミュレーター</title>
+<style>
+  :root {
+    --bg: #0d0d1a;
+    --bg2: #13132a;
+    --bg3: #1a1a35;
+    --border: #2a2a55;
+    --text: #e0e0f0;
+    --text2: #9090b0;
+    --cyan: #00e5ff;
+    --green: #00e676;
+    --red: #ff5252;
+    --yellow: #ffd740;
+    --orange: #ff9100;
+    --n-color: #9e9e9e;
+    --r-color: #42a5f5;
+    --sr-color: #ce93d8;
+    --ur-color: #ffd740;
+    --fire: #ff5252;
+    --water: #00e5ff;
+    --wind: #69f0ae;
+    --earth: #ffd740;
+    --thunder: #ffff00;
+    --light: #ffffff;
+    --dark: #ce93d8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif;
+    min-height: 100vh;
+    font-size: 14px;
+  }
+  #app { max-width: 800px; margin: 0 auto; padding: 10px; }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 16px 10px 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  header h1 { font-size: 1.4em; color: var(--cyan); letter-spacing: 2px; }
+  .coin-bar {
+    display: flex; justify-content: center; gap: 20px;
+    margin-top: 8px; font-size: 0.95em;
+  }
+  .coin-bar span { color: var(--yellow); font-weight: bold; }
+  .coin-bar label { color: var(--text2); }
+
+  /* Tabs */
+  nav {
+    display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  nav button {
+    flex: 1; min-width: 60px; padding: 8px 4px;
+    background: var(--bg2); border: 1px solid var(--border);
+    color: var(--text2); cursor: pointer; border-radius: 6px;
+    font-size: 0.85em; transition: all 0.2s;
+  }
+  nav button.active {
+    background: var(--bg3); border-color: var(--cyan);
+    color: var(--cyan); font-weight: bold;
+  }
+  nav button:hover:not(.active) { border-color: #444488; color: var(--text); }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Cards (gacha result) */
+  .card-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+  .card-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg2); border-radius: 8px;
+    padding: 8px 10px; border-left: 4px solid var(--border);
+    position: relative;
+  }
+  .card-item.rarity-N { border-left-color: var(--n-color); }
+  .card-item.rarity-R { border-left-color: var(--r-color); box-shadow: 0 0 8px rgba(66,165,245,0.3); }
+  .card-item.rarity-SR { border-left-color: var(--sr-color); box-shadow: 0 0 10px rgba(206,147,216,0.4); }
+  .card-item.rarity-UR { border-left-color: var(--ur-color); box-shadow: 0 0 14px rgba(255,215,64,0.5); }
+  .rarity-badge {
+    font-size: 0.75em; font-weight: bold; padding: 2px 6px;
+    border-radius: 4px; min-width: 34px; text-align: center;
+  }
+  .rarity-badge.rarity-N { background: #333; color: var(--n-color); }
+  .rarity-badge.rarity-R { background: #112244; color: var(--r-color); }
+  .rarity-badge.rarity-SR { background: #220033; color: var(--sr-color); }
+  .rarity-badge.rarity-UR { background: #332200; color: var(--ur-color); }
+  .card-name { flex: 1; font-weight: bold; font-size: 0.95em; }
+  .elem-badge {
+    font-size: 0.78em; font-weight: bold; padding: 2px 5px;
+    border-radius: 4px; min-width: 24px; text-align: center;
+  }
+  .elem-火 { color: var(--fire); background: rgba(255,82,82,0.15); }
+  .elem-水 { color: var(--water); background: rgba(0,229,255,0.15); }
+  .elem-風 { color: var(--wind); background: rgba(105,240,174,0.15); }
+  .elem-土 { color: var(--earth); background: rgba(255,215,64,0.15); }
+  .elem-雷 { color: var(--thunder); background: rgba(255,255,0,0.12); }
+  .elem-光 { color: var(--light); background: rgba(255,255,255,0.1); }
+  .elem-闇 { color: var(--dark); background: rgba(206,147,216,0.15); }
+  .card-stats { font-size: 0.78em; color: var(--text2); }
+  .lvup-tag {
+    font-size: 0.75em; color: var(--green); font-weight: bold;
+    background: rgba(0,230,118,0.1); padding: 2px 6px; border-radius: 4px;
+    animation: pulse 0.6s ease;
+  }
+  @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+  /* Buttons */
+  .btn {
+    display: inline-block; padding: 10px 18px; border-radius: 8px;
+    border: none; cursor: pointer; font-size: 0.9em; font-weight: bold;
+    transition: all 0.2s; letter-spacing: 0.5px;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: linear-gradient(135deg, #0044cc, #0088ff); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #0055ee, #00aaff); box-shadow: 0 0 12px rgba(0,136,255,0.4); }
+  .btn-gold { background: linear-gradient(135deg, #7a5a00, #ffcc00); color: #111; }
+  .btn-gold:hover:not(:disabled) { box-shadow: 0 0 12px rgba(255,204,0,0.5); }
+  .btn-green { background: linear-gradient(135deg, #006622, #00cc44); color: #fff; }
+  .btn-green:hover:not(:disabled) { box-shadow: 0 0 12px rgba(0,204,68,0.4); }
+  .btn-red { background: linear-gradient(135deg, #660011, #cc0033); color: #fff; }
+  .btn-red:hover:not(:disabled) { box-shadow: 0 0 12px rgba(204,0,51,0.4); }
+  .btn-cyan { background: linear-gradient(135deg, #004455, #00ccee); color: #fff; }
+  .btn-gray { background: #333355; color: var(--text2); border: 1px solid var(--border); }
+  .btn-sm { padding: 6px 12px; font-size: 0.82em; }
+
+  /* Section box */
+  .box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; margin-bottom: 12px;
+  }
+  .box-title {
+    font-size: 1em; font-weight: bold; color: var(--cyan);
+    margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px;
+  }
+
+  /* Home panel */
+  .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .home-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; text-align: center;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .home-card:hover { border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,229,255,0.2); }
+  .home-card .icon { font-size: 2em; margin-bottom: 6px; }
+  .home-card .title { font-weight: bold; color: var(--cyan); }
+  .home-card .desc { font-size: 0.8em; color: var(--text2); margin-top: 4px; }
+
+  /* Gacha panel */
+  .gacha-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .gacha-result-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .gacha-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .summary-badge {
+    font-size: 0.8em; padding: 3px 10px; border-radius: 20px; font-weight: bold;
+  }
+  .summary-badge.rarity-N { background: #222; color: var(--n-color); border: 1px solid var(--n-color); }
+  .summary-badge.rarity-R { background: #112244; color: var(--r-color); border: 1px solid var(--r-color); }
+  .summary-badge.rarity-SR { background: #220033; color: var(--sr-color); border: 1px solid var(--sr-color); }
+  .summary-badge.rarity-UR { background: #332200; color: var(--ur-color); border: 1px solid var(--ur-color); }
+
+  /* Collection */
+  .filter-bar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--text2); cursor: pointer; font-size: 0.82em;
+    transition: all 0.2s;
+  }
+  .filter-btn.active-N { border-color: var(--n-color); color: var(--n-color); background: rgba(158,158,158,0.1); }
+  .filter-btn.active-R { border-color: var(--r-color); color: var(--r-color); background: rgba(66,165,245,0.1); }
+  .filter-btn.active-SR { border-color: var(--sr-color); color: var(--sr-color); background: rgba(206,147,216,0.1); }
+  .filter-btn.active-UR { border-color: var(--ur-color); color: var(--ur-color); background: rgba(255,215,64,0.1); }
+  .filter-btn.active-ALL { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,0.1); }
+  .collection-grid { display: flex; flex-direction: column; gap: 4px; }
+  .coll-empty { color: var(--text2); text-align: center; padding: 40px; }
+
+  /* Battle */
+  .battle-setup { display: flex; flex-direction: column; gap: 10px; }
+  .diff-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .diff-btn {
+    flex: 1; padding: 12px 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--text); cursor: pointer;
+    text-align: center; transition: all 0.2s; min-width: 120px;
+  }
+  .diff-btn:hover { border-color: var(--cyan); }
+  .diff-btn.selected { border-color: var(--cyan); background: rgba(0,229,255,0.1); }
+  .diff-btn .diff-name { font-weight: bold; font-size: 1em; }
+  .diff-btn .diff-info { font-size: 0.78em; color: var(--text2); margin-top: 4px; }
+  .diff-btn .diff-cost { color: var(--yellow); font-weight: bold; }
+
+  /* Deck selection */
+  .deck-select-area { margin-top: 10px; }
+  .deck-filter-bar { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+  .deck-auto-btns { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .deck-card-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+  .deck-card-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg3); border-radius: 6px; padding: 6px 10px;
+    border: 1px solid var(--border); cursor: pointer; transition: all 0.15s;
+  }
+  .deck-card-item:hover { border-color: #5555aa; }
+  .deck-card-item.selected { border-color: var(--cyan); background: rgba(0,229,255,0.08); }
+  .deck-card-item input[type=checkbox] { accent-color: var(--cyan); }
+  .selected-count { color: var(--cyan); font-weight: bold; font-size: 0.9em; }
+
+  /* Battle field */
+  #battle-area { display: none; }
+  .battle-score {
+    display: flex; justify-content: space-around; align-items: center;
+    background: var(--bg3); border-radius: 8px; padding: 10px;
+    margin-bottom: 10px; border: 1px solid var(--border);
+  }
+  .score-player { color: var(--cyan); font-size: 1.3em; font-weight: bold; }
+  .score-cpu { color: var(--red); font-size: 1.3em; font-weight: bold; }
+  .score-vs { color: var(--text2); font-size: 0.9em; }
+  .battle-cards {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .battle-card {
+    background: var(--bg2); border-radius: 8px; padding: 10px;
+    border: 2px solid var(--border);
+  }
+  .battle-card.player-card { border-color: rgba(0,229,255,0.4); }
+  .battle-card.cpu-card { border-color: rgba(255,82,82,0.4); }
+  .battle-card .bc-label { font-size: 0.75em; color: var(--text2); margin-bottom: 4px; }
+  .battle-card .bc-name { font-weight: bold; font-size: 0.95em; margin-bottom: 4px; }
+  .battle-card .bc-info { font-size: 0.78em; color: var(--text2); margin-bottom: 6px; }
+  .hp-bar-wrap { background: #111122; border-radius: 4px; height: 10px; overflow: hidden; margin-bottom: 3px; }
+  .hp-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .hp-bar-fill.green { background: linear-gradient(90deg, #00aa44, #00ee66); }
+  .hp-bar-fill.yellow { background: linear-gradient(90deg, #aa8800, #ffcc00); }
+  .hp-bar-fill.red { background: linear-gradient(90deg, #880011, #ff3333); }
+  .hp-text { font-size: 0.75em; color: var(--text2); }
+
+  /* Battle queue */
+  .battle-queue { margin-bottom: 10px; }
+  .queue-title { font-size: 0.8em; color: var(--text2); margin-bottom: 4px; }
+  .queue-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .queue-chip {
+    font-size: 0.72em; padding: 2px 7px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg3);
+    color: var(--text2);
+  }
+  .queue-chip.active { background: rgba(0,229,255,0.15); border-color: var(--cyan); color: var(--cyan); font-weight: bold; }
+  .queue-chip.dead { opacity: 0.3; text-decoration: line-through; }
+  .queue-chip.rarity-UR { border-color: var(--ur-color); color: var(--ur-color); }
+  .queue-chip.rarity-SR { border-color: var(--sr-color); color: var(--sr-color); }
+
+  /* Battle log */
+  .battle-log-wrap {
+    background: #080812; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; max-height: 180px; overflow-y: auto;
+    font-size: 0.8em; font-family: monospace; margin-bottom: 10px;
+  }
+  .log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .log-player { color: var(--cyan); }
+  .log-cpu { color: var(--red); }
+  .log-advantage { color: var(--green); font-weight: bold; }
+  .log-disadvantage { color: var(--red); }
+  .log-pt { color: var(--yellow); font-weight: bold; }
+  .log-system { color: var(--text2); }
+  .log-win { color: var(--green); font-weight: bold; font-size: 1.1em; }
+  .log-lose { color: var(--red); font-weight: bold; font-size: 1.1em; }
+  .log-draw { color: var(--cyan); font-weight: bold; }
+
+  .battle-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Info panel */
+  .info-section { margin-bottom: 16px; }
+  .info-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+  .info-table th {
+    background: var(--bg3); color: var(--cyan); padding: 6px 8px;
+    border: 1px solid var(--border); font-size: 0.85em;
+  }
+  .info-table td { padding: 5px 8px; border: 1px solid var(--border); }
+  .info-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  .elem-chart { display: flex; flex-direction: column; gap: 4px; }
+  .elem-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg2); padding: 6px 10px; border-radius: 6px;
+    font-size: 0.85em;
+  }
+  .elem-row .elem-label { min-width: 32px; font-weight: bold; }
+  .elem-adv { color: var(--green); }
+  .elem-dis { color: var(--red); }
+
+  /* Result overlay */
+  .result-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85); z-index: 100;
+    justify-content: center; align-items: center;
+  }
+  .result-overlay.show { display: flex; }
+  .result-box {
+    background: var(--bg2); border: 2px solid var(--border);
+    border-radius: 16px; padding: 30px 40px; text-align: center;
+    max-width: 380px; animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+  .result-box .result-icon { font-size: 3em; margin-bottom: 10px; }
+  .result-box .result-title { font-size: 1.5em; font-weight: bold; margin-bottom: 8px; }
+  .result-box .result-detail { color: var(--text2); margin-bottom: 16px; }
+
+  /* Message toast */
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--bg3); border: 1px solid var(--cyan); color: var(--cyan);
+    padding: 8px 20px; border-radius: 20px; font-size: 0.9em;
+    z-index: 200; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #334; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #556; }
+
+  @media (max-width: 500px) {
+    .battle-cards { grid-template-columns: 1fr; }
+    .home-grid { grid-template-columns: 1fr; }
+    .gacha-btns { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>⚔ モンスターカード ガチャシミュレーター ⚔</h1>
+    <div class="coin-bar">
+      <span><label>コイン: </label><span id="coins-display">100</span></span>
+      <span><label>コレクション: </label><span id="coll-display">0</span>種</span>
+    </div>
+  </header>
+
+  <nav id="tab-nav">
+    <button class="active" onclick="switchTab('home')">🏠 ホーム</button>
+    <button onclick="switchTab('gacha')">✨ ガチャ</button>
+    <button onclick="switchTab('collection')">📦 コレクション</button>
+    <button onclick="switchTab('battle')">⚔ バトル</button>
+    <button onclick="switchTab('info')">📋 情報</button>
+  </nav>
+
+  <!-- HOME -->
+  <div id="panel-home" class="panel active">
+    <div class="box">
+      <div class="box-title">ようこそ！</div>
+      <p style="color:var(--text2); font-size:0.9em; margin-bottom:12px;">
+        まずは「スターターパック」を受け取ろう！（無料・N×45+R×5）
+      </p>
+      <div class="home-grid">
+        <div class="home-card" onclick="switchTab('gacha')">
+          <div class="icon">✨</div>
+          <div class="title">ガチャ</div>
+          <div class="desc">1回 5コイン / 10連 40コイン</div>
+        </div>
+        <div class="home-card" onclick="switchTab('collection')">
+          <div class="icon">📦</div>
+          <div class="title">コレクション</div>
+          <div class="desc">所持カード一覧・レベル確認</div>
+        </div>
+        <div class="home-card" onclick="switchTab('battle')">
+          <div class="icon">⚔</div>
+          <div class="title">バトル</div>
+          <div class="desc">ターン制 5pt先取 CPUバトル</div>
+        </div>
+        <div class="home-card" onclick="switchTab('info')">
+          <div class="icon">📋</div>
+          <div class="title">情報</div>
+          <div class="desc">封入率・属性相性表</div>
+        </div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-title">ゲームルール</div>
+      <ul style="padding-left:16px; color:var(--text2); font-size:0.87em; line-height:1.9;">
+        <li>開始コイン: <b style="color:var(--yellow)">100コイン</b></li>
+        <li>ガチャ: 1回=5コイン、10連=40コイン</li>
+        <li>重複カードを引くとレベルUP（最大Lv.100）</li>
+        <li>バトル勝利でコスト×2のコイン獲得、引き分けで返金</li>
+        <li>カード封入率: N=60% / R=28% / SR=9.5% / UR=2.5%</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- GACHA -->
+  <div id="panel-gacha" class="panel">
+    <div class="box">
+      <div class="box-title">ガチャ</div>
+      <div class="gacha-btns">
+        <button class="btn btn-primary" onclick="gachaSingle()">🎲 1回ガチャ（5コイン）</button>
+        <button class="btn btn-gold" onclick="gachaMulti()">🎰 10連ガチャ（40コイン）</button>
+        <button class="btn btn-green" id="starter-btn" onclick="starterPack()">🎁 スターターパック（無料）</button>
+      </div>
+    </div>
+    <div class="box" id="gacha-result-box" style="display:none;">
+      <div class="gacha-result-header">
+        <div class="box-title" style="margin:0;" id="gacha-result-title">ガチャ結果</div>
+        <div class="gacha-summary" id="gacha-summary"></div>
+      </div>
+      <div class="card-list" id="gacha-result-list"></div>
+    </div>
+  </div>
+
+  <!-- COLLECTION -->
+  <div id="panel-collection" class="panel">
+    <div class="box">
+      <div class="box-title">コレクション</div>
+      <div class="filter-bar">
+        <button class="filter-btn active-ALL" data-filter="ALL" onclick="setCollFilter(this,'ALL')">全て</button>
+        <button class="filter-btn" data-filter="UR" onclick="setCollFilter(this,'UR')">UR</button>
+        <button class="filter-btn" data-filter="SR" onclick="setCollFilter(this,'SR')">SR</button>
+        <button class="filter-btn" data-filter="R" onclick="setCollFilter(this,'R')">R</button>
+        <button class="filter-btn" data-filter="N" onclick="setCollFilter(this,'N')">N</button>
+      </div>
+      <div id="collection-list" class="collection-grid">
+        <div class="coll-empty">カードがありません。ガチャを引いてください！</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BATTLE -->
+  <div id="panel-battle" class="panel">
+    <div id="battle-setup">
+      <div class="box">
+        <div class="box-title">⚔ CPUバトル（ターン制・5pt先取）</div>
+        <p style="color:var(--text2); font-size:0.85em; margin-bottom:10px;">
+          N/R/SR撃破→1pt、UR撃破→2pt。先に5pt取った方が勝ち。
+        </p>
+        <div class="diff-btns">
+          <div class="diff-btn" data-diff="weak" onclick="selectDiff(this,'weak')">
+            <div class="diff-name" style="color:var(--green)">よわい</div>
+            <div class="diff-info">N種のみ / 最大Lv.20</div>
+            <div class="diff-cost">3コイン → 勝利で6コイン</div>
+          </div>
+          <div class="diff-btn" data-diff="normal" onclick="selectDiff(this,'normal')">
+            <div class="diff-name" style="color:var(--yellow)">ふつう</div>
+            <div class="diff-info">N・R種 / 最大Lv.50</div>
+            <div class="diff-cost">5コイン → 勝利で10コイン</div>
+          </div>
+          <div class="diff-btn" data-diff="strong" onclick="selectDiff(this,'strong')">
+            <div class="diff-name" style="color:var(--red)">つよい</div>
+            <div class="diff-info">SR・UR種 / 最大Lv.100</div>
+            <div class="diff-cost">10コイン → 勝利で20コイン</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box" id="deck-select-box" style="display:none;">
+        <div class="box-title">デッキ選択（5枚）</div>
+        <div class="deck-auto-btns">
+          <button class="btn btn-green btn-sm" onclick="autoSelectATK()">⚡ ATK最強5枚</button>
+          <button class="btn btn-cyan btn-sm" onclick="autoSelectBalance()">🌈 属性バランス</button>
+          <button class="btn btn-gray btn-sm" onclick="clearDeckSelection()">✕ 選択解除</button>
+        </div>
+        <div class="deck-select-area">
+          <p style="font-size:0.82em; color:var(--text2); margin-bottom:6px;">
+            チェックボックスで5枚選択 → <span class="selected-count" id="selected-count">0/5</span>
+          </p>
+          <div class="deck-card-list" id="deck-card-list"></div>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn btn-primary" id="start-battle-btn" onclick="startBattle()" disabled>
+            ⚔ バトル開始
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="battle-area">
+      <div class="box">
+        <div class="battle-score">
+          <div class="score-player">あなた: <span id="p-pts">0</span>pt</div>
+          <div class="score-vs">先に5pt取った方が勝ち</div>
+          <div class="score-cpu">CPU: <span id="c-pts">0</span>pt</div>
+        </div>
+
+        <div class="battle-queue" id="battle-queue">
+          <div class="queue-title">あなたのデッキ:</div>
+          <div class="queue-row" id="p-queue"></div>
+          <div class="queue-title" style="margin-top:6px;">CPUのデッキ:</div>
+          <div class="queue-row" id="c-queue"></div>
+        </div>
+
+        <div class="battle-cards">
+          <div class="battle-card player-card" id="p-card">
+            <div class="bc-label">👤 あなた</div>
+            <div class="bc-name" id="p-card-name">-</div>
+            <div class="bc-info" id="p-card-info">-</div>
+            <div class="hp-bar-wrap"><div class="hp-bar-fill green" id="p-hp-bar" style="width:100%"></div></div>
+            <div class="hp-text" id="p-hp-text">-</div>
+          </div>
+          <div class="battle-card cpu-card" id="c-card">
+            <div class="bc-label">🤖 CPU</div>
+            <div class="bc-name" id="c-card-name">-</div>
+            <div class="bc-info" id="c-card-info">-</div>
+            <div class="hp-bar-wrap"><div class="hp-bar-fill green" id="c-hp-bar" style="width:100%"></div></div>
+            <div class="hp-text" id="c-hp-text">-</div>
+          </div>
+        </div>
+
+        <div class="battle-log-wrap" id="battle-log"></div>
+
+        <div class="battle-btns">
+          <button class="btn btn-red" id="attack-btn" onclick="doAttack()">⚔ 攻撃！</button>
+          <button class="btn btn-gray btn-sm" id="flee-btn" onclick="endBattle(true)">逃げる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div id="panel-info" class="panel">
+    <div class="box info-section">
+      <div class="box-title">封入率・ステータス表</div>
+      <table class="info-table">
+        <thead>
+          <tr><th>レアリティ</th><th>封入率</th><th>ベースATK</th><th>ベースHP</th><th>撃破PT</th><th>カード数</th></tr>
+        </thead>
+        <tbody>
+          <tr><td style="color:var(--ur-color);font-weight:bold;">UR</td><td>2.5%</td><td>160</td><td>400</td><td>2pt</td><td>5種</td></tr>
+          <tr><td style="color:var(--sr-color);font-weight:bold;">SR</td><td>9.5%</td><td>100</td><td>250</td><td>1pt</td><td>25種</td></tr>
+          <tr><td style="color:var(--r-color);font-weight:bold;">R</td><td>28%</td><td>60</td><td>150</td><td>1pt</td><td>70種</td></tr>
+          <tr><td style="color:var(--n-color);font-weight:bold;">N</td><td>60%</td><td>30</td><td>80</td><td>1pt</td><td>100種</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.8em; color:var(--text2); margin-top:8px;">
+        Lv.n時: ATK = ベース + (n-1)×3 / HP = ベース + (n-1)×5　最大Lv.100
+      </p>
+    </div>
+
+    <div class="box info-section">
+      <div class="box-title">属性相性表</div>
+      <div class="elem-chart" id="elem-chart"></div>
+      <p style="font-size:0.8em; color:var(--text2); margin-top:10px;">
+        サイクル: 🔥火 → 💨風 → 🌍土 → ⚡雷 → 💧水 → 🔥火　（循環）<br>
+        光 ⇔ 闇 は互いに ×1.5
+      </p>
+    </div>
+
+    <div class="box info-section">
+      <div class="box-title">コイン制度</div>
+      <table class="info-table">
+        <thead><tr><th>アクション</th><th>コスト</th><th>報酬</th></tr></thead>
+        <tbody>
+          <tr><td>1回ガチャ</td><td>5コイン</td><td>-</td></tr>
+          <tr><td>10連ガチャ</td><td>40コイン</td><td>-</td></tr>
+          <tr><td>スターターパック</td><td>無料</td><td>N×45+R×5</td></tr>
+          <tr><td>バトル よわい</td><td>3コイン</td><td>勝利: 6コイン / 引分: 3コイン返還</td></tr>
+          <tr><td>バトル ふつう</td><td>5コイン</td><td>勝利: 10コイン / 引分: 5コイン返還</td></tr>
+          <tr><td>バトル つよい</td><td>10コイン</td><td>勝利: 20コイン / 引分: 10コイン返還</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Result Overlay -->
+<div class="result-overlay" id="result-overlay">
+  <div class="result-box">
+    <div class="result-icon" id="result-icon">🏆</div>
+    <div class="result-title" id="result-title">勝利！</div>
+    <div class="result-detail" id="result-detail"></div>
+    <button class="btn btn-primary" onclick="closeResult()">閉じる</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CARD DATA
+// ============================================================
+const CARDS = {
+  N: [
+    "フレイノ","アクウィ","リーフォン","スパルコ","ロッコル",
+    "ウィンゾン","フロスコ","ブレイジン","スプラノ","グロウニン",
+    "ムーラン","ソーラン","スタリン","ダスカン","ドーナン",
+    "ミスタン","デュワン","ブリーザン","ペタラン","ソーナン",
+    "クランボン","スクウィルン","バンブロン","ニブロン","チャンポン",
+    "スクラフォン","ダズロン","フィズロン","スキッポン","ワグロン",
+    "ティンダン","スプラウン","ポッポノン","スナッポン","ウィスポン",
+    "ラトロン","バウンソン","スクワーコン","クリーポン","スカタロン",
+    "ゴブロン","ニブラン","ジャンポン","スキタン","ワドラン",
+    "スクランボン","ドドラン","フラタン","スクリーチャン","プリッカン",
+    "ティッカン","スプリンタン","ダッシャン","スライダン","グライダン",
+    "ホッパン","スピナン","ロンバン","スタンパン","パウンサン",
+    "スプリンガン","バウンダン","ギャロパン","スクイーカン","チャタン",
+    "ブラッバン","ジグザガン","スキッダン","ドリフタン","フロータン",
+    "スウィマン","ダイバン","ストローラン","アンブラン","ランブラン",
+    "ウォンダラン","ブラウザン","グレーザン","スカウタン","プローラン",
+    "ストーカン","ハンタン","チェイサン","ランナン","ゾーマン",
+    "ブラスタン","クラッシャン","スマッシャン","バッシャン","クランチャン",
+    "ムンチャン","グランチャン","ポウンサン","スクランチャン","ウォンパン",
+    "ドンパン","ランパン","ゴンパン","トランパン","ポンポン"
+  ],
+  R: [
+    "フレイガード","アクウィナイト","リーフォドン","スパルザード","ロッコリオン",
+    "ウィンゾルス","フロスコアン","ブレイゾオン","スプルノアール","グロノイル",
+    "ムーランガード","ソーランナイト","スタルニドン","ダスコザード","ドーノリオン",
+    "ミスタルス","デュワアン","ブリーザオン","ペタラアール","ソーノイル",
+    "クランボガード","スクウィルナイト","バンブロドン","ニブロザード","チャンポリオン",
+    "スクラフォルス","ダズロアン","フィズロオン","スキッポアール","ワグロイル",
+    "ティンダガード","スプラウナイト","ポッポノドン","スナッポザード","ウィスポリオン",
+    "ラトロルス","バウンソアン","スクワーコオン","クリーポアール","スカタロイル",
+    "ゴブロガード","ニブラナイト","ジャンポドン","スキタザード","ワドラリオン",
+    "スクランボルス","ドドラアン","フラタオン","スクリーチャアール","プリッカイル",
+    "ティッカガード","スプリンタナイト","ダッシャドン","スライダザード","グライダリオン",
+    "ホッパルス","スピナアン","ロンバオン","スタンパアール","パウンサイル",
+    "スプリンガガード","バウンダナイト","ギャロパドン","スクイーカザード","チャタリオン",
+    "ブラッバルス","ジグザガアン","スキッダオン","ドリフタアール","フロータイル"
+  ],
+  SR: [
+    "イグニウス","アクアリウス","フォリウス","テラリウス","テンペスウス",
+    "グレイシウス","ヴォルカニウス","ネプチュニウス","ガイアリウス","ルナリウス",
+    "ソラリウス","アルカニウス","シャドウリウス","ストームリウス","フロストリウス",
+    "マグマリウス","コーラルリウス","ジャングルリウス","サンドリウス","サイクロニウス",
+    "ボルトリウス","サイキックリウス","トキシウス","ドラゴニウス","ダークリウス"
+  ],
+  UR: [
+    "ソルジェスタ","ルナレクシア","テラマグナス","カオスドラクル","オメガシェン"
+  ]
+};
+
+const RARITY_LABEL = { N:"N", R:"R", SR:"SR", UR:"UR" };
+const RARITY_KEY = { N:"N", R:"R", SR:"SR", UR:"UR" };
+const RATES = { N:60, R:28, SR:9.5, UR:2.5 };
+const BASE_ATK = { N:30, R:60, SR:100, UR:160 };
+const BASE_HP  = { N:80, R:150, SR:250, UR:400 };
+const BATTLE_POINTS = { N:1, R:1, SR:1, UR:2 };
+const WIN_POINTS = 5;
+const COST_SINGLE = 5;
+const COST_MULTI  = 40;
+const MAX_LEVEL   = 100;
+
+const ELEMENTS = ["火","水","風","土","雷","光","闇"];
+const ELEMENT_CHART = {
+  "火_風":1.5, "火_水":0.7,
+  "水_火":1.5, "水_雷":0.7,
+  "風_土":1.5, "風_火":0.7,
+  "土_雷":1.5, "土_風":0.7,
+  "雷_水":1.5, "雷_土":0.7,
+  "光_闇":1.5,
+  "闇_光":1.5
+};
+
+// CPU configs
+const CPU_CONFIGS = {
+  weak:   { label:"よわいCPU",   cost:3,  pool:["N"],        maxLv:20  },
+  normal: { label:"ふつうのCPU", cost:5,  pool:["N","R"],    maxLv:50  },
+  strong: { label:"つよいCPU",   cost:10, pool:["SR","UR"],  maxLv:100 }
+};
+
+// ============================================================
+// UTILITY
+// ============================================================
+function md5Hash(str) {
+  // Simple deterministic hash (not cryptographic MD5, but deterministic)
+  // We use a djb2-like hash mapped to 0..6
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + ch;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function cardElement(name) {
+  return ELEMENTS[md5Hash(name) % ELEMENTS.length];
+}
+
+function elemMult(atkElem, defElem) {
+  return ELEMENT_CHART[atkElem + "_" + defElem] || 1.0;
+}
+
+function randFloat(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function calcATK(rarity, lv) { return BASE_ATK[rarity] + (lv - 1) * 3; }
+function calcHP(rarity, lv)  { return BASE_HP[rarity]  + (lv - 1) * 5; }
+
+function getRarityFromName(name) {
+  for (const r of ["N","R","SR","UR"]) {
+    if (CARDS[r].includes(name)) return r;
+  }
+  return "N";
+}
+
+function drawOne() {
+  const rand = Math.random() * 100;
+  let acc = 0;
+  for (const r of ["N","R","SR","UR"]) {
+    acc += RATES[r];
+    if (rand < acc) {
+      const arr = CARDS[r];
+      const name = arr[Math.floor(Math.random() * arr.length)];
+      return { name, rarity: r };
+    }
+  }
+  const name = CARDS["N"][Math.floor(Math.random() * CARDS["N"].length)];
+  return { name, rarity: "N" };
+}
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const STATE_KEY = "gacha_sim_state_v2";
+let state = loadState();
+
+function defaultState() {
+  return {
+    coins: 100,
+    collection: {}, // { name: { rarity, level, element } }
+    starterReceived: false
+  };
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem(STATE_KEY);
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return defaultState();
+}
+
+function saveState() {
+  localStorage.setItem(STATE_KEY, JSON.stringify(state));
+}
+
+function addCard(name, rarity) {
+  if (state.collection[name]) {
+    const oldLv = state.collection[name].level;
+    const newLv = Math.min(oldLv + 1, MAX_LEVEL);
+    state.collection[name].level = newLv;
+    return { level: newLv, leveled: newLv > oldLv };
+  }
+  state.collection[name] = { rarity, level: 1, element: cardElement(name) };
+  return { level: 1, leveled: false };
+}
+
+function getCardATK(name) {
+  const c = state.collection[name];
+  return calcATK(c.rarity, c.level);
+}
+function getCardHP(name) {
+  const c = state.collection[name];
+  return calcHP(c.rarity, c.level);
+}
+
+function updateDisplay() {
+  document.getElementById("coins-display").textContent = state.coins;
+  document.getElementById("coll-display").textContent = Object.keys(state.collection).length;
+  // Update starter button
+  const sb = document.getElementById("starter-btn");
+  if (state.starterReceived) {
+    sb.disabled = true;
+    sb.textContent = "🎁 スターターパック（受取済）";
+  }
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll("#tab-nav button").forEach(b => b.classList.remove("active"));
+  document.getElementById("panel-" + tab).classList.add("active");
+  const tabs = ["home","gacha","collection","battle","info"];
+  const idx = tabs.indexOf(tab);
+  document.querySelectorAll("#tab-nav button")[idx].classList.add("active");
+
+  if (tab === "collection") renderCollection();
+  if (tab === "battle") renderDeckList();
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ============================================================
+// CARD HTML HELPERS
+// ============================================================
+function rarityClass(r) {
+  return "rarity-" + r;
+}
+function elemClass(e) {
+  return "elem-" + e;
+}
+
+function cardItemHTML(name, rarity, level, element, atk, hp, leveled, showIndex) {
+  const lvupTag = leveled ? `<span class="lvup-tag">LvUP!</span>` : "";
+  return `
+    <div class="card-item ${rarityClass(rarity)}">
+      <span class="rarity-badge ${rarityClass(rarity)}">${rarity}</span>
+      <span class="elem-badge ${elemClass(element)}">${element}</span>
+      <span class="card-name" style="color:${rarityColor(rarity)}">${name}</span>
+      <span class="card-stats">Lv.${level} ATK:${atk} HP:${hp}</span>
+      ${lvupTag}
+    </div>`;
+}
+
+function rarityColor(r) {
+  const map = { N:"#bbb", R:"#42a5f5", SR:"#ce93d8", UR:"#ffd740" };
+  return map[r] || "#bbb";
+}
+function elementColor(e) {
+  const map = { "火":"#ff5252","水":"#00e5ff","風":"#69f0ae","土":"#ffd740","雷":"#ffff00","光":"#ffffff","闇":"#ce93d8" };
+  return map[e] || "#fff";
+}
+
+// ============================================================
+// GACHA
+// ============================================================
+function processDraws(draws) {
+  const results = [];
+  for (const { name, rarity } of draws) {
+    const { level, leveled } = addCard(name, rarity);
+    const elem = state.collection[name].element;
+    const atk = getCardATK(name);
+    const hp = getCardHP(name);
+    results.push({ name, rarity, level, element: elem, atk, hp, leveled });
+  }
+  return results;
+}
+
+function renderGachaResult(title, results) {
+  const box = document.getElementById("gacha-result-box");
+  box.style.display = "block";
+  document.getElementById("gacha-result-title").textContent = title;
+
+  // Summary
+  const summary = {};
+  for (const r of results) {
+    summary[r.rarity] = (summary[r.rarity] || 0) + 1;
+  }
+  const sumEl = document.getElementById("gacha-summary");
+  sumEl.innerHTML = ["UR","SR","R","N"].filter(r => summary[r]).map(r =>
+    `<span class="summary-badge ${rarityClass(r)}">${r}×${summary[r]}</span>`
+  ).join("");
+
+  // Card list
+  const listEl = document.getElementById("gacha-result-list");
+  listEl.innerHTML = results.map(r =>
+    cardItemHTML(r.name, r.rarity, r.level, r.element, r.atk, r.hp, r.leveled)
+  ).join("");
+
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function gachaSingle() {
+  if (state.coins < COST_SINGLE) { showToast("コインが足りません！"); return; }
+  state.coins -= COST_SINGLE;
+  const draws = [drawOne()];
+  const results = processDraws(draws);
+  saveState();
+  updateDisplay();
+  renderGachaResult("✨ ガチャ結果（1回）", results);
+}
+
+function gachaMulti() {
+  if (state.coins < COST_MULTI) { showToast("コインが足りません！"); return; }
+  state.coins -= COST_MULTI;
+  const draws = Array.from({ length: 10 }, drawOne);
+  const results = processDraws(draws);
+  saveState();
+  updateDisplay();
+  renderGachaResult("🎰 ガチャ結果（10連）", results);
+}
+
+function starterPack() {
+  if (state.starterReceived) { showToast("スターターパックは受取済です"); return; }
+  state.starterReceived = true;
+  const draws = [];
+  for (let i = 0; i < 45; i++) {
+    const arr = CARDS["N"];
+    draws.push({ name: arr[Math.floor(Math.random() * arr.length)], rarity: "N" });
+  }
+  for (let i = 0; i < 5; i++) {
+    const arr = CARDS["R"];
+    draws.push({ name: arr[Math.floor(Math.random() * arr.length)], rarity: "R" });
+  }
+  // shuffle
+  for (let i = draws.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [draws[i], draws[j]] = [draws[j], draws[i]];
+  }
+  const results = processDraws(draws);
+  saveState();
+  updateDisplay();
+  renderGachaResult("🎁 スターターパック（N×45 + R×5）", results);
+}
+
+// ============================================================
+// COLLECTION
+// ============================================================
+let collFilter = "ALL";
+
+function setCollFilter(btn, filter) {
+  collFilter = filter;
+  document.querySelectorAll(".filter-btn").forEach(b => {
+    b.className = "filter-btn";
+  });
+  btn.className = "filter-btn active-" + filter;
+  renderCollection();
+}
+
+function renderCollection() {
+  const listEl = document.getElementById("collection-list");
+  const names = Object.keys(state.collection);
+  if (names.length === 0) {
+    listEl.innerHTML = '<div class="coll-empty">カードがありません。ガチャを引いてください！</div>';
+    return;
+  }
+  // Filter
+  const filtered = names.filter(n => {
+    if (collFilter === "ALL") return true;
+    return state.collection[n].rarity === collFilter;
+  });
+  if (filtered.length === 0) {
+    listEl.innerHTML = `<div class="coll-empty">該当カードはありません</div>`;
+    return;
+  }
+  // Sort: UR > SR > R > N, then by level desc
+  const orderMap = { UR:0, SR:1, R:2, N:3 };
+  filtered.sort((a, b) => {
+    const ra = state.collection[a].rarity, rb = state.collection[b].rarity;
+    if (orderMap[ra] !== orderMap[rb]) return orderMap[ra] - orderMap[rb];
+    return state.collection[b].level - state.collection[a].level;
+  });
+
+  listEl.innerHTML = filtered.map(name => {
+    const d = state.collection[name];
+    const atk = getCardATK(name);
+    const hp = getCardHP(name);
+    return cardItemHTML(name, d.rarity, d.level, d.element, atk, hp, false);
+  }).join("");
+}
+
+// ============================================================
+// BATTLE
+// ============================================================
+let selectedDiff = null;
+let selectedDeckNames = new Set();
+let battleState = null;
+
+function selectDiff(el, diff) {
+  selectedDiff = diff;
+  document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("selected"));
+  el.classList.add("selected");
+
+  const cfg = CPU_CONFIGS[diff];
+  if (state.coins < cfg.cost) {
+    showToast(`コインが足りません（必要: ${cfg.cost}コイン）`);
+    selectedDiff = null;
+    el.classList.remove("selected");
+    return;
+  }
+  const deckBox = document.getElementById("deck-select-box");
+  deckBox.style.display = "block";
+  renderDeckList();
+  deckBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function renderDeckList() {
+  const listEl = document.getElementById("deck-card-list");
+  const names = Object.keys(state.collection);
+  if (names.length === 0) {
+    listEl.innerHTML = '<div style="color:var(--text2); padding:10px;">カードがありません</div>';
+    return;
+  }
+  const orderMap = { UR:0, SR:1, R:2, N:3 };
+  const sorted = [...names].sort((a, b) => {
+    const ra = state.collection[a].rarity, rb = state.collection[b].rarity;
+    if (orderMap[ra] !== orderMap[rb]) return orderMap[ra] - orderMap[rb];
+    return getCardATK(b) - getCardATK(a);
+  });
+
+  listEl.innerHTML = sorted.map(name => {
+    const d = state.collection[name];
+    const atk = getCardATK(name);
+    const hp = getCardHP(name);
+    const checked = selectedDeckNames.has(name) ? "checked" : "";
+    const selectedClass = selectedDeckNames.has(name) ? "selected" : "";
+    return `
+      <div class="deck-card-item ${selectedClass}" onclick="toggleDeckCard('${name.replace(/'/g,"\\'")}',this)">
+        <input type="checkbox" ${checked} onclick="event.stopPropagation(); toggleDeckCard('${name.replace(/'/g,"\\'")}',this.parentElement)">
+        <span class="rarity-badge ${rarityClass(d.rarity)}">${d.rarity}</span>
+        <span class="elem-badge ${elemClass(d.element)}">${d.element}</span>
+        <span class="card-name" style="color:${rarityColor(d.rarity)}">${name}</span>
+        <span class="card-stats">Lv.${d.level} ATK:${atk} HP:${hp}</span>
+      </div>`;
+  }).join("");
+
+  updateDeckCount();
+}
+
+function toggleDeckCard(name, el) {
+  if (selectedDeckNames.has(name)) {
+    selectedDeckNames.delete(name);
+    el.classList.remove("selected");
+    el.querySelector("input[type=checkbox]").checked = false;
+  } else {
+    if (selectedDeckNames.size >= 5) {
+      showToast("5枚まで選択できます");
+      return;
+    }
+    selectedDeckNames.add(name);
+    el.classList.add("selected");
+    el.querySelector("input[type=checkbox]").checked = true;
+  }
+  updateDeckCount();
+}
+
+function updateDeckCount() {
+  const cnt = selectedDeckNames.size;
+  document.getElementById("selected-count").textContent = `${cnt}/5`;
+  document.getElementById("start-battle-btn").disabled = (cnt !== 5 || !selectedDiff);
+}
+
+function clearDeckSelection() {
+  selectedDeckNames.clear();
+  renderDeckList();
+}
+
+function autoSelectATK() {
+  const names = Object.keys(state.collection);
+  const sorted = [...names].sort((a, b) => getCardATK(b) - getCardATK(a));
+  selectedDeckNames = new Set(sorted.slice(0, 5));
+  renderDeckList();
+}
+
+function autoSelectBalance() {
+  const names = Object.keys(state.collection);
+  // best per element
+  const bestPerElem = {};
+  for (const name of names) {
+    const elem = state.collection[name].element;
+    if (!bestPerElem[elem] || getCardATK(name) > getCardATK(bestPerElem[elem])) {
+      bestPerElem[elem] = name;
+    }
+  }
+  const reps = Object.values(bestPerElem).sort((a, b) => getCardATK(b) - getCardATK(a));
+  let selected = reps.slice(0, 5);
+  if (selected.length < 5) {
+    const selectedSet = new Set(selected);
+    const extras = names
+      .filter(n => !selectedSet.has(n))
+      .sort((a, b) => getCardATK(b) - getCardATK(a));
+    selected = selected.concat(extras.slice(0, 5 - selected.length));
+  }
+  selectedDeckNames = new Set(selected);
+  renderDeckList();
+}
+
+// ---- Battle logic ----
+function makeCPUCard(name, rarity, maxLv) {
+  const lv = randInt(Math.max(1, maxLv - 20), maxLv);
+  return {
+    name, rarity, level: lv,
+    atk: calcATK(rarity, lv),
+    maxHp: calcHP(rarity, lv),
+    hp: calcHP(rarity, lv),
+    element: cardElement(name)
+  };
+}
+
+function toHandCard(name) {
+  const d = state.collection[name];
+  const atk = getCardATK(name);
+  const hp = getCardHP(name);
+  return { name, rarity: d.rarity, level: d.level, atk, maxHp: hp, hp, element: d.element };
+}
+
+function startBattle() {
+  if (!selectedDiff || selectedDeckNames.size !== 5) return;
+  const cfg = CPU_CONFIGS[selectedDiff];
+  if (state.coins < cfg.cost) { showToast("コインが足りません"); return; }
+
+  state.coins -= cfg.cost;
+  saveState();
+  updateDisplay();
+
+  // Build player hand
+  const pHand = Array.from(selectedDeckNames).map(n => toHandCard(n));
+
+  // Build CPU hand
+  const cpuPool = [];
+  for (const r of cfg.pool) {
+    for (const n of CARDS[r]) cpuPool.push({ name: n, rarity: r });
+  }
+  const cHand = [];
+  for (let i = 0; i < 5; i++) {
+    const pick = cpuPool[Math.floor(Math.random() * cpuPool.length)];
+    cHand.push(makeCPUCard(pick.name, pick.rarity, cfg.maxLv));
+  }
+
+  battleState = {
+    pHand, cHand,
+    pIdx: 0, cIdx: 0,
+    pPts: 0, cPts: 0,
+    diff: selectedDiff,
+    cost: cfg.cost,
+    over: false
+  };
+
+  // Switch to battle UI
+  document.getElementById("battle-setup").style.display = "none";
+  const ba = document.getElementById("battle-area");
+  ba.style.display = "block";
+  ba.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  addLog(`<span class="log-system">⚔ バトル開始！ 対戦相手: ${cfg.label}  ルール: N/R/SR撃破→1pt / UR撃破→2pt / 先に${WIN_POINTS}pt勝利</span>`);
+  renderBattleField();
+}
+
+function renderBattleField() {
+  const bs = battleState;
+  if (!bs || bs.over) return;
+
+  document.getElementById("p-pts").textContent = bs.pPts;
+  document.getElementById("c-pts").textContent = bs.cPts;
+
+  const pCard = bs.pHand[bs.pIdx];
+  const cCard = bs.cHand[bs.cIdx];
+
+  // Player card
+  document.getElementById("p-card-name").textContent = pCard.name;
+  document.getElementById("p-card-info").innerHTML =
+    `<span class="${rarityClass(pCard.rarity)}" style="color:${rarityColor(pCard.rarity)}">${pCard.rarity}</span> ` +
+    `<span class="${elemClass(pCard.element)}" style="color:${elementColor(pCard.element)}">[${pCard.element}]</span> ` +
+    `Lv.${pCard.level} ATK:${pCard.atk}`;
+  updateHPBar("p", pCard.hp, pCard.maxHp);
+
+  // CPU card
+  document.getElementById("c-card-name").textContent = cCard.name;
+  document.getElementById("c-card-info").innerHTML =
+    `<span style="color:${rarityColor(cCard.rarity)}">${cCard.rarity}</span> ` +
+    `<span style="color:${elementColor(cCard.element)}">[${cCard.element}]</span> ` +
+    `Lv.${cCard.level} ATK:${cCard.atk}`;
+  updateHPBar("c", cCard.hp, cCard.maxHp);
+
+  // Queues
+  renderQueue("p-queue", bs.pHand, bs.pIdx);
+  renderQueue("c-queue", bs.cHand, bs.cIdx);
+}
+
+function updateHPBar(side, hp, maxHp) {
+  const pct = Math.max(0, hp / maxHp * 100);
+  const bar = document.getElementById(side + "-hp-bar");
+  bar.style.width = pct + "%";
+  bar.className = "hp-bar-fill " + (pct > 50 ? "green" : pct > 20 ? "yellow" : "red");
+  document.getElementById(side + "-hp-text").textContent = `HP: ${Math.max(0, hp)} / ${maxHp}`;
+}
+
+function renderQueue(elId, hand, activeIdx) {
+  const el = document.getElementById(elId);
+  el.innerHTML = hand.map((c, i) => {
+    let cls = "queue-chip";
+    if (i < activeIdx) cls += " dead";
+    else if (i === activeIdx) cls += " active";
+    if (c.rarity === "UR") cls += " rarity-UR";
+    else if (c.rarity === "SR") cls += " rarity-SR";
+    return `<span class="${cls}">${c.name}(${c.rarity})</span>`;
+  }).join("");
+}
+
+function addLog(html) {
+  const log = document.getElementById("battle-log");
+  log.innerHTML += `<div class="log-line">${html}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+function doAttack() {
+  const bs = battleState;
+  if (!bs || bs.over) return;
+
+  const pCard = bs.pHand[bs.pIdx];
+  const cCard = bs.cHand[bs.cIdx];
+
+  // Player attacks CPU
+  const pm = elemMult(pCard.element, cCard.element);
+  const pDmg = Math.max(1, Math.floor(pCard.atk * randFloat(0.85, 1.15) * pm));
+  cCard.hp -= pDmg;
+
+  let effTag = "";
+  if (pm > 1.0) effTag = `<span class="log-advantage"> 相性◎×${pm}！</span>`;
+  else if (pm < 1.0) effTag = `<span class="log-disadvantage"> 相性×${pm}</span>`;
+
+  addLog(`<span class="log-player">【あなたの攻撃】</span> ` +
+    `<span style="color:${elementColor(pCard.element)}">${pCard.element}</span>${pCard.name} → ` +
+    `<span style="color:${elementColor(cCard.element)}">${cCard.element}</span>${cCard.name} に ` +
+    `<b>${pDmg}</b>ダメージ！${effTag} (残HP:${Math.max(0,cCard.hp)})`);
+
+  if (cCard.hp <= 0) {
+    const pts = BATTLE_POINTS[cCard.rarity];
+    bs.pPts += pts;
+    addLog(`<span class="log-pt">✓ ${cCard.name}を倒した！ あなた +${pts}pt → ${bs.pPts}pt</span>`);
+    bs.cIdx++;
+    updateDisplay();
+
+    if (bs.pPts >= WIN_POINTS) {
+      endBattle(false);
+      return;
+    }
+    if (bs.cIdx >= 5) {
+      endBattle(false);
+      return;
+    }
+    const nxt = bs.cHand[bs.cIdx];
+    addLog(`<span class="log-system">CPUの次のモンスター: <span style="color:${elementColor(nxt.element)}">${nxt.name}[${nxt.element}]</span>が登場！</span>`);
+    renderBattleField();
+    return;
+  }
+
+  // CPU counter-attacks
+  const cm = elemMult(cCard.element, pCard.element);
+  const cDmg = Math.max(1, Math.floor(cCard.atk * randFloat(0.85, 1.15) * cm));
+  pCard.hp -= cDmg;
+
+  let cEffTag = "";
+  if (cm > 1.0) cEffTag = `<span class="log-disadvantage"> 相性◎×${cm}！</span>`;
+  else if (cm < 1.0) cEffTag = `<span class="log-advantage"> 相性×${cm}</span>`;
+
+  addLog(`<span class="log-cpu">【CPUの反撃】</span> ` +
+    `<span style="color:${elementColor(cCard.element)}">${cCard.element}</span>${cCard.name} → ` +
+    `<span style="color:${elementColor(pCard.element)}">${pCard.element}</span>${pCard.name} に ` +
+    `<b>${cDmg}</b>ダメージ！${cEffTag} (残HP:${Math.max(0,pCard.hp)})`);
+
+  if (pCard.hp <= 0) {
+    const pts = BATTLE_POINTS[pCard.rarity];
+    bs.cPts += pts;
+    addLog(`<span class="log-cpu">✗ ${pCard.name}が倒れた！ CPU +${pts}pt → ${bs.cPts}pt</span>`);
+    bs.pIdx++;
+
+    if (bs.cPts >= WIN_POINTS) {
+      renderBattleField();
+      endBattle(false);
+      return;
+    }
+    if (bs.pIdx >= 5) {
+      renderBattleField();
+      endBattle(false);
+      return;
+    }
+    const nxt = bs.pHand[bs.pIdx];
+    addLog(`<span class="log-system">あなたの次のモンスター: <span style="color:${elementColor(nxt.element)}">${nxt.name}[${nxt.element}]</span>が登場！</span>`);
+  }
+
+  renderBattleField();
+}
+
+function endBattle(fled) {
+  const bs = battleState;
+  if (!bs) return;
+  bs.over = true;
+
+  document.getElementById("attack-btn").disabled = true;
+
+  if (fled) {
+    addLog(`<span class="log-system">逃げました。コインは戻りません。</span>`);
+    showResultOverlay("🏃", "逃走！",
+      `スコア: あなた ${bs.pPts}pt / CPU ${bs.cPts}pt\n残コイン: ${state.coins}`,
+      "gray");
+    return;
+  }
+
+  const pPts = bs.pPts, cPts = bs.cPts;
+  addLog(`<span class="log-system">━━ バトル終了！ あなた: ${pPts}pt / CPU: ${cPts}pt ━━</span>`);
+
+  let result;
+  if (pPts >= WIN_POINTS) {
+    result = "win";
+  } else if (cPts >= WIN_POINTS) {
+    result = "lose";
+  } else if (bs.pIdx >= 5 && bs.cIdx >= 5) {
+    result = pPts > cPts ? "win" : pPts < cPts ? "lose" : "draw";
+  } else if (bs.pIdx >= 5) {
+    result = "lose";
+  } else if (bs.cIdx >= 5) {
+    result = "win";
+  } else {
+    result = pPts > cPts ? "win" : pPts < cPts ? "lose" : "draw";
+  }
+
+  if (result === "win") {
+    const reward = bs.cost * 2;
+    state.coins += reward;
+    saveState();
+    updateDisplay();
+    addLog(`<span class="log-win">★ あなたの勝ち！ ${reward}コイン獲得！ 残コイン: ${state.coins}</span>`);
+    showResultOverlay("🏆", "勝利！", `+${reward}コイン獲得！\n残コイン: ${state.coins}コイン`, "win");
+  } else if (result === "lose") {
+    saveState();
+    addLog(`<span class="log-lose">✗ あなたの負け... 残コイン: ${state.coins}</span>`);
+    showResultOverlay("💀", "敗北...", `スコア: あなた ${pPts}pt / CPU ${cPts}pt\n残コイン: ${state.coins}コイン`, "lose");
+  } else {
+    state.coins += bs.cost;
+    saveState();
+    updateDisplay();
+    addLog(`<span class="log-draw">= 引き分け！ コイン返還。 残コイン: ${state.coins}</span>`);
+    showResultOverlay("🤝", "引き分け！", `コイン返還。\n残コイン: ${state.coins}コイン`, "draw");
+  }
+}
+
+function showResultOverlay(icon, title, detail, type) {
+  document.getElementById("result-icon").textContent = icon;
+  const titleEl = document.getElementById("result-title");
+  titleEl.textContent = title;
+  titleEl.style.color = type === "win" ? "var(--green)" : type === "lose" ? "var(--red)" : type === "draw" ? "var(--cyan)" : "var(--text2)";
+  document.getElementById("result-detail").textContent = detail;
+  document.getElementById("result-overlay").classList.add("show");
+}
+
+function closeResult() {
+  document.getElementById("result-overlay").classList.remove("show");
+  // Reset battle UI
+  document.getElementById("battle-setup").style.display = "block";
+  document.getElementById("battle-area").style.display = "none";
+  document.getElementById("attack-btn").disabled = false;
+  document.getElementById("battle-log").innerHTML = "";
+  selectedDeckNames.clear();
+  selectedDiff = null;
+  document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("selected"));
+  document.getElementById("deck-select-box").style.display = "none";
+  updateDeckCount();
+  battleState = null;
+}
+
+// ============================================================
+// INFO: Element chart
+// ============================================================
+function renderElemChart() {
+  const adv = {}, dis = {};
+  ELEMENTS.forEach(e => { adv[e] = []; dis[e] = []; });
+  for (const [key, val] of Object.entries(ELEMENT_CHART)) {
+    const [atk, def] = key.split("_");
+    if (val > 1.0) adv[atk].push(def);
+    else dis[atk].push(def);
+  }
+  const el = document.getElementById("elem-chart");
+  el.innerHTML = ELEMENTS.map(e => {
+    const advStr = adv[e].map(x => `<span style="color:${elementColor(x)};font-weight:bold">${x}</span>`).join(" ") || "なし";
+    const disStr = dis[e].map(x => `<span style="color:${elementColor(x)};font-weight:bold">${x}</span>`).join(" ") || "なし";
+    return `
+      <div class="elem-row">
+        <span class="elem-label" style="color:${elementColor(e)}">[${e}]</span>
+        <span class="elem-adv">▶有利: ${advStr}</span>
+        <span class="elem-dis">▶不利: ${disStr}</span>
+      </div>`;
+  }).join("");
+}
+
+// ============================================================
+// INIT
+// ============================================================
+updateDisplay();
+renderElemChart();
+if (state.starterReceived) {
+  const sb = document.getElementById("starter-btn");
+  sb.disabled = true;
+  sb.textContent = "🎁 スターターパック（受取済）";
+}
+</script>
+</body>
+</html>
