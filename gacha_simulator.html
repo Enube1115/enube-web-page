@@ -241,8 +241,39 @@
   .filter-btn.active-SR { border-color: var(--sr-color); color: var(--sr-color); background: rgba(206,147,216,0.1); }
   .filter-btn.active-UR { border-color: var(--ur-color); color: var(--ur-color); background: rgba(255,215,64,0.1); }
   .filter-btn.active-ALL { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,0.1); }
-  .collection-grid { display: flex; flex-direction: column; gap: 12px; }
+  .collection-grid { display: flex; flex-direction: column; gap: 8px; }
   .coll-empty { color: var(--text2); text-align: center; padding: 40px; }
+  /* Collection card entry with action buttons */
+  .coll-card-entry { display: flex; flex-direction: column; gap: 3px; }
+  .coll-card-actions { display: flex; gap: 6px; padding: 0 4px; flex-wrap: wrap; }
+  .btn-synth {
+    padding: 4px 10px; font-size: 0.78em; min-height: 30px; border-radius: 5px;
+    background: linear-gradient(135deg, #2a1a00, #7a5000); color: var(--yellow);
+    border: 1px solid #aa7700; cursor: pointer; font-weight: bold;
+  }
+  .btn-synth:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-synth:not(:disabled):hover { filter: brightness(1.2); }
+  .btn-retire {
+    padding: 4px 10px; font-size: 0.78em; min-height: 30px; border-radius: 5px;
+    background: linear-gradient(135deg, #1a0005, #550011); color: var(--red);
+    border: 1px solid #880022; cursor: pointer; font-weight: bold;
+  }
+  .btn-retire.confirm { background: linear-gradient(135deg, #440011, #cc0033); color: #fff; border-color: #ff0033; }
+  .btn-retire:hover { filter: brightness(1.2); }
+  /* Deck save slots */
+  .deck-slots-section { margin-bottom: 8px; padding: 10px 12px; background: var(--bg3); border-radius: 8px; border: 1px solid var(--border); }
+  .deck-slots-label { font-size: 0.8em; color: var(--text2); font-weight: bold; margin-bottom: 6px; }
+  .deck-slot { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; flex-wrap: wrap; }
+  .deck-slot-name { flex: 1; font-size: 0.8em; color: var(--text2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .deck-slot-name.filled { color: var(--cyan); }
+  .btn-slot-save { padding: 3px 10px; font-size: 0.75em; min-height: 28px; background: #1a3a1a; color: var(--green); border: 1px solid var(--green); border-radius: 4px; cursor: pointer; font-weight: bold; }
+  .btn-slot-save:hover { filter: brightness(1.2); }
+  .btn-slot-load { padding: 3px 10px; font-size: 0.75em; min-height: 28px; background: #001a3a; color: var(--cyan); border: 1px solid var(--cyan); border-radius: 4px; cursor: pointer; font-weight: bold; }
+  .btn-slot-load:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-slot-load:not(:disabled):hover { filter: brightness(1.2); }
+  .btn-slot-clear { padding: 3px 8px; font-size: 0.72em; min-height: 28px; background: #1a1a2a; color: var(--text2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  .btn-slot-clear:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-slot-clear:not(:disabled):hover { color: var(--red); border-color: var(--red); }
 
   /* Battle */
   .battle-setup { display: flex; flex-direction: column; gap: 10px; }
@@ -707,6 +738,11 @@
 
       <div class="box" id="deck-select-box" style="display:none;">
         <div class="box-title">デッキ選択（5枚）</div>
+        <div class="deck-slots-section">
+          <div class="deck-slots-label">保存済みデッキ（最大3スロット）</div>
+          <div id="deck-slots-list"></div>
+        </div>
+
         <div class="deck-auto-btns">
           <button class="btn btn-green btn-sm" onclick="autoSelectATK()">ATK最強5枚</button>
           <button class="btn btn-cyan btn-sm" onclick="autoSelectBalance()">属性バランス</button>
@@ -1045,7 +1081,8 @@ function defaultState() {
     strongFirstClear: false, // first strong-diff win bonus given
     tutorialStep: 0,       // 0=not seen, 1=slides done awaiting weak win, 2=complete
     dailyRule: null,       // { date, ruleId }
-    winStreak: 0           // global consecutive wins (non-weak)
+    winStreak: 0,          // global consecutive wins (non-weak)
+    savedDecks: [null, null, null] // saved deck slots (array of 5 card names each)
   };
 }
 
@@ -1112,6 +1149,7 @@ function switchTab(tab) {
   document.querySelectorAll("#tab-nav button")[idx].classList.add("active");
 
   if (tab === "collection") renderCollection();
+  else pendingRetire = null;
   if (tab === "battle") renderDeckList();
   if (tab === "missions") renderMissions();
   if (tab === "zukan") renderZukan();
@@ -1266,9 +1304,14 @@ function starterPack() {
 // COLLECTION
 // ============================================================
 let collFilter = "ALL";
+let pendingRetire = null; // card name awaiting retire confirmation
+
+const SYNTH_UPGRADE = { N:"R", R:"SR", SR:"UR" };
+const RETIRE_VALUE  = { N:2, R:5, SR:15, UR:50 };
 
 function setCollFilter(btn, filter) {
   collFilter = filter;
+  pendingRetire = null;
   document.querySelectorAll(".filter-btn").forEach(b => {
     b.className = "filter-btn";
   });
@@ -1283,7 +1326,6 @@ function renderCollection() {
     listEl.innerHTML = '<div class="coll-empty">カードがありません。ガチャを引いてください！</div>';
     return;
   }
-  // Filter
   const filtered = names.filter(n => {
     if (collFilter === "ALL") return true;
     return state.collection[n].rarity === collFilter;
@@ -1292,7 +1334,6 @@ function renderCollection() {
     listEl.innerHTML = `<div class="coll-empty">該当カードはありません</div>`;
     return;
   }
-  // Sort: UR > SR > R > N, then by level desc
   const orderMap = { UR:0, SR:1, R:2, N:3 };
   filtered.sort((a, b) => {
     const ra = state.collection[a].rarity, rb = state.collection[b].rarity;
@@ -1304,8 +1345,68 @@ function renderCollection() {
     const d = state.collection[name];
     const atk = getCardATK(name);
     const hp = getCardHP(name);
-    return cardItemHTML(name, d.rarity, d.level, d.element, atk, hp, false);
+    const cardHtml = cardItemHTML(name, d.rarity, d.level, d.element, atk, hp, false);
+
+    // Synthesis button
+    const canSynth = d.rarity !== "UR" && d.level >= 3;
+    const nextRarity = SYNTH_UPGRADE[d.rarity] || "";
+    const synthLabel = canSynth ? `合成 Lv.3消費→${nextRarity}` : `合成 (Lv.${d.level}/3)`;
+    const synthBtn = `<button class="btn-synth" ${canSynth ? "" : "disabled"} onclick="clickSynth('${name.replace(/'/g,"\\'")}')">⚗ ${synthLabel}</button>`;
+
+    // Retire button
+    const retireVal = RETIRE_VALUE[d.rarity];
+    const isPending = pendingRetire === name;
+    const retireBtn = `<button class="btn-retire${isPending ? " confirm" : ""}" onclick="clickRetire('${name.replace(/'/g,"\\'")}')">
+      ${isPending ? "本当に？確認" : `引退 +${retireVal}コイン`}
+    </button>`;
+
+    return `<div class="coll-card-entry">
+      ${cardHtml}
+      <div class="coll-card-actions">${synthBtn}${retireBtn}</div>
+    </div>`;
   }).join("");
+}
+
+function clickSynth(name) {
+  const d = state.collection[name];
+  if (!d || d.rarity === "UR" || d.level < 3) { showToast("合成できません（Lv.3以上のN/R/SRカードが必要）"); return; }
+  pendingRetire = null;
+
+  const nextRarity = SYNTH_UPGRADE[d.rarity];
+  // Consume 3 levels
+  d.level -= 3;
+  if (d.level <= 0) {
+    delete state.collection[name];
+  }
+
+  // Add random card of next rarity
+  const pool = CARDS[nextRarity];
+  const newName = pool[Math.floor(Math.random() * pool.length)];
+  const { level: newLv } = addCard(newName, nextRarity);
+  saveState();
+  updateDisplay();
+  showToast(`合成成功！「${newName}」(${nextRarity} Lv.${newLv}) を獲得！`);
+  renderCollection();
+}
+
+function clickRetire(name) {
+  if (!state.collection[name]) return;
+  if (pendingRetire === name) {
+    // Confirmed — execute
+    const rarity = state.collection[name].rarity;
+    const coins = RETIRE_VALUE[rarity];
+    delete state.collection[name];
+    pendingRetire = null;
+    state.coins += coins;
+    saveState();
+    updateDisplay();
+    showToast(`「${name}」を引退 +${coins}コイン`);
+    renderCollection();
+  } else {
+    // First click — ask for confirmation
+    pendingRetire = name;
+    renderCollection();
+  }
 }
 
 // ============================================================
@@ -1410,6 +1511,7 @@ function selectDiff(el, diff) {
   const deckBox = document.getElementById("deck-select-box");
   deckBox.style.display = "block";
   renderDeckList();
+  renderDeckSlots();
   deckBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
@@ -1444,6 +1546,7 @@ function renderDeckList() {
   }).join("");
 
   updateDeckCount();
+  renderDeckSlots();
 }
 
 function toggleDeckCard(name, el) {
@@ -1516,6 +1619,58 @@ function autoSelectBalance() {
   }
   selectedDeckNames = new Set(selected);
   renderDeckList();
+}
+
+// ---- Deck save/load ----
+function renderDeckSlots() {
+  const el = document.getElementById("deck-slots-list");
+  if (!el) return;
+  if (!state.savedDecks) state.savedDecks = [null, null, null];
+  el.innerHTML = state.savedDecks.map((deck, i) => {
+    const filled = deck && deck.length === 5;
+    // Check all saved cards still exist in collection
+    const valid = filled && deck.every(n => state.collection[n]);
+    const label = valid
+      ? deck.map(n => `${n}(${state.collection[n].rarity})`).join(", ")
+      : filled ? "（カード未所持）" : "空き";
+    return `
+      <div class="deck-slot">
+        <span style="font-size:0.78em; color:var(--text2); min-width:52px; font-weight:bold;">スロット${i+1}</span>
+        <span class="deck-slot-name ${valid ? "filled" : ""}" title="${valid ? label : ""}">${valid ? label : label}</span>
+        <button class="btn-slot-save" onclick="saveDeck(${i})">保存</button>
+        <button class="btn-slot-load" onclick="loadDeck(${i})" ${valid ? "" : "disabled"}>読込</button>
+        <button class="btn-slot-clear" onclick="clearDeckSlot(${i})" ${filled ? "" : "disabled"}>✕</button>
+      </div>`;
+  }).join("");
+}
+
+function saveDeck(slot) {
+  if (selectedDeckNames.size !== 5) { showToast("5枚選択してから保存してください"); return; }
+  if (!state.savedDecks) state.savedDecks = [null, null, null];
+  state.savedDecks[slot] = Array.from(selectedDeckNames);
+  saveState();
+  renderDeckSlots();
+  showToast(`スロット${slot+1}に保存しました`);
+}
+
+function loadDeck(slot) {
+  if (!state.savedDecks) return;
+  const deck = state.savedDecks[slot];
+  if (!deck) return;
+  // Filter out cards no longer in collection
+  const valid = deck.filter(n => state.collection[n]);
+  if (valid.length === 0) { showToast("所持カードがありません"); return; }
+  if (valid.length < 5) showToast(`${5 - valid.length}枚が未所持のためスキップしました`);
+  selectedDeckNames = new Set(valid.slice(0, 5));
+  renderDeckList();
+  showToast(`スロット${slot+1}を読み込みました`);
+}
+
+function clearDeckSlot(slot) {
+  if (!state.savedDecks) return;
+  state.savedDecks[slot] = null;
+  saveState();
+  renderDeckSlots();
 }
 
 // ---- Stat buff shop ----
