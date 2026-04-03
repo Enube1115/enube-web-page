@@ -367,6 +367,32 @@
   ::-webkit-scrollbar-thumb { background: #334; border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #556; }
 
+  /* Daily missions */
+  .mission-card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:8px; }
+  .mission-card.completed { border-color:var(--yellow); }
+  .mission-card.claimed   { opacity:0.55; }
+  .mission-title { font-weight:bold; margin-bottom:4px; }
+  .mission-progress { font-size:0.82em; color:var(--text2); margin:4px 0 6px; }
+  .mission-bar-wrap { height:5px; background:var(--bg); border-radius:3px; margin-bottom:8px; }
+  .mission-bar-fill { height:100%; background:var(--cyan); border-radius:3px; transition:width 0.4s; }
+  .mission-reward { font-size:0.8em; color:var(--yellow); }
+  .mission-reset { font-size:0.8em; color:var(--text2); text-align:right; margin-bottom:10px; }
+
+  /* Zukan */
+  .zukan-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(158px,1fr)); gap:8px; }
+  .zukan-card { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .zukan-card.owned-card { }
+  .zukan-card.unknown-card { opacity:0.55; }
+  .zk-rarity { font-size:0.72em; font-weight:bold; margin-bottom:3px; }
+  .zk-name   { font-weight:bold; font-size:0.9em; margin-bottom:4px; word-break:break-all; }
+  .zk-stats  { font-size:0.78em; color:var(--text2); line-height:1.5; }
+  .zukan-filter { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:10px; }
+  .zukan-count  { font-size:0.85em; color:var(--text2); margin-bottom:8px; }
+
+  /* Share button */
+  .btn-share { background: linear-gradient(135deg, #1a3a1a, #00994d); color:#fff; }
+  .btn-share:hover:not(:disabled) { box-shadow:0 0 10px rgba(0,200,80,0.4); }
+
   @media (max-width: 500px) {
     .battle-cards { grid-template-columns: 1fr; }
     .home-grid { grid-template-columns: 1fr; }
@@ -389,6 +415,8 @@
     <button onclick="switchTab('gacha')">✨ ガチャ</button>
     <button onclick="switchTab('collection')">📦 コレクション</button>
     <button onclick="switchTab('battle')">⚔ バトル</button>
+    <button onclick="switchTab('missions')">📅 ミッション</button>
+    <button onclick="switchTab('zukan')">📖 図鑑</button>
     <button onclick="switchTab('info')">📋 情報</button>
   </nav>
 
@@ -414,6 +442,16 @@
           <div class="icon">⚔</div>
           <div class="title">バトル</div>
           <div class="desc">ターン制 5pt先取 CPUバトル</div>
+        </div>
+        <div class="home-card" onclick="switchTab('missions')">
+          <div class="icon">📅</div>
+          <div class="title">デイリーミッション</div>
+          <div class="desc">毎日3つ・クリアでボーナス</div>
+        </div>
+        <div class="home-card" onclick="switchTab('zukan')">
+          <div class="icon">📖</div>
+          <div class="title">図鑑</div>
+          <div class="desc">全200種カード一覧</div>
         </div>
         <div class="home-card" onclick="switchTab('info')">
           <div class="icon">📋</div>
@@ -608,6 +646,33 @@
     </div>
   </div>
 
+  <!-- MISSIONS -->
+  <div id="panel-missions" class="panel">
+    <div class="box">
+      <div class="box-title">📅 デイリーミッション</div>
+      <div class="mission-reset" id="mission-reset-label">次のリセット: 明日</div>
+      <div id="mission-list">
+        <div style="color:var(--text2);">読み込み中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZUKAN -->
+  <div id="panel-zukan" class="panel">
+    <div class="box">
+      <div class="box-title">📖 図鑑（全200種）</div>
+      <div class="zukan-filter" id="zukan-filter">
+        <button class="filter-btn active-ALL" data-filter="ALL" onclick="setZukanFilter(this,'ALL')">全て</button>
+        <button class="filter-btn" data-filter="UR" onclick="setZukanFilter(this,'UR')">UR</button>
+        <button class="filter-btn" data-filter="SR" onclick="setZukanFilter(this,'SR')">SR</button>
+        <button class="filter-btn" data-filter="R" onclick="setZukanFilter(this,'R')">R</button>
+        <button class="filter-btn" data-filter="N" onclick="setZukanFilter(this,'N')">N</button>
+      </div>
+      <div class="zukan-count" id="zukan-count"></div>
+      <div class="zukan-grid" id="zukan-grid"></div>
+    </div>
+  </div>
+
   <!-- INFO -->
   <div id="panel-info" class="panel">
     <div class="box info-section">
@@ -660,7 +725,10 @@
     <div class="result-icon" id="result-icon">🏆</div>
     <div class="result-title" id="result-title">勝利！</div>
     <div class="result-detail" id="result-detail"></div>
-    <button class="btn btn-primary" onclick="closeResult()">閉じる</button>
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+      <button class="btn btn-share btn-sm" onclick="copyResult()">📋 結果をコピー</button>
+      <button class="btn btn-primary" onclick="closeResult()">閉じる</button>
+    </div>
   </div>
 </div>
 
@@ -820,7 +888,8 @@ function defaultState() {
     starterReceived: false,
     potions: 0,    // 所持回復薬数
     atkBuffs: 0,   // 所持攻撃アップ数
-    defBuffs: 0    // 所持防御アップ数
+    defBuffs: 0,   // 所持防御アップ数
+    daily: null    // { date, missions:[{type,desc,target,reward}], progress:[0,0,0], claimed:[f,f,f] }
   };
 }
 
@@ -882,12 +951,14 @@ function switchTab(tab) {
   document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
   document.querySelectorAll("#tab-nav button").forEach(b => b.classList.remove("active"));
   document.getElementById("panel-" + tab).classList.add("active");
-  const tabs = ["home","gacha","collection","battle","info"];
+  const tabs = ["home","gacha","collection","battle","missions","zukan","info"];
   const idx = tabs.indexOf(tab);
   document.querySelectorAll("#tab-nav button")[idx].classList.add("active");
 
   if (tab === "collection") renderCollection();
   if (tab === "battle") renderDeckList();
+  if (tab === "missions") renderMissions();
+  if (tab === "zukan") renderZukan();
 }
 
 // ============================================================
@@ -975,6 +1046,9 @@ function gachaSingle() {
   state.coins -= COST_SINGLE;
   const draws = [drawOne()];
   const results = processDraws(draws);
+  trackMission("gacha_single", 1);
+  trackMission("collect_cards", 1);
+  trackGachaResults(results);
   saveState();
   updateDisplay();
   renderGachaResult("✨ ガチャ結果（1回）", results);
@@ -985,9 +1059,24 @@ function gachaMulti() {
   state.coins -= COST_MULTI;
   const draws = Array.from({ length: 10 }, drawOne);
   const results = processDraws(draws);
+  trackMission("gacha_multi", 1);
+  trackMission("gacha_single", 10);
+  trackMission("collect_cards", 10);
+  trackGachaResults(results);
   saveState();
   updateDisplay();
   renderGachaResult("🎰 ガチャ結果（10連）", results);
+}
+
+function trackGachaResults(results) {
+  for (const r of results) {
+    if (r.rarity === "UR") trackMission("pull_ur", 1);
+    if (r.rarity === "SR" || r.rarity === "UR") trackMission("pull_sr", 1);
+    if (r.rarity !== "N") trackMission("pull_r_above", 1);
+    if (r.leveled) trackMission("level_up", 1);
+    const elemMap = { "火":"elem_fire","水":"elem_water","風":"elem_wind","土":"elem_earth","雷":"elem_thunder","光":"elem_light","闇":"elem_dark" };
+    if (elemMap[r.element]) trackMission(elemMap[r.element], 1);
+  }
 }
 
 function starterPack() {
@@ -1008,6 +1097,8 @@ function starterPack() {
     [draws[i], draws[j]] = [draws[j], draws[i]];
   }
   const results = processDraws(draws);
+  trackMission("collect_cards", 50);
+  trackGachaResults(results);
   saveState();
   updateDisplay();
   renderGachaResult("🎁 スターターパック（N×45 + R×5）", results);
@@ -1268,6 +1359,7 @@ function useSkill() {
   if (!skill || pCard.skillUsed) return;
 
   pCard.skillUsed = true;
+  trackMission("use_skill", 1);
   const pm = elemMult(pCard.element, cCard.element);
   let skillDmg = 0;
   let skillTag = "";
@@ -1604,6 +1696,16 @@ function endBattle(fled) {
 
   if (fled) {
     addLog(`<span class="log-system">逃げました。コインは戻りません。</span>`);
+    const diffLabel2 = { weak:"よわい", normal:"ふつう", strong:"つよい" }[bs.diff] || bs.diff;
+    lastBattleShareText = [
+      "⚔ モンスターカード バトル結果 ⚔",
+      `日時: ${todayStr()}`,
+      `難易度: ${diffLabel2}`,
+      `スコア: あなた ${bs.pPts}pt / CPU ${bs.cPts}pt`,
+      "結果: 逃走",
+      `使用デッキ: ${bs.pHand.map(c => `${c.name}(${c.rarity})`).join(", ")}`,
+      "#モンスターカードガチャ"
+    ].join("\n");
     showResultOverlay("🏃", "逃走！",
       `スコア: あなた ${bs.pPts}pt / CPU ${bs.cPts}pt\n残コイン: ${state.coins}`,
       "gray");
@@ -1627,6 +1729,23 @@ function endBattle(fled) {
   } else {
     result = pPts > cPts ? "win" : pPts < cPts ? "lose" : "draw";
   }
+
+  trackMission("battle_any", 1);
+  if (result === "win") trackMission("battle_win", 1);
+
+  // Build share text
+  const diffLabel = { weak:"よわい", normal:"ふつう", strong:"つよい" }[bs.diff] || bs.diff;
+  const deckNames = bs.pHand.map(c => `${c.name}(${c.rarity})`).join(", ");
+  const resultLabel = result === "win" ? "勝利" : result === "lose" ? "敗北" : "引き分け";
+  lastBattleShareText = [
+    "⚔ モンスターカード バトル結果 ⚔",
+    `日時: ${todayStr()}`,
+    `難易度: ${diffLabel}`,
+    `スコア: あなた ${pPts}pt / CPU ${cPts}pt`,
+    `結果: ${resultLabel}`,
+    `使用デッキ: ${deckNames}`,
+    "#モンスターカードガチャ"
+  ].join("\n");
 
   if (result === "win") {
     const reward = bs.cost * 2;
@@ -1678,6 +1797,199 @@ function closeResult() {
 }
 
 // ============================================================
+// DAILY MISSIONS
+// ============================================================
+const MISSION_POOL = [
+  { type:"gacha_single",  desc:"ガチャを3回引く",          target:3,  reward:15 },
+  { type:"gacha_multi",   desc:"10連ガチャを引く",          target:1,  reward:25 },
+  { type:"battle_win",    desc:"バトルに勝つ",              target:1,  reward:20 },
+  { type:"battle_any",    desc:"バトルをする（結果問わず）", target:1,  reward:10 },
+  { type:"pull_ur",       desc:"URカードを引く",            target:1,  reward:40 },
+  { type:"pull_sr",       desc:"SR以上のカードを引く",      target:1,  reward:20 },
+  { type:"pull_r_above",  desc:"R以上のカードを3枚引く",    target:3,  reward:15 },
+  { type:"elem_fire",     desc:"火属性カードを2枚引く",      target:2,  reward:12 },
+  { type:"elem_water",    desc:"水属性カードを2枚引く",      target:2,  reward:12 },
+  { type:"elem_wind",     desc:"風属性カードを2枚引く",      target:2,  reward:12 },
+  { type:"elem_earth",    desc:"土属性カードを2枚引く",      target:2,  reward:12 },
+  { type:"elem_thunder",  desc:"雷属性カードを2枚引く",      target:2,  reward:12 },
+  { type:"elem_light",    desc:"光属性カードを2枚引く",      target:2,  reward:12 },
+  { type:"elem_dark",     desc:"闇属性カードを2枚引く",      target:2,  reward:12 },
+  { type:"collect_cards", desc:"カードを5枚引く",            target:5,  reward:10 },
+  { type:"use_skill",     desc:"必殺技を使う",              target:1,  reward:20 },
+  { type:"level_up",      desc:"カードをレベルアップさせる", target:1,  reward:15 },
+];
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function ensureDaily() {
+  const today = todayStr();
+  if (!state.daily || state.daily.date !== today) {
+    // Pick 3 non-duplicate missions
+    const pool = [...MISSION_POOL];
+    const chosen = [];
+    while (chosen.length < 3 && pool.length > 0) {
+      const idx = Math.floor(Math.random() * pool.length);
+      chosen.push({ ...pool[idx] });
+      pool.splice(idx, 1);
+    }
+    state.daily = {
+      date: today,
+      missions: chosen,
+      progress: [0, 0, 0],
+      claimed: [false, false, false]
+    };
+    saveState();
+  }
+}
+
+function trackMission(type, amount) {
+  amount = amount || 1;
+  ensureDaily();
+  const d = state.daily;
+  let changed = false;
+  d.missions.forEach((m, i) => {
+    if (d.claimed[i]) return;
+    if (m.type === type) {
+      d.progress[i] = Math.min(d.progress[i] + amount, m.target);
+      changed = true;
+    }
+  });
+  if (changed) saveState();
+}
+
+function claimMission(i) {
+  ensureDaily();
+  const d = state.daily;
+  if (d.claimed[i]) return;
+  if (d.progress[i] < d.missions[i].target) { showToast("まだクリアしていません"); return; }
+  d.claimed[i] = true;
+  state.coins += d.missions[i].reward;
+  saveState();
+  updateDisplay();
+  showToast(`+${d.missions[i].reward}コイン獲得！`);
+  renderMissions();
+}
+
+function renderMissions() {
+  ensureDaily();
+  const d = state.daily;
+  const listEl = document.getElementById("mission-list");
+  const resetEl = document.getElementById("mission-reset-label");
+  resetEl.textContent = `本日 ${d.date} のミッション（翌日リセット）`;
+
+  listEl.innerHTML = d.missions.map((m, i) => {
+    const prog = d.progress[i];
+    const done = prog >= m.target;
+    const claimed = d.claimed[i];
+    const pct = Math.min(100, prog / m.target * 100);
+    let cls = "mission-card";
+    if (claimed) cls += " claimed";
+    else if (done) cls += " completed";
+    const btnHtml = claimed
+      ? `<button class="btn btn-gray btn-sm" disabled>受取済</button>`
+      : done
+        ? `<button class="btn btn-gold btn-sm" onclick="claimMission(${i})">🎁 受け取る（+${m.reward}コイン）</button>`
+        : `<button class="btn btn-gray btn-sm" disabled>進行中...</button>`;
+    return `
+      <div class="${cls}">
+        <div class="mission-title">${m.desc}</div>
+        <div class="mission-progress">${prog} / ${m.target}</div>
+        <div class="mission-bar-wrap"><div class="mission-bar-fill" style="width:${pct}%"></div></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          ${btnHtml}
+          <span class="mission-reward">報酬: ${m.reward}コイン</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+// ============================================================
+// ZUKAN
+// ============================================================
+let zukanFilter = "ALL";
+
+function setZukanFilter(el, f) {
+  zukanFilter = f;
+  document.querySelectorAll(".zukan-filter .filter-btn").forEach(b => {
+    b.classList.toggle("active-" + b.dataset.filter, false);
+    b.style.borderColor = "";
+    b.style.color = "";
+  });
+  el.style.borderColor = "var(--cyan)";
+  el.style.color = "var(--cyan)";
+  renderZukan();
+}
+
+function renderZukan() {
+  const grid = document.getElementById("zukan-grid");
+  const countEl = document.getElementById("zukan-count");
+  const rarities = zukanFilter === "ALL" ? ["UR","SR","R","N"] : [zukanFilter];
+
+  let html = "";
+  let total = 0, owned = 0;
+  for (const r of rarities) {
+    for (const name of CARDS[r]) {
+      total++;
+      const isOwned = !!state.collection[name];
+      if (isOwned) owned++;
+      const elem = isOwned ? state.collection[name].element : cardElement(name);
+      const elemColor = elementColor(elem);
+      if (isOwned) {
+        const c = state.collection[name];
+        const atk = getCardATK(name);
+        const hp = getCardHP(name);
+        html += `
+          <div class="zukan-card owned-card" style="border-color:${rarityColor(r)}22;">
+            <div class="zk-rarity" style="color:${rarityColor(r)}">${r}</div>
+            <div class="zk-name" style="color:${rarityColor(r)}">${name}</div>
+            <div class="zk-stats">
+              <span class="elem-badge ${elemClass(elem)}" style="font-size:0.8em;">${elem}</span>
+              Lv.${c.level} ATK:${atk} HP:${hp}
+            </div>
+          </div>`;
+      } else {
+        html += `
+          <div class="zukan-card unknown-card">
+            <div class="zk-rarity" style="color:${rarityColor(r)}">${r}</div>
+            <div class="zk-name" style="color:var(--text2)">???</div>
+            <div class="zk-stats">
+              <span class="elem-badge ${elemClass(elem)}">${elem}</span>
+              未収集
+            </div>
+          </div>`;
+      }
+    }
+  }
+  grid.innerHTML = html;
+  countEl.textContent = `収集済: ${owned} / ${total}種`;
+}
+
+// ============================================================
+// RESULT SHARE
+// ============================================================
+let lastBattleShareText = "";
+
+function copyResult() {
+  if (!lastBattleShareText) return;
+  navigator.clipboard.writeText(lastBattleShareText).then(() => {
+    showToast("クリップボードにコピーしました！");
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement("textarea");
+    ta.value = lastBattleShareText;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    showToast("クリップボードにコピーしました！");
+  });
+}
+
+// ============================================================
 // INFO: Element chart
 // ============================================================
 function renderElemChart() {
@@ -1704,6 +2016,7 @@ function renderElemChart() {
 // ============================================================
 // INIT
 // ============================================================
+ensureDaily();
 updateDisplay();
 renderElemChart();
 if (state.starterReceived) {
