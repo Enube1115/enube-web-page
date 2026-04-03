@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>モンスターカード ガチャシミュレーター</title>
+<title>Deck Rush</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -500,6 +500,28 @@
   .tutorial-dot.active { background: var(--cyan); }
   .tutorial-btns { display: flex; justify-content: space-between; align-items: center; }
 
+  /* Titles / Badges */
+  .titles-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; }
+  .titles-header { font-size: 0.85em; font-weight: bold; color: var(--cyan); margin-bottom: 8px; letter-spacing: 0.5px; }
+  .titles-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+  .title-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.76em; padding: 3px 9px; border-radius: 20px; font-weight: bold; }
+  .title-badge.unlocked { background: rgba(255,215,64,0.12); border: 1px solid var(--yellow); color: var(--yellow); }
+  .title-badge.locked { background: var(--bg3); border: 1px solid #1e2840; color: #334466; }
+  .titles-progress { font-size: 0.78em; color: var(--text2); margin-top: 6px; }
+
+  /* Boss battle */
+  .boss-diff { background: linear-gradient(135deg, #160008, #2a0018) !important; border-color: #660033 !important; }
+  .boss-diff:hover { border-color: #ff44aa !important; }
+  .boss-diff .diff-name { color: #ff66bb !important; }
+  .boss-diff .diff-cost { color: #ff99cc !important; }
+  .boss-status-badge {
+    display: inline-block; font-size: 0.78em; padding: 2px 8px; border-radius: 4px;
+    font-weight: bold; margin-top: 4px;
+  }
+  .boss-available { background: rgba(255,215,64,0.15); color: var(--yellow); border: 1px solid var(--yellow); }
+  .boss-done-win  { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid var(--green); }
+  .boss-done-lose { background: rgba(255,82,82,0.15); color: var(--red); border: 1px solid var(--red); }
+
   /* Daily Rule banner */
   .daily-rule-banner {
     background: linear-gradient(135deg, #1a1800, #252200);
@@ -561,7 +583,7 @@
 <body>
 <div id="app">
   <header>
-    <h1>モンスターカード ガチャシミュレーター</h1>
+    <h1>Deck Rush</h1>
     <div class="coin-bar">
       <span class="coin-stat"><span class="coin-icon">🪙</span><label>コイン</label><span class="stat-val" id="coins-display">100</span></span>
       <span class="coin-stat"><span class="coin-icon">📦</span><label>コレクション</label><span class="stat-val" id="coll-display">0</span><label>種</label></span>
@@ -613,6 +635,12 @@
         </div>
       </div>
     </div>
+    <div class="titles-box" id="titles-box">
+      <div class="titles-header">称号・実績</div>
+      <div class="titles-grid" id="titles-grid"></div>
+      <div class="titles-progress" id="titles-progress"></div>
+    </div>
+
     <div class="daily-rule-banner" id="daily-rule-banner">
       <div class="daily-rule-icon">⚡</div>
       <div class="daily-rule-content">
@@ -692,6 +720,11 @@
             <div class="diff-name" style="color:var(--red)">つよい</div>
             <div class="diff-info">SR・UR種 / 最大Lv.100</div>
             <div class="diff-cost">10コイン → 勝利で25〜35コイン＋連勝ボーナス</div>
+          </div>
+          <div class="diff-btn boss-diff" data-diff="boss" onclick="selectDiff(this,'boss')">
+            <div class="diff-name">ボス</div>
+            <div class="diff-info">SR・UR種 / 最大Lv.150　<span id="boss-week-badge"></span></div>
+            <div class="diff-cost">20コイン → 勝利でUR確定＋50コイン（週1回）</div>
           </div>
         </div>
       </div>
@@ -1000,10 +1033,30 @@ const ELEMENT_CHART = {
 
 // CPU configs
 const CPU_CONFIGS = {
-  weak:   { label:"よわいCPU",   cost:0,  rewardMin:0,  rewardMax:0,  pool:["N"],        maxLv:20,  dailyLimit:0  },
-  normal: { label:"ふつうのCPU", cost:5,  rewardMin:10, rewardMax:15, pool:["N","R"],    maxLv:50,  dailyLimit:5  },
-  strong: { label:"つよいCPU",   cost:10, rewardMin:25, rewardMax:35, pool:["SR","UR"],  maxLv:100, dailyLimit:0  }
+  weak:   { label:"よわいCPU",           cost:0,  rewardMin:0,  rewardMax:0,  pool:["N"],        maxLv:20,  dailyLimit:0 },
+  normal: { label:"ふつうのCPU",         cost:5,  rewardMin:10, rewardMax:15, pool:["N","R"],    maxLv:50,  dailyLimit:5 },
+  strong: { label:"つよいCPU",           cost:10, rewardMin:25, rewardMax:35, pool:["SR","UR"],  maxLv:100, dailyLimit:0 },
+  boss:   { label:"ウィークリーボス",    cost:20, rewardMin:50, rewardMax:50, pool:["SR","UR"],  maxLv:150, dailyLimit:0 }
 };
+
+// Title / Badge definitions
+const TITLE_DEFS = [
+  { id:"first_win",  label:"初勝利",        icon:"🏅", check: () => (state.stats?.totalWins||0) >= 1 },
+  { id:"wins5",      label:"5勝達成",        icon:"⚔",  check: () => (state.stats?.totalWins||0) >= 5 },
+  { id:"wins10",     label:"バトルマスター",  icon:"🗡",  check: () => (state.stats?.totalWins||0) >= 10 },
+  { id:"wins30",     label:"猛者",           icon:"🦁", check: () => (state.stats?.totalWins||0) >= 30 },
+  { id:"wins100",    label:"レジェンド",      icon:"👑", check: () => (state.stats?.totalWins||0) >= 100 },
+  { id:"streak3",    label:"3連勝",          icon:"🔥", check: () => (state.stats?.maxWinStreak||0) >= 3 },
+  { id:"streak5",    label:"5連勝",          icon:"⚡", check: () => (state.stats?.maxWinStreak||0) >= 5 },
+  { id:"streak10",   label:"10連勝",         icon:"💫", check: () => (state.stats?.maxWinStreak||0) >= 10 },
+  { id:"gacha10",    label:"ガチャ10回",      icon:"🎲", check: () => (state.stats?.totalGacha||0) >= 10 },
+  { id:"gacha50",    label:"ガチャ50回",      icon:"🎯", check: () => (state.stats?.totalGacha||0) >= 50 },
+  { id:"gacha100",   label:"ガチャ100回",     icon:"💎", check: () => (state.stats?.totalGacha||0) >= 100 },
+  { id:"zukan25",    label:"図鑑25%",         icon:"📖", check: () => zukanPct() >= 25 },
+  { id:"zukan50",    label:"図鑑50%",         icon:"📚", check: () => zukanPct() >= 50 },
+  { id:"zukan100",   label:"図鑑完成！",      icon:"🌟", check: () => zukanPct() >= 100 },
+  { id:"boss_win",   label:"ボス討伐",        icon:"🐉", check: () => (state.bossWins||0) >= 1 },
+];
 
 // ============================================================
 // UTILITY
@@ -1082,7 +1135,10 @@ function defaultState() {
     tutorialStep: 0,       // 0=not seen, 1=slides done awaiting weak win, 2=complete
     dailyRule: null,       // { date, ruleId }
     winStreak: 0,          // global consecutive wins (non-weak)
-    savedDecks: [null, null, null] // saved deck slots (array of 5 card names each)
+    savedDecks: [null, null, null], // saved deck slots (array of 5 card names each)
+    stats: { totalWins: 0, totalGacha: 0, maxWinStreak: 0 },
+    bossChallenge: {},     // { "YYYY-WNN": { challenged, won } }
+    bossWins: 0
   };
 }
 
@@ -1150,7 +1206,7 @@ function switchTab(tab) {
 
   if (tab === "collection") renderCollection();
   else pendingRetire = null;
-  if (tab === "battle") renderDeckList();
+  if (tab === "battle") { renderDeckList(); renderBossWeekBadge(); }
   if (tab === "missions") renderMissions();
   if (tab === "zukan") renderZukan();
 }
@@ -1240,6 +1296,8 @@ function gachaSingle() {
   const cost = (rule.id === "gacha_disc") ? (COST_SINGLE - 2) : COST_SINGLE;
   if (state.coins < cost) { showToast("コインが足りません！"); return; }
   state.coins -= cost;
+  if (!state.stats) state.stats = { totalWins:0, totalGacha:0, maxWinStreak:0 };
+  state.stats.totalGacha = (state.stats.totalGacha||0) + 1;
   const draws = [drawOne()];
   const results = processDraws(draws);
   trackMission("gacha_single", 1);
@@ -1247,12 +1305,15 @@ function gachaSingle() {
   trackGachaResults(results);
   saveState();
   updateDisplay();
+  renderTitles();
   renderGachaResult("✨ ガチャ結果（1回）", results);
 }
 
 function gachaMulti() {
   if (state.coins < COST_MULTI) { showToast("コインが足りません！"); return; }
   state.coins -= COST_MULTI;
+  if (!state.stats) state.stats = { totalWins:0, totalGacha:0, maxWinStreak:0 };
+  state.stats.totalGacha = (state.stats.totalGacha||0) + 10;
   const draws = Array.from({ length: 10 }, drawOne);
   const results = processDraws(draws);
   trackMission("gacha_multi", 1);
@@ -1261,6 +1322,7 @@ function gachaMulti() {
   trackGachaResults(results);
   saveState();
   updateDisplay();
+  renderTitles();
   renderGachaResult("🎰 ガチャ結果（10連）", results);
 }
 
@@ -1497,6 +1559,18 @@ function selectDiff(el, diff) {
   selectedDiff = diff;
   document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("selected"));
   el.classList.add("selected");
+
+  // Boss weekly eligibility check
+  if (diff === 'boss') {
+    const ws = getWeekStr();
+    const rec = (state.bossChallenge || {})[ws];
+    if (rec) {
+      showToast(rec.won ? "今週のボスはクリア済みです！" : "今週はすでに挑戦しました（次週リセット）");
+      selectedDiff = null;
+      el.classList.remove("selected");
+      return;
+    }
+  }
 
   const cfg = CPU_CONFIGS[diff];
   if (state.coins < cfg.cost) {
@@ -2106,15 +2180,15 @@ function endBattle(fled) {
 
   if (fled) {
     addLog(`<span class="log-system">逃げました。コインは戻りません。</span>`);
-    const diffLabel2 = { weak:"よわい", normal:"ふつう", strong:"つよい" }[bs.diff] || bs.diff;
+    const diffLabel2 = { weak:"よわい", normal:"ふつう", strong:"つよい", boss:"ボス" }[bs.diff] || bs.diff;
     lastBattleShareText = [
-      "⚔ モンスターカード バトル結果 ⚔",
+      "⚔ Deck Rush バトル結果 ⚔",
       `日時: ${todayStr()}`,
       `難易度: ${diffLabel2}`,
       `スコア: あなた ${bs.pPts}pt / CPU ${bs.cPts}pt`,
       "結果: 逃走",
       `使用デッキ: ${bs.pHand.map(c => `${c.name}(${c.rarity})`).join(", ")}`,
-      "#モンスターカードガチャ"
+      "#DeckRush"
     ].join("\n");
     showResultOverlay("🏃", "逃走！",
       `スコア: あなた ${bs.pPts}pt / CPU ${bs.cPts}pt\n残コイン: ${state.coins}`,
@@ -2144,17 +2218,17 @@ function endBattle(fled) {
   if (result === "win") trackMission("battle_win", 1);
 
   // Build share text
-  const diffLabel = { weak:"よわい", normal:"ふつう", strong:"つよい" }[bs.diff] || bs.diff;
+  const diffLabel = { weak:"よわい", normal:"ふつう", strong:"つよい", boss:"ボス" }[bs.diff] || bs.diff;
   const deckNames = bs.pHand.map(c => `${c.name}(${c.rarity})`).join(", ");
   const resultLabel = result === "win" ? "勝利" : result === "lose" ? "敗北" : "引き分け";
   lastBattleShareText = [
-    "⚔ モンスターカード バトル結果 ⚔",
+    "⚔ Deck Rush バトル結果 ⚔",
     `日時: ${todayStr()}`,
     `難易度: ${diffLabel}`,
     `スコア: あなた ${pPts}pt / CPU ${cPts}pt`,
     `結果: ${resultLabel}`,
     `使用デッキ: ${deckNames}`,
-    "#モンスターカードガチャ"
+    "#DeckRush"
   ].join("\n");
 
   const cfg = CPU_CONFIGS[bs.diff];
@@ -2207,9 +2281,23 @@ function endBattle(fled) {
         extraMsg = `\n初回クリア報酬: UR「${urName}」(Lv.${level})`;
         addLog(`<span class="log-win">★ 初回クリア報酬: UR「${urName}」を獲得！</span>`);
       }
+
+    } else if (bs.diff === "boss") {
+      // ボスバトル勝利 — URカード確定 + 50コイン
+      if (!state.bossChallenge) state.bossChallenge = {};
+      const ws = getWeekStr();
+      state.bossChallenge[ws] = { challenged: true, won: true };
+      state.bossWins = (state.bossWins || 0) + 1;
+      reward = 50;
+      const urCards = CARDS["UR"];
+      const urName = urCards[Math.floor(Math.random() * urCards.length)];
+      const { level: bossUrLv } = addCard(urName, "UR");
+      extraMsg = `\n🐉 ボス討伐！UR「${urName}」(Lv.${bossUrLv}) 獲得！`;
+      addLog(`<span class="log-win">🐉 ウィークリーボス討伐！ UR「${urName}」を獲得！</span>`);
+      renderBossWeekBadge();
     }
 
-    // ③ 連勝ボーナス（よわい以外全難易度、報酬があるとき）
+    // 連勝ボーナス（よわい以外全難易度、報酬があるとき）
     if (bs.diff !== "weak") {
       if (!state.winStreak) state.winStreak = 0;
       state.winStreak++;
@@ -2229,9 +2317,17 @@ function endBattle(fled) {
       }
     }
 
+    // Stats: total wins + max streak
+    if (!state.stats) state.stats = { totalWins:0, totalGacha:0, maxWinStreak:0 };
+    state.stats.totalWins = (state.stats.totalWins||0) + 1;
+    if ((state.winStreak||0) > (state.stats.maxWinStreak||0)) {
+      state.stats.maxWinStreak = state.winStreak || 0;
+    }
+
     state.coins += reward;
     saveState();
     updateDisplay();
+    renderTitles();
     const rewardLine = reward > 0 ? `+${reward}コイン獲得！` : "報酬なし（練習モード）";
     addLog(`<span class="log-win">★ あなたの勝ち！ ${rewardLine} 残コイン: ${state.coins}</span>`);
     showResultOverlay("🏆", "勝利！", `${rewardLine}\n残コイン: ${state.coins}コイン${bonusMsg}${extraMsg}`, "win");
@@ -2239,6 +2335,13 @@ function endBattle(fled) {
   } else if (result === "lose") {
     if (bs.diff === "strong") state.strongStreak = 0; // 連勝リセット
     if (bs.diff !== "weak") state.winStreak = 0;      // グローバル連勝リセット
+    // Boss lose — mark as challenged
+    if (bs.diff === "boss") {
+      if (!state.bossChallenge) state.bossChallenge = {};
+      const ws = getWeekStr();
+      state.bossChallenge[ws] = { challenged: true, won: false };
+      renderBossWeekBadge();
+    }
     saveState();
     addLog(`<span class="log-lose">✗ あなたの負け... 残コイン: ${state.coins}</span>`);
     showResultOverlay("💀", "敗北...", `スコア: あなた ${pPts}pt / CPU ${cPts}pt\n残コイン: ${state.coins}コイン`, "lose");
@@ -2561,7 +2664,7 @@ function renderElemChart() {
 const TUTORIAL_STEPS = [
   {
     title: "ようこそ！",
-    body: `このゲームでは <b>モンスターカード</b> を集めてCPUとバトルします。<br><br>
+    body: `このゲームでは <b>Deck Rush</b> でカードを集めてCPUとバトルします。<br><br>
            まずは <b>スターターパック</b>（無料）を受け取って、カードを50枚ゲットしましょう！<br><br>
            <span class="tip">コインは最初に100枚あります。</span>`
   },
@@ -2639,6 +2742,52 @@ function closeTutorial() {
 }
 
 // ============================================================
+// TITLES
+// ============================================================
+function zukanPct() {
+  const total = CARDS.N.length + CARDS.R.length + CARDS.SR.length + CARDS.UR.length;
+  const owned = Object.keys(state.collection).length;
+  return total ? Math.floor(owned / total * 100) : 0;
+}
+
+function renderTitles() {
+  const grid = document.getElementById("titles-grid");
+  const prog = document.getElementById("titles-progress");
+  if (!grid) return;
+  let unlocked = 0;
+  grid.innerHTML = TITLE_DEFS.map(t => {
+    const on = t.check();
+    if (on) unlocked++;
+    return `<span class="title-badge ${on ? "unlocked" : "locked"}">${t.icon} ${t.label}</span>`;
+  }).join("");
+  if (prog) prog.textContent = `解放: ${unlocked} / ${TITLE_DEFS.length}`;
+}
+
+// ============================================================
+// BOSS BATTLE
+// ============================================================
+function getWeekStr() {
+  const d = new Date();
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil((((d - jan1) / 86400000) + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+function renderBossWeekBadge() {
+  const el = document.getElementById("boss-week-badge");
+  if (!el) return;
+  const ws = getWeekStr();
+  const rec = (state.bossChallenge || {})[ws];
+  if (!rec) {
+    el.innerHTML = `<span class="boss-status-badge boss-available">挑戦可能！</span>`;
+  } else if (rec.won) {
+    el.innerHTML = `<span class="boss-status-badge boss-done-win">今週クリア済</span>`;
+  } else {
+    el.innerHTML = `<span class="boss-status-badge boss-done-lose">今週挑戦済</span>`;
+  }
+}
+
+// ============================================================
 // INIT
 // ============================================================
 ensureDaily();
@@ -2646,6 +2795,8 @@ ensureDailyRule();
 renderDailyRule();
 updateDisplay();
 renderElemChart();
+renderTitles();
+renderBossWeekBadge();
 if (state.starterReceived) {
   const sb = document.getElementById("starter-btn");
   sb.disabled = true;
