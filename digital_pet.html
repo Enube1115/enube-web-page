@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>デジタルペット</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .container {
+      background: #fff;
+      border-radius: 24px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    /* ---- 名前入力画面 ---- */
+    #setup-screen {
+      text-align: center;
+    }
+    #setup-screen h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    #setup-screen p  { color: #666; margin-bottom: 24px; }
+    .emoji-select {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .emoji-btn {
+      font-size: 2rem;
+      width: 56px; height: 56px;
+      border: 3px solid transparent;
+      border-radius: 14px;
+      background: #f0f0f0;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .emoji-btn.selected { border-color: #764ba2; background: #f0ebff; }
+    .name-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 1.1rem;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      outline: none;
+      margin-bottom: 16px;
+      transition: border .2s;
+    }
+    .name-input:focus { border-color: #764ba2; }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+    .btn-primary:disabled { opacity: .4; cursor: default; }
+
+    /* ---- メイン画面 ---- */
+    #main-screen { display: none; }
+
+    .pet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .pet-name { font-size: 1.4rem; font-weight: bold; color: #333; }
+    .pet-age  { font-size: .85rem; color: #888; }
+
+    .mood-label {
+      text-align: center;
+      font-size: .9rem;
+      color: #888;
+      margin-bottom: 6px;
+      min-height: 1.2em;
+    }
+
+    /* キャラクターエリア */
+    .pet-stage {
+      background: linear-gradient(180deg, #e8f4ff 0%, #d0e8ff 100%);
+      border-radius: 20px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .pet-emoji {
+      font-size: 6rem;
+      line-height: 1;
+      transition: transform .3s;
+      cursor: default;
+      user-select: none;
+      position: relative;
+      z-index: 1;
+    }
+    .pet-emoji.bounce {
+      animation: bounce .4s ease;
+    }
+    @keyframes bounce {
+      0%   { transform: translateY(0); }
+      40%  { transform: translateY(-20px) scale(1.1); }
+      70%  { transform: translateY(-6px) scale(1.05); }
+      100% { transform: translateY(0) scale(1); }
+    }
+    .speech-bubble {
+      position: absolute;
+      top: 12px; right: 16px;
+      background: #fff;
+      border-radius: 14px;
+      padding: 8px 12px;
+      font-size: .85rem;
+      color: #333;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+      max-width: 160px;
+      text-align: center;
+      opacity: 0;
+      transform: scale(.8);
+      transition: opacity .3s, transform .3s;
+      pointer-events: none;
+    }
+    .speech-bubble.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -8px; left: 20px;
+      border: 8px solid transparent;
+      border-top-color: #fff;
+      border-bottom: 0;
+    }
+
+    /* ステータスバー */
+    .stats { margin-bottom: 20px; }
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .stat-icon { font-size: 1.3rem; width: 28px; text-align: center; }
+    .stat-label { font-size: .85rem; color: #555; width: 44px; flex-shrink: 0; }
+    .stat-bar-bg {
+      flex: 1;
+      height: 12px;
+      background: #eee;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .stat-bar {
+      height: 100%;
+      border-radius: 6px;
+      transition: width .5s ease;
+    }
+    .bar-hunger  { background: linear-gradient(90deg, #f093fb, #f5576c); }
+    .bar-energy  { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+    .bar-affection { background: linear-gradient(90deg, #43e97b, #38f9d7); }
+    .stat-value { font-size: .8rem; color: #888; width: 32px; text-align: right; }
+
+    /* アクションボタン */
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .action-btn {
+      padding: 12px 6px;
+      border: none;
+      border-radius: 14px;
+      font-size: .95rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .action-btn:active { transform: scale(.95); }
+    .action-btn .icon { font-size: 1.5rem; }
+    .action-btn:disabled { opacity: .35; cursor: default; transform: none; }
+    .btn-feed   { background: #fff0f5; color: #c44; }
+    .btn-sleep  { background: #f0f4ff; color: #44c; }
+    .btn-talk   { background: #f0fff4; color: #080; }
+    .btn-play   { background: #fffaf0; color: #a60; }
+
+    .cooldown-hint {
+      font-size: .72rem;
+      color: #aaa;
+      text-align: center;
+      margin-top: 2px;
+    }
+
+    /* リセットボタン */
+    .reset-row { text-align: right; margin-top: 6px; }
+    .btn-reset {
+      background: none;
+      border: none;
+      font-size: .8rem;
+      color: #bbb;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .btn-reset:hover { color: #e55; }
+
+    /* 状態アイコン（ふきだし右上） */
+    .status-icons {
+      position: absolute;
+      top: 10px; left: 14px;
+      display: flex; gap: 4px;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 初回セットアップ画面 -->
+<div class="container">
+  <div id="setup-screen">
+    <h1>🐾 はじめまして！</h1>
+    <p>ペットに名前をつけてあげてね</p>
+    <div class="emoji-select" id="emoji-select"></div>
+    <input class="name-input" id="pet-name-input" type="text" maxlength="10" placeholder="名前を入力（例：ピョン）">
+    <button class="btn btn-primary" id="start-btn" disabled>はじめる！</button>
+  </div>
+
+  <!-- メイン画面 -->
+  <div id="main-screen">
+    <div class="pet-header">
+      <span class="pet-name" id="display-name"></span>
+      <span class="pet-age" id="display-age"></span>
+    </div>
+    <div class="mood-label" id="mood-label"></div>
+
+    <div class="pet-stage">
+      <div class="status-icons" id="status-icons"></div>
+      <div class="pet-emoji" id="pet-emoji">🐣</div>
+      <div class="speech-bubble" id="speech-bubble"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-row">
+        <span class="stat-icon">🍖</span>
+        <span class="stat-label">空腹</span>
+        <div class="stat-bar-bg"><div class="stat-bar bar-hunger" id="bar-hunger"></div></div>
+        <span class="stat-value" id="val-hunger"></span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-icon">⚡</span>
+        <span class="stat-label">元気</span>
+        <div class="stat-bar-bg"><div class="stat-bar bar-energy" id="bar-energy"></div></div>
+        <span class="stat-value" id="val-energy"></span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-icon">💖</span>
+        <span class="stat-label">親密度</span>
+        <div class="stat-bar-bg"><div class="stat-bar bar-affection" id="bar-affection"></div></div>
+        <span class="stat-value" id="val-affection"></span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="action-btn btn-feed" id="btn-feed" onclick="doAction('feed')">
+        <span class="icon">🍖</span>ごはん
+      </button>
+      <button class="action-btn btn-sleep" id="btn-sleep" onclick="doAction('sleep')">
+        <span class="icon">💤</span>ねかせる
+      </button>
+      <button class="action-btn btn-talk" id="btn-talk" onclick="doAction('talk')">
+        <span class="icon">💬</span>話しかける
+      </button>
+      <button class="action-btn btn-play" id="btn-play" onclick="doAction('play')">
+        <span class="icon">🎮</span>あそぶ
+      </button>
+    </div>
+    <div class="cooldown-hint" id="cooldown-hint"></div>
+
+    <div class="reset-row">
+      <button class="btn-reset" onclick="resetPet()">最初からやり直す</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 定数 =====
+const SAVE_KEY = 'digitalPet_v1';
+const TICK_MS  = 60 * 1000; // 1分ごとに自動減少チェック
+
+const PET_EMOJIS = ['🐣','🐱','🐶','🐸','🐰','🐻','🦊','🐼','🐨','🦁','🐯','🐮'];
+
+const HUNGER_DECAY   = 0.4;  // /分
+const ENERGY_DECAY   = 0.3;  // /分
+const AFFECTION_DECAY = 0.1; // /分
+
+const TALK_COOLDOWN  = 60 * 60 * 1000; // 1時間
+
+const MESSAGES = {
+  feed:   ['もぐもぐ…おいしい！', 'ありがとう！', 'もっとちょうだい！'],
+  sleep:  ['zzz…すやすや', 'おやすみ…', 'ぐっすり眠れたよ！'],
+  talk:   ['やっほー！', 'きみのことが大好き♪', 'いっしょにいると楽しいな', 'また話してね！', 'うん、うん！', 'そうなんだ～！'],
+  play:   ['わーい！たのしい！', 'もっとあそぼう！', 'へへ、まけないぞ！'],
+  hungry: ['お腹すいた～…', 'ごはんまだ？', 'くうくう…'],
+  tired:  ['眠い…', 'ねむねむ…', 'ちょっと疲れた…'],
+  happy:  ['きょうもよろしく！', '会いたかったよ！', 'えへへ♪'],
+  lonely: ['さみしいな…', 'はやく来てね', 'どこにいるの？'],
+};
+
+const MOOD_LABELS = [
+  { min: 80, label: '最高にご機嫌！😄', emoji: '✨' },
+  { min: 60, label: 'いい気分♪', emoji: '' },
+  { min: 40, label: 'ふつう', emoji: '' },
+  { min: 20, label: 'ちょっと元気ない…', emoji: '😔' },
+  { min: 0,  label: '具合が悪そう…😢', emoji: '😰' },
+];
+
+// ===== 状態 =====
+let pet = null;
+let tickTimer = null;
+
+// ===== 初期化 =====
+function init() {
+  // 絵文字選択ボタン生成
+  const sel = document.getElementById('emoji-select');
+  PET_EMOJIS.forEach(e => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-btn';
+    btn.textContent = e;
+    btn.onclick = () => {
+      document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      checkStartReady();
+    };
+    sel.appendChild(btn);
+  });
+  // デフォルト選択
+  sel.firstChild.classList.add('selected');
+
+  document.getElementById('pet-name-input').addEventListener('input', checkStartReady);
+  document.getElementById('start-btn').addEventListener('click', createPet);
+  checkStartReady();
+
+  // セーブデータ読み込み
+  const saved = localStorage.getItem(SAVE_KEY);
+  if (saved) {
+    try {
+      pet = JSON.parse(saved);
+      // 離席時間分のステータス減少を計算
+      const now = Date.now();
+      const elapsed = (now - pet.lastSaved) / 1000 / 60; // 分
+      pet.hunger     = clamp(pet.hunger     - HUNGER_DECAY    * elapsed, 0, 100);
+      pet.energy     = clamp(pet.energy     - ENERGY_DECAY    * elapsed, 0, 100);
+      pet.affection  = clamp(pet.affection  - AFFECTION_DECAY * elapsed, 0, 100);
+      pet.lastSaved  = now;
+      showMain();
+    } catch(e) {
+      localStorage.removeItem(SAVE_KEY);
+    }
+  }
+}
+
+function checkStartReady() {
+  const name = document.getElementById('pet-name-input').value.trim();
+  document.getElementById('start-btn').disabled = name.length === 0;
+}
+
+function createPet() {
+  const name  = document.getElementById('pet-name-input').value.trim();
+  const emoji = document.querySelector('.emoji-btn.selected')?.textContent || '🐣';
+  pet = {
+    name, emoji,
+    hunger:    80,
+    energy:    80,
+    affection: 20,
+    bornAt:    Date.now(),
+    lastSaved: Date.now(),
+    lastTalk:  0,
+    lastFed:   0,
+    lastSlept: 0,
+    lastPlayed:0,
+  };
+  save();
+  showMain();
+}
+
+// ===== 画面切り替え =====
+function showMain() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display  = 'block';
+  startTick();
+  render();
+  // 挨拶メッセージ
+  setTimeout(() => showSpeech(pickRandom(MESSAGES.happy)), 500);
+}
+
+// ===== 定期処理 =====
+function startTick() {
+  if (tickTimer) clearInterval(tickTimer);
+  tickTimer = setInterval(() => {
+    pet.hunger     = clamp(pet.hunger     - HUNGER_DECAY,    0, 100);
+    pet.energy     = clamp(pet.energy     - ENERGY_DECAY,    0, 100);
+    pet.affection  = clamp(pet.affection  - AFFECTION_DECAY, 0, 100);
+    pet.lastSaved  = Date.now();
+    save();
+    render();
+    // ランダムで状態ふきだし
+    if (Math.random() < 0.3) {
+      if (pet.hunger < 30)     showSpeech(pickRandom(MESSAGES.hungry));
+      else if (pet.energy < 30) showSpeech(pickRandom(MESSAGES.tired));
+      else if (pet.affection < 20) showSpeech(pickRandom(MESSAGES.lonely));
+    }
+  }, TICK_MS);
+}
+
+// ===== アクション =====
+function doAction(type) {
+  const now = Date.now();
+
+  if (type === 'feed') {
+    pet.hunger    = clamp(pet.hunger + 30, 0, 100);
+    pet.energy    = clamp(pet.energy + 5,  0, 100);
+    pet.affection = clamp(pet.affection + 3, 0, 100);
+    pet.lastFed   = now;
+    showSpeech(pickRandom(MESSAGES.feed));
+  }
+
+  if (type === 'sleep') {
+    pet.energy    = clamp(pet.energy + 40, 0, 100);
+    pet.hunger    = clamp(pet.hunger - 10, 0, 100);
+    pet.lastSlept = now;
+    showSpeech(pickRandom(MESSAGES.sleep));
+  }
+
+  if (type === 'talk') {
+    const elapsed = now - (pet.lastTalk || 0);
+    if (elapsed < TALK_COOLDOWN) {
+      const remaining = Math.ceil((TALK_COOLDOWN - elapsed) / 60000);
+      showSpeech(`またあとで話してね（あと${remaining}分）`);
+      return;
+    }
+    pet.affection = clamp(pet.affection + 15, 0, 100);
+    pet.energy    = clamp(pet.energy + 5,     0, 100);
+    pet.lastTalk  = now;
+    showSpeech(pickRandom(MESSAGES.talk));
+  }
+
+  if (type === 'play') {
+    pet.affection  = clamp(pet.affection + 10,  0, 100);
+    pet.energy     = clamp(pet.energy    - 10,  0, 100);
+    pet.hunger     = clamp(pet.hunger    - 8,   0, 100);
+    pet.lastPlayed = now;
+    showSpeech(pickRandom(MESSAGES.play));
+  }
+
+  bounce();
+  pet.lastSaved = now;
+  save();
+  render();
+}
+
+// ===== 吹き出し =====
+let speechTimer = null;
+function showSpeech(text) {
+  const el = document.getElementById('speech-bubble');
+  el.textContent = text;
+  el.classList.add('show');
+  if (speechTimer) clearTimeout(speechTimer);
+  speechTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function bounce() {
+  const el = document.getElementById('pet-emoji');
+  el.classList.remove('bounce');
+  void el.offsetWidth;
+  el.classList.add('bounce');
+}
+
+// ===== 描画 =====
+function render() {
+  if (!pet) return;
+
+  // 名前・年齢
+  document.getElementById('display-name').textContent = pet.name;
+  const days = Math.floor((Date.now() - pet.bornAt) / 86400000);
+  document.getElementById('display-age').textContent  = `${days}日目`;
+
+  // 絵文字
+  document.getElementById('pet-emoji').textContent = pet.emoji;
+
+  // 総合ご機嫌スコア
+  const mood = (pet.hunger + pet.energy + pet.affection) / 3;
+  const moodInfo = MOOD_LABELS.find(m => mood >= m.min) || MOOD_LABELS[MOOD_LABELS.length-1];
+  document.getElementById('mood-label').textContent = moodInfo.label;
+
+  // ステータスバー
+  setBar('hunger',    pet.hunger);
+  setBar('energy',    pet.energy);
+  setBar('affection', pet.affection);
+
+  // 状態アイコン
+  const icons = [];
+  if (pet.hunger < 30)    icons.push('🍖');
+  if (pet.energy < 30)    icons.push('💤');
+  if (pet.affection < 20) icons.push('😢');
+  document.getElementById('status-icons').textContent = icons.join(' ');
+
+  // 話しかけクールダウン表示
+  const elapsed = Date.now() - (pet.lastTalk || 0);
+  if (elapsed < TALK_COOLDOWN) {
+    const remaining = Math.ceil((TALK_COOLDOWN - elapsed) / 60000);
+    document.getElementById('cooldown-hint').textContent = `💬 話しかけはあと ${remaining} 分後`;
+    document.getElementById('btn-talk').disabled = true;
+  } else {
+    document.getElementById('cooldown-hint').textContent = '';
+    document.getElementById('btn-talk').disabled = false;
+  }
+}
+
+function setBar(stat, value) {
+  document.getElementById(`bar-${stat}`).style.width = value + '%';
+  document.getElementById(`val-${stat}`).textContent  = Math.round(value);
+}
+
+// ===== セーブ・リセット =====
+function save() {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(pet));
+}
+
+function resetPet() {
+  if (!confirm(`本当に最初からやり直しますか？\n${pet?.name || 'ペット'}のデータが消えます。`)) return;
+  clearInterval(tickTimer);
+  localStorage.removeItem(SAVE_KEY);
+  pet = null;
+  location.reload();
+}
+
+// ===== ユーティリティ =====
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ===== 起動 =====
+init();
+</script>
+</body>
+</html>
