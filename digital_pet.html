@@ -178,6 +178,19 @@ button{font-family:inherit;cursor:pointer;}
   display:flex;align-items:center;justify-content:center;
 }
 
+/* 進化条件ボックス */
+.evo-conds-box{
+  background:#fff;border-radius:12px;padding:10px 13px;margin-top:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.evo-conds-title{font-size:.78rem;font-weight:bold;color:var(--p);margin-bottom:6px;}
+.evo-conds{display:flex;flex-wrap:wrap;gap:5px;}
+.evo-cond{
+  font-size:.72rem;padding:3px 8px;border-radius:8px;
+  background:#f0f0f0;color:#666;white-space:nowrap;
+}
+.evo-cond.ok{background:#e8f5e9;color:var(--ok);}
+
 /* Reset */
 .reset-row{text-align:right;margin-top:10px;}
 .btn-reset{background:none;border:none;font-size:.75rem;color:#ccc;cursor:pointer;text-decoration:underline;}
@@ -374,6 +387,13 @@ button{font-family:inherit;cursor:pointer;}
     </div>
     <div class="cd-hint" id="cd-hint"></div>
     <div class="inv-bar" id="inv-bar"></div>
+
+    <!-- 進化条件チェックリスト -->
+    <div class="evo-conds-box" id="evo-conds-box">
+      <div class="evo-conds-title" id="evo-conds-title"></div>
+      <div class="evo-conds" id="evo-conds"></div>
+    </div>
+
     <div class="reset-row"><button class="btn-reset" onclick="resetPet()">最初からやり直す</button></div>
   </div>
 
@@ -497,9 +517,83 @@ const TOILET_CD = 20*60*1000;
 const MOLE_CD   = 60*60*1000;
 const JK_CD     = 30*60*1000;
 
-// 進化ステージ：親密度しきい値
-const STAGE_THR  = [0, 20, 60, 90];
 const STAGE_NAME = ['たまご','こども','おとな','伝説'];
+
+// 進化条件（複合）
+// canEvolve(targetStage) → boolean
+function canEvolve(s){
+  if(!pet)return false;
+  const days=Math.floor((Date.now()-pet.bornAt)/86400000);
+  const avgNormal=(pet.hunger+pet.energy+pet.hygiene)/3;
+  const avgAll   =(pet.hunger+pet.energy+pet.hygiene+pet.affection)/4;
+  switch(s){
+    case 1: // たまご→こども
+      return days>=3 && pet.affection>=20;
+    case 2: // こども→おとな
+      return days>=7 && pet.affection>=60 && avgNormal>=60;
+    case 3: // おとな→伝説
+      return days>=30 && pet.affection>=90 && avgAll>=80 && (pet.gameWins||0)>=10;
+    default: return false;
+  }
+}
+
+// 次ステージまでの進捗を0〜1で返す（プログレスバー用）
+function evoProgress(){
+  if(!pet)return 0;
+  if(pet.stage>=3)return 1;
+  const days=Math.floor((Date.now()-pet.bornAt)/86400000);
+  const avgNormal=(pet.hunger+pet.energy+pet.hygiene)/3;
+  const avgAll   =(pet.hunger+pet.energy+pet.hygiene+pet.affection)/4;
+  const gw=pet.gameWins||0;
+  switch(pet.stage){
+    case 0:{ // →こども：days/3, aff/20
+      const p1=Math.min(days/3,1);
+      const p2=Math.min(pet.affection/20,1);
+      return (p1+p2)/2;
+    }
+    case 1:{ // →おとな：days/7, aff/60, avgNormal/60
+      const p1=Math.min(days/7,1);
+      const p2=Math.min(pet.affection/60,1);
+      const p3=Math.min(avgNormal/60,1);
+      return (p1+p2+p3)/3;
+    }
+    case 2:{ // →伝説：days/30, aff/90, avgAll/80, gw/10
+      const p1=Math.min(days/30,1);
+      const p2=Math.min(pet.affection/90,1);
+      const p3=Math.min(avgAll/80,1);
+      const p4=Math.min(gw/10,1);
+      return (p1+p2+p3+p4)/4;
+    }
+    default: return 1;
+  }
+}
+
+// 次ステージの条件テキスト（未達項目を色分け表示用）
+function evoConditions(){
+  if(!pet||pet.stage>=3)return[];
+  const days=Math.floor((Date.now()-pet.bornAt)/86400000);
+  const avgNormal=(pet.hunger+pet.energy+pet.hygiene)/3;
+  const avgAll   =(pet.hunger+pet.energy+pet.hygiene+pet.affection)/4;
+  const gw=pet.gameWins||0;
+  switch(pet.stage){
+    case 0: return[
+      {label:`経過日数 ${days}/3日`, ok:days>=3},
+      {label:`親密度 ${Math.round(pet.affection)}/20`, ok:pet.affection>=20},
+    ];
+    case 1: return[
+      {label:`経過日数 ${days}/7日`, ok:days>=7},
+      {label:`親密度 ${Math.round(pet.affection)}/60`, ok:pet.affection>=60},
+      {label:`ケア平均 ${Math.round(avgNormal)}/60`, ok:avgNormal>=60},
+    ];
+    case 2: return[
+      {label:`経過日数 ${days}/30日`, ok:days>=30},
+      {label:`親密度 ${Math.round(pet.affection)}/90`, ok:pet.affection>=90},
+      {label:`全平均 ${Math.round(avgAll)}/80`, ok:avgAll>=80},
+      {label:`ゲーム勝利 ${gw}/10回`, ok:gw>=10},
+    ];
+    default: return[];
+  }
+}
 
 const EMOJIS = ['🐱','🐶','🐸','🐰','🐻','🐣','🦊','🐼','🐨','🦁','🐯','🐮'];
 
@@ -627,6 +721,8 @@ function checkReady(){
 }
 
 function offlineDecay(){
+  // 旧セーブデータ互換
+  if(pet.gameWins===undefined)pet.gameWins=0;
   const now=Date.now();
   const mins=Math.min((now-pet.lastSaved)/60000, MAX_OFF_MIN);
   const ticks=mins*2;
@@ -656,6 +752,7 @@ function createPet(){
     inventory:[],
     lastTalk:0,lastBath:0,lastToilet:0,
     lastMole:0,lastJK:0,
+    gameWins:0,
     bornAt:now,lastSaved:now,
   };
   save(); showApp();
@@ -710,11 +807,11 @@ function checkSick(){
 }
 
 function checkEvo(){
-  let ns=0;
-  for(let i=STAGE_THR.length-1;i>=0;i--)if(pet.affection>=STAGE_THR[i]){ns=i;break;}
-  if(ns>pet.stage){
-    pet.stage=ns;
-    triggerEvo(ns);
+  // 1ステージずつチェック（飛び越え進化なし）
+  const next=pet.stage+1;
+  if(next<=3 && canEvolve(next)){
+    pet.stage=next;
+    triggerEvo(next);
   }
 }
 
@@ -1073,7 +1170,7 @@ function playJK(p){
   let out='',coins=0;
   if(p===e){out='あいこ！🤝';coins=1;}
   else if((p==='rock'&&e==='scissors')||(p==='scissors'&&e==='paper')||(p==='paper'&&e==='rock')){
-    out='勝ち！🎉';coins=3;jkState.pw++;
+    out='勝ち！🎉';coins=3;jkState.pw++;pet.gameWins=(pet.gameWins||0)+1;
   }else{out='負け…😢';jkState.ew++;}
   jkState.earned+=coins;jkState.round++;
   document.getElementById('jk-out').textContent=out+(coins>0?` 🪙${coins}`:'');
@@ -1106,11 +1203,11 @@ function render(){
   document.getElementById('hdr-info').textContent=`${days}日目・${STAGE_NAME[pet.stage]}`;
   document.getElementById('hdr-coins').textContent=pet.coins;
 
-  // Stage progress bar (within current stage)
-  const curThr=STAGE_THR[pet.stage];
-  const nextThr=STAGE_THR[pet.stage+1]||100;
-  const pct=pet.stage>=STAGE_THR.length-1?100:((pet.affection-curThr)/(nextThr-curThr))*100;
-  document.getElementById('stage-fill').style.width=clamp(pct,0,100)+'%';
+  // Stage progress bar（複合条件の平均進捗）
+  document.getElementById('stage-fill').style.width=clamp(evoProgress()*100,0,100)+'%';
+
+  // 進化条件チェックリストを更新
+  renderEvoConditions();
 
   // Pet emoji
   const evArr=EVO[pet.emoji]||EVO['🐱'];
@@ -1176,6 +1273,23 @@ function render(){
 function setBar(k,v){
   document.getElementById(`bar-${k}`).style.width=clamp(v,0,100)+'%';
   document.getElementById(`v-${k}`).textContent=Math.round(v);
+}
+
+function renderEvoConditions(){
+  const el=document.getElementById('evo-conds');
+  const tEl=document.getElementById('evo-conds-title');
+  if(!el||!tEl)return;
+  if(pet.stage>=3){
+    tEl.textContent='';
+    el.innerHTML='<span style="color:var(--ok);font-size:.85rem">🌟 伝説形態に到達！おめでとう！</span>';
+    return;
+  }
+  const nextName=STAGE_NAME[pet.stage+1];
+  tEl.textContent=`✨ ${nextName}への進化条件`;
+  const conds=evoConditions();
+  el.innerHTML=conds.map(c=>
+    `<span class="evo-cond${c.ok?' ok':''}">${c.ok?'✅':'🔲'} ${c.label}</span>`
+  ).join('');
 }
 
 function renderInv(){
