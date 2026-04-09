@@ -1,0 +1,2593 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>遺された祈り</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #000;
+    color: #00ff88;
+    font-family: 'Courier New', Courier, monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  /* ════ SHARED ════ */
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .title-deco {
+    font-size: 0.72rem;
+    color: #006633;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  .divider { width: 100%; border: none; border-top: 1px solid #003322; }
+
+  .btn {
+    background: #001a0d;
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 12px 32px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.15s, box-shadow 0.15s;
+    letter-spacing: 1px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    width: 100%;
+  }
+
+  .btn:hover, .btn:active { background: #003322; box-shadow: 0 0 14px #00ff8866; }
+  .btn:disabled           { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+
+  .btn-sm {
+    font-size: 0.8rem;
+    padding: 8px 16px;
+    letter-spacing: 0;
+    color: #006633;
+    border-color: #004422;
+  }
+
+  .btn-danger { border-color: #ff4444; color: #ff4444; }
+  .btn-danger:hover, .btn-danger:active { background: #1a0000; box-shadow: 0 0 14px #ff444466; }
+
+  /* ════ TITLE ════ */
+  #title-screen { gap: 16px; animation: fadeIn 1s ease; max-width: 440px; }
+
+  .game-title {
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+    color: #00ff88;
+    text-shadow: 0 0 24px #00ff88, 0 0 48px #00aa55;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .subtitle { font-size: 0.7rem; color: #006633; letter-spacing: 2px; }
+  .prompt-label { font-size: 0.85rem; color: #00cc66; text-align: center; }
+
+  .name-input {
+    background: #001a0d;
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    font-family: inherit;
+    font-size: 1.1rem;
+    padding: 10px 16px;
+    width: 100%;
+    max-width: 280px;
+    text-align: center;
+    outline: none;
+    border-radius: 2px;
+  }
+
+  .name-input:focus { box-shadow: 0 0 12px #00ff8855; border-color: #00ffaa; }
+
+  #save-info {
+    display: none;
+    background: #001a0d;
+    border: 1px solid #004422;
+    border-radius: 2px;
+    padding: 10px 16px;
+    font-size: 0.75rem;
+    color: #009944;
+    text-align: center;
+    width: 100%;
+    max-width: 280px;
+    line-height: 1.8;
+  }
+
+  .save-label { color: #006633; font-size: 0.65rem; letter-spacing: 2px; margin-bottom: 4px; }
+
+  .title-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 280px;
+    align-items: center;
+  }
+
+  /* ════ STORY ════ */
+  #story-screen { gap: 12px; animation: fadeIn 0.6s ease; }
+
+  .story-header {
+    text-align: center;
+    width: 100%;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #003322;
+  }
+
+  .story-area-badge { font-size: 0.6rem; color: #004422; letter-spacing: 5px; margin-bottom: 4px; }
+  .story-area-name  { font-size: 1.1rem; color: #00ff88; letter-spacing: 4px; text-shadow: 0 0 12px #00ff8866; }
+
+  .story-text-box {
+    background: #010a05;
+    border: 1px solid #002211;
+    border-radius: 2px;
+    padding: 16px 18px;
+    width: 100%;
+    min-height: 260px;
+    max-height: 52vh;
+    overflow-y: auto;
+    font-size: 0.84rem;
+    color: #009944;
+    line-height: 2.1;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .story-line         { display: block; min-height: 1.2em; animation: storyLineIn 0.35s ease forwards; opacity: 0; }
+  .story-line.instant { animation: none; opacity: 1; }
+  .story-line.em      { color: #00cc66; }
+  .story-line.key     { color: #00ff88; }
+  .story-line.cry     { color: #ccffdd; }
+  .story-line.note    { color: #997744; font-style: italic; }
+
+  .story-skip-hint { font-size: 0.6rem; color: #003322; letter-spacing: 2px; transition: opacity 0.4s; }
+
+  /* ════ BATTLE ════ */
+  #battle-screen { gap: 0; }
+
+  .battle-header {
+    text-align: center;
+    font-size: 0.63rem;
+    color: #004422;
+    letter-spacing: 2px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #003322;
+    margin-bottom: 10px;
+    width: 100%;
+  }
+
+  .battle-header.boss-header { color: #882200; }
+
+  /* ── Pokémon-style battle stage ── */
+  .battle-main {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  /* battlefield: takes remaining width */
+  .battle-stage {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: #030f08;
+    border: 1px solid #003322;
+    border-radius: 2px;
+    padding: 10px;
+    min-height: 172px;
+    gap: 6px;
+  }
+
+  /* top row: enemy sprite left, enemy HP right */
+  .stage-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .stage-enemy-info {
+    text-align: right;
+    flex-shrink: 0;
+    max-width: 58%;
+  }
+
+  /* bottom row: hero HP left, hero icon right */
+  .stage-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .stage-hero-info { flex: 1; min-width: 0; }
+
+  /* sprites */
+  .enemy-sprite           { font-size: clamp(2.6rem, 9vw, 3.8rem); line-height: 1; filter: drop-shadow(0 0 12px #00ff8844); flex-shrink: 0; }
+  .enemy-sprite.shake     { animation: shake 0.35s ease; }
+  .enemy-sprite.boss-glow { filter: drop-shadow(0 0 18px #ff440088) drop-shadow(0 0 6px #ff2200); }
+
+  .enemy-name           { font-size: 0.78rem; color: #00cc66; letter-spacing: 1px; margin-bottom: 3px; }
+  .enemy-name.boss-name { color: #ff6644; text-shadow: 0 0 10px #ff333344; }
+
+  .hero-icon     { font-size: 1.8rem; line-height: 1; flex-shrink: 0; }
+  .hero-name-txt { font-size: 0.78rem; color: #00cc66; margin-bottom: 3px; }
+
+  /* HP bars */
+  .bar-row   { width: 100%; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 0.64rem; color: #00aa55; margin-bottom: 3px; }
+  .bar-track { background: #001a0d; border: 1px solid #003322; height: 8px; border-radius: 1px; overflow: hidden; }
+
+  .bar-fill         { height: 100%; transition: width 0.4s ease, background 0.4s; border-radius: 1px; }
+  .hp-fill          { background: #00ff88; }
+  .hp-fill.low      { background: #ffaa00; }
+  .hp-fill.critical { background: #ff3333; }
+
+  /* equipment row (compact, emoji only) */
+  .equip-row {
+    display: flex;
+    gap: 5px;
+    font-size: 0.7rem;
+    color: #004422;
+    align-items: center;
+    margin-top: 5px;
+  }
+
+  .equip-row .eq-item { color: #006633; }
+  .equip-row .eq-gold { color: #aa8800; }
+  .equip-row .eq-sep  { color: #002211; }
+
+  /* command buttons: narrow right column, stacked vertically */
+  .battle-commands {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 72px;
+    flex-shrink: 0;
+    justify-content: center;
+  }
+
+  .battle-commands .btn {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 18px 4px;
+    letter-spacing: 0;
+    line-height: 1.5;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* battle log: full width, anchored to bottom */
+  .battle-log {
+    background: #010a05;
+    border: 1px solid #003322;
+    border-radius: 2px;
+    padding: 8px 12px;
+    height: 96px;
+    overflow-y: auto;
+    font-size: 0.76rem;
+    color: #009944;
+    scroll-behavior: smooth;
+    width: 100%;
+  }
+
+  .battle-log p { padding: 2px 0; border-bottom: 1px solid #001a0d; line-height: 1.5; }
+  .battle-log p:last-child { border-bottom: none; }
+
+  .log-hero    { color: #00ff88; }
+  .log-taunt   { color: #cc4422; font-style: italic; }
+  .log-enemy   { color: #ff6655; }
+  .log-system  { color: #00aaff; }
+  .log-guard   { color: #ffcc00; }
+  .log-victory { color: #ffff55; }
+  .log-boss    { color: #ff4422; }
+  .log-crit    { color: #ff88ff; }
+  .log-stun    { color: #00ffcc; }
+
+  /* ════ SHOP ════ */
+  #shop-screen { gap: 10px; }
+
+  .shop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #003322;
+  }
+
+  .shop-gold-disp { font-size: 0.9rem; color: #ccaa00; }
+
+  .shop-tabs { display: flex; gap: 8px; width: 100%; }
+
+  .shop-tab {
+    flex: 1;
+    background: #001a0d;
+    border: 1px solid #004422;
+    color: #006633;
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .shop-tab.active { border-color: #00ff88; color: #00ff88; }
+  .shop-tab:hover  { border-color: #008844; color: #00aa55; }
+
+  .shop-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 48vh;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .shop-item {
+    background: #010a05;
+    border: 1px solid #002211;
+    border-radius: 2px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    transition: border-color 0.2s;
+  }
+
+  .shop-item.s-equipped { border-color: #00ff88; }
+  .shop-item.s-owned    { border-color: #004422; }
+
+  .shop-item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .shop-item-name { font-size: 0.88rem; color: #00cc66; display: flex; align-items: center; gap: 6px; }
+
+  .badge {
+    font-size: 0.58rem;
+    padding: 1px 6px;
+    border-radius: 2px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .badge-eq   { color: #00ff88; border-color: #00ff88; }
+  .badge-own  { color: #004422; border-color: #003322; }
+
+  .shop-stat   { font-size: 0.68rem; color: #006633; }
+  .shop-effect { font-size: 0.68rem; color: #008855; }
+
+  .shop-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+  }
+
+  .shop-price          { font-size: 0.75rem; color: #aa8800; }
+  .shop-price.free     { color: #004422; }
+  .shop-price.no-gold  { color: #ff4422; }
+
+  .shop-btn {
+    background: #001a0d;
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .shop-btn:hover    { background: #003322; }
+  .shop-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+  .shop-btn.s-equip  { border-color: #00aaff; color: #00aaff; }
+
+  /* ════ SKILL BUTTON ════ */
+  .btn-skill {
+    background: #110022;
+    border-color: #550088;
+    color: #aa44ff;
+  }
+  .btn-skill:hover:not(:disabled) {
+    background: #220044;
+    border-color: #aa44ff;
+    color: #cc88ff;
+  }
+
+  /* ════ SKILL MENU OVERLAY ════ */
+  #skill-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.80);
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 50;
+    padding: 16px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .skill-menu-box {
+    background: #0d0022;
+    border: 1px solid #aa44ff;
+    border-radius: 4px;
+    padding: 12px 14px;
+    width: min(340px, 100%);
+    box-shadow: 0 0 30px #aa44ff33;
+  }
+
+  .skill-menu-title {
+    font-size: 0.8rem;
+    color: #aa44ff;
+    letter-spacing: 3px;
+    border-bottom: 1px solid #330055;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+
+  .skill-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid #220033;
+  }
+  .skill-menu-row:last-child { border-bottom: none; }
+
+  .skill-menu-icon { font-size: 1.1rem; }
+  .skill-menu-name { color: #cc88ff; font-size: 0.82rem; min-width: 72px; }
+  .skill-menu-desc { color: #663388; font-size: 0.72rem; flex: 1; }
+
+  .skill-locked-note {
+    color: #440055;
+    font-size: 0.7rem;
+    text-align: center;
+    padding: 4px 0;
+    letter-spacing: 1px;
+  }
+
+  .skill-menu-close {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    background: transparent;
+    border: 1px solid #330055;
+    color: #550077;
+    font-family: inherit;
+    font-size: 0.72rem;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .skill-menu-close:hover { border-color: #aa44ff; color: #aa44ff; }
+
+  .log-skill { color: #cc88ff; }
+
+  /* skill shop items */
+  .shop-item-skill { border-color: #330055; }
+  .shop-item-skill.s-owned { border-color: #550088; }
+  .shop-skill-lv { font-size: 0.65rem; color: #550088; }
+
+  /* concentration defense bar */
+  .focus-badge {
+    font-size: 0.65rem;
+    color: #aa44ff;
+    border: 1px solid #550088;
+    border-radius: 2px;
+    padding: 1px 5px;
+    margin-left: 6px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  /* ════ ITEM BUTTON ════ */
+  .btn-item {
+    background: #001122;
+    border-color: #004488;
+    color: #0088cc;
+  }
+  .btn-item:hover:not(:disabled) {
+    background: #002244;
+    border-color: #0088cc;
+    color: #00aaff;
+  }
+
+  /* ════ ITEM MENU OVERLAY ════ */
+  #item-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.80);
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 50;
+    padding: 16px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .item-menu-box {
+    background: #001a0d;
+    border: 1px solid #0088cc;
+    border-radius: 4px;
+    padding: 12px 14px;
+    width: min(340px, 100%);
+    box-shadow: 0 0 30px #0088cc33;
+  }
+
+  .item-menu-title {
+    font-size: 0.8rem;
+    color: #0088cc;
+    letter-spacing: 3px;
+    border-bottom: 1px solid #003344;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+
+  .item-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid #002211;
+  }
+  .item-menu-row:last-child { border-bottom: none; }
+
+  .item-menu-icon  { font-size: 1.1rem; }
+  .item-menu-name  { color: #00cc88; font-size: 0.82rem; min-width: 56px; }
+  .item-menu-desc  { color: #006644; font-size: 0.72rem; flex: 1; }
+  .item-menu-count { color: #ccaa00; font-size: 0.78rem; min-width: 28px; text-align: right; }
+
+  .item-menu-close {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    background: transparent;
+    border: 1px solid #003344;
+    color: #005566;
+    font-family: inherit;
+    font-size: 0.72rem;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .item-menu-close:hover { border-color: #0088cc; color: #0088cc; }
+
+  /* item shop list (consumables) */
+  .shop-item-consumable {
+    background: #010a05;
+    border: 1px solid #002211;
+    border-radius: 2px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .shop-consumable-count { font-size: 0.68rem; color: #ccaa00; }
+  .log-item { color: #00aaff; }
+
+  /* ════ COLOSSUS DEATH SCENE ════ */
+  #colossus-overlay .status-box {
+    border-color: #660000;
+    box-shadow: 0 0 50px #66000044;
+    max-width: 380px;
+  }
+
+  .colossus-text-box {
+    background: #0a0000;
+    border: 1px solid #330000;
+    border-radius: 2px;
+    padding: 14px 16px;
+    width: 100%;
+    height: 260px;
+    overflow-y: auto;
+    font-size: 0.82rem;
+    color: #883333;
+    line-height: 2.0;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    text-align: left;
+  }
+
+  .colossus-text-box .story-line     { color: #883333; }
+  .colossus-text-box .story-line.em  { color: #aa4444; }
+  .colossus-text-box .story-line.key { color: #cc6655; }
+  .colossus-text-box .story-line.cry { color: #ffaaaa; }
+  .colossus-text-box .story-line.note{ color: #997744; font-style: italic; }
+
+  .colossus-skip-hint { font-size: 0.6rem; color: #440000; letter-spacing: 2px; transition: opacity 0.4s; }
+
+  /* ════ SHADOW TRUTH SCENE ════ */
+  #shadow-truth-overlay .status-box {
+    border-color: #003366;
+    box-shadow: 0 0 60px #00336655;
+    max-width: 400px;
+  }
+
+  .truth-text-box {
+    background: #000510;
+    border: 1px solid #001133;
+    border-radius: 2px;
+    padding: 14px 16px;
+    width: 100%;
+    height: 300px;
+    overflow-y: auto;
+    font-size: 0.84rem;
+    color: #4488aa;
+    line-height: 2.1;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    text-align: left;
+  }
+
+  .truth-text-box .story-line      { color: #4488aa; }
+  .truth-text-box .story-line.em   { color: #6699bb; }
+  .truth-text-box .story-line.key  { color: #aaddff; }
+  .truth-text-box .story-line.cry  { color: #cceeff; }
+  .truth-text-box .story-line.note { color: #997744; font-style: italic; }
+  .truth-text-box .story-line.zero { color: #88aacc; font-style: italic; }
+
+  .truth-skip-hint { font-size: 0.6rem; color: #001133; letter-spacing: 2px; transition: opacity 0.4s; }
+
+  .btn-truth { border-color: #003366; color: #4488aa; }
+  .btn-truth:hover:not(:disabled) { background: #001133; border-color: #4488aa; color: #aaddff; }
+
+  /* ════ OVERLAYS ════ */
+  .status-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000000cc;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.3s ease;
+    padding: 16px;
+  }
+
+  .status-box {
+    background: #001a0d;
+    border: 1px solid #00ff88;
+    border-radius: 4px;
+    padding: 24px 28px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 0 40px #00ff8833;
+    max-width: 320px;
+    width: 100%;
+  }
+
+  .status-box h2 { font-size: 1.4rem; letter-spacing: 2px; }
+
+  .status-box p {
+    font-size: 0.82rem;
+    color: #00cc66;
+    line-height: 1.7;
+    white-space: pre-line;
+  }
+
+  #area-clear-overlay .status-box { border-color: #ffff44; box-shadow: 0 0 50px #ffff4422; }
+
+  .area-clear-kills {
+    font-size: 0.72rem;
+    color: #666600;
+    line-height: 1.8;
+    border-top: 1px solid #333300;
+    padding-top: 8px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .next-area-note { font-size: 0.65rem; color: #333322; letter-spacing: 1px; }
+
+  /* ════ ANIMATIONS ════ */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes shake {
+    0%   { transform: translateX(0); }
+    20%  { transform: translateX(-8px); }
+    40%  { transform: translateX(8px); }
+    60%  { transform: translateX(-5px); }
+    80%  { transform: translateX(5px); }
+    100% { transform: translateX(0); }
+  }
+
+  @keyframes heroHit {
+    0%   { opacity: 1; }
+    30%  { opacity: 0.3; }
+    60%  { opacity: 1; }
+    80%  { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes storyLineIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .hero-icon.hit { animation: heroHit 0.4s ease; }
+
+  /* scrollbars */
+  .battle-log::-webkit-scrollbar,
+  .story-text-box::-webkit-scrollbar,
+  .shop-list::-webkit-scrollbar { width: 4px; }
+  .battle-log::-webkit-scrollbar-track,
+  .story-text-box::-webkit-scrollbar-track,
+  .shop-list::-webkit-scrollbar-track { background: #000; }
+  .battle-log::-webkit-scrollbar-thumb,
+  .story-text-box::-webkit-scrollbar-thumb,
+  .shop-list::-webkit-scrollbar-thumb { background: #003322; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ TITLE ════════════════ -->
+<div id="title-screen" class="screen">
+  <div class="title-deco">▸ SF NEAR-FUTURE RPG ◂</div>
+  <div class="game-title">遺された祈り</div>
+  <div class="subtitle">── Prayers Left Behind ──</div>
+  <hr class="divider">
+  <div id="save-info">
+    <div class="save-label">▸ SAVE DATA ◂</div>
+    <div id="save-info-text"></div>
+  </div>
+  <p class="prompt-label">▶ 主人公の名前を入力してください</p>
+  <input id="hero-name-input" class="name-input" type="text"
+         maxlength="12" placeholder="名前を入力..." autocomplete="off">
+  <div class="title-btn-group">
+    <button class="btn" id="continue-btn" style="display:none" onclick="continueGame()">[ 続きから始める ]</button>
+    <button class="btn" id="start-btn" onclick="startNewGame()">[ 最初から始める ]</button>
+  </div>
+  <div class="title-deco" style="margin-top:4px; font-size:0.6rem;">
+    ──── 廃墟となった都市。あなたは一人、祈りを携えて歩く。────
+  </div>
+</div>
+
+<!-- ════════════════ STORY ════════════════ -->
+<div id="story-screen" class="screen">
+  <div class="story-header">
+    <div class="story-area-badge" id="story-area-badge">A R E A &nbsp; 1</div>
+    <div class="story-area-name"  id="story-area-name">廃 墟 街</div>
+  </div>
+  <div class="story-text-box" id="story-text-box" onclick="skipStory()"></div>
+  <div class="story-skip-hint" id="story-skip-hint">── タップでスキップ ──</div>
+  <button class="btn" id="story-btn" style="display:none;max-width:280px;" onclick="enterBattle()">
+    [ バトル開始 ]
+  </button>
+</div>
+
+<!-- ════════════════ BATTLE ════════════════ -->
+<div id="battle-screen" class="screen">
+  <div class="battle-header" id="battle-header">▸ AREA 1 &nbsp;廃墟街 ◂</div>
+
+  <div class="battle-main">
+    <!-- battlefield -->
+    <div class="battle-stage">
+      <!-- top: enemy sprite (left) + enemy HP info (right) -->
+      <div class="stage-top">
+        <div class="enemy-sprite" id="enemy-sprite">🤖</div>
+        <div class="stage-enemy-info">
+          <div class="enemy-name" id="enemy-name">警備ロボ</div>
+          <div class="bar-row">
+            <div class="bar-label"><span>HP</span><span id="enemy-hp-text">30 / 30</span></div>
+            <div class="bar-track"><div class="bar-fill hp-fill" id="enemy-hp-bar" style="width:100%"></div></div>
+          </div>
+        </div>
+      </div>
+      <!-- bottom: hero HP info (left) + hero icon (right) -->
+      <div class="stage-bottom">
+        <div class="stage-hero-info">
+          <div class="hero-name-txt" id="hero-name-display">???</div>
+          <div class="bar-row">
+            <div class="bar-label"><span>HP</span><span id="hero-hp-text">100 / 100</span></div>
+            <div class="bar-track"><div class="bar-fill hp-fill" id="hero-hp-bar" style="width:100%"></div></div>
+          </div>
+          <div class="equip-row">
+            <span class="eq-item" id="equip-weapon-disp">🔪</span>
+            <span class="eq-sep">│</span>
+            <span class="eq-item" id="equip-armor-disp">👕</span>
+            <span class="eq-sep">│</span>
+            <span class="eq-gold" id="gold-disp">💰 0G</span>
+          </div>
+        </div>
+        <span class="hero-icon" id="hero-icon">🧑‍🚀</span>
+      </div>
+    </div>
+
+    <!-- commands: right column, vertical -->
+    <div class="battle-commands">
+      <button class="btn" id="btn-attack" onclick="playerAttack()">⚔<br>攻撃</button>
+      <button class="btn btn-danger" id="btn-guard" onclick="playerGuard()">🛡<br>防御</button>
+      <button class="btn btn-item"  id="btn-item"  onclick="openItemMenu()">🎒<br>アイテム</button>
+      <button class="btn btn-skill" id="btn-skill" onclick="openSkillMenu()">✨<br>スキル</button>
+    </div>
+  </div>
+
+  <div class="battle-log" id="battle-log"></div>
+</div>
+
+<!-- ════════════════ SHOP ════════════════ -->
+<div id="shop-screen" class="screen">
+  <div class="shop-header">
+    <div class="title-deco">▸ SHOP ◂</div>
+    <div class="shop-gold-disp">💰 <span id="shop-gold-disp">0</span> G</div>
+  </div>
+  <div class="shop-tabs">
+    <button class="shop-tab active" id="tab-weapon" onclick="showShopTab('weapon')">⚔ 武器</button>
+    <button class="shop-tab"        id="tab-armor"  onclick="showShopTab('armor')">🛡 防具</button>
+    <button class="shop-tab"        id="tab-item"   onclick="showShopTab('item')">🎒 アイテム</button>
+    <button class="shop-tab"        id="tab-skill"  onclick="showShopTab('skill')">✨ スキル</button>
+  </div>
+  <div class="shop-list" id="shop-weapon-list"></div>
+  <div class="shop-list" id="shop-armor-list"  style="display:none"></div>
+  <div class="shop-list" id="shop-item-list"   style="display:none"></div>
+  <div class="shop-list" id="shop-skill-list"  style="display:none"></div>
+  <button class="btn btn-sm" style="max-width:220px;" onclick="closeShop()">
+    [ バトルへ戻る ]
+  </button>
+</div>
+
+<!-- ════════════════ OVERLAYS ════════════════ -->
+<div class="status-overlay" id="victory-overlay">
+  <div class="status-box">
+    <h2 style="color:#ffff55">✦ 勝利 ✦</h2>
+    <p id="victory-msg"></p>
+    <button class="btn" onclick="nextEnemy()">[ 次の敵へ → ]</button>
+    <button class="btn btn-sm" onclick="openShop()">🛒 ショップを開く</button>
+  </div>
+</div>
+
+<div class="status-overlay" id="defeat-overlay">
+  <div class="status-box" style="border-color:#ff4444; box-shadow: 0 0 40px #ff333333;">
+    <h2 style="color:#ff4444">✗ 敗北 ✗</h2>
+    <p id="defeat-msg">力尽きた…</p>
+    <p id="defeat-bonus" style="color:#ccaa00; font-size:0.78rem;"></p>
+    <button class="btn btn-danger" onclick="retryBattle()">[ もう一度（HP全回復） ]</button>
+    <button class="btn btn-sm" onclick="openShopFromDefeat()">🛒 ショップへ</button>
+    <button class="btn btn-sm" onclick="goTitle()">タイトルへ</button>
+  </div>
+</div>
+
+<!-- ════════════════ ITEM MENU ════════════════ -->
+<div id="item-overlay">
+  <div class="item-menu-box">
+    <div class="item-menu-title">▸ ITEM ◂</div>
+    <div id="item-menu-list"></div>
+    <button class="item-menu-close" onclick="closeItemMenu()">[ キャンセル ]</button>
+  </div>
+</div>
+
+<!-- ════════════════ SKILL MENU ════════════════ -->
+<div id="skill-overlay">
+  <div class="skill-menu-box">
+    <div class="skill-menu-title">▸ SKILL ◂</div>
+    <div id="skill-menu-list"></div>
+    <button class="skill-menu-close" onclick="closeSkillMenu()">[ キャンセル ]</button>
+  </div>
+</div>
+
+<!-- ════════════════ COLOSSUS DEATH ════════════════ -->
+<div class="status-overlay" id="colossus-overlay">
+  <div class="status-box">
+    <div class="title-deco" style="color:#440000; font-size:0.6rem; letter-spacing:5px;">BOSS DEFEATED</div>
+    <div class="colossus-text-box" id="colossus-text-box" onclick="skipColossus()"></div>
+    <div class="colossus-skip-hint" id="colossus-hint">── タップでスキップ ──</div>
+    <button class="btn btn-danger" id="colossus-btn" style="display:none; max-width:260px;" onclick="finishColossusScene()">[ 次へ → ]</button>
+  </div>
+</div>
+
+<!-- ════════════════ SHADOW TRUTH ════════════════ -->
+<div class="status-overlay" id="shadow-truth-overlay">
+  <div class="status-box">
+    <div class="title-deco" style="color:#002244; font-size:0.6rem; letter-spacing:5px;">── TRUTH ──</div>
+    <div class="truth-text-box" id="truth-text-box" onclick="skipShadowTruth()"></div>
+    <div class="truth-skip-hint" id="truth-hint">── タップでスキップ ──</div>
+    <button class="btn btn-truth" id="truth-btn" style="display:none; max-width:260px;" onclick="finishShadowTruthScene()">[ 次へ → ]</button>
+  </div>
+</div>
+
+<div class="status-overlay" id="area-clear-overlay">
+  <div class="status-box">
+    <div class="title-deco" id="area-clear-deco" style="color:#666600; font-size:0.6rem; letter-spacing:5px;">AREA CLEAR</div>
+    <h2 id="area-clear-title" style="color:#ffff55; font-size:1.3rem; text-shadow:0 0 20px #ffff5566;"></h2>
+    <p id="area-clear-msg" style="color:#cccc55;"></p>
+    <div class="area-clear-kills" id="area-clear-kills"></div>
+    <button id="area-next-btn" class="btn" style="display:none; max-width:260px;" onclick="proceedToNextArea()">[ 次のエリアへ → ]</button>
+    <button class="btn btn-sm" onclick="openShopFromClear()">🛒 ショップへ</button>
+    <button class="btn" style="max-width:220px;" onclick="goTitle()">タイトルへ戻る</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+//  EQUIPMENT DATA
+// ════════════════════════════════════════
+const WEAPONS = [
+  { id:'knife',   sprite:'🔪', name:'サバイバルナイフ', atkBonus: 0,  price:    0,
+    effect:'firstStrike', effectDesc:'先制攻撃ダメージ ×1.5' },
+  { id:'pistol',  sprite:'🔫', name:'拳銃',             atkBonus: 5,  price:   80,
+    effect:'confirm',     effectDesc:'毎ターン確定攻撃（攻撃ブレなし）' },
+  { id:'rifle',   sprite:'💥', name:'アサルトライフル', atkBonus:12,  price:  250,
+    effect:'stun',        effectDesc:'30%で敵を怯ませ次の攻撃をスキップ' },
+  { id:'sniper',  sprite:'🎯', name:'スナイパーライフル',atkBonus:20,  price:  500,
+    effect:'crit',        effectDesc:'クリティカル率 ×2（10%→20%）' },
+  { id:'railgun', sprite:'⚡', name:'レールガン',        atkBonus:35,  price: 1000,
+    effect:'pierce',      effectDesc:'敵の防御を完全に無視' },
+];
+
+const ARMORS = [
+  { id:'rags',    sprite:'👕', name:'ボロ服',       defBonus: 0,  price:    0,
+    effect:'none',         effectDesc:'特殊効果なし' },
+  { id:'vest',    sprite:'🦺', name:'防弾ベスト',   defBonus: 5,  price:  120,
+    effect:'none',         effectDesc:'特殊効果なし' },
+  { id:'exoglove',sprite:'💣', name:'耐爆グローブ', defBonus:10,  price:  300,
+    effect:'antiExplosive',effectDesc:'爆発ダメージ 20%軽減' },
+  { id:'exo',     sprite:'🤖', name:'強化外骨格',   defBonus:20,  price:  600,
+    effect:'none',         effectDesc:'特殊効果なし' },
+  { id:'qshield', sprite:'🛡️', name:'量子シールド', defBonus:30,  price: 1200,
+    effect:'none',         effectDesc:'特殊効果なし' },
+];
+
+// ════════════════════════════════════════
+//  ITEM DATA
+// ════════════════════════════════════════
+const ITEMS = [
+  { id:'potion',    sprite:'🧪', name:'回復薬',  desc:'HP を 50 回復',        price:  50 },
+  { id:'stimulant', sprite:'💉', name:'強化剤',  desc:'次の攻撃力 ×1.5',      price:  80 },
+  { id:'barrier',   sprite:'🛡️', name:'防御膜',  desc:'次に受けるダメージ 0', price: 100 },
+];
+
+// ════════════════════════════════════════
+//  SKILL DATA
+// ════════════════════════════════════════
+const SKILLS = [
+  { id:'double',    sprite:'🔥', name:'連続攻撃',    desc:'2回攻撃する',                       price: 200, unlockLv:  5 },
+  { id:'smash',     sprite:'💢', name:'渾身の一撃',  desc:'ダメージ ×2 / 次ターン防御力 0',   price: 350, unlockLv: 10 },
+  { id:'focus',     sprite:'⚡', name:'集中防御',    desc:'3ターン被ダメージ半減',             price: 500, unlockLv: 15 },
+];
+
+// ════════════════════════════════════════
+//  AREA DATA
+// ════════════════════════════════════════
+const AREA1 = {
+  id: 1, name: '廃墟街', killsNeeded: 5,
+  normalEnemies: [
+    { name:'警備ロボ', sprite:'🤖', hp:30,  atk:8,  def:2, exp:15, gold:20,  explosive:false },
+    { name:'武装難民', sprite:'👤', hp:22,  atk:10, def:1, exp:12, gold:15,  explosive:true  },
+  ],
+  boss: { name:'廃棄型機械兵 UNIT-0', sprite:'💀', hp:150, atk:20, def:5, exp:100, gold:300, explosive:true },
+  bossRewardArmor: null,
+};
+
+const AREA2 = {
+  id: 2, name: '地下水路', killsNeeded: 6,
+  normalEnemies: [
+    { name:'変異体',   sprite:'🐀', hp:55,  atk:14, def:3, exp:28, gold:35, explosive:false },
+    { name:'密輸業者', sprite:'🔫', hp:48,  atk:18, def:2, exp:25, gold:40, explosive:false },
+  ],
+  boss: { name:'クレイモア', sprite:'🧨', hp:280, atk:32, def:8, exp:180, gold:500, explosive:true },
+  bossRewardArmor: 2,   // ARMORS index 2 = 耐爆グローブ
+};
+
+const AREA3 = {
+  id: 3, name: '軍事基地', killsNeeded: 7,
+  normalEnemies: [
+    { name:'電磁兵',     sprite:'⚡', hp:70,  atk:22, def:7, exp:38, gold:55, explosive:false },
+    { name:'ドローン兵', sprite:'🚁', hp:60,  atk:26, def:4, exp:35, gold:60, explosive:true  },
+  ],
+  boss: { name:'コロッサス', sprite:'🦾', hp:450, atk:42, def:15, exp:300, gold:800, explosive:false },
+  bossRewardArmor: null,
+};
+
+const AREA4 = {
+  id: 4, name: '首都', killsNeeded: 8,
+  normalEnemies: [
+    { name:'量子兵',       sprite:'👾', hp:90,  atk:30, def:10, exp:50, gold:75, explosive:false },
+    { name:'自爆ドローン', sprite:'💣', hp:65,  atk:36, def: 5, exp:45, gold:80, explosive:true  },
+  ],
+  boss: { name:'諜報長官シャドウ', sprite:'🎯', hp:600, atk:52, def:18, exp:400, gold:1000, explosive:false },
+  bossRewardArmor: null,
+};
+
+const AREAS = [null, AREA1, AREA2, AREA3, AREA4];   // index by area id
+
+// ════════════════════════════════════════
+//  ENEMY DIALOGUE
+// ════════════════════════════════════════
+const ENEMY_LINES = {
+
+  // ════ AREA 1 ────────────────────────────
+  '警備ロボ': [
+    '侵入者を検知。排除プログラム起動。',
+    '対象を捕捉。抵抗は処刑事由となる。',
+    '警告：立入禁止区域。即時排除を執行する。',
+  ],
+  '武装難民': [
+    '邪魔するな、死にたくなければ！',
+    '政府に見捨てられた俺たちが悪いのか……！',
+    '生き残るためなら、何でもやる！',
+  ],
+
+  // ════ AREA 2 ────────────────────────────
+  '変異体': [
+    'ギャアァァ……ッ！',
+    'グルルル……ァァ……！',
+    'ォォォ……ッ……ッ……！',
+  ],
+  '密輸業者': [
+    'チッ、面倒な奴が来やがった。',
+    'ここは俺たちの商売場だ。邪魔すんな。',
+    '死体には値段がつく。ちょうどいい。',
+  ],
+
+  // ════ AREA 3 ────────────────────────────
+  '電磁兵': [
+    '電磁制圧フィールド展開。標的を無力化する。',
+    '命令書コード：対象を生死問わず拘束せよ。',
+    '感情は兵士の弱点だ。俺にはない。',
+  ],
+  'ドローン兵': [
+    '標的ロック完了。攻撃シーケンス開始。',
+    '人間より機械の方が、命令に忠実だ。',
+    '抵抗は無駄なデータだ。上書きする。',
+  ],
+
+  // ════ AREA 4 ────────────────────────────
+  '量子兵': [
+    '量子干渉波、全域展開。逃げ場はない。',
+    'お前の行動確率は算出済みだ。無駄だ。',
+    '次元格子を歪める。お前の体ごと。',
+  ],
+  '自爆ドローン': [
+    '起爆シーケンス開始。カウントダウン中……',
+    '任務：対象に接触し、爆発により排除せよ。',
+    '3……2……1……さようなら。',
+  ],
+
+  // ════ BOSS: AREA 1 ──────────────────────
+  '廃棄型機械兵 UNIT-0': [
+    '……廃棄処分対象を確認。抹消プログラム起動。',
+    '貴様程度の命など、廃材以下だ。',
+    'この廃墟に、祈りなど届かない。',
+    '俺は廃棄された。だが……システムはまだ生きている……！',
+    '感情回路を抑制解除。全力で潰す。',
+    '生存者なし。それが、この区画の設定だ。',
+  ],
+
+  // ════ BOSS: AREA 2 ──────────────────────
+  'クレイモア': [
+    '爆音の中にお前の悲鳴を聞かせてやる。',
+    'この地下水路が、お前の墓場だ。',
+    '俺は軍の犬じゃない。自由のために戦ってる。お前みたいな奴を倒してな。',
+    '爆薬は正直だ。嘘をつかない。命令も聞かない。',
+    'ここから先、一歩も通さん。それが俺の仕事だ。',
+    'くたばれ……！ここは俺が守る！',
+  ],
+
+  // ════ BOSS: AREA 3 ──────────────────────
+  'コロッサス': [
+    '……砕け、散れ……',
+    '貴様など……塵だ……',
+    '痛みは……感じない……もう……感じない……',
+    '俺は……兵器だ……命令に……従うだけだ……',
+    '止まれ……止まれ……なぜ……俺は止まれない……',
+    '……誰か……止めて……くれ……',
+  ],
+
+  // ════ BOSS: AREA 4 ──────────────────────
+  '諜報長官シャドウ': [
+    'お前の行動パターンは、初日から解析済みだった。',
+    'ここまで来たか……だが、遅すぎる。全ては動いている。',
+    '真実は、知らないほうが幸せだ。それが私の慈悲だった。',
+    '感情で動く者に、この戦争の構造は理解できない。',
+    '私は何千もの命を救うために、何百もの命を切り捨てた。',
+    '……お前には、まだ知らせるわけにはいかない。もう少し、待て。',
+  ],
+
+  // ════ FINAL BOSS: ZEROS ─────────────────
+  'ゼロス': [
+    '……来てしまったか。止められなかった。',
+    '俺を憎め。それで良い。それが、一番楽だ。',
+    '軍は腐っていた。内側から変えようとした。……間に合わなかった。',
+    '愛する者を失う痛みは、俺も知っている。だから、わかる。',
+    'お前を傷つけるつもりはなかった。ずっと、なかった。',
+    '撃て。俺を倒さなければ、お前は前に進めない。それでいい。',
+    '俺が正しかったのか、間違っていたのか……もう、わからない。',
+    '俺の中にも、守りたかったものがあった。ひかりのような、笑顔が。',
+    '……ごめん。他に方法がなかった。本当に、なかったんだ。',
+    '終わったら……オルゴールの音を、聞かせてくれ。もう一度だけ。',
+  ],
+
+};
+
+function pickEnemyLine(name) {
+  const pool = ENEMY_LINES[name];
+  if (!pool || pool.length === 0) return null;
+  return pool[rand(0, pool.length - 1)];
+}
+
+// ════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════
+const MAX_LEVEL = 99;
+const BASE_HP   = 100;
+const BASE_ATK  = 15;
+const BASE_DEF  = 5;
+const SAVE_KEY  = 'inori_rpg_v2';   // bumped key → old saves ignored
+
+// ════════════════════════════════════════
+//  GAME STATE
+// ════════════════════════════════════════
+let heroName     = '';
+let heroLevel    = 1;
+let heroExp      = 0;
+let heroHp       = BASE_HP;
+let heroMaxHp    = BASE_HP;
+let heroAtk      = BASE_ATK;
+let heroDef      = BASE_DEF;
+let heroGold     = 0;
+
+let weaponIdx    = 0;
+let armorIdx     = 0;
+let ownedWeapons = [0];
+let ownedArmors  = [0];
+
+let currentArea  = 1;
+let areaKills    = 0;
+let isBossEnemy  = false;
+let enemy        = null;
+let enemyHp      = 0;
+let busy         = false;
+let isGuarding   = false;
+
+let itemCounts     = { potion:0, stimulant:0, barrier:0 };
+let buffAtkNext    = false;
+let buffShieldNext = false;
+
+let ownedSkills    = [];      // e.g. ['double','smash']
+let smashDebuff    = false;   // next turn: heroDef = 0
+let focusTurns     = 0;       // remaining turns of 集中防御
+
+function getCurrentArea() { return AREAS[currentArea] || AREA1; }
+
+// ════════════════════════════════════════
+//  STATS (level + equipment)
+// ════════════════════════════════════════
+function calcBaseStats(lv) {
+  return {
+    maxHp: BASE_HP  + (lv - 1) * 10,
+    atk:   BASE_ATK + (lv - 1) * 2,
+    def:   BASE_DEF + (lv - 1) * 1,
+  };
+}
+
+function computeHeroStats() {
+  const s = calcBaseStats(heroLevel);
+  heroMaxHp = s.maxHp;
+  heroAtk   = s.atk + WEAPONS[weaponIdx].atkBonus;
+  heroDef   = s.def + ARMORS[armorIdx].defBonus;
+}
+
+function applyLevel(lv) {
+  heroLevel = clamp(lv, 1, MAX_LEVEL);
+  computeHeroStats();
+}
+
+function expToNext(lv) { return lv >= MAX_LEVEL ? Infinity : lv * 20; }
+
+function gainExp(amount) {
+  if (heroLevel >= MAX_LEVEL) return;
+  heroExp += amount;
+  while (heroLevel < MAX_LEVEL && heroExp >= expToNext(heroLevel)) {
+    heroExp -= expToNext(heroLevel);
+    const oldMaxHp = heroMaxHp;
+    applyLevel(heroLevel + 1);
+    heroHp = Math.min(heroMaxHp, heroHp + (heroMaxHp - oldMaxHp));
+  }
+}
+
+// ════════════════════════════════════════
+//  LOCALSTORAGE
+// ════════════════════════════════════════
+function saveProgress() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      name: heroName, lv: heroLevel, exp: heroExp, hp: heroHp,
+      currentArea, areaKills, gold: heroGold,
+      weaponIdx, armorIdx, ownedWeapons, ownedArmors,
+      itemCounts, ownedSkills,
+    }));
+  } catch(e) {}
+}
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d.name || d.areaKills === undefined) return null;
+    return d;
+  } catch(e) { return null; }
+}
+
+function deleteSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e) {} }
+
+// ════════════════════════════════════════
+//  TITLE SCREEN
+// ════════════════════════════════════════
+function initTitle() {
+  const save = loadSave();
+  if (save) {
+    document.getElementById('hero-name-input').value = save.name;
+    document.getElementById('continue-btn').style.display = 'block';
+    const area  = AREAS[save.currentArea || 1] || AREA1;
+    const kills = save.areaKills || 0;
+    const isBoss = kills >= area.killsNeeded;
+    const w = WEAPONS[save.weaponIdx || 0];
+    const a = ARMORS[save.armorIdx  || 0];
+    document.getElementById('save-info-text').textContent =
+      save.name + '\nAREA ' + area.id + ' ' + area.name + '  ' +
+      (isBoss ? '⚠ BOSS待機中' : '討伐 ' + kills + '/' + area.killsNeeded) +
+      '\n' + w.sprite + ' ' + w.name + '  ' + a.sprite + ' ' + a.name +
+      '\n💰 ' + (save.gold || 0) + 'G';
+    document.getElementById('save-info').style.display = 'block';
+  }
+}
+
+// ════════════════════════════════════════
+//  UTILITY
+// ════════════════════════════════════════
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function showScreen(id) {
+  ['title-screen','story-screen','battle-screen','shop-screen'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? 'flex' : 'none';
+  });
+}
+
+// ════════════════════════════════════════
+//  STORY
+// ════════════════════════════════════════
+function getArea1Story() {
+  const n = heroName;
+  return [
+    ['2089年、秋。', 'em'],
+    ['廃墟となった旧市街── 区画13。', 'em'],
+    [''],
+    ['政府軍の「浄化作戦」から、三日が経った。'],
+    [''],
+    ['──' + n + 'は、瓦礫の中に立っていた。', 'key'],
+    [''],
+    ['かつて家族と暮らした家の、残骸の前で。'],
+    [''],
+    ['壁は砲撃で焦げ、床には──'],
+    ['もう目を向けられないものが、ある。'],
+    [''],
+    ['ゆっくりと腰を落とし、'],
+    ['足元の何かを、拾い上げた。'],
+    [''],
+    ['小さな──オルゴール。', 'key'],
+    ['妹・ひかりが、いつも大切にしていたもの。'],
+    [''],
+    ['蓋を、開ける。'],
+    [''],
+    ['……音は、しなかった。', 'cry'],
+    [''],
+    ['胸の中で何かが燃える。'],
+    ['怒りなのか悲しみなのか、もう区別がつかない。'],
+    [''],
+    ['「……絶対に、許さない」', 'cry'],
+    [''],
+    [n + 'は立ち上がり、', 'key'],
+    ['オルゴールを胸ポケットにしまった。'],
+    [''],
+    ['廃墟の先──警備ロボの赤いセンサーが、光っている。', 'em'],
+  ];
+}
+
+function getArea2Story() {
+  const n = heroName;
+  return [
+    ['地下水路── 区画B7。', 'em'],
+    ['変異した生き物の呻き声が、水の音に混じる。'],
+    [''],
+    ['罠だとわかっていた。', 'key'],
+    ['それでも、' + n + ' は進んだ。'],
+    [''],
+    ['──爆発。'],
+    [''],
+    ['煙の中に、小さな影が見えた。', 'key'],
+    [''],
+    ['子供だ。', 'cry'],
+    ['罠に巻き込まれ、壁にもたれて座っている。'],
+    [''],
+    [n + ' は、迷わず駆け寄った。'],
+    [''],
+    ['その目を、見た瞬間──', 'key'],
+    [''],
+    ['胸が、締め付けられた。', 'cry'],
+    [''],
+    ['ひかり。'],
+    [''],
+    ['違う。この子じゃない。', 'note'],
+    ['わかってる。わかってる。', 'note'],
+    [''],
+    ['「…大丈夫か」', 'key'],
+    [''],
+    ['子供は何も言わず、ただ' + n + ' の袖を掴んだ。'],
+    [''],
+    ['冷徹になれない。', 'cry'],
+    ['こんな自分が、ひどく憎かった。'],
+    [''],
+    ['──それでも。', 'em'],
+    ['前に、進むしかない。'],
+  ];
+}
+
+function getArea3Story() {
+  const n = heroName;
+  return [
+    ['軍事基地── 中枢区画。', 'em'],
+    [''],
+    ['ここまで来た。', 'key'],
+    [''],
+    ['廃墟街。地下水路。いくつの命が、道に散ったか。'],
+    [''],
+    [n + ' の手は、震えていなかった。', 'key'],
+    [''],
+    ['ただ──オルゴールだけが、胸の中にある。'],
+    [''],
+    ['「……ひかり」', 'cry'],
+    [''],
+    ['この先に、答えがある。', 'em'],
+    ['この先に、命令を下した者がいる。'],
+    [''],
+    ['終わらせる。', 'key'],
+    [''],
+    ['──たとえ、その果てに何もなくても。'],
+  ];
+}
+
+function getArea4Story() {
+  const n = heroName;
+  return [
+    ['首都── 中枢塔。', 'em'],
+    [''],
+    ['軍の頂点。'],
+    ['全ての命令が、ここから下された。'],
+    [''],
+    ['廃墟街。地下水路。軍事基地。', 'em'],
+    ['無数の死が、' + n + ' を、ここまで運んだ。'],
+    [''],
+    ['「──必ずいる。」', 'key'],
+    [''],
+    ['諜報長官── コードネーム「シャドウ」。'],
+    ['全ての作戦の立案者。'],
+    ['全ての罪の、黒幕。'],
+    [''],
+    [n + ' は、安全装置を外した。', 'key'],
+    [''],
+    ['もう、迷わない。', 'cry'],
+    ['ひかりの分まで、終わらせる。'],
+  ];
+}
+
+function getAreaStory(areaId) {
+  if (areaId === 2) return getArea2Story();
+  if (areaId === 3) return getArea3Story();
+  if (areaId === 4) return getArea4Story();
+  return getArea1Story();
+}
+
+let storySkipped = false;
+
+async function runStory() {
+  storySkipped = false;
+  const box  = document.getElementById('story-text-box');
+  const hint = document.getElementById('story-skip-hint');
+  const btn  = document.getElementById('story-btn');
+  box.innerHTML = '';
+  btn.style.display = 'none';
+  hint.style.opacity = '1';
+
+  // update story header for current area
+  const area = getCurrentArea();
+  document.getElementById('story-area-badge').textContent = 'A R E A   ' + area.id;
+  document.getElementById('story-area-name').textContent  =
+    area.name.split('').join(' ');   // spaced letters like existing style
+
+  const lines = getAreaStory(currentArea);
+  for (const entry of lines) {
+    if (storySkipped) break;
+    const [text, cls] = Array.isArray(entry) ? entry : [entry, ''];
+    const span = document.createElement('span');
+    span.className = 'story-line' + (cls ? ' ' + cls : '');
+    span.textContent = text || '\u00A0';
+    box.appendChild(span);
+    box.scrollTop = box.scrollHeight;
+    if (!storySkipped) await sleep(text ? 1500 : 750);
+  }
+
+  if (storySkipped) {
+    box.innerHTML = '';
+    for (const entry of lines) {
+      const [text, cls] = Array.isArray(entry) ? entry : [entry, ''];
+      const span = document.createElement('span');
+      span.className = 'story-line instant' + (cls ? ' ' + cls : '');
+      span.textContent = text || '\u00A0';
+      box.appendChild(span);
+    }
+    box.scrollTop = box.scrollHeight;
+  }
+
+  hint.style.opacity = '0';
+  btn.style.display  = 'block';
+}
+
+function skipStory() { storySkipped = true; }
+
+// ════════════════════════════════════════
+//  GAME START
+// ════════════════════════════════════════
+function startNewGame() {
+  const input = document.getElementById('hero-name-input').value.trim();
+  heroName = input || '名無し';
+  deleteSave();
+  weaponIdx    = 0; armorIdx    = 0;
+  ownedWeapons = [0]; ownedArmors = [0];
+  heroGold     = 0;  currentArea = 1;  areaKills = 0;
+  itemCounts   = { potion:0, stimulant:0, barrier:0 };
+  buffAtkNext  = false; buffShieldNext = false;
+  ownedSkills  = []; smashDebuff = false; focusTurns = 0;
+  applyLevel(1);
+  heroExp = 0; heroHp = heroMaxHp;
+  document.getElementById('hero-name-display').textContent = heroName;
+  updateHeroDisplay();
+  showScreen('story-screen');
+  runStory();
+}
+
+function continueGame() {
+  const save = loadSave();
+  if (!save) { startNewGame(); return; }
+  heroName     = save.name;
+  weaponIdx    = save.weaponIdx    || 0;
+  armorIdx     = save.armorIdx     || 0;
+  ownedWeapons = save.ownedWeapons || [0];
+  ownedArmors  = save.ownedArmors  || [0];
+  heroGold     = save.gold       || 0;
+  currentArea  = save.currentArea || 1;
+  areaKills    = save.areaKills  || 0;
+  itemCounts   = save.itemCounts  || { potion:0, stimulant:0, barrier:0 };
+  ownedSkills  = save.ownedSkills || [];
+  buffAtkNext  = false; buffShieldNext = false;
+  smashDebuff  = false; focusTurns = 0;
+  applyLevel(save.lv || 1);
+  heroExp = save.exp || 0;
+  heroHp  = clamp(save.hp || heroMaxHp, 1, heroMaxHp);
+  document.getElementById('hero-name-input').value        = heroName;
+  document.getElementById('hero-name-display').textContent = heroName;
+  updateHeroDisplay();
+  enterBattle();
+}
+
+function enterBattle() {
+  showScreen('battle-screen');
+  loadEnemy();
+}
+
+// ════════════════════════════════════════
+//  LOAD ENEMY
+// ════════════════════════════════════════
+function loadEnemy() {
+  const area = getCurrentArea();
+  if (areaKills >= area.killsNeeded) {
+    isBossEnemy = true;
+    enemy = { ...area.boss };
+  } else {
+    isBossEnemy = false;
+    const pool = area.normalEnemies;
+    enemy = { ...pool[rand(0, pool.length - 1)] };
+  }
+  enemyHp = enemy.hp;
+
+  const spriteEl = document.getElementById('enemy-sprite');
+  spriteEl.textContent = enemy.sprite;
+  spriteEl.className   = 'enemy-sprite' + (isBossEnemy ? ' boss-glow' : '');
+
+  const nameEl = document.getElementById('enemy-name');
+  nameEl.textContent = enemy.name;
+  nameEl.className   = 'enemy-name' + (isBossEnemy ? ' boss-name' : '');
+
+  updateEnemyHpBar();
+  updateBattleHeader();
+  isGuarding = false; busy = false;
+  setButtons(true);
+  clearLog();
+
+  if (isBossEnemy) {
+    addLog('⚠ ─── BOSS BATTLE ───', 'log-boss');
+    addLog(enemy.name + ' が起動した！', 'log-boss');
+  } else {
+    addLog('▶ ' + enemy.name + ' が現れた！', 'log-system');
+  }
+}
+
+function updateBattleHeader() {
+  const area = getCurrentArea();
+  const el   = document.getElementById('battle-header');
+  const tag  = '▸ AREA ' + area.id + '  ' + area.name + ' ◂';
+  if (isBossEnemy) {
+    el.innerHTML = tag + ' &nbsp;&nbsp;<span style="color:#ff4422">⚠ BOSS BATTLE</span>';
+    el.className = 'battle-header boss-header';
+  } else {
+    el.textContent = tag + '   討伐 ' + areaKills + ' / ' + area.killsNeeded;
+    el.className   = 'battle-header';
+  }
+}
+
+// ════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════
+function setButtons(en) {
+  document.getElementById('btn-attack').disabled = !en;
+  document.getElementById('btn-guard').disabled  = !en;
+  document.getElementById('btn-item').disabled   = !en;
+  document.getElementById('btn-skill').disabled  = !en;
+}
+
+function updateHeroDisplay() {
+  const pct = clamp((heroHp / heroMaxHp) * 100, 0, 100);
+  const bar  = document.getElementById('hero-hp-bar');
+  bar.style.width = pct + '%';
+  bar.className   = 'bar-fill hp-fill' + (pct <= 25 ? ' critical' : pct <= 50 ? ' low' : '');
+  document.getElementById('hero-hp-text').textContent = heroHp + ' / ' + heroMaxHp;
+
+  const w = WEAPONS[weaponIdx];
+  const a = ARMORS[armorIdx];
+  document.getElementById('equip-weapon-disp').textContent = w.sprite;
+  document.getElementById('equip-armor-disp').textContent  = a.sprite;
+  document.getElementById('gold-disp').textContent         = '💰 ' + heroGold + 'G';
+}
+
+function updateEnemyHpBar() {
+  const pct = clamp((enemyHp / enemy.hp) * 100, 0, 100);
+  const bar  = document.getElementById('enemy-hp-bar');
+  bar.style.width = pct + '%';
+  bar.className   = 'bar-fill hp-fill' + (pct <= 25 ? ' critical' : pct <= 50 ? ' low' : '');
+  document.getElementById('enemy-hp-text').textContent = enemyHp + ' / ' + enemy.hp;
+}
+
+function addLog(text, cls) {
+  const log = document.getElementById('battle-log');
+  const p   = document.createElement('p');
+  if (cls) p.className = cls;
+  p.textContent = text;
+  log.appendChild(p);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() { document.getElementById('battle-log').innerHTML = ''; }
+
+function shakeEnemy() {
+  const el = document.getElementById('enemy-sprite');
+  el.classList.remove('shake'); void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 400);
+}
+
+function hitHero() {
+  const el = document.getElementById('hero-icon');
+  el.classList.remove('hit'); void el.offsetWidth;
+  el.classList.add('hit');
+  setTimeout(() => el.classList.remove('hit'), 450);
+}
+
+// ════════════════════════════════════════
+//  PLAYER ATTACK
+// ════════════════════════════════════════
+async function playerAttack() {
+  if (busy) return;
+  busy = true; isGuarding = false;
+  setButtons(false);
+
+  const weapon = WEAPONS[weaponIdx];
+
+  // ── damage roll ──
+  let variance;
+  if (weapon.effect === 'confirm') {
+    variance = rand(0, 7);          // no downward variance
+  } else {
+    variance = rand(-3, 4);
+  }
+
+  let enemyDefReduction = (enemy.def || 0);
+  if (weapon.effect === 'pierce') {
+    enemyDefReduction = 0;           // ignore enemy defense
+  }
+
+  let dmg = heroAtk + variance - enemyDefReduction;
+
+  // first strike (knife) ×1.5
+  if (weapon.effect === 'firstStrike') {
+    dmg = Math.floor(dmg * 1.5);
+  }
+
+  // stimulant buff ×1.5
+  if (buffAtkNext) {
+    dmg = Math.floor(dmg * 1.5);
+    buffAtkNext = false;
+    addLog('💉 強化剤の効果！ 攻撃力が上昇した！', 'log-item');
+  }
+
+  // critical hit
+  const critChance = weapon.effect === 'crit' ? 0.20 : 0.10;
+  let isCrit = Math.random() < critChance;
+  if (isCrit) dmg = Math.floor(dmg * 2);
+
+  dmg = Math.max(1, dmg);
+
+  enemyHp = Math.max(0, enemyHp - dmg);
+  updateEnemyHpBar();
+  shakeEnemy();
+
+  const critNote  = isCrit ? ' 【クリティカル！】' : '';
+  const pierceNote = weapon.effect === 'pierce' ? ' 【防御無視】' : '';
+  addLog(
+    weapon.sprite + ' ' + heroName + ' の攻撃！ → ' +
+    enemy.name + ' に ' + dmg + ' ダメージ！' + critNote + pierceNote,
+    isCrit ? 'log-crit' : 'log-hero'
+  );
+
+  await sleep(500);
+
+  if (enemyHp <= 0) {
+    addLog(enemy.name + ' を倒した！', 'log-victory');
+    await sleep(200);
+    processVictory();
+    return;
+  }
+
+  // stun check (assault rifle)
+  if (weapon.effect === 'stun' && Math.random() < 0.30) {
+    addLog('💥 ' + enemy.name + ' は怯んだ！次の攻撃をスキップ！', 'log-stun');
+    busy = false;
+    setButtons(true);
+    return;
+  }
+
+  await enemyAttack(false);
+}
+
+// ════════════════════════════════════════
+//  PLAYER GUARD
+// ════════════════════════════════════════
+async function playerGuard() {
+  if (busy) return;
+  busy = true; isGuarding = true;
+  setButtons(false);
+  addLog(heroName + ' は身を守る構えをとった！', 'log-guard');
+  await sleep(400);
+  await enemyAttack(true);
+}
+
+// ════════════════════════════════════════
+//  ENEMY ATTACK
+// ════════════════════════════════════════
+async function enemyAttack(guarded) {
+  const armor = ARMORS[armorIdx];
+
+  // smash debuff: hero's defence is 0 this turn
+  let effectiveDef = heroDef;
+  if (smashDebuff) {
+    effectiveDef = 0;
+    smashDebuff  = false;
+    addLog('💢 渾身の一撃の反動！ ' + heroName + ' の防御力が 0 になった！', 'log-skill');
+  }
+
+  const defBonus = effectiveDef + (guarded ? rand(6, 10) : 0);
+  let dmg        = Math.max(1, rand(enemy.atk - 2, enemy.atk + 2) - defBonus);
+
+  // 集中防御: halve damage while active
+  if (focusTurns > 0) {
+    dmg = Math.max(1, Math.floor(dmg / 2));
+    focusTurns--;
+    if (focusTurns > 0) {
+      addLog('⚡ 集中防御中！ ダメージ半減（残り ' + focusTurns + ' ターン）', 'log-skill');
+    } else {
+      addLog('⚡ 集中防御の効果が切れた。', 'log-skill');
+    }
+  }
+
+  // barrier buff: zero damage
+  if (buffShieldNext) {
+    buffShieldNext = false;
+    addLog('🛡️ 防御膜が展開！ ' + enemy.name + ' の攻撃を完全に防いだ！', 'log-item');
+    await sleep(400);
+    busy = false;
+    setButtons(true);
+    saveProgress();
+    return;
+  }
+
+  // anti-explosive armor
+  if (armor.effect === 'antiExplosive' && enemy.explosive) {
+    const reduced = Math.floor(dmg * 0.80);
+    if (reduced < dmg) {
+      addLog('💣 耐爆グローブが爆発を緩和！', 'log-guard');
+    }
+    dmg = Math.max(1, reduced);
+  }
+
+  // enemy dialogue
+  const tauntLine = pickEnemyLine(enemy.name);
+  if (tauntLine) {
+    addLog(enemy.sprite + ' 「' + tauntLine + '」', 'log-taunt');
+  }
+
+  heroHp = Math.max(0, heroHp - dmg);
+  updateHeroDisplay();
+  hitHero();
+
+  addLog(
+    enemy.name + ' の攻撃！ → ' + heroName +
+    (guarded ? ' は防御！ ' : ' に ') + dmg +
+    ' ダメージ' + (guarded ? '（軽減）' : '！'),
+    'log-enemy'
+  );
+
+  await sleep(400);
+
+  if (heroHp <= 0) {
+    addLog(heroName + ' は倒れた…', 'log-system');
+    saveProgress();
+    showDefeat();
+    return;
+  }
+
+  busy = false;
+  setButtons(true);
+}
+
+// ════════════════════════════════════════
+//  VICTORY PROCESSING
+// ════════════════════════════════════════
+function processVictory() {
+  gainExp(enemy.exp);
+  const gold = enemy.gold || 0;
+  heroGold += gold;
+  updateHeroDisplay();
+
+  if (isBossEnemy) {
+    const area = getCurrentArea();
+    // area reward: give armor if specified and not already owned
+    if (area.bossRewardArmor !== null && area.bossRewardArmor !== undefined) {
+      const idx = area.bossRewardArmor;
+      if (!ownedArmors.includes(idx)) ownedArmors.push(idx);
+      armorIdx = idx;
+      computeHeroStats();
+    }
+    saveProgress();
+    if (currentArea === 3) {
+      showColossusScene();
+    } else if (currentArea === 4) {
+      showShadowTruthScene();
+    } else {
+      showAreaClear();
+    }
+  } else {
+    areaKills++;
+    // random item drop (33% chance per normal enemy kill)
+    let itemDropMsg = '';
+    if (Math.random() < 0.33) {
+      const dropped = ITEMS[rand(0, ITEMS.length - 1)];
+      itemCounts[dropped.id] = (itemCounts[dropped.id] || 0) + 1;
+      itemDropMsg = '\n🎁 ' + dropped.sprite + ' ' + dropped.name + ' を入手した！';
+      addLog('🎁 ' + dropped.sprite + ' ' + dropped.name + ' を入手した！', 'log-item');
+    }
+    saveProgress();
+    document.getElementById('victory-msg').textContent =
+      enemy.name + ' を撃破した！\n残りHP: ' + heroHp + ' / ' + heroMaxHp +
+      '\n━━━━━━━━━━\n💰 ' + gold + 'G 獲得' + itemDropMsg;
+    document.getElementById('victory-overlay').style.display = 'flex';
+  }
+}
+
+// ════════════════════════════════════════
+//  OVERLAY ACTIONS
+// ════════════════════════════════════════
+function showDefeat() {
+  const area     = getCurrentArea();
+  const phase    = isBossEnemy ? '⚠ BOSS BATTLE' : '討伐 ' + areaKills + '/' + area.killsNeeded;
+  const bonusGold = areaKills * 10;
+  if (bonusGold > 0) {
+    heroGold += bonusGold;
+    updateHeroDisplay();
+  }
+  saveProgress();
+  document.getElementById('defeat-msg').textContent =
+    '祈りは…届かなかった。\nAREA ' + area.id + ' ' + area.name + ' ─ ' + phase;
+  document.getElementById('defeat-bonus').textContent =
+    bonusGold > 0
+      ? '💰 敗北ボーナス: ' + areaKills + '体 × 10G = +' + bonusGold + 'G'
+      : '';
+  document.getElementById('defeat-overlay').style.display = 'flex';
+}
+
+function showAreaClear() {
+  const area = getCurrentArea();
+  const bossGold = area.boss.gold || 0;
+  document.getElementById('area-clear-deco').textContent =
+    'AREA ' + area.id + '  CLEAR';
+  document.getElementById('area-clear-title').textContent =
+    '★ ' + area.name + 'を制した ★';
+
+  let msg = area.boss.name + ' を撃破した。\n💰 ' + bossGold + 'G 獲得';
+  if (area.bossRewardArmor !== null && area.bossRewardArmor !== undefined) {
+    const a = ARMORS[area.bossRewardArmor];
+    msg += '\n\n🎁 ' + a.sprite + ' ' + a.name + ' を入手した！';
+  }
+  if (currentArea === 1) {
+    msg += '\n\n' + heroName + ' はまた一歩、\nオルゴールの音を取り戻すために歩き始めた。';
+  } else if (currentArea === 2) {
+    msg += '\n\nあの子供の目が、忘れられない。\nそれでも前へ──';
+  } else if (currentArea === 4) {
+    msg += '\n\n全ての祈りは、\nここで終わった。';
+  }
+  document.getElementById('area-clear-msg').textContent = msg;
+  document.getElementById('area-clear-kills').textContent =
+    '討伐数: ' + area.killsNeeded + '体 + ボス  残りHP: ' + heroHp + ' / ' + heroMaxHp;
+
+  // show "next area" button only if there is one
+  const hasNext = currentArea < AREAS.length - 1;
+  document.getElementById('area-next-btn').style.display = hasNext ? 'block' : 'none';
+
+  document.getElementById('area-clear-overlay').style.display = 'flex';
+}
+
+function nextEnemy() {
+  document.getElementById('victory-overlay').style.display = 'none';
+  loadEnemy();
+}
+
+function retryBattle() {
+  document.getElementById('defeat-overlay').style.display = 'none';
+  heroHp = heroMaxHp;
+  updateHeroDisplay();
+  saveProgress();
+  loadEnemy();
+}
+
+function goTitle() {
+  ['victory-overlay','defeat-overlay','area-clear-overlay','colossus-overlay','shadow-truth-overlay'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  showScreen('title-screen');
+  document.getElementById('hero-name-input').value = heroName;
+  document.getElementById('save-info').style.display = 'none';
+  document.getElementById('continue-btn').style.display = 'none';
+  initTitle();
+}
+
+// ════════════════════════════════════════
+//  AREA PROGRESSION
+// ════════════════════════════════════════
+function proceedToNextArea() {
+  document.getElementById('area-clear-overlay').style.display = 'none';
+  currentArea++;
+  areaKills = 0;
+  saveProgress();
+  showScreen('story-screen');
+  runStory();
+}
+
+// ════════════════════════════════════════
+//  COLOSSUS DEATH SCENE
+// ════════════════════════════════════════
+function getColossusDeathLines() {
+  const n = heroName;
+  return [
+    ['コロッサスの巨体が、ゆっくりと膝をつく。', 'em'],
+    [''],
+    ['装甲の隙間から──', 'em'],
+    ['か細い、声が、漏れた。'],
+    [''],
+    ['「……き、さま……」'],
+    [''],
+    ['──だが、その瞳は。', 'key'],
+    [''],
+    ['かつての人間の、色をしていた。'],
+    [''],
+    ['「……頼む……」', 'cry'],
+    ['「……殺して、くれ……」', 'cry'],
+    [''],
+    ['──' + n + ' は、動けなかった。', 'key'],
+    [''],
+    ['床に、一枚の紙が落ちている。'],
+    ['血に濡れた、手記。'],
+    [''],
+    ['── 手記より ────────────', 'note'],
+    ['「家族を守れなかった。', 'note'],
+    ['守れなかった。', 'note'],
+    ['俺は何のために戦ったんだ。', 'note'],
+    ['もう、止められない。', 'note'],
+    ['誰か──', 'note'],
+    ['止めてくれ。」', 'note'],
+    ['────────────────────', 'note'],
+    [''],
+    [n + ' は、その紙を折り畳んだ。', 'key'],
+    [''],
+    ['胸ポケットの中で、オルゴールが静かに揺れた。'],
+    [''],
+    ['──祈りは、届いたのだろうか。', 'cry'],
+  ];
+}
+
+let colossusSkipped = false;
+
+async function showColossusScene() {
+  colossusSkipped = false;
+  const box  = document.getElementById('colossus-text-box');
+  const hint = document.getElementById('colossus-hint');
+  const btn  = document.getElementById('colossus-btn');
+  box.innerHTML = '';
+  hint.style.opacity = '1';
+  btn.style.display  = 'none';
+  document.getElementById('colossus-overlay').style.display = 'flex';
+
+  const lines = getColossusDeathLines();
+  for (const entry of lines) {
+    if (colossusSkipped) break;
+    const [text, cls] = Array.isArray(entry) ? entry : [entry, ''];
+    const span = document.createElement('span');
+    span.className = 'story-line' + (cls ? ' ' + cls : '');
+    span.textContent = text || '\u00A0';
+    box.appendChild(span);
+    box.scrollTop = box.scrollHeight;
+    if (!colossusSkipped) await sleep(text ? 1500 : 600);
+  }
+
+  if (colossusSkipped) {
+    box.innerHTML = '';
+    for (const entry of lines) {
+      const [text, cls] = Array.isArray(entry) ? entry : [entry, ''];
+      const span = document.createElement('span');
+      span.className = 'story-line instant' + (cls ? ' ' + cls : '');
+      span.textContent = text || '\u00A0';
+      box.appendChild(span);
+    }
+    box.scrollTop = box.scrollHeight;
+  }
+
+  hint.style.opacity = '0';
+  btn.style.display  = 'block';
+}
+
+function skipColossus() { colossusSkipped = true; }
+
+function finishColossusScene() {
+  document.getElementById('colossus-overlay').style.display = 'none';
+  showAreaClear();
+}
+
+// ════════════════════════════════════════
+//  SHADOW TRUTH SCENE
+// ════════════════════════════════════════
+function getShadowTruthLines() {
+  const n = heroName;
+  return [
+    ['──「シャドウ」は、倒れた。', 'em'],
+    [''],
+    ['マスクが、外れた。', 'em'],
+    [''],
+    [''],
+    [n + ' は、息を呑んだ。', 'key'],
+    [''],
+    ['知っている顔だった。', 'key'],
+    [''],
+    [''],
+    ['「……ゼロス…？」', 'cry'],
+    [''],
+    ['幼なじみ。', 'zero'],
+    ['故郷の路地で、共に走った男。', 'zero'],
+    [''],
+    [''],
+    ['── 真相が、ほどけていく。', 'em'],
+    [''],
+    [''],
+    ['家族を殺したのは、軍の独断だった。', 'key'],
+    ['正式な命令など、どこにも存在しなかった。', 'key'],
+    [''],
+    [''],
+    ['ゼロスは──それを、止めようとしていた。', 'key'],
+    [''],
+    [''],
+    ['彼もまた、愛する者を軍に奪われていた。', 'zero'],
+    ['それでも彼は、内側から変えようとした。', 'zero'],
+    [''],
+    [''],
+    ['間に合わなかった。', 'cry'],
+    [''],
+    [''],
+    ['「……' + n + '……」', 'zero'],
+    [''],
+    ['ゼロスの手が、' + n + ' の手を探した。', 'key'],
+    [''],
+    ['「……ごめん……」', 'zero'],
+    [''],
+    ['「……止められなかった……」', 'zero'],
+    [''],
+    [''],
+    [n + ' は、何も言えなかった。', 'cry'],
+    [''],
+    ['ただ、その手を、握った。', 'key'],
+    [''],
+    [''],
+    ['オルゴールが──', 'em'],
+    [''],
+    ['音を、奏でた。', 'key'],
+    [''],
+    ['ひかりの好きだった、あの曲を。', 'cry'],
+  ];
+}
+
+let shadowTruthSkipped = false;
+
+async function showShadowTruthScene() {
+  shadowTruthSkipped = false;
+  const box  = document.getElementById('truth-text-box');
+  const hint = document.getElementById('truth-hint');
+  const btn  = document.getElementById('truth-btn');
+  box.innerHTML = '';
+  hint.style.opacity = '1';
+  btn.style.display  = 'none';
+  document.getElementById('shadow-truth-overlay').style.display = 'flex';
+
+  const lines = getShadowTruthLines();
+  for (const entry of lines) {
+    if (shadowTruthSkipped) break;
+    const [text, cls] = Array.isArray(entry) ? entry : [entry, ''];
+    const span = document.createElement('span');
+    span.className = 'story-line' + (cls ? ' ' + cls : '');
+    span.textContent = text || '\u00A0';
+    box.appendChild(span);
+    box.scrollTop = box.scrollHeight;
+    // blank lines pause shorter; key revelations pause longer
+    const delay = !text ? 600 : (cls === 'key' || cls === 'zero') ? 2200 : 1800;
+    if (!shadowTruthSkipped) await sleep(delay);
+  }
+
+  if (shadowTruthSkipped) {
+    box.innerHTML = '';
+    for (const entry of lines) {
+      const [text, cls] = Array.isArray(entry) ? entry : [entry, ''];
+      const span = document.createElement('span');
+      span.className = 'story-line instant' + (cls ? ' ' + cls : '');
+      span.textContent = text || '\u00A0';
+      box.appendChild(span);
+    }
+    box.scrollTop = box.scrollHeight;
+  }
+
+  hint.style.opacity = '0';
+  btn.style.display  = 'block';
+}
+
+function skipShadowTruth() { shadowTruthSkipped = true; }
+
+function finishShadowTruthScene() {
+  document.getElementById('shadow-truth-overlay').style.display = 'none';
+  showAreaClear();
+}
+
+// ════════════════════════════════════════
+//  ITEM MENU
+// ════════════════════════════════════════
+function openItemMenu() {
+  if (busy) return;
+  renderItemMenu();
+  document.getElementById('item-overlay').style.display = 'flex';
+}
+
+function closeItemMenu() {
+  document.getElementById('item-overlay').style.display = 'none';
+}
+
+function renderItemMenu() {
+  const ul = document.getElementById('item-menu-list');
+  ul.innerHTML = '';
+  ITEMS.forEach(item => {
+    const count = itemCounts[item.id] || 0;
+    const row = document.createElement('div');
+    row.className = 'item-menu-row';
+    row.innerHTML =
+      '<span class="item-menu-icon">' + item.sprite + '</span>' +
+      '<span class="item-menu-name">' + item.name + '</span>' +
+      '<span class="item-menu-desc">' + item.desc + '</span>' +
+      '<span class="item-menu-count">×' + count + '</span>' +
+      '<button class="shop-btn" ' + (count === 0 ? 'disabled' : '') +
+        ' onclick="useItem(\'' + item.id + '\')">使う</button>';
+    ul.appendChild(row);
+  });
+}
+
+async function useItem(id) {
+  const item = ITEMS.find(i => i.id === id);
+  if (!item || (itemCounts[id] || 0) <= 0) return;
+  itemCounts[id]--;
+  closeItemMenu();
+  busy = true;
+  setButtons(false);
+
+  if (id === 'potion') {
+    const healed = Math.min(50, heroMaxHp - heroHp);
+    heroHp = Math.min(heroMaxHp, heroHp + 50);
+    updateHeroDisplay();
+    addLog('🧪 ' + heroName + ' は回復薬を使った！ HP が ' + healed + ' 回復した！', 'log-item');
+    await sleep(400);
+    await enemyAttack(false);
+  } else if (id === 'stimulant') {
+    buffAtkNext = true;
+    addLog('💉 ' + heroName + ' は強化剤を注射した！ 次の攻撃力が上がった！', 'log-item');
+    await sleep(400);
+    await enemyAttack(false);
+  } else if (id === 'barrier') {
+    buffShieldNext = true;
+    addLog('🛡️ ' + heroName + ' は防御膜を展開した！ 次のダメージを無効化する！', 'log-item');
+    await sleep(400);
+    await enemyAttack(false);
+  }
+
+  saveProgress();
+}
+
+// ════════════════════════════════════════
+//  SKILL MENU
+// ════════════════════════════════════════
+function openSkillMenu() {
+  if (busy) return;
+  renderSkillMenu();
+  document.getElementById('skill-overlay').style.display = 'flex';
+}
+
+function closeSkillMenu() {
+  document.getElementById('skill-overlay').style.display = 'none';
+}
+
+function renderSkillMenu() {
+  const ul = document.getElementById('skill-menu-list');
+  ul.innerHTML = '';
+
+  const owned = ownedSkills.length > 0;
+  if (!owned) {
+    const note = document.createElement('div');
+    note.className = 'skill-locked-note';
+    note.textContent = 'スキルを所持していません';
+    ul.appendChild(note);
+    return;
+  }
+
+  SKILLS.forEach(skill => {
+    if (!ownedSkills.includes(skill.id)) return;
+    const row = document.createElement('div');
+    row.className = 'skill-menu-row';
+    row.innerHTML =
+      '<span class="skill-menu-icon">' + skill.sprite + '</span>' +
+      '<span class="skill-menu-name">' + skill.name + '</span>' +
+      '<span class="skill-menu-desc">' + skill.desc + '</span>' +
+      '<button class="shop-btn" onclick="useSkill(\'' + skill.id + '\')">使う</button>';
+    ul.appendChild(row);
+  });
+
+  if (ul.children.length === 0) {
+    const note = document.createElement('div');
+    note.className = 'skill-locked-note';
+    note.textContent = 'スキルを所持していません';
+    ul.appendChild(note);
+  }
+}
+
+async function useSkill(id) {
+  const skill = SKILLS.find(s => s.id === id);
+  if (!skill || !ownedSkills.includes(id)) return;
+  closeSkillMenu();
+  busy = true;
+  setButtons(false);
+
+  if (id === 'double') {
+    // ── 連続攻撃: two hits ──
+    addLog('🔥 ' + heroName + ' は連続攻撃を発動！', 'log-skill');
+    await sleep(300);
+
+    for (let hit = 1; hit <= 2; hit++) {
+      const weapon   = WEAPONS[weaponIdx];
+      let variance   = weapon.effect === 'confirm' ? rand(0, 7) : rand(-3, 4);
+      let eDef       = weapon.effect === 'pierce'  ? 0 : (enemy.def || 0);
+      let dmg        = heroAtk + variance - eDef;
+      if (weapon.effect === 'firstStrike') dmg = Math.floor(dmg * 1.5);
+      const critChance = weapon.effect === 'crit' ? 0.20 : 0.10;
+      const isCrit   = Math.random() < critChance;
+      if (isCrit) dmg = Math.floor(dmg * 2);
+      dmg = Math.max(1, dmg);
+
+      enemyHp = Math.max(0, enemyHp - dmg);
+      updateEnemyHpBar();
+      shakeEnemy();
+      addLog(
+        hit + '撃目： ' + enemy.name + ' に ' + dmg + ' ダメージ！' + (isCrit ? ' 【クリティカル！】' : ''),
+        isCrit ? 'log-crit' : 'log-hero'
+      );
+      await sleep(450);
+
+      if (enemyHp <= 0) {
+        addLog(enemy.name + ' を倒した！', 'log-victory');
+        await sleep(200);
+        processVictory();
+        return;
+      }
+    }
+
+    // stun check after double hit (only for rifle, once)
+    const weapon = WEAPONS[weaponIdx];
+    if (weapon.effect === 'stun' && Math.random() < 0.30) {
+      addLog('💥 ' + enemy.name + ' は怯んだ！次の攻撃をスキップ！', 'log-stun');
+      busy = false;
+      setButtons(true);
+      return;
+    }
+
+    await enemyAttack(false);
+
+  } else if (id === 'smash') {
+    // ── 渾身の一撃: ×2 damage ──
+    addLog('💢 ' + heroName + ' は渾身の一撃を放つ！', 'log-skill');
+    await sleep(300);
+
+    const weapon   = WEAPONS[weaponIdx];
+    let variance   = weapon.effect === 'confirm' ? rand(0, 7) : rand(-3, 4);
+    let eDef       = weapon.effect === 'pierce'  ? 0 : (enemy.def || 0);
+    let dmg        = heroAtk + variance - eDef;
+    if (weapon.effect === 'firstStrike') dmg = Math.floor(dmg * 1.5);
+    if (buffAtkNext) { dmg = Math.floor(dmg * 1.5); buffAtkNext = false; }
+    const critChance = weapon.effect === 'crit' ? 0.20 : 0.10;
+    const isCrit   = Math.random() < critChance;
+    if (isCrit) dmg = Math.floor(dmg * 2);
+    dmg = Math.max(1, Math.floor(dmg * 2));   // smash ×2
+
+    enemyHp = Math.max(0, enemyHp - dmg);
+    updateEnemyHpBar();
+    shakeEnemy();
+    addLog(
+      weapon.sprite + ' 渾身の一撃！ → ' + enemy.name + ' に ' + dmg + ' ダメージ！' +
+      (isCrit ? ' 【クリティカル！】' : ''),
+      isCrit ? 'log-crit' : 'log-hero'
+    );
+
+    smashDebuff = true;  // next turn: defBonus = 0
+
+    if (enemyHp <= 0) {
+      await sleep(200);
+      addLog(enemy.name + ' を倒した！', 'log-victory');
+      smashDebuff = false;
+      await sleep(200);
+      processVictory();
+      return;
+    }
+
+    if (weapon.effect === 'stun' && Math.random() < 0.30) {
+      addLog('💥 ' + enemy.name + ' は怯んだ！', 'log-stun');
+      busy = false;
+      setButtons(true);
+      return;
+    }
+
+    await sleep(400);
+    await enemyAttack(false);
+
+  } else if (id === 'focus') {
+    // ── 集中防御: 3-turn damage halve ──
+    focusTurns = 3;
+    addLog('⚡ ' + heroName + ' は集中防御に入った！ 3ターン被ダメージ半減！', 'log-skill');
+    await sleep(400);
+    await enemyAttack(false);
+  }
+
+  saveProgress();
+}
+
+// ════════════════════════════════════════
+//  SHOP
+// ════════════════════════════════════════
+let shopReturnAction = 'battle';  // 'battle' | 'title'
+let shopTab = 'weapon';
+
+function openShop() {
+  document.getElementById('victory-overlay').style.display = 'none';
+  shopReturnAction = 'battle';
+  showScreen('shop-screen');
+  renderShop();
+}
+
+function openShopFromClear() {
+  document.getElementById('area-clear-overlay').style.display = 'none';
+  shopReturnAction = 'title';
+  showScreen('shop-screen');
+  renderShop();
+}
+
+function openShopFromDefeat() {
+  document.getElementById('defeat-overlay').style.display = 'none';
+  shopReturnAction = 'defeat';
+  showScreen('shop-screen');
+  renderShop();
+}
+
+function closeShop() {
+  if (shopReturnAction === 'title') {
+    goTitle();
+  } else if (shopReturnAction === 'defeat') {
+    heroHp = heroMaxHp;
+    updateHeroDisplay();
+    saveProgress();
+    showScreen('battle-screen');
+    loadEnemy();
+  } else {
+    showScreen('battle-screen');
+    loadEnemy();
+  }
+}
+
+function showShopTab(tab) {
+  shopTab = tab;
+  document.getElementById('shop-weapon-list').style.display = tab === 'weapon' ? 'flex' : 'none';
+  document.getElementById('shop-armor-list').style.display  = tab === 'armor'  ? 'flex' : 'none';
+  document.getElementById('shop-item-list').style.display   = tab === 'item'   ? 'flex' : 'none';
+  document.getElementById('shop-skill-list').style.display  = tab === 'skill'  ? 'flex' : 'none';
+  document.getElementById('tab-weapon').className = 'shop-tab' + (tab === 'weapon' ? ' active' : '');
+  document.getElementById('tab-armor').className  = 'shop-tab' + (tab === 'armor'  ? ' active' : '');
+  document.getElementById('tab-item').className   = 'shop-tab' + (tab === 'item'   ? ' active' : '');
+  document.getElementById('tab-skill').className  = 'shop-tab' + (tab === 'skill'  ? ' active' : '');
+}
+
+function renderShop() {
+  document.getElementById('shop-gold-disp').textContent = heroGold;
+  buildItemList('weapon', WEAPONS, ownedWeapons, weaponIdx, 'shop-weapon-list');
+  buildItemList('armor',  ARMORS,  ownedArmors,  armorIdx,  'shop-armor-list');
+  buildConsumableList();
+  buildSkillShopList();
+  showShopTab(shopTab);
+}
+
+function buildItemList(type, items, owned, equippedIdx, listId) {
+  const list = document.getElementById(listId);
+  list.innerHTML = '';
+
+  items.forEach((item, idx) => {
+    const isEquipped = idx === equippedIdx;
+    const isOwned    = owned.includes(idx);
+    const canAfford  = heroGold >= item.price;
+
+    const div = document.createElement('div');
+    let cls = 'shop-item';
+    if (isEquipped) cls += ' s-equipped';
+    else if (isOwned) cls += ' s-owned';
+    div.className = cls;
+
+    // badge
+    let badge = '';
+    if (isEquipped)   badge = '<span class="badge badge-eq">装備中</span>';
+    else if (isOwned) badge = '<span class="badge badge-own">所持済</span>';
+
+    // stat line
+    const statLine = type === 'weapon'
+      ? '攻撃 +' + item.atkBonus
+      : '防御 +' + item.defBonus;
+
+    // price
+    let priceClass = '';
+    let priceText  = '';
+    if (item.price === 0) { priceClass = 'free'; priceText = '無料'; }
+    else if (!canAfford)  { priceClass = 'no-gold'; priceText = item.price + 'G'; }
+    else                  { priceText = item.price + 'G'; }
+
+    // action button
+    let btn = '';
+    if (!isOwned) {
+      btn = `<button class="shop-btn" ${canAfford ? '' : 'disabled'}
+        onclick="buyItem('${type}',${idx})">
+        ${item.price === 0 ? '入手' : '購入'}
+      </button>`;
+    } else if (!isEquipped) {
+      btn = `<button class="shop-btn s-equip"
+        onclick="equipItem('${type}',${idx})">装備する</button>`;
+    }
+
+    div.innerHTML = `
+      <div class="shop-item-head">
+        <div class="shop-item-name">${item.sprite} ${item.name}</div>
+        ${badge}
+      </div>
+      <div class="shop-stat">${statLine}</div>
+      <div class="shop-effect">✦ ${item.effectDesc}</div>
+      <div class="shop-footer">
+        <span class="shop-price ${priceClass}">💰 ${priceText}</span>
+        ${btn}
+      </div>`;
+
+    list.appendChild(div);
+  });
+}
+
+function buyItem(type, idx) {
+  const items = type === 'weapon' ? WEAPONS : ARMORS;
+  const owned = type === 'weapon' ? ownedWeapons : ownedArmors;
+  const item  = items[idx];
+  if (heroGold < item.price) return;
+  if (!owned.includes(idx)) {
+    heroGold -= item.price;
+    owned.push(idx);
+  }
+  // auto-equip on purchase
+  if (type === 'weapon') { weaponIdx = idx; }
+  else                   { armorIdx  = idx; }
+  computeHeroStats();
+  updateHeroDisplay();
+  saveProgress();
+  renderShop();
+}
+
+function equipItem(type, idx) {
+  if (type === 'weapon') { weaponIdx = idx; }
+  else                   { armorIdx  = idx; }
+  computeHeroStats();
+  updateHeroDisplay();
+  saveProgress();
+  renderShop();
+}
+
+function buildConsumableList() {
+  const list = document.getElementById('shop-item-list');
+  list.innerHTML = '';
+
+  ITEMS.forEach(item => {
+    const count     = itemCounts[item.id] || 0;
+    const canAfford = heroGold >= item.price;
+
+    const div = document.createElement('div');
+    div.className = 'shop-item shop-item-consumable';
+
+    let priceClass = canAfford ? '' : 'no-gold';
+
+    div.innerHTML =
+      '<div class="shop-item-head">' +
+        '<div class="shop-item-name">' + item.sprite + ' ' + item.name + '</div>' +
+        '<span class="shop-consumable-count">所持 ×' + count + '</span>' +
+      '</div>' +
+      '<div class="shop-effect">✦ ' + item.desc + '</div>' +
+      '<div class="shop-footer">' +
+        '<span class="shop-price ' + priceClass + '">💰 ' + item.price + 'G</span>' +
+        '<button class="shop-btn" ' + (canAfford ? '' : 'disabled') +
+          ' onclick="buyConsumable(\'' + item.id + '\')">購入</button>' +
+      '</div>';
+
+    list.appendChild(div);
+  });
+}
+
+function buyConsumable(id) {
+  const item = ITEMS.find(i => i.id === id);
+  if (!item || heroGold < item.price) return;
+  heroGold -= item.price;
+  itemCounts[id] = (itemCounts[id] || 0) + 1;
+  saveProgress();
+  renderShop();
+}
+
+function buildSkillShopList() {
+  const list = document.getElementById('shop-skill-list');
+  list.innerHTML = '';
+
+  SKILLS.forEach(skill => {
+    const isOwned   = ownedSkills.includes(skill.id);
+    const canAfford = heroGold >= skill.price;
+    const unlockedLv = heroLevel >= skill.unlockLv;
+
+    const div = document.createElement('div');
+    let cls = 'shop-item shop-item-skill';
+    if (isOwned) cls += ' s-owned';
+    div.className = cls;
+
+    const badge = isOwned
+      ? '<span class="badge badge-eq">習得済</span>'
+      : (!unlockedLv
+          ? '<span class="badge" style="color:#440055;border-color:#440055">Lv' + skill.unlockLv + '以上</span>'
+          : '');
+
+    let priceClass = '';
+    if (!canAfford && !isOwned) priceClass = 'no-gold';
+
+    let btn = '';
+    if (!isOwned) {
+      const disabled = (!canAfford || !unlockedLv) ? 'disabled' : '';
+      btn = '<button class="shop-btn" ' + disabled + ' onclick="buySkill(\'' + skill.id + '\')">習得</button>';
+    }
+
+    div.innerHTML =
+      '<div class="shop-item-head">' +
+        '<div class="shop-item-name">' + skill.sprite + ' ' + skill.name + '</div>' +
+        badge +
+      '</div>' +
+      '<div class="shop-skill-lv">解放条件: Lv ' + skill.unlockLv + ' 以上</div>' +
+      '<div class="shop-effect">✦ ' + skill.desc + '</div>' +
+      '<div class="shop-footer">' +
+        '<span class="shop-price ' + priceClass + '">💰 ' + skill.price + 'G</span>' +
+        btn +
+      '</div>';
+
+    list.appendChild(div);
+  });
+}
+
+function buySkill(id) {
+  const skill = SKILLS.find(s => s.id === id);
+  if (!skill || ownedSkills.includes(id)) return;
+  if (heroGold < skill.price) return;
+  if (heroLevel < skill.unlockLv) return;
+  heroGold -= skill.price;
+  ownedSkills.push(id);
+  saveProgress();
+  renderShop();
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+document.getElementById('hero-name-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') startNewGame();
+});
+
+showScreen('title-screen');
+initTitle();
+</script>
+</body>
+</html>
