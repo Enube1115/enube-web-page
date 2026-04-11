@@ -628,6 +628,81 @@
 
   .colossus-skip-hint { font-size: 0.6rem; color: #440000; letter-spacing: 2px; transition: opacity 0.4s; }
 
+  /* ════ ENDING ════ */
+  #ending-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    padding: 24px;
+    overflow-y: auto;
+    cursor: pointer;
+  }
+
+  .ending-container {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ending-line {
+    display: block;
+    min-height: 1.5em;
+    font-size: 0.86rem;
+    color: #555566;
+    line-height: 2.2;
+    opacity: 0;
+    animation: endingFadeIn 1.8s ease forwards;
+  }
+  .ending-line.instant  { animation: none; opacity: 1; }
+  .ending-line.speech   { color: #cc6655; font-style: italic; font-size: 0.9rem; }
+  .ending-line.narrative{ color: #888899; }
+  .ending-line.bright   { color: #ccccdd; }
+  .ending-line.finale   { color: #ffffff; font-size: 1.05rem; text-align: center; width: 100%; letter-spacing: 3px; }
+  .ending-line.title-line { color: #00ff88; font-size: 0.82rem; text-align: center; width: 100%; letter-spacing: 6px; margin-top: 8px; }
+
+  .ending-skip-hint {
+    font-size: 0.58rem;
+    color: #1a1a22;
+    letter-spacing: 2px;
+    text-align: center;
+    width: 100%;
+    margin-top: 16px;
+    transition: opacity 0.5s;
+  }
+
+  .ending-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 32px;
+    width: 100%;
+    opacity: 0;
+    animation: endingFadeIn 1.5s ease forwards;
+  }
+
+  .btn-reset {
+    background: transparent;
+    border: 1px solid #333333;
+    color: #444444;
+    font-family: inherit;
+    font-size: 0.75rem;
+    padding: 8px 20px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: border-color 0.2s, color 0.2s;
+    max-width: 260px;
+    width: 100%;
+  }
+  .btn-reset:hover { border-color: #ff4444; color: #ff4444; }
+
   /* ════ SHADOW TRUTH SCENE ════ */
   #shadow-truth-overlay .status-box {
     border-color: #003366;
@@ -743,7 +818,49 @@
     to   { opacity: 1; transform: translateX(0); }
   }
 
+  @keyframes endingFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
   .hero-icon.hit { animation: heroHit 0.4s ease; }
+
+  /* ════ FLASH OVERLAY ════ */
+  #flash-overlay {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 500;
+    opacity: 0;
+  }
+
+  /* ════ HP BAR HIT ════ */
+  @keyframes hpBarHit {
+    0%   { filter: brightness(3) saturate(0.2); }
+    100% { filter: brightness(1) saturate(1); }
+  }
+  .bar-fill.bar-hit { animation: hpBarHit 0.4s ease forwards; }
+
+  /* ════ LEVEL-UP FLASH ════ */
+  @keyframes lvFlash {
+    0%   { opacity: 0.8; }
+    100% { opacity: 0; }
+  }
+
+  /* ════ MOBILE TWEAKS ════ */
+  @media (max-width: 380px) {
+    .battle-commands        { width: 62px; }
+    .battle-commands .btn   { padding: 15px 2px; font-size: 0.75rem; }
+    .enemy-sprite           { font-size: 2.4rem; }
+    .hero-icon              { font-size: 1.6rem; }
+    .battle-log             { height: 88px; font-size: 0.72rem; }
+  }
+  @media (max-width: 340px) {
+    body                    { padding: 8px; }
+    .battle-commands        { width: 56px; }
+    .battle-commands .btn   { padding: 12px 2px; font-size: 0.7rem; }
+    .shop-item-name         { font-size: 0.8rem; }
+    .status-box             { padding: 18px 16px; }
+  }
 
   /* scrollbars */
   .battle-log::-webkit-scrollbar,
@@ -758,6 +875,8 @@
 </style>
 </head>
 <body>
+
+<div id="flash-overlay"></div>
 
 <!-- ════════════════ TITLE ════════════════ -->
 <div id="title-screen" class="screen">
@@ -914,6 +1033,16 @@
   </div>
 </div>
 
+<!-- ════════════════ ENDING ════════════════ -->
+<div id="ending-overlay" onclick="skipEnding()">
+  <div class="ending-container" id="ending-container"></div>
+  <div class="ending-skip-hint" id="ending-hint">── タップでスキップ ──</div>
+  <div id="ending-buttons" style="display:none; flex-direction:column; align-items:center; gap:10px; margin-top:32px; width:100%;">
+    <button class="btn" style="max-width:260px;" onclick="event.stopPropagation(); goTitle()">[ タイトルへ戻る ]</button>
+    <button class="btn-reset" onclick="event.stopPropagation(); resetAndReload()">[ セーブデータをリセット ]</button>
+  </div>
+</div>
+
 <!-- ════════════════ SHADOW TRUTH ════════════════ -->
 <div class="status-overlay" id="shadow-truth-overlay">
   <div class="status-box">
@@ -938,13 +1067,131 @@
 
 <script>
 // ════════════════════════════════════════
+//  AUDIO ENGINE  (Web Audio API, synthesized)
+// ════════════════════════════════════════
+let _audioCtx = null;
+function _audio() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function playSound(type) {
+  try {
+    const ctx = _audio();
+    const t   = ctx.currentTime;
+    const mk  = (waveform, freq, vol, start, dur) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = waveform;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.001, start);
+      g.gain.linearRampToValueAtTime(vol, start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+      o.start(start); o.stop(start + dur + 0.02);
+      return o;
+    };
+    switch (type) {
+
+      case 'attack': {
+        // short metallic slash
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(700, t);
+        o.frequency.exponentialRampToValueAtTime(130, t + 0.13);
+        g.gain.setValueAtTime(0.28, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        o.start(t); o.stop(t + 0.16);
+        break;
+      }
+
+      case 'damage': {
+        // low thud
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(160, t);
+        o.frequency.exponentialRampToValueAtTime(50, t + 0.25);
+        g.gain.setValueAtTime(0.45, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        o.start(t); o.stop(t + 0.32);
+        break;
+      }
+
+      case 'levelup': {
+        // ascending arpeggio: C5-E5-G5-C6
+        [523, 659, 784, 1047].forEach((freq, i) => mk('square', freq, 0.16, t + i * 0.10, 0.18));
+        break;
+      }
+
+      case 'boss': {
+        // ominous deep rumble + high accent
+        mk('sawtooth',  80, 0.18, t,        0.75);
+        mk('sawtooth', 160, 0.10, t + 0.05, 0.65);
+        mk('square',   440, 0.08, t + 0.15, 0.20);
+        break;
+      }
+
+      case 'victory': {
+        // bright ping
+        mk('sine', 880, 0.22, t,        0.30);
+        mk('sine', 1320, 0.12, t + 0.06, 0.25);
+        break;
+      }
+
+      case 'ending': {
+        // descending gentle chime chord
+        [1047, 784, 659, 523].forEach((freq, i) => mk('sine', freq, 0.13, t + i * 0.28, 1.4));
+        break;
+      }
+
+      case 'type': {
+        // short keystroke noise burst
+        const sr  = ctx.sampleRate;
+        const len = Math.floor(sr * 0.035);
+        const buf = ctx.createBuffer(1, len, sr);
+        const d   = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 8);
+        const src = ctx.createBufferSource();
+        const g   = ctx.createGain();
+        const flt = ctx.createBiquadFilter();
+        src.buffer = buf;
+        src.connect(flt); flt.connect(g); g.connect(ctx.destination);
+        flt.type = 'highpass'; flt.frequency.value = 2200;
+        g.gain.setValueAtTime(0.18, t);
+        src.start(t); src.stop(t + 0.04);
+        break;
+      }
+    }
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════
+//  SCREEN FLASH
+// ════════════════════════════════════════
+function flashScreen(color, fadeMs) {
+  const el = document.getElementById('flash-overlay');
+  el.style.transition = 'none';
+  el.style.background  = color  || '#ffffff';
+  el.style.opacity     = '0.75';
+  // force reflow so transition fires
+  void el.offsetWidth;
+  el.style.transition = 'opacity ' + (fadeMs || 450) + 'ms ease';
+  el.style.opacity    = '0';
+}
+
+// ════════════════════════════════════════
 //  EQUIPMENT DATA
 // ════════════════════════════════════════
 const WEAPONS = [
   { id:'knife',   sprite:'🔪', name:'サバイバルナイフ', atkBonus: 0,  price:    0,
     effect:'firstStrike', effectDesc:'先制攻撃ダメージ ×1.5' },
   { id:'pistol',  sprite:'🔫', name:'拳銃',             atkBonus: 5,  price:   80,
-    effect:'confirm',     effectDesc:'毎ターン確定攻撃（攻撃ブレなし）' },
+    effect:'confirm',     effectDesc:'下振れなし（安定ダメージ保証）' },
   { id:'rifle',   sprite:'💥', name:'アサルトライフル', atkBonus:12,  price:  250,
     effect:'stun',        effectDesc:'30%で敵を怯ませ次の攻撃をスキップ' },
   { id:'sniper',  sprite:'🎯', name:'スナイパーライフル',atkBonus:20,  price:  500,
@@ -1003,7 +1250,7 @@ const AREA2 = {
     { name:'変異体',   sprite:'🐀', hp:55,  atk:14, def:3, exp:28, gold:35, explosive:false },
     { name:'密輸業者', sprite:'🔫', hp:48,  atk:18, def:2, exp:25, gold:40, explosive:false },
   ],
-  boss: { name:'クレイモア', sprite:'🧨', hp:280, atk:32, def:8, exp:180, gold:500, explosive:true },
+  boss: { name:'クレイモア', sprite:'🧨', hp:240, atk:26, def:6, exp:180, gold:500, explosive:true },
   bossRewardArmor: 2,   // ARMORS index 2 = 耐爆グローブ
 };
 
@@ -1011,23 +1258,33 @@ const AREA3 = {
   id: 3, name: '軍事基地', killsNeeded: 7,
   normalEnemies: [
     { name:'電磁兵',     sprite:'⚡', hp:70,  atk:22, def:7, exp:38, gold:55, explosive:false },
-    { name:'ドローン兵', sprite:'🚁', hp:60,  atk:26, def:4, exp:35, gold:60, explosive:true  },
+    { name:'ドローン兵', sprite:'🚁', hp:60,  atk:22, def:4, exp:35, gold:60, explosive:true  },
   ],
-  boss: { name:'コロッサス', sprite:'🦾', hp:450, atk:42, def:15, exp:300, gold:800, explosive:false },
+  boss: { name:'コロッサス', sprite:'🦾', hp:380, atk:34, def:12, exp:300, gold:800, explosive:false },
   bossRewardArmor: null,
 };
 
 const AREA4 = {
   id: 4, name: '首都', killsNeeded: 8,
   normalEnemies: [
-    { name:'量子兵',       sprite:'👾', hp:90,  atk:30, def:10, exp:50, gold:75, explosive:false },
-    { name:'自爆ドローン', sprite:'💣', hp:65,  atk:36, def: 5, exp:45, gold:80, explosive:true  },
+    { name:'量子兵',       sprite:'👾', hp:90,  atk:24, def:10, exp:50, gold:75, explosive:false },
+    { name:'自爆ドローン', sprite:'💣', hp:65,  atk:28, def: 5, exp:45, gold:80, explosive:true  },
   ],
-  boss: { name:'諜報長官シャドウ', sprite:'🎯', hp:600, atk:52, def:18, exp:400, gold:1000, explosive:false },
+  boss: { name:'諜報長官シャドウ', sprite:'🎯', hp:480, atk:44, def:15, exp:400, gold:1000, explosive:false },
   bossRewardArmor: null,
 };
 
-const AREAS = [null, AREA1, AREA2, AREA3, AREA4];   // index by area id
+const AREA5 = {
+  id: 5, name: '独裁宮殿', killsNeeded: 8,
+  normalEnemies: [
+    { name:'親衛隊',    sprite:'🛡️', hp:110, atk:38, def:14, exp:65,  gold: 95, explosive:false },
+    { name:'レーザー兵', sprite:'🔴', hp: 85, atk:38, def: 8, exp:58,  gold:100, explosive:false },
+  ],
+  boss: { name:'ゼロス', sprite:'🎖️', hp:720, atk:55, def:20, exp:500, gold:1500, explosive:false },
+  bossRewardArmor: null,
+};
+
+const AREAS = [null, AREA1, AREA2, AREA3, AREA4, AREA5];   // index by area id
 
 // ════════════════════════════════════════
 //  ENEMY DIALOGUE
@@ -1068,6 +1325,18 @@ const ENEMY_LINES = {
     '標的ロック完了。攻撃シーケンス開始。',
     '人間より機械の方が、命令に忠実だ。',
     '抵抗は無駄なデータだ。上書きする。',
+  ],
+
+  // ════ AREA 5 ────────────────────────────
+  '親衛隊': [
+    '独裁者閣下の御前に、一歩も踏み込ませない。',
+    '貴様の命は、ここで終わりだ。',
+    '逃げ場はない。この宮殿が、お前の墓だ。',
+  ],
+  'レーザー兵': [
+    'レーザーサイト、標的に固定。',
+    '光より速い死を、くれてやる。',
+    '熱量解放──貴様ごと焼き尽くす。',
   ],
 
   // ════ AREA 4 ────────────────────────────
@@ -1186,6 +1455,8 @@ let ownedSkills    = [];      // e.g. ['double','smash']
 let smashDebuff    = false;   // next turn: heroDef = 0
 let focusTurns     = 0;       // remaining turns of 集中防御
 
+let zerosTurnCount = 0;       // counts Zeros's attack turns for special action
+
 function getCurrentArea() { return AREAS[currentArea] || AREA1; }
 
 // ════════════════════════════════════════
@@ -1221,6 +1492,9 @@ function gainExp(amount) {
     const oldMaxHp = heroMaxHp;
     applyLevel(heroLevel + 1);
     heroHp = Math.min(heroMaxHp, heroHp + (heroMaxHp - oldMaxHp));
+    addLog('★ レベルアップ！  Lv ' + heroLevel + ' になった！  HP MAX ↑', 'log-victory');
+    playSound('levelup');
+    flashScreen('#00ff88', 600);
   }
 }
 
@@ -1412,10 +1686,36 @@ function getArea4Story() {
   ];
 }
 
+function getArea5Story() {
+  const n = heroName;
+  return [
+    ['独裁宮殿── 最上階。', 'em'],
+    [''],
+    ['扉の向こうに、答えがある。', 'key'],
+    [''],
+    ['──真実を知った。', 'em'],
+    ['それでも、' + n + ' の足は止まらなかった。'],
+    [''],
+    ['ゼロスが間違っていたとは思わない。'],
+    ['だが、彼を許すには──', 'cry'],
+    [''],
+    ['まだ、会っていない。', 'key'],
+    [''],
+    ['直接、聞かなければならなかった。'],
+    [''],
+    ['あの日のことを。', 'cry'],
+    ['ひかりのことを。'],
+    ['家族のことを。'],
+    [''],
+    [n + ' は、扉を開けた。', 'key'],
+  ];
+}
+
 function getAreaStory(areaId) {
   if (areaId === 2) return getArea2Story();
   if (areaId === 3) return getArea3Story();
   if (areaId === 4) return getArea4Story();
+  if (areaId === 5) return getArea5Story();
   return getArea1Story();
 }
 
@@ -1478,7 +1778,7 @@ function startNewGame() {
   heroGold     = 0;  currentArea = 1;  areaKills = 0;
   itemCounts   = { potion:0, stimulant:0, barrier:0 };
   buffAtkNext  = false; buffShieldNext = false;
-  ownedSkills  = []; smashDebuff = false; focusTurns = 0;
+  ownedSkills  = []; smashDebuff = false; focusTurns = 0; zerosTurnCount = 0;
   applyLevel(1);
   heroExp = 0; heroHp = heroMaxHp;
   document.getElementById('hero-name-display').textContent = heroName;
@@ -1501,7 +1801,7 @@ function continueGame() {
   itemCounts   = save.itemCounts  || { potion:0, stimulant:0, barrier:0 };
   ownedSkills  = save.ownedSkills || [];
   buffAtkNext  = false; buffShieldNext = false;
-  smashDebuff  = false; focusTurns = 0;
+  smashDebuff  = false; focusTurns = 0; zerosTurnCount = 0;
   applyLevel(save.lv || 1);
   heroExp = save.exp || 0;
   heroHp  = clamp(save.hp || heroMaxHp, 1, heroMaxHp);
@@ -1541,13 +1841,15 @@ function loadEnemy() {
 
   updateEnemyHpBar();
   updateBattleHeader();
-  isGuarding = false; busy = false;
+  isGuarding = false; busy = false; zerosTurnCount = 0;
   setButtons(true);
   clearLog();
 
   if (isBossEnemy) {
     addLog('⚠ ─── BOSS BATTLE ───', 'log-boss');
     addLog(enemy.name + ' が起動した！', 'log-boss');
+    playSound('boss');
+    flashScreen('#ff3300', 700);
   } else {
     addLog('▶ ' + enemy.name + ' が現れた！', 'log-system');
   }
@@ -1623,6 +1925,20 @@ function hitHero() {
   setTimeout(() => el.classList.remove('hit'), 450);
 }
 
+function hitHeroBar() {
+  const el = document.getElementById('hero-hp-bar');
+  el.classList.remove('bar-hit'); void el.offsetWidth;
+  el.classList.add('bar-hit');
+  setTimeout(() => el.classList.remove('bar-hit'), 420);
+}
+
+function hitEnemyBar() {
+  const el = document.getElementById('enemy-hp-bar');
+  el.classList.remove('bar-hit'); void el.offsetWidth;
+  el.classList.add('bar-hit');
+  setTimeout(() => el.classList.remove('bar-hit'), 420);
+}
+
 // ════════════════════════════════════════
 //  PLAYER ATTACK
 // ════════════════════════════════════════
@@ -1670,6 +1986,8 @@ async function playerAttack() {
   enemyHp = Math.max(0, enemyHp - dmg);
   updateEnemyHpBar();
   shakeEnemy();
+  hitEnemyBar();
+  playSound('attack');
 
   const critNote  = isCrit ? ' 【クリティカル！】' : '';
   const pierceNote = weapon.effect === 'pierce' ? ' 【防御無視】' : '';
@@ -1726,7 +2044,30 @@ async function enemyAttack(guarded) {
   }
 
   const defBonus = effectiveDef + (guarded ? rand(6, 10) : 0);
-  let dmg        = Math.max(1, rand(enemy.atk - 2, enemy.atk + 2) - defBonus);
+
+  // Zeros special: every 3rd attack, ATK surges
+  let effectiveAtk = enemy.atk;
+  if (enemy.name === 'ゼロス') {
+    zerosTurnCount++;
+    if (zerosTurnCount % 4 === 0) {
+      effectiveAtk = Math.floor(enemy.atk * 1.6);
+      addLog('🎖️ ゼロスが「……限界を、解放する」と呟いた。', 'log-boss');
+      addLog('🎖️ ゼロスの攻撃力が急上昇！', 'log-boss');
+    }
+  }
+
+  let dmg = Math.max(1, rand(effectiveAtk - 2, effectiveAtk + 2) - defBonus);
+
+  // barrier buff: zero damage — checked BEFORE focusTurns so a turn isn't consumed
+  if (buffShieldNext) {
+    buffShieldNext = false;
+    addLog('🛡️ 防御膜が展開！ ' + enemy.name + ' の攻撃を完全に防いだ！', 'log-item');
+    await sleep(400);
+    busy = false;
+    setButtons(true);
+    saveProgress();
+    return;
+  }
 
   // 集中防御: halve damage while active
   if (focusTurns > 0) {
@@ -1737,17 +2078,6 @@ async function enemyAttack(guarded) {
     } else {
       addLog('⚡ 集中防御の効果が切れた。', 'log-skill');
     }
-  }
-
-  // barrier buff: zero damage
-  if (buffShieldNext) {
-    buffShieldNext = false;
-    addLog('🛡️ 防御膜が展開！ ' + enemy.name + ' の攻撃を完全に防いだ！', 'log-item');
-    await sleep(400);
-    busy = false;
-    setButtons(true);
-    saveProgress();
-    return;
   }
 
   // anti-explosive armor
@@ -1768,6 +2098,8 @@ async function enemyAttack(guarded) {
   heroHp = Math.max(0, heroHp - dmg);
   updateHeroDisplay();
   hitHero();
+  hitHeroBar();
+  playSound('damage');
 
   addLog(
     enemy.name + ' の攻撃！ → ' + heroName +
@@ -1812,11 +2144,14 @@ function processVictory() {
       showColossusScene();
     } else if (currentArea === 4) {
       showShadowTruthScene();
+    } else if (currentArea === 5) {
+      showZerosEnding();
     } else {
       showAreaClear();
     }
   } else {
     areaKills++;
+    playSound('victory');
     // random item drop (33% chance per normal enemy kill)
     let itemDropMsg = '';
     if (Math.random() < 0.33) {
@@ -1893,13 +2228,15 @@ function nextEnemy() {
 function retryBattle() {
   document.getElementById('defeat-overlay').style.display = 'none';
   heroHp = heroMaxHp;
+  buffAtkNext = false; buffShieldNext = false;
+  smashDebuff = false; focusTurns = 0;
   updateHeroDisplay();
   saveProgress();
   loadEnemy();
 }
 
 function goTitle() {
-  ['victory-overlay','defeat-overlay','area-clear-overlay','colossus-overlay','shadow-truth-overlay'].forEach(id => {
+  ['victory-overlay','defeat-overlay','area-clear-overlay','colossus-overlay','shadow-truth-overlay','ending-overlay'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
   showScreen('title-screen');
@@ -1919,6 +2256,104 @@ function proceedToNextArea() {
   saveProgress();
   showScreen('story-screen');
   runStory();
+}
+
+// ════════════════════════════════════════
+//  ZEROS ENDING
+// ════════════════════════════════════════
+function getEndingLines() {
+  const n = heroName;
+  return [
+    // ── Zeros's last words ──────────────────
+    { text:'「お前の怒りは正しい。」',                          cls:'speech' },
+    { text:'「だが、その怒りをここで終わらせろ。」',            cls:'speech' },
+    { text:'「……私のような怪物は、私で最後だ。」',             cls:'speech' },
+    { text:'',                                                  cls:'' },
+    { text:'',                                                  cls:'' },
+    // ── epilogue ────────────────────────────
+    { text:'独裁宮殿が、崩れていく。',                          cls:'narrative' },
+    { text:'',                                                  cls:'' },
+    { text: n + ' は、ゼロスの傍らに膝をついた。',             cls:'narrative' },
+    { text:'',                                                  cls:'' },
+    { text:'返事は、もうなかった。',                            cls:'narrative' },
+    { text:'',                                                  cls:'' },
+    { text:'',                                                  cls:'' },
+    { text:'崩れゆく宮殿の中で、',                             cls:'bright' },
+    { text:'妹のオルゴールが静かに鳴り響いた。',               cls:'bright' },
+    { text:'',                                                  cls:'' },
+    { text:'ひかりの、好きだった曲。',                          cls:'narrative' },
+    { text:'',                                                  cls:'' },
+    { text: n + ' は、泣かなかった。',                         cls:'narrative' },
+    { text:'ただ、目を閉じて──',                               cls:'narrative' },
+    { text:'その音を、聞いていた。',                            cls:'bright' },
+    { text:'',                                                  cls:'' },
+    { text:'',                                                  cls:'' },
+    { text:'戦いは、終わった。',                                cls:'bright' },
+    { text:'',                                                  cls:'' },
+    { text:'怪物は、もういない。',                              cls:'narrative' },
+    { text:'',                                                  cls:'' },
+    { text:'',                                                  cls:'' },
+    { text:'そして──',                                         cls:'bright' },
+    { text:'',                                                  cls:'' },
+    { text:'祈りは、届いた。',                                  cls:'finale' },
+    { text:'',                                                  cls:'' },
+    { text:'',                                                  cls:'' },
+    { text:'── 遺された祈り ──',                               cls:'title-line' },
+  ];
+}
+
+let endingSkipped = false;
+
+async function showZerosEnding() {
+  endingSkipped = false;
+  saveProgress();
+  playSound('ending');
+
+  const container = document.getElementById('ending-container');
+  const hint      = document.getElementById('ending-hint');
+  const btns      = document.getElementById('ending-buttons');
+  container.innerHTML = '';
+  hint.style.opacity  = '1';
+  btns.style.display  = 'none';
+  document.getElementById('ending-overlay').style.display = 'flex';
+
+  const lines = getEndingLines();
+  for (const entry of lines) {
+    if (endingSkipped) break;
+    const span = document.createElement('span');
+    span.className = 'ending-line' + (entry.cls ? ' ' + entry.cls : '');
+    span.textContent = entry.text || '\u00A0';
+    container.appendChild(span);
+    container.scrollTop = container.scrollHeight;
+
+    const delay = !entry.text  ? 700
+      : entry.cls === 'speech' ? 2400
+      : entry.cls === 'finale' || entry.cls === 'title-line' ? 3000
+      : entry.cls === 'bright' ? 2200
+      : 1800;
+    if (!endingSkipped) await sleep(delay);
+  }
+
+  if (endingSkipped) {
+    container.innerHTML = '';
+    for (const entry of lines) {
+      const span = document.createElement('span');
+      span.className = 'ending-line instant' + (entry.cls ? ' ' + entry.cls : '');
+      span.textContent = entry.text || '\u00A0';
+      container.appendChild(span);
+    }
+    container.scrollTop = container.scrollHeight;
+  }
+
+  hint.style.opacity = '0';
+  btns.style.display = 'flex';
+}
+
+function skipEnding() { endingSkipped = true; }
+
+function resetAndReload() {
+  deleteSave();
+  location.reload();
 }
 
 // ════════════════════════════════════════
@@ -2253,6 +2688,8 @@ async function useSkill(id) {
       enemyHp = Math.max(0, enemyHp - dmg);
       updateEnemyHpBar();
       shakeEnemy();
+      hitEnemyBar();
+      playSound('attack');
       addLog(
         hit + '撃目： ' + enemy.name + ' に ' + dmg + ' ダメージ！' + (isCrit ? ' 【クリティカル！】' : ''),
         isCrit ? 'log-crit' : 'log-hero'
@@ -2297,6 +2734,8 @@ async function useSkill(id) {
     enemyHp = Math.max(0, enemyHp - dmg);
     updateEnemyHpBar();
     shakeEnemy();
+    hitEnemyBar();
+    playSound('attack');
     addLog(
       weapon.sprite + ' 渾身の一撃！ → ' + enemy.name + ' に ' + dmg + ' ダメージ！' +
       (isCrit ? ' 【クリティカル！】' : ''),
@@ -2367,6 +2806,8 @@ function closeShop() {
     goTitle();
   } else if (shopReturnAction === 'defeat') {
     heroHp = heroMaxHp;
+    buffAtkNext = false; buffShieldNext = false;
+    smashDebuff = false; focusTurns = 0;
     updateHeroDisplay();
     saveProgress();
     showScreen('battle-screen');
@@ -2584,6 +3025,10 @@ function buySkill(id) {
 // ════════════════════════════════════════
 document.getElementById('hero-name-input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') startNewGame();
+});
+
+document.getElementById('hero-name-input').addEventListener('input', function() {
+  playSound('type');
 });
 
 showScreen('title-screen');
