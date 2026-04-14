@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goal Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #16213e;
+      --accent: #7c3aed;
+      --accent2: #a855f7;
+      --accent3: #ec4899;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --border: #2d2d4e;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* ---- Header ---- */
+    header {
+      text-align: center;
+      padding: 40px 20px 30px;
+    }
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent2), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+    header p { color: var(--text2); margin-top: 8px; font-size: 0.95rem; }
+
+    /* ---- Stats bar ---- */
+    .stats {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 22px;
+      text-align: center;
+      min-width: 100px;
+    }
+    .stat-card .num {
+      font-size: 1.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent2), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-card .label { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+
+    /* ---- Layout ---- */
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* ---- Tabs ---- */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      background: var(--surface);
+      padding: 6px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+    }
+    .tab-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+    /* ---- Add Goal Form ---- */
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .form-card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 0.8rem; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+    input, select, textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent2); }
+    textarea { resize: vertical; min-height: 70px; }
+    select option { background: var(--surface2); }
+
+    .add-btn {
+      margin-top: 16px;
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .add-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .add-btn:active { transform: translateY(0); }
+
+    /* ---- Filters ---- */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text2);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .filter-btn:hover:not(.active) { border-color: var(--accent2); color: var(--text); }
+
+    /* ---- Goal Cards ---- */
+    .goals-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .goal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: transform 0.2s, border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .goal-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      border-radius: 12px 0 0 12px;
+    }
+    .goal-card.short::before { background: var(--accent2); }
+    .goal-card.long::before { background: var(--accent3); }
+    .goal-card.completed { opacity: 0.6; }
+    .goal-card.completed .goal-title { text-decoration: line-through; color: var(--text2); }
+    .goal-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+
+    .goal-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .goal-check {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .goal-check.checked {
+      background: var(--green);
+      border-color: var(--green);
+    }
+    .goal-check.checked::after { content: '✓'; color: white; font-size: 13px; font-weight: 900; }
+    .goal-check:hover:not(.checked) { border-color: var(--green); }
+
+    .goal-body { flex: 1; min-width: 0; }
+    .goal-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .goal-desc { font-size: 0.85rem; color: var(--text2); margin-bottom: 10px; line-height: 1.5; }
+
+    .goal-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .badge-type-short { background: rgba(124,58,237,0.2); color: var(--accent2); }
+    .badge-type-long  { background: rgba(236,72,153,0.2); color: var(--accent3); }
+    .badge-cat { background: rgba(16,185,129,0.15); color: var(--green); }
+    .badge-due-ok   { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .badge-due-warn { background: rgba(239,68,68,0.2);   color: var(--red); }
+    .badge-done     { background: rgba(16,185,129,0.2);  color: var(--green); }
+
+    /* ---- Progress ---- */
+    .progress-area { margin-top: 4px; }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text2);
+      margin-bottom: 4px;
+    }
+    .progress-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.4s ease;
+    }
+    .progress-fill.full { background: linear-gradient(90deg, var(--green), #34d399); }
+
+    .progress-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .progress-input-row input[type=range] {
+      flex: 1;
+      padding: 0;
+      accent-color: var(--accent2);
+      background: transparent;
+      border: none;
+    }
+    .progress-num {
+      font-size: 0.8rem;
+      color: var(--accent2);
+      font-weight: 700;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* ---- Card actions ---- */
+    .goal-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+    .icon-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text2);
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .icon-btn:hover { border-color: var(--accent2); color: var(--text); }
+    .icon-btn.del:hover { border-color: var(--red); color: var(--red); }
+
+    /* ---- Empty state ---- */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text2);
+    }
+    .empty .emoji { font-size: 3rem; display: block; margin-bottom: 12px; }
+    .empty p { font-size: 0.95rem; }
+
+    /* ---- Edit modal ---- */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 500px;
+      margin: 20px;
+    }
+    .modal h2 { font-size: 1.1rem; font-weight: 800; color: var(--accent2); margin-bottom: 20px; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-btns button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-save { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; }
+    .btn-cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border) !important; }
+
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      padding: 12px 24px;
+      border-radius: 99px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 200;
+      transition: transform 0.3s ease;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .full { grid-column: 1; }
+      header h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Goal Tracker</h1>
+    <p>目標を記録して、一歩ずつ前へ進もう</p>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats" id="stats"></div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="all" onclick="setTab('all')">すべて</button>
+    <button class="tab-btn" data-tab="short" onclick="setTab('short')">短期</button>
+    <button class="tab-btn" data-tab="long" onclick="setTab('long')">長期</button>
+    <button class="tab-btn" data-tab="done" onclick="setTab('done')">完了済み</button>
+  </div>
+
+  <!-- Add Goal Form -->
+  <div class="form-card">
+    <h2>+ 新しい目標を追加</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>目標タイトル</label>
+        <input type="text" id="f-title" placeholder="例: 毎朝30分ランニングする" maxlength="80">
+      </div>
+      <div class="form-group full">
+        <label>詳細メモ（任意）</label>
+        <textarea id="f-desc" placeholder="具体的な方法や理由を書いておくと続けやすいです"></textarea>
+      </div>
+      <div class="form-group">
+        <label>種別</label>
+        <select id="f-type">
+          <option value="short">短期目標</option>
+          <option value="long">長期目標</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>カテゴリ</label>
+        <select id="f-cat">
+          <option value="健康">💪 健康・運動</option>
+          <option value="学習">📚 学習・スキル</option>
+          <option value="仕事">💼 仕事・キャリア</option>
+          <option value="お金">💰 お金・節約</option>
+          <option value="趣味">🎨 趣味・創作</option>
+          <option value="人間関係">🤝 人間関係</option>
+          <option value="その他">✨ その他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>期限</label>
+        <input type="date" id="f-due">
+      </div>
+      <div class="form-group">
+        <label>初期進捗 (%)</label>
+        <input type="number" id="f-progress" min="0" max="100" value="0" placeholder="0">
+      </div>
+    </div>
+    <button class="add-btn" onclick="addGoal()">目標を追加する</button>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" id="filter-bar"></div>
+
+  <!-- Goals list -->
+  <div class="goals-list" id="goals-list"></div>
+</div>
+
+<!-- Edit modal -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <h2>目標を編集</h2>
+    <input type="hidden" id="e-id">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>タイトル</label>
+        <input type="text" id="e-title" maxlength="80">
+      </div>
+      <div class="form-group full">
+        <label>詳細メモ</label>
+        <textarea id="e-desc"></textarea>
+      </div>
+      <div class="form-group">
+        <label>種別</label>
+        <select id="e-type">
+          <option value="short">短期</option>
+          <option value="long">長期</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>カテゴリ</label>
+        <select id="e-cat">
+          <option value="健康">💪 健康・運動</option>
+          <option value="学習">📚 学習・スキル</option>
+          <option value="仕事">💼 仕事・キャリア</option>
+          <option value="お金">💰 お金・節約</option>
+          <option value="趣味">🎨 趣味・創作</option>
+          <option value="人間関係">🤝 人間関係</option>
+          <option value="その他">✨ その他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>期限</label>
+        <input type="date" id="e-due">
+      </div>
+      <div class="form-group">
+        <label>進捗 (%)</label>
+        <input type="number" id="e-progress" min="0" max="100">
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="document.getElementById('overlay').classList.remove('open')">キャンセル</button>
+      <button class="btn-save" onclick="saveEdit()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const STORAGE_KEY = 'goal_tracker_v1';
+  let goals = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let currentTab = 'all';
+  let currentFilter = 'all';
+
+  const CATS = ['健康','学習','仕事','お金','趣味','人間関係','その他'];
+  const CAT_ICONS = { 健康:'💪', 学習:'📚', 仕事:'💼', お金:'💰', 趣味:'🎨', 人間関係:'🤝', その他:'✨' };
+
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(goals)); }
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+  function addGoal() {
+    const title = document.getElementById('f-title').value.trim();
+    if (!title) { showToast('タイトルを入力してください'); return; }
+    const goal = {
+      id: uid(),
+      title,
+      desc: document.getElementById('f-desc').value.trim(),
+      type: document.getElementById('f-type').value,
+      cat: document.getElementById('f-cat').value,
+      due: document.getElementById('f-due').value,
+      progress: Math.min(100, Math.max(0, parseInt(document.getElementById('f-progress').value) || 0)),
+      done: false,
+      createdAt: Date.now()
+    };
+    goals.unshift(goal);
+    save();
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-progress').value = 0;
+    render();
+    showToast('目標を追加しました！');
+  }
+
+  function toggleDone(id) {
+    const g = goals.find(x => x.id === id);
+    if (!g) return;
+    g.done = !g.done;
+    if (g.done) g.progress = 100;
+    save();
+    render();
+    if (g.done) showToast('おめでとう！目標を達成しました 🎉');
+  }
+
+  function updateProgress(id, val) {
+    const g = goals.find(x => x.id === id);
+    if (!g) return;
+    g.progress = parseInt(val);
+    if (g.progress === 100 && !g.done) { g.done = true; showToast('進捗100%！目標達成です 🎉'); }
+    save();
+    const fill = document.getElementById('fill-' + id);
+    const num = document.getElementById('num-' + id);
+    if (fill) {
+      fill.style.width = g.progress + '%';
+      fill.className = 'progress-fill' + (g.progress === 100 ? ' full' : '');
+    }
+    if (num) num.textContent = g.progress + '%';
+    renderStats();
+  }
+
+  function deleteGoal(id) {
+    if (!confirm('この目標を削除しますか？')) return;
+    goals = goals.filter(x => x.id !== id);
+    save();
+    render();
+    showToast('削除しました');
+  }
+
+  function openEdit(id) {
+    const g = goals.find(x => x.id === id);
+    if (!g) return;
+    document.getElementById('e-id').value = g.id;
+    document.getElementById('e-title').value = g.title;
+    document.getElementById('e-desc').value = g.desc || '';
+    document.getElementById('e-type').value = g.type;
+    document.getElementById('e-cat').value = g.cat;
+    document.getElementById('e-due').value = g.due || '';
+    document.getElementById('e-progress').value = g.progress;
+    document.getElementById('overlay').classList.add('open');
+  }
+
+  function saveEdit() {
+    const id = document.getElementById('e-id').value;
+    const g = goals.find(x => x.id === id);
+    if (!g) return;
+    const title = document.getElementById('e-title').value.trim();
+    if (!title) { showToast('タイトルを入力してください'); return; }
+    g.title = title;
+    g.desc = document.getElementById('e-desc').value.trim();
+    g.type = document.getElementById('e-type').value;
+    g.cat = document.getElementById('e-cat').value;
+    g.due = document.getElementById('e-due').value;
+    g.progress = Math.min(100, Math.max(0, parseInt(document.getElementById('e-progress').value) || 0));
+    if (g.progress === 100) g.done = true;
+    save();
+    document.getElementById('overlay').classList.remove('open');
+    render();
+    showToast('更新しました');
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('overlay')) {
+      document.getElementById('overlay').classList.remove('open');
+    }
+  }
+
+  function setTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    render();
+  }
+
+  function setFilter(cat) {
+    currentFilter = cat;
+    renderFilterBar();
+    renderGoals();
+  }
+
+  function filtered() {
+    let list = [...goals];
+    if (currentTab === 'short') list = list.filter(g => g.type === 'short' && !g.done);
+    else if (currentTab === 'long') list = list.filter(g => g.type === 'long' && !g.done);
+    else if (currentTab === 'done') list = list.filter(g => g.done);
+    else list = list.filter(g => !g.done); // 'all' shows active
+    if (currentFilter !== 'all') list = list.filter(g => g.cat === currentFilter);
+    return list;
+  }
+
+  function dueStatus(due) {
+    if (!due) return null;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const d = new Date(due);
+    const diff = Math.round((d - today) / 86400000);
+    if (diff < 0) return { label: '期限切れ', cls: 'badge-due-warn' };
+    if (diff === 0) return { label: '今日が期限', cls: 'badge-due-warn' };
+    if (diff <= 3) return { label: `あと${diff}日`, cls: 'badge-due-warn' };
+    return { label: `あと${diff}日`, cls: 'badge-due-ok' };
+  }
+
+  function renderStats() {
+    const total = goals.length;
+    const done = goals.filter(g => g.done).length;
+    const active = total - done;
+    const avgProg = active > 0
+      ? Math.round(goals.filter(g=>!g.done).reduce((s,g)=>s+g.progress,0) / active)
+      : 0;
+    document.getElementById('stats').innerHTML = `
+      <div class="stat-card"><div class="num">${total}</div><div class="label">総目標数</div></div>
+      <div class="stat-card"><div class="num">${active}</div><div class="label">進行中</div></div>
+      <div class="stat-card"><div class="num">${done}</div><div class="label">達成済み</div></div>
+      <div class="stat-card"><div class="num">${avgProg}%</div><div class="label">平均進捗</div></div>
+    `;
+  }
+
+  function renderFilterBar() {
+    const cats = ['all', ...CATS.filter(c => goals.some(g => g.cat === c))];
+    const labels = { all: 'すべて', ...Object.fromEntries(CATS.map(c => [c, CAT_ICONS[c] + ' ' + c])) };
+    document.getElementById('filter-bar').innerHTML = cats.map(c =>
+      `<button class="filter-btn${currentFilter===c?' active':''}" onclick="setFilter('${c}')">${labels[c]}</button>`
+    ).join('');
+  }
+
+  function renderGoals() {
+    const list = filtered();
+    const el = document.getElementById('goals-list');
+    if (list.length === 0) {
+      const msgs = {
+        all: ['🌱', 'まだ目標がありません。上のフォームから追加しましょう！'],
+        short: ['⚡', '進行中の短期目標はありません'],
+        long: ['🚀', '進行中の長期目標はありません'],
+        done: ['🏆', 'まだ達成した目標はありません。頑張ろう！'],
+      };
+      const [emoji, msg] = msgs[currentTab] || msgs.all;
+      el.innerHTML = `<div class="empty"><span class="emoji">${emoji}</span><p>${msg}</p></div>`;
+      return;
+    }
+    el.innerHTML = list.map(g => {
+      const due = dueStatus(g.due);
+      const dueBadge = due ? `<span class="badge ${due.cls}">${due.label}</span>` : '';
+      const doneBadge = g.done ? `<span class="badge badge-done">達成</span>` : '';
+      return `
+      <div class="goal-card ${g.type}${g.done ? ' completed' : ''}" id="card-${g.id}">
+        <div class="goal-header">
+          <div class="goal-check ${g.done ? 'checked' : ''}" onclick="toggleDone('${g.id}')"></div>
+          <div class="goal-body">
+            <div class="goal-title">${escHtml(g.title)}</div>
+            ${g.desc ? `<div class="goal-desc">${escHtml(g.desc)}</div>` : ''}
+            <div class="goal-meta">
+              <span class="badge badge-type-${g.type}">${g.type === 'short' ? '短期' : '長期'}</span>
+              <span class="badge badge-cat">${CAT_ICONS[g.cat] || ''} ${g.cat}</span>
+              ${dueBadge}
+              ${doneBadge}
+            </div>
+            <div class="progress-area">
+              <div class="progress-label">
+                <span>進捗</span>
+                <span id="num-${g.id}">${g.progress}%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill${g.progress===100?' full':''}" id="fill-${g.id}" style="width:${g.progress}%"></div>
+              </div>
+              ${!g.done ? `
+              <div class="progress-input-row">
+                <input type="range" min="0" max="100" value="${g.progress}"
+                  oninput="updateProgress('${g.id}', this.value)">
+              </div>` : ''}
+            </div>
+            <div class="goal-actions">
+              <button class="icon-btn" onclick="openEdit('${g.id}')">編集</button>
+              <button class="icon-btn del" onclick="deleteGoal('${g.id}')">削除</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function render() {
+    renderStats();
+    renderFilterBar();
+    renderGoals();
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  // Set today as default due date
+  document.getElementById('f-due').value = new Date().toISOString().split('T')[0];
+
+  render();
+</script>
+</body>
+</html>
