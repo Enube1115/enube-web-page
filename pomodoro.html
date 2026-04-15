@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomodoro Timer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --work:   #e84545;
+      --short:  #43aa8b;
+      --long:   #4361ee;
+      --bg:     #0d0d0d;
+      --surface:#161616;
+      --text:   #f0f0f0;
+      --muted:  #666;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 0.85rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    /* Mode tabs */
+    .modes {
+      display: flex;
+      gap: 0.4rem;
+      background: var(--surface);
+      padding: 0.3rem;
+      border-radius: 999px;
+    }
+
+    .mode-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.4rem 1.1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn.active {
+      background: var(--accent, var(--work));
+      color: #fff;
+    }
+
+    /* Ring + timer */
+    .ring-wrap {
+      position: relative;
+      width: 240px;
+      height: 240px;
+    }
+
+    svg.ring {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .ring-bg { fill: none; stroke: var(--surface); stroke-width: 6; }
+    .ring-fg {
+      fill: none;
+      stroke: var(--accent, var(--work));
+      stroke-width: 6;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear, stroke 0.4s;
+    }
+
+    .timer-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+
+    .timer-display {
+      font-size: 3.8rem;
+      font-weight: 200;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .phase-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .btn-icon {
+      width: 44px; height: 44px;
+      border: 1.5px solid #333;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-icon:hover { border-color: #555; color: var(--text); }
+
+    .btn-main {
+      width: 72px; height: 72px;
+      border: none;
+      background: var(--accent, var(--work));
+      color: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.5rem;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 24px color-mix(in srgb, var(--accent, var(--work)) 40%, transparent);
+      transition: transform 0.12s, background 0.4s, box-shadow 0.4s;
+    }
+    .btn-main:hover { transform: scale(1.06); }
+    .btn-main:active { transform: scale(0.96); }
+
+    /* Session dots */
+    .sessions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .session-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .dots {
+      display: flex;
+      gap: 0.55rem;
+    }
+
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #2a2a2a;
+      border: 1.5px solid #333;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .dot.done {
+      background: var(--work);
+      border-color: var(--work);
+    }
+
+    .dot.current {
+      background: transparent;
+      border-color: var(--accent, var(--work));
+      box-shadow: 0 0 6px var(--accent, var(--work));
+    }
+
+    .dot.next {
+      background: transparent;
+      border-color: #444;
+    }
+
+    /* Total sessions counter */
+    .total {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .total span {
+      color: var(--text);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Pomodoro Timer</h1>
+
+<div class="modes">
+  <button class="mode-btn active" data-mode="work">作業</button>
+  <button class="mode-btn" data-mode="short">休憩</button>
+  <button class="mode-btn" data-mode="long">長休憩</button>
+</div>
+
+<div class="ring-wrap">
+  <svg class="ring" viewBox="0 0 100 100">
+    <circle class="ring-bg" cx="50" cy="50" r="44"/>
+    <circle class="ring-fg" id="ring" cx="50" cy="50" r="44"/>
+  </svg>
+  <div class="timer-center">
+    <div class="timer-display" id="display">25:00</div>
+    <div class="phase-label" id="phase">Focus</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn-icon" id="skipBtn" title="スキップ">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>
+    </svg>
+  </button>
+  <button class="btn-main" id="mainBtn">
+    <svg id="playIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <svg id="pauseIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+  </button>
+  <button class="btn-icon" id="resetBtn" title="リセット">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.6"/>
+    </svg>
+  </button>
+</div>
+
+<div class="sessions">
+  <div class="session-label">セット進捗</div>
+  <div class="dots" id="dots"></div>
+  <div class="total">完了セット: <span id="totalCount">0</span></div>
+</div>
+
+<script>
+  const MODES = {
+    work:  { label: '集中',     seconds: 25 * 60, accent: '#e84545' },
+    short: { label: '短い休憩', seconds:  5 * 60, accent: '#43aa8b' },
+    long:  { label: '長い休憩', seconds: 15 * 60, accent: '#4361ee' },
+  };
+
+  const CIRCUMFERENCE = 2 * Math.PI * 44; // r=44
+
+  // State
+  let mode               = 'work';
+  let remaining          = MODES.work.seconds;
+  let total              = MODES.work.seconds;
+  let running            = false;
+  let interval           = null;
+  let pomodorosCompleted = 0;  // 現在サイクル内の完了作業数 (0–3)
+  let totalDone          = 0;
+
+  // Elements
+  const display    = document.getElementById('display');
+  const phase      = document.getElementById('phase');
+  const ring       = document.getElementById('ring');
+  const mainBtn    = document.getElementById('mainBtn');
+  const playIcon   = document.getElementById('playIcon');
+  const pauseIcon  = document.getElementById('pauseIcon');
+  const resetBtn   = document.getElementById('resetBtn');
+  const skipBtn    = document.getElementById('skipBtn');
+  const dotsEl     = document.getElementById('dots');
+  const totalCount = document.getElementById('totalCount');
+  const modeBtns   = document.querySelectorAll('.mode-btn');
+
+  // Ring setup
+  ring.style.strokeDasharray  = CIRCUMFERENCE;
+  ring.style.strokeDashoffset = 0;
+
+  function setAccent(color) {
+    document.documentElement.style.setProperty('--accent', color);
+  }
+
+  function applyMode(m) {
+    mode      = m;
+    remaining = MODES[m].seconds;
+    total     = MODES[m].seconds;
+    setAccent(MODES[m].accent);
+    phase.textContent = MODES[m].label;
+    modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+    updateDisplay();
+    // リセット時はトランジションを一時無効化してリングが即座に満タンに戻るようにする
+    ring.style.transition = 'stroke 0.4s';
+    updateRing();
+    requestAnimationFrame(() => {
+      ring.style.transition = 'stroke-dashoffset 1s linear, stroke 0.4s';
+    });
+  }
+
+  function updateDisplay() {
+    const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+    const s = String(remaining % 60).padStart(2, '0');
+    display.textContent = `${m}:${s}`;
+    document.title = `${m}:${s} — Pomodoro`;
+  }
+
+  function updateRing() {
+    const progress = remaining / total;
+    ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+  }
+
+  function buildDots() {
+    dotsEl.innerHTML = '';
+    for (let i = 0; i < 4; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot';
+      if (i < pomodorosCompleted) {
+        d.classList.add('done');
+      } else if (i === pomodorosCompleted) {
+        // 作業中は光る、休憩中・一時停止中は薄く光る
+        if (running) {
+          d.classList.add('current');
+        } else {
+          d.classList.add('next');
+        }
+      }
+      dotsEl.appendChild(d);
+    }
+  }
+
+  // Audio — synthesized beep via Web Audio API
+  function beep(freq = 880, duration = 0.15, gain = 0.35, times = 3) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      let t = ctx.currentTime;
+      for (let i = 0; i < times; i++) {
+        const osc = ctx.createOscillator();
+        const g   = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type      = 'sine';
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(gain, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+        osc.start(t);
+        osc.stop(t + duration + 0.01);
+        t += duration + 0.08;
+      }
+      setTimeout(() => ctx.close(), (duration + 0.1) * times * 1000 + 500);
+    } catch(e) {}
+  }
+
+  function tick() {
+    if (remaining <= 0) {
+      clearInterval(interval);
+      running = false;
+      updatePlayPause();
+      onComplete();
+      return;
+    }
+    remaining--;
+    updateDisplay();
+    updateRing();
+    buildDots();
+  }
+
+  // autoStart=true: タイマー自然終了時に次フェーズを自動開始
+  // autoStart=false: スキップ時は次フェーズへ移動するだけ
+  function onComplete(autoStart = true) {
+    if (mode === 'work') {
+      beep(880, 0.12, 0.4, 4);
+      pomodorosCompleted++;
+      totalDone++;
+      totalCount.textContent = totalDone;
+      if (pomodorosCompleted >= 4) {
+        pomodorosCompleted = 0;
+        applyMode('long');
+      } else {
+        applyMode('short');
+      }
+    } else {
+      beep(660, 0.12, 0.3, 2);
+      applyMode('work');
+    }
+    buildDots();
+    if (autoStart) startTimer();
+  }
+
+  function startTimer() {
+    if (running) return;
+    running = true;
+    updatePlayPause();
+    buildDots();
+    interval = setInterval(tick, 1000);
+  }
+
+  function pauseTimer() {
+    if (!running) return;
+    running = false;
+    clearInterval(interval);
+    updatePlayPause();
+    buildDots();
+  }
+
+  function resetTimer() {
+    pauseTimer();
+    remaining = MODES[mode].seconds;
+    total     = MODES[mode].seconds;
+    updateDisplay();
+    updateRing();
+    buildDots();
+  }
+
+  function updatePlayPause() {
+    playIcon.style.display  = running ? 'none'  : '';
+    pauseIcon.style.display = running ? ''      : 'none';
+  }
+
+  // Events
+  mainBtn.addEventListener('click', () => running ? pauseTimer() : startTimer());
+  resetBtn.addEventListener('click', resetTimer);
+  skipBtn.addEventListener('click', () => {
+    clearInterval(interval);
+    running = false;
+    updatePlayPause();
+    // スキップは次フェーズへ移動するだけ（カウントせず、自動開始もしない）
+    if (mode === 'work') {
+      if (pomodorosCompleted >= 3) {
+        pomodorosCompleted = 0;
+        applyMode('long');
+      } else {
+        applyMode('short');
+      }
+    } else {
+      applyMode('work');
+    }
+    buildDots();
+  });
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      pauseTimer();
+      applyMode(btn.dataset.mode);
+    });
+  });
+
+  // スペースキーで開始/一時停止
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target === document.body) {
+      e.preventDefault();
+      running ? pauseTimer() : startTimer();
+    }
+  });
+
+  // Init
+  applyMode('work');
+  buildDots();
+</script>
+</body>
+</html>
