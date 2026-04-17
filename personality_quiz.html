@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>性格タイプ診断 | MBTI対応16タイプ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:#07070f;color:#fff;min-height:100vh;overflow-x:hidden}
+.bg{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 60% 40% at 20% 20%,rgba(124,58,237,.16) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 80% 75%,rgba(6,182,212,.12) 0%,transparent 60%)}
+.particles{position:fixed;inset:0;pointer-events:none;z-index:0}
+.particle{position:absolute;border-radius:50%;animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(105vh) scale(0);opacity:0}10%{opacity:.8}90%{opacity:.4}100%{transform:translateY(-5vh) scale(1);opacity:0}}
+.screen{position:relative;z-index:1;min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px}
+.screen.active{display:flex}
+
+/* START */
+.start-wrap{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;max-width:640px}
+.badge{display:inline-block;background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.4);color:#c4b5fd;padding:5px 16px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:3px}
+.title{font-size:clamp(38px,8vw,70px);font-weight:900;line-height:1.05;background:linear-gradient(140deg,#fff 0%,#c4b5fd 45%,#67e8f9 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{font-size:clamp(13px,2.2vw,16px);color:rgba(255,255,255,.5);line-height:1.7;max-width:500px}
+.mbti-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%;max-width:560px}
+.mbti-chip{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:8px 4px;font-size:11px;color:rgba(255,255,255,.35);text-align:center;transition:.2s;cursor:default}
+.mbti-chip:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.65)}
+.mbti-chip .mc{display:block;font-size:16px;margin-bottom:2px}
+.mbti-chip .mt{font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.25)}
+.btn-start{background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border:none;padding:17px 52px;border-radius:100px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit;transition:.3s;box-shadow:0 0 50px rgba(124,58,237,.4)}
+.btn-start:hover{transform:translateY(-3px);box-shadow:0 0 70px rgba(124,58,237,.55)}
+.meta{font-size:13px;color:rgba(255,255,255,.25)}
+
+/* QUIZ */
+.quiz-wrap{width:100%;max-width:600px}
+.prog-header{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.prog-label{font-size:13px;color:rgba(255,255,255,.4);white-space:nowrap}
+.prog-label b{color:#fff}
+.prog-bar{flex:1;height:5px;background:rgba(255,255,255,.08);border-radius:100px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#06b6d4);border-radius:100px;transition:width .5s ease}
+.axis-hint{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.axis-dot{width:28px;height:4px;border-radius:100px;background:rgba(255,255,255,.1);transition:.4s}
+.axis-dot.active{background:rgba(124,58,237,.8)}
+.axis-dot.done{background:rgba(6,182,212,.5)}
+.q-card{background:rgba(255,255,255,.04);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:32px;margin-bottom:16px}
+.q-no{font-size:11px;font-weight:700;color:#a78bfa;letter-spacing:3px;margin-bottom:12px}
+.q-text{font-size:clamp(18px,3vw,23px);font-weight:700;line-height:1.45}
+.kbd-hint{font-size:11px;color:rgba(255,255,255,.2);margin-top:10px}
+@media(max-width:480px){.kbd-hint{display:none}.q-card{padding:22px}}
+.opts{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:18px}
+.opt{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.07);border-radius:14px;padding:20px 22px;color:rgba(255,255,255,.7);font-family:inherit;font-size:15px;line-height:1.5;text-align:left;cursor:pointer;transition:.2s;position:relative;display:flex;align-items:center;gap:14px}
+.opt:hover{background:rgba(255,255,255,.08);border-color:rgba(167,139,250,.35);color:#fff;transform:translateX(3px)}
+.opt.sel{background:rgba(124,58,237,.18);border-color:#7c3aed;color:#fff}
+.opt.sel::after{content:'✓';position:absolute;right:16px;top:50%;transform:translateY(-50%);width:22px;height:22px;background:#7c3aed;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:22px;text-align:center}
+.opt-key{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.4);flex-shrink:0}
+.opt.sel .opt-key{background:rgba(124,58,237,.4);border-color:#7c3aed;color:#c4b5fd}
+.btn-next{width:100%;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border:none;padding:17px;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s,transform .2s,box-shadow .2s;opacity:.3;pointer-events:none}
+.btn-next.on{opacity:1;pointer-events:all}
+.btn-next.on:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(124,58,237,.4)}
+
+/* RESULT */
+.res-wrap{width:100%;max-width:720px;animation:fadeUp .6s ease;padding-bottom:48px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+.res-head{text-align:center;margin-bottom:26px}
+.res-lbl{font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,.3);margin-bottom:12px}
+.mbti-big{display:inline-block;font-size:clamp(28px,5vw,40px);font-weight:900;letter-spacing:6px;padding:8px 28px;border-radius:14px;margin-bottom:14px;border:2px solid}
+.res-emoji{display:block;font-size:80px;margin-bottom:12px;animation:pop .8s cubic-bezier(.36,.07,.19,.97)}
+@keyframes pop{0%{transform:scale(0) rotate(-15deg)}60%{transform:scale(1.2) rotate(4deg)}80%{transform:scale(.94)}100%{transform:scale(1)}}
+.res-name{font-size:clamp(32px,6vw,48px);font-weight:900;margin-bottom:6px}
+.res-en{font-size:13px;color:rgba(255,255,255,.3);letter-spacing:3px;margin-bottom:8px}
+.res-tag{font-size:16px;font-weight:500;color:rgba(255,255,255,.6)}
+.res-card{background:rgba(255,255,255,.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:26px;margin-bottom:13px}
+.res-card h3{font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.res-card h3 .bar{display:inline-block;width:3px;height:14px;border-radius:4px;flex-shrink:0}
+.res-desc{font-size:15px;line-height:1.85;color:rgba(255,255,255,.7)}
+.sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+@media(max-width:480px){.sw-grid{grid-template-columns:1fr}}
+.tags{display:flex;flex-wrap:wrap;gap:7px}
+.tag{padding:5px 13px;border-radius:100px;font-size:13px;font-weight:500}
+.tag-s{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.28);color:#86efac}
+.tag-w{background:rgba(239,68,68,.11);border:1px solid rgba(239,68,68,.26);color:#fca5a5}
+.careers{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.career{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:10px 13px;font-size:13px;color:rgba(255,255,255,.72);text-align:center}
+
+/* Axis bars */
+.axis-bars{display:grid;gap:12px}
+.abar{display:flex;align-items:center;gap:10px}
+.abar-lbl{font-size:12px;font-weight:700;width:36px;text-align:right;flex-shrink:0}
+.abar-lbl.left{text-align:right}
+.abar-lbl.right{text-align:left}
+.abar-track{flex:1;height:10px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;position:relative}
+.abar-fill-l{position:absolute;left:0;top:0;height:100%;border-radius:100px;transition:width 1s ease}
+.abar-pct{font-size:11px;font-weight:700;width:36px;flex-shrink:0}
+.abar-pct.left{text-align:right;color:rgba(255,255,255,.5)}
+.abar-pct.right{text-align:left;color:rgba(255,255,255,.5)}
+
+.res-btns{display:flex;gap:11px;margin-top:18px}
+.btn-share{flex:1;padding:16px;border-radius:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;border:none;color:#fff;transition:.3s}
+.btn-share:hover{transform:translateY(-2px)}
+.btn-retry{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);padding:16px 22px;border-radius:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:.3s;white-space:nowrap}
+.btn-retry:hover{background:rgba(255,255,255,.1);color:#fff}
+.shared-note{text-align:center;font-size:13px;color:rgba(255,255,255,.3);margin-bottom:10px;padding:10px 16px;background:rgba(255,255,255,.03);border-radius:10px}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(20,20,32,.95);border:1px solid rgba(255,255,255,.14);color:#fff;padding:13px 26px;border-radius:100px;font-size:14px;font-weight:500;transition:.4s;z-index:99;backdrop-filter:blur(12px);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="particles" id="particles"></div>
+
+<!-- START -->
+<div class="screen active" id="sStart">
+<div class="start-wrap">
+  <div class="badge">PERSONALITY × MBTI DIAGNOSIS</div>
+  <h1 class="title">あなたの<br>タイプを<br>発見しよう</h1>
+  <p class="subtitle">20の質問に答えるだけ。MBTI全16タイプに対応したオリジナル診断で、あなたの才能と可能性を解き明かします。</p>
+  <div class="mbti-grid" id="mbtiGrid"></div>
+  <button class="btn-start" onclick="startQuiz()">診断を始める →</button>
+  <p class="meta">全20問 ／ 所要時間 約4分 ／ MBTI全16タイプ対応</p>
+</div>
+</div>
+
+<!-- QUIZ -->
+<div class="screen" id="sQuiz">
+<div class="quiz-wrap" id="quizWrap">
+  <div class="prog-header">
+    <span class="prog-label">Q<b id="qNum">1</b>/20</span>
+    <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    <span class="prog-label"><b id="qPct">0</b>%</span>
+  </div>
+  <div class="q-card">
+    <div class="q-no" id="qNo">QUESTION 01</div>
+    <div class="q-text" id="qText"></div>
+    <div class="kbd-hint">A / B キー or Enter で操作</div>
+  </div>
+  <div class="opts" id="opts"></div>
+  <button class="btn-next" id="btnNext" onclick="next()">次の質問へ →</button>
+</div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="sResult">
+<div class="res-wrap">
+  <div id="sharedNote" class="shared-note" style="display:none">🔗 シェアされた結果 ／ <a href="javascript:startQuiz()" style="color:inherit;text-decoration:underline">自分も診断する →</a></div>
+  <div class="res-head">
+    <div class="res-lbl">YOUR PERSONALITY TYPE</div>
+    <div class="mbti-big" id="rMbtiBig"></div>
+    <span class="res-emoji" id="rEmoji"></span>
+    <div class="res-name" id="rName"></div>
+    <div class="res-en" id="rEn"></div>
+    <div class="res-tag" id="rTag"></div>
+  </div>
+  <div class="res-card" id="rDescCard">
+    <h3><span class="bar" id="rBar1"></span>タイプ解説</h3>
+    <p class="res-desc" id="rDesc"></p>
+  </div>
+  <div class="res-card" id="rAxisCard">
+    <h3><span class="bar" id="rBar5"></span>4軸スコア</h3>
+    <div class="axis-bars" id="rAxisBars"></div>
+  </div>
+  <div class="sw-grid">
+    <div class="res-card">
+      <h3><span class="bar" style="background:#22c55e"></span><span style="color:#86efac">強み</span></h3>
+      <div class="tags" id="rStrengths"></div>
+    </div>
+    <div class="res-card">
+      <h3><span class="bar" style="background:#ef4444"></span><span style="color:#fca5a5">弱み</span></h3>
+      <div class="tags" id="rWeaknesses"></div>
+    </div>
+  </div>
+  <div class="res-card">
+    <h3><span class="bar" id="rBar2"></span>向いている職業</h3>
+    <div class="careers" id="rCareers"></div>
+  </div>
+  <div class="res-btns">
+    <button class="btn-share" id="btnShare" onclick="share()">🔗 結果をシェアする</button>
+    <button class="btn-retry" onclick="retry()">もう一度</button>
+  </div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 16 TYPES ──
+const TYPES={
+  INTJ:{name:'戦略の建築家',en:'THE ARCHITECT',emoji:'🏗️',tag:'独立した意志で未来を設計する',color:'#7c3aed',grad:'linear-gradient(135deg,#7c3aed,#4c1d95)',
+    desc:'あなたは緻密な計画と揺るぎないビジョンで遠大な目標を着実に実現する戦略家です。独立心が強く、複雑な問題を体系的に解決する能力に長けています。感情より論理を重んじるため、周囲から孤高に見られることがありますが、その冷徹な分析力こそが最大の武器です。',
+    strengths:['長期戦略思考','独立した判断力','体系的問題解決','強い意志力'],
+    weaknesses:['感情への鈍感さ','孤立しやすい','完璧主義による遅延'],
+    careers:['戦略コンサルタント','科学者・研究者','建築家・エンジニア','経営者','投資アナリスト']},
+  INTP:{name:'論理の探求者',en:'THE THINKER',emoji:'🔭',tag:'真理の底まで潜る知性の海人',color:'#2563eb',grad:'linear-gradient(135deg,#3b82f6,#1d4ed8)',
+    desc:'あなたは複雑な理論や概念を好み、問題の根本を理解しようとする純粋な知的探求者です。知識の体系化と論理の精緻化に喜びを感じ、常に「なぜ？」と問い続けます。社交は不得手でも、あなたの思考は誰も辿り着かない領域まで到達します。',
+    strengths:['高い分析力','創造的な論理構築','客観性','深い集中力'],
+    weaknesses:['実行力の欠如','社交が苦手','先延ばし傾向'],
+    careers:['研究者・哲学者','数学者','ソフトウェア開発者','エコノミスト','データサイエンティスト']},
+  ENTJ:{name:'征服の指揮官',en:'THE COMMANDER',emoji:'👑',tag:'カリスマで組織を動かす生まれながらのリーダー',color:'#dc2626',grad:'linear-gradient(135deg,#ef4444,#991b1b)',
+    desc:'あなたは生まれながらのリーダーとして、カリスマ的な決断力でチームを高い目標へ導きます。非効率を許さず、常に改善と成長を追い求める姿は周囲を鼓舞します。強引に見えることもありますが、それは誰よりも高い基準を持っているからです。',
+    strengths:['カリスマ的リーダーシップ','戦略的決断力','効率追求','行動力'],
+    weaknesses:['傲慢さ','感情への無関心','強引な推進力'],
+    careers:['CEO・経営者','弁護士','政治家','プロジェクトマネージャー','投資家']},
+  ENTP:{name:'革新の論客',en:'THE DEBATER',emoji:'🌪️',tag:'常識を打ち破るアイデアの旋風',color:'#d97706',grad:'linear-gradient(135deg,#f59e0b,#b45309)',
+    desc:'あなたは知的な議論と創造的発想で既成概念を軽々と打ち破るイノベーターです。どんな問題にも複数の解決策を瞬時に思いつき、ブレインストーミングでは他の追随を許しません。飽きっぽさがありますが、それは常に最前線のアイデアを求めているからです。',
+    strengths:['創造的発想','議論・説得力','適応力','問題の再フレーミング'],
+    weaknesses:['飽きっぽさ','詰めが甘い','論争を好みすぎる'],
+    careers:['起業家','発明家','弁護士','クリエイティブディレクター','コンサルタント']},
+  INFJ:{name:'神秘の預言者',en:'THE ADVOCATE',emoji:'🌙',tag:'深い洞察で人の心を照らす案内人',color:'#059669',grad:'linear-gradient(135deg,#10b981,#065f46)',
+    desc:'あなたは鋭い洞察力と深い共感力を持つ、世界で最も希少なタイプの一つです。人の隠れた感情や動機を直感的に感じ取り、理想の世界へ向けた使命感を強く持ちます。内向的でも、あなたの静かな言葉は多くの人の心に深く刻まれます。',
+    strengths:['深い洞察力','強い共感力','理想への献身','誠実さ'],
+    weaknesses:['完璧主義','感情消耗しやすい','プライバシーの過剰保護'],
+    careers:['カウンセラー・心理士','作家','社会活動家','コーチ・メンター','教育者']},
+  INFP:{name:'詩的な理想家',en:'THE MEDIATOR',emoji:'🌸',tag:'豊かな想像の世界に生きる夢想家',color:'#db2777',grad:'linear-gradient(135deg,#ec4899,#9d174d)',
+    desc:'あなたは豊かな内面世界と深い価値観を持つ、感受性豊かな理想主義者です。自分の信念に忠実で、世界をより良くしたいという純粋な想いを持ち続けます。傷つきやすい面もありますが、その繊細さがあなたの深い創造力と共感力の源です。',
+    strengths:['深い共感力','創造力・芸術性','強い価値観','誠実さ'],
+    weaknesses:['非実用的になりがち','傷つきやすい','自己批判が強い'],
+    careers:['作家・詩人','アーティスト','カウンセラー','社会活動家','グラフィックデザイナー']},
+  ENFJ:{name:'情熱の導師',en:'THE PROTAGONIST',emoji:'🌟',tag:'人の可能性を解き放つ天性のリーダー',color:'#0891b2',grad:'linear-gradient(135deg,#06b6d4,#0e7490)',
+    desc:'あなたは人の可能性を誰よりも信じ、情熱的なリーダーシップでその成長を促す天性の指導者です。人の気持ちを敏感に察知して最善の言葉をかけられるため、周囲から自然と頼られます。自己犠牲になりやすい面がありますが、あなたの存在が多くの人の人生を変えています。',
+    strengths:['カリスマ的共感力','人を動かす熱意','組織力','成長促進力'],
+    weaknesses:['過度な自己犠牲','批判に過敏','コントロール傾向'],
+    careers:['教師・コーチ','政治家','人事・組織開発','カウンセラー','NGOリーダー']},
+  ENFP:{name:'自由な炎',en:'THE CAMPAIGNER',emoji:'🔥',tag:'溢れる熱意で新しい可能性を燃やす',color:'#ea580c',grad:'linear-gradient(135deg,#f97316,#c2410c)',
+    desc:'あなたは溢れる熱意と豊かな想像力で常に新しい可能性を探し続ける自由な魂です。人との深いつながりを大切にし、誰もが輝ける未来をビジョンとして描きます。集中力の持続は苦手でも、そのエネルギーと情熱は周囲の人を自然と巻き込んでしまいます。',
+    strengths:['高い熱意・エネルギー','人との共感力','創造的発想','適応力'],
+    weaknesses:['集中力の持続','感情的になりやすい','過剰な楽観主義'],
+    careers:['ジャーナリスト','俳優・芸能','マーケター','コーチ','スタートアップ創業者']},
+  ISTJ:{name:'鉄の守護者',en:'THE LOGISTICIAN',emoji:'🛡️',tag:'責任と誠実さで組織を支える礎',color:'#3730a3',grad:'linear-gradient(135deg,#4f46e5,#312e81)',
+    desc:'あなたは責任感と誠実さを何より大切にする、信頼の礎となる存在です。約束を必ず守り、データと事実に基づいて着実に仕事を進めるスタイルは組織に欠かせません。変化より安定を好みますが、それは長期的な信頼性を築くためです。',
+    strengths:['高い信頼性・誠実さ','組織力と忍耐力','実直さ','細部への注意'],
+    weaknesses:['変化への強い抵抗','融通が利かない','感情表現が少ない'],
+    careers:['会計士・監査役','法律家','公務員・行政','管理職','軍人・警察']},
+  ISFJ:{name:'無言の英雄',en:'THE DEFENDER',emoji:'🌿',tag:'見えないところで世界を支える守り人',color:'#15803d',grad:'linear-gradient(135deg,#22c55e,#14532d)',
+    desc:'あなたは陰ながら人を支え続ける、優しさと責任感の体現者です。細やかな気遣いで周囲の感情や状況を敏感に把握し、誰かが困っていれば真っ先に手を差し伸べます。表立って称賛されることは少なくても、あなたの献身が多くの人の日常を支えています。',
+    strengths:['思いやりと献身性','観察力','忍耐力','信頼性'],
+    weaknesses:['自己主張が弱い','過負荷になりやすい','変化が苦手'],
+    careers:['看護師・介護職','教師','ソーシャルワーカー','行政職','栄養士・薬剤師']},
+  ESTJ:{name:'秩序の執行者',en:'THE EXECUTIVE',emoji:'⚖️',tag:'規律と効率で組織を正しく動かす管理者',color:'#b45309',grad:'linear-gradient(135deg,#d97706,#78350f)',
+    desc:'あなたは明確なルールと秩序を重んじ、組織を効率的に動かす実務の達人です。責任感が強く、約束を守り、チームを正しい方向に牽引するリーダーシップを持ちます。頑固に見えることもありますが、それは揺るぎない原則を持っているからです。',
+    strengths:['組織力・管理能力','決断力','信頼性','実行力'],
+    weaknesses:['融通が利かない','感情への鈍感さ','支配的になりやすい'],
+    careers:['管理職・マネージャー','弁護士・裁判官','会計士','公務員','軍の上官']},
+  ESFJ:{name:'愛の調整者',en:'THE CONSUL',emoji:'💝',tag:'コミュニティの絆を育む温かい存在',color:'#be185d',grad:'linear-gradient(135deg,#ec4899,#9f1239)',
+    desc:'あなたは人の感情に敏感で、周囲が調和して幸せでいられるよう自然と気を配れる温かい存在です。コミュニティや仲間の絆を大切にし、誰かが孤立しないよう橋渡し役を担います。評価を気にしすぎる面がありますが、それはみんなに喜んでほしいという真心からです。',
+    strengths:['高い共感力','協調性・社交性','組織力','献身性'],
+    weaknesses:['他者の目を気にしすぎ','批判に弱い','変化への抵抗'],
+    careers:['教師・保育士','看護師','イベントプランナー','HR・人事','営業・接客']},
+  ISTP:{name:'沈黙の職人',en:'THE VIRTUOSO',emoji:'🔧',tag:'実用の美を追求する孤高の技術者',color:'#0f766e',grad:'linear-gradient(135deg,#14b8a6,#134e4a)',
+    desc:'あなたは黙々と手を動かし、実用的な問題を精密に解決する孤高の職人です。仕組みや構造を直感的に理解し、危機的状況でも冷静に最善の行動をとれます。感情より事実を優先するため、時に無関心に見られますが、その内には確固たる技術への誇りがあります。',
+    strengths:['実用的問題解決','高い観察力','冷静さ','柔軟な適応力'],
+    weaknesses:['感情表現が苦手','コミットメント回避','長期計画が苦手'],
+    careers:['エンジニア・機械士','パイロット','外科医','法医学者','スポーツ選手']},
+  ISFP:{name:'感性の芸術家',en:'THE ADVENTURER',emoji:'🎨',tag:'五感で世界の美を表現する自由な魂',color:'#7e22ce',grad:'linear-gradient(135deg,#a855f7,#6b21a8)',
+    desc:'あなたは豊かな感受性と美的センスで、世界の美しさを独自の視点で切り取る芸術家です。今この瞬間を大切にし、自分の価値観に従って静かに生きる姿は本物の自由を体現しています。自己主張は控えめですが、あなたの作品や行動が深く人の心に触れます。',
+    strengths:['豊かな感受性','美的センス','柔軟性','思いやり'],
+    weaknesses:['自己主張が弱い','計画性の欠如','批判に敏感'],
+    careers:['アーティスト・画家','音楽家','デザイナー','ファッション関係','写真家']},
+  ESTP:{name:'疾風の冒険者',en:'THE ENTREPRENEUR',emoji:'⚡',tag:'瞬発力と度胸で限界を超え続ける',color:'#b91c1c',grad:'linear-gradient(135deg,#ef4444,#7f1d1d)',
+    desc:'あなたは瞬発力と行動力でどんな壁も突き破る、生粋のアドベンチャラーです。理論より実践を好み、その場の状況を瞬時に読んで最速で最善の判断を下せます。リスクを楽しめる胆力があり、危機的な場面こそ本領を発揮するタイプです。',
+    strengths:['卓越した行動力','瞬時の判断力','カリスマ','適応力'],
+    weaknesses:['長期計画が苦手','衝動的','リスク管理が甘い'],
+    careers:['起業家','スポーツ選手','救急隊員・消防士','営業スター','投資トレーダー']},
+  ESFP:{name:'祭りの魂',en:'THE ENTERTAINER',emoji:'🎭',tag:'その場を最高の舞台に変えるエンターテイナー',color:'#c2410c',grad:'linear-gradient(135deg,#f97316,#7c2d12)',
+    desc:'あなたはどんな場所でも最高のエンターテイメントを生み出す、天性の盛り上げ役です。その場のエネルギーを読んで人々を笑顔にする才能は他の追随を許しません。衝動的になることもありますが、あなたの存在が場の空気を変える力は本物です。',
+    strengths:['場を盛り上げるエネルギー','社交性・カリスマ','即興力','思いやり'],
+    weaknesses:['集中力の持続','計画が苦手','批判に弱い'],
+    careers:['俳優・タレント','イベントプランナー','セールス','保育士・教師','インフルエンサー']}
+};
+
+// ── 20 QUESTIONS (5 per axis, interleaved) ──
+// axis: 'EI'|'NS'|'TF'|'JP'  v0=first letter, v1=second letter
+const QS=[
+  // EI
+  {a:'EI',text:'週末、友人からの突然のお誘い。どう感じる？',
+    opts:[{t:'嬉しい！すぐに参加したい',v:0},{t:'正直、一人の時間も大切にしたい',v:1}]},
+  // NS
+  {a:'NS',text:'情報を受け取るとき、自然と気になるのは？',
+    opts:[{t:'全体のパターンや将来の可能性',v:0},{t:'具体的な事実や現実の詳細',v:1}]},
+  // TF
+  {a:'TF',text:'大切な決断をするとき、最も重視するのは？',
+    opts:[{t:'論理的な分析と客観的な事実',v:0},{t:'自分や周囲の感情と価値観',v:1}]},
+  // JP
+  {a:'JP',text:'新しいプロジェクトへの取り組み方は？',
+    opts:[{t:'まず計画をしっかり立ててから動く',v:0},{t:'まずやってみて、流れに合わせて動く',v:1}]},
+  // EI
+  {a:'EI',text:'長い一人作業のあと、エネルギーを回復する方法は？',
+    opts:[{t:'友人や同僚と話して活力を得る',v:0},{t:'一人でゆっくり休む時間を取る',v:1}]},
+  // NS
+  {a:'NS',text:'仕事や勉強に取り組むとき、自分のスタイルは？',
+    opts:[{t:'全体像を把握してから細部に入る',v:0},{t:'一つひとつ着実に積み上げていく',v:1}]},
+  // TF
+  {a:'TF',text:'悩んでいる友人が相談してきた。まず何をする？',
+    opts:[{t:'問題を整理して解決策を提案する',v:0},{t:'じっくり話を聞いて気持ちに寄り添う',v:1}]},
+  // JP
+  {a:'JP',text:'締め切りに対するあなたのスタンスは？',
+    opts:[{t:'余裕を持って早めに終わらせたい',v:0},{t:'追い込まれるとむしろ集中できる',v:1}]},
+  // EI
+  {a:'EI',text:'知り合いが少ないパーティでの自分は？',
+    opts:[{t:'積極的に話しかけて新しい人脈を作る',v:0},{t:'気の合いそうな人を見つけて深く話す',v:1}]},
+  // NS
+  {a:'NS',text:'将来と現在、どちらに自然と目が向く？',
+    opts:[{t:'まだ見ぬ未来の可能性や変化',v:0},{t:'今ここにある現実や安定',v:1}]},
+  // TF
+  {a:'TF',text:'チームの意思決定で最も大切にすることは？',
+    opts:[{t:'効率と合理性、最善の結果',v:0},{t:'全員の気持ちへの配慮と合意形成',v:1}]},
+  // JP
+  {a:'JP',text:'旅行の準備について、どちらが近い？',
+    opts:[{t:'行程を事前にしっかり計画してから安心',v:0},{t:'大まかに決めて行き当たりばったりを楽しむ',v:1}]},
+  // EI
+  {a:'EI',text:'考えをまとめるとき、どうする？',
+    opts:[{t:'声に出したり人に話しながら整理する',v:0},{t:'頭の中や紙に書いて一人で整理する',v:1}]},
+  // NS
+  {a:'NS',text:'直感と実績、どちらをより信頼する？',
+    opts:[{t:'根拠がなくても直感を重視する',v:0},{t:'過去の実績やデータを重視する',v:1}]},
+  // TF
+  {a:'TF',text:'批判や指摘を受けたとき、どう反応する？',
+    opts:[{t:'内容が正しければ冷静に受け入れられる',v:0},{t:'言い方にかかわらずショックを受けやすい',v:1}]},
+  // JP
+  {a:'JP',text:'一つの仕事が終わったとき、どう感じる？',
+    opts:[{t:'完了した達成感でスッキリする',v:0},{t:'次の面白いことへ気持ちがすぐ向かう',v:1}]},
+  // EI
+  {a:'EI',text:'電話とメッセージ、普段どちらを好む？',
+    opts:[{t:'電話の方がすぐ伝わって好き',v:0},{t:'メッセージの方が考えてから返せる',v:1}]},
+  // NS
+  {a:'NS',text:'好きな会話のテーマは？',
+    opts:[{t:'抽象的な概念や将来の仮説・アイデア',v:0},{t:'実際の体験や具体的・実用的な話',v:1}]},
+  // TF
+  {a:'TF',text:'友人にどう評価されると嬉しい？',
+    opts:[{t:'「論理的で頼れる」と言われること',v:0},{t:'「思いやりがあって温かい」と言われること',v:1}]},
+  // JP
+  {a:'JP',text:'日常の生活スタイルに近いのは？',
+    opts:[{t:'規則正しい習慣やルーティンがある',v:0},{t:'その日の気分や状況で柔軟に変わる',v:1}]}
+];
+
+const AXIS_LABELS=[
+  {k:'EI',l0:'外向 E',l1:'内向 I',full0:'外向性（Extraversion）',full1:'内向性（Introversion）'},
+  {k:'NS',l0:'直感 N',l1:'感覚 S',full0:'直感（iNtuition）',full1:'感覚（Sensing）'},
+  {k:'TF',l0:'思考 T',l1:'感情 F',full0:'思考（Thinking）',full1:'感情（Feeling）'},
+  {k:'JP',l0:'判断 J',l1:'知覚 P',full0:'判断（Judging）',full1:'知覚（Perceiving）'}
+];
+
+let cur=0,sel=null,axisScores={EI:[0,0],NS:[0,0],TF:[0,0],JP:[0,0]},isShared=false;
+
+function initScores(){axisScores={EI:[0,0],NS:[0,0],TF:[0,0],JP:[0,0]}}
+
+function getMbtiKey(){
+  const s=axisScores;
+  return (s.EI[0]>=s.EI[1]?'E':'I')+(s.NS[0]>=s.NS[1]?'N':'S')+(s.TF[0]>=s.TF[1]?'T':'F')+(s.JP[0]>=s.JP[1]?'J':'P');
+}
+
+function createParticles(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<40;i++){
+    const p=document.createElement('div');p.className='particle';
+    const sz=1+Math.random()*2.5;
+    p.style.cssText=`left:${Math.random()*100}vw;width:${sz}px;height:${sz}px;background:rgba(255,255,255,${.12+Math.random()*.3});animation-duration:${12+Math.random()*22}s;animation-delay:${Math.random()*22}s`;
+    c.appendChild(p);
+  }
+}
+
+function buildStartGrid(){
+  const order=['INTJ','INTP','ENTJ','ENTP','INFJ','INFP','ENFJ','ENFP','ISTJ','ISFJ','ESTJ','ESFJ','ISTP','ISFP','ESTP','ESFP'];
+  document.getElementById('mbtiGrid').innerHTML=order.map(k=>{
+    const t=TYPES[k];
+    return `<div class="mbti-chip" title="${t.name}"><span class="mc">${t.emoji}</span><span class="mt">${k}</span><div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px">${t.name}</div></div>`;
+  }).join('');
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function startQuiz(){
+  isShared=false;initScores();cur=0;sel=null;
+  showScreen('sQuiz');render();
+}
+
+function render(){
+  const q=QS[cur];
+  const isLast=cur===QS.length-1;
+  const pct=Math.round(cur/QS.length*100);
+  document.getElementById('qNum').textContent=cur+1;
+  document.getElementById('qPct').textContent=pct;
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('qNo').textContent='QUESTION '+String(cur+1).padStart(2,'0')+' ／ '+q.a.split('').join('・');
+  document.getElementById('qText').textContent=q.text;
+  document.getElementById('btnNext').textContent=isLast?'結果を見る ✨':'次の質問へ →';
+  const g=document.getElementById('opts');
+  g.innerHTML='';
+  ['A','B'].forEach((lbl,i)=>{
+    const b=document.createElement('button');
+    b.className='opt';b.dataset.idx=i;
+    b.innerHTML=`<span class="opt-key">${lbl}</span>${q.opts[i].t}`;
+    b.onclick=()=>selectOpt(i);
+    g.appendChild(b);
+  });
+  sel=null;
+  document.getElementById('btnNext').classList.remove('on');
+}
+
+function selectOpt(i){
+  sel=i;
+  document.querySelectorAll('.opt').forEach((x,j)=>{x.classList.toggle('sel',j===i)});
+  document.getElementById('btnNext').classList.add('on');
+}
+
+function next(){
+  if(sel===null)return;
+  const q=QS[cur];
+  axisScores[q.a][q.opts[sel].v]++;
+  cur++;
+  if(cur>=QS.length){showResult();return;}
+  const w=document.getElementById('quizWrap');
+  w.style.transition='opacity .16s,transform .16s';
+  w.style.opacity='0';w.style.transform='translateX(-14px)';
+  setTimeout(()=>{render();w.style.opacity='1';w.style.transform='translateX(0)';setTimeout(()=>w.style.transition='',280)},180);
+}
+
+function showResult(mbtiOverride){
+  const mbti=mbtiOverride||getMbtiKey();
+  const t=TYPES[mbti];
+  history.replaceState(null,'',location.pathname+location.search+'#'+mbti);
+  document.getElementById('sharedNote').style.display=isShared?'block':'none';
+
+  // Header
+  const big=document.getElementById('rMbtiBig');
+  big.textContent=mbti;
+  big.style.cssText=`background:${t.color}18;border-color:${t.color}55;color:${t.color}`;
+  document.getElementById('rEmoji').textContent=t.emoji;
+  const rn=document.getElementById('rName');
+  rn.textContent=t.name;
+  rn.style.cssText=`background:${t.grad};-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text`;
+  document.getElementById('rEn').textContent=t.en;
+  document.getElementById('rTag').textContent='「'+t.tag+'」';
+  document.getElementById('rDesc').textContent=t.desc;
+  ['rBar1','rBar2','rBar5'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.background=t.color;
+  });
+  document.getElementById('rDescCard').style.borderColor=t.color+'33';
+
+  document.getElementById('rStrengths').innerHTML=t.strengths.map(s=>`<span class="tag tag-s">✦ ${s}</span>`).join('');
+  document.getElementById('rWeaknesses').innerHTML=t.weaknesses.map(w=>`<span class="tag tag-w">▲ ${w}</span>`).join('');
+  document.getElementById('rCareers').innerHTML=t.careers.map(c=>`<div class="career">💼 ${c}</div>`).join('');
+
+  // Axis bars
+  const axisCard=document.getElementById('rAxisCard');
+  if(isShared){
+    axisCard.style.display='none';
+  }else{
+    axisCard.style.display='block';
+    document.getElementById('rAxisBars').innerHTML=AXIS_LABELS.map(ax=>{
+      const sc=axisScores[ax.k];
+      const total=sc[0]+sc[1]||5;
+      const pct0=Math.round(sc[0]/total*100);
+      const pct1=100-pct0;
+      const dom0=sc[0]>=sc[1];
+      return `<div class="abar">
+        <span class="abar-lbl left" style="color:${dom0?t.color:'rgba(255,255,255,.35)'}">${ax.l0}</span>
+        <div class="abar-track">
+          <div class="abar-fill-l" style="width:0%;background:${t.grad}" data-w="${pct0}"></div>
+        </div>
+        <span class="abar-lbl right" style="color:${!dom0?t.color:'rgba(255,255,255,.35)'}">${ax.l1}</span>
+        <span class="abar-pct right">${dom0?pct0+'%':'←'+pct1+'%'}</span>
+      </div>`;
+    }).join('');
+    setTimeout(()=>document.querySelectorAll('.abar-fill-l').forEach(b=>b.style.width=b.dataset.w+'%'),120);
+  }
+
+  const sb=document.getElementById('btnShare');
+  sb.style.background=t.grad;sb.style.boxShadow=`0 4px 24px ${t.color}44`;
+  showScreen('sResult');
+}
+
+function share(){
+  const mbti=location.hash.slice(1);
+  const t=TYPES[mbti];if(!t)return;
+  const url=location.href.split('#')[0]+'#'+mbti;
+  const txt=`私の性格タイプは${mbti}「${t.name}（${t.tag}）」でした！あなたも試してみて👇`;
+  if(navigator.share){navigator.share({title:'性格タイプ診断',text:txt,url})}
+  else{navigator.clipboard.writeText(url).then(()=>toast('✓ URLをコピーしました！')).catch(()=>prompt('URLをコピーしてシェアしてね',url))}
+}
+
+function retry(){
+  history.replaceState(null,'',location.pathname+location.search);
+  startQuiz();
+}
+
+function toast(msg){
+  const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('sQuiz').classList.contains('active'))return;
+  if(e.key==='a'||e.key==='A'||e.key==='1')selectOpt(0);
+  else if(e.key==='b'||e.key==='B'||e.key==='2')selectOpt(1);
+  else if(e.key==='Enter')next();
+});
+
+createParticles();
+buildStartGrid();
+
+const h=location.hash.slice(1);
+if(h&&TYPES[h]){isShared=true;initScores();showResult(h)}
+</script>
+</body>
+</html>
