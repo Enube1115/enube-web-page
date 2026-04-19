@@ -184,6 +184,22 @@
   .timer-presets { display:flex; gap:8px; justify-content:center; margin-bottom:16px; flex-wrap:wrap; }
   .preset-btn { padding:6px 14px; border-radius:50px; border:1px solid var(--card-border); background:rgba(255,255,255,0.05); color:var(--muted); cursor:pointer; font-size:0.78rem; transition:all 0.3s; }
   .preset-btn:hover,.preset-btn.active { background:rgba(78,205,196,0.2); color:var(--accent); border-color:rgba(78,205,196,0.4); }
+  /* Recipe modal */
+  .recipe-modal { background:linear-gradient(135deg,#1a1a3e,#2d2d5e); border:1px solid var(--card-border); border-radius:24px; padding:32px; max-width:520px; width:92%; max-height:85vh; overflow-y:auto; animation:slideUp 0.3s ease; }
+  .recipe-modal::-webkit-scrollbar { width:4px; }
+  .recipe-modal::-webkit-scrollbar-track { background:transparent; }
+  .recipe-modal::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); border-radius:4px; }
+  .recipe-title { font-size:1.5rem; font-weight:700; margin-bottom:4px; }
+  .recipe-meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  .recipe-section { margin-bottom:20px; }
+  .recipe-section h4 { font-size:0.85rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; border-bottom:1px solid var(--card-border); padding-bottom:6px; }
+  .recipe-ingredients { display:flex; flex-wrap:wrap; gap:7px; }
+  .recipe-ing-tag { background:rgba(255,255,255,0.07); border:1px solid var(--card-border); border-radius:8px; padding:4px 12px; font-size:0.82rem; }
+  .recipe-steps { list-style:none; display:flex; flex-direction:column; gap:12px; }
+  .recipe-step { display:flex; gap:14px; align-items:flex-start; }
+  .step-num { flex:0 0 28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--secondary)); display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:700; color:#fff; }
+  .step-text { flex:1; font-size:0.88rem; line-height:1.6; color:var(--text); padding-top:4px; }
+  .recipe-tip { background:rgba(78,205,196,0.1); border:1px solid rgba(78,205,196,0.3); border-radius:12px; padding:12px 16px; font-size:0.82rem; color:var(--accent); margin-top:4px; }
   .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(100px); background:rgba(78,205,196,0.9); color:#000; padding:12px 24px; border-radius:50px; font-size:0.9rem; font-weight:700; transition:transform 0.3s ease; z-index:9999; }
   .toast.show { transform:translateX(-50%) translateY(0); }
   .empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
@@ -203,6 +219,7 @@
   <header>
     <h1>🍱 AI献立プランナー</h1>
     <p>あなただけの献立を、毎日おいしく。</p>
+    <p id="mealCountLabel" style="font-size:0.78rem;color:rgba(255,255,255,0.3);margin-top:4px"></p>
   </header>
 
   <div class="tabs">
@@ -425,6 +442,17 @@
   </div>
 </div>
 
+<!-- Recipe Modal -->
+<div class="modal-overlay" id="recipeModal" onclick="if(event.target===this)closeRecipe()">
+  <div class="recipe-modal">
+    <div id="recipeContent"></div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn-timer-ctrl start" style="flex:1" onclick="openTimerFromRecipe()">⏱ タイマーを起動</button>
+      <button class="btn-timer-ctrl close-btn" style="flex:0 0 auto" onclick="closeRecipe()">✕ 閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- Timer Modal -->
 <div class="modal-overlay" id="timerModal">
   <div class="modal">
@@ -466,6 +494,14 @@ const MEALS = {
     { name:'お粥（梅・卵）', ingredients:['ご飯','水','梅干し','卵','だし'], calories:220, time:20, difficulty:'easy', mood:['tired','comfort'], season:'winter', allergens:['卵'], cost:120 },
     { name:'グリーンスムージー', ingredients:['ほうれん草','バナナ','リンゴ','牛乳'], calories:200, time:5, difficulty:'easy', mood:['diet','energetic'], season:'all', allergens:['乳製品'], cost:200 },
     { name:'チャーハン風卵炒め', ingredients:['ご飯','卵','長ネギ','醤油','ごま油'], calories:420, time:12, difficulty:'easy', mood:['normal','energetic'], season:'all', allergens:['卵'], cost:150 },
+    { name:'納豆ご飯', ingredients:['ご飯','納豆','長ネギ','醤油','卵'], calories:380, time:5, difficulty:'easy', mood:['normal','diet','tired'], season:'all', allergens:['卵'], cost:120 },
+    { name:'スクランブルエッグトースト', ingredients:['食パン','卵','バター','牛乳','塩胡椒'], calories:340, time:10, difficulty:'easy', mood:['normal','energetic'], season:'all', allergens:['卵','乳製品','小麦'], cost:180 },
+    { name:'アサイーボウル', ingredients:['アサイーパウダー','バナナ','ヨーグルト','グラノーラ','ブルーベリー','ハチミツ'], calories:360, time:8, difficulty:'easy', mood:['diet','energetic','special'], season:'all', allergens:['乳製品'], cost:400 },
+    { name:'クロックムッシュ', ingredients:['食パン','ハム','チーズ','バター','薄力粉','牛乳'], calories:480, time:20, difficulty:'medium', mood:['special','comfort'], season:'all', allergens:['乳製品','小麦'], cost:280 },
+    { name:'豆腐みそ汁定食', ingredients:['ご飯','豆腐','わかめ','味噌','だし','塩鮭'], calories:420, time:15, difficulty:'easy', mood:['normal','comfort','tired'], season:'all', allergens:['魚介類'], cost:280 },
+    { name:'ヨーグルトパフェ', ingredients:['ヨーグルト','グラノーラ','イチゴ','バナナ','ハチミツ'], calories:300, time:5, difficulty:'easy', mood:['diet','special'], season:'all', allergens:['乳製品'], cost:350 },
+    { name:'目玉焼きサンド', ingredients:['食パン','卵','ハム','レタス','ケチャップ','バター'], calories:380, time:10, difficulty:'easy', mood:['normal','energetic'], season:'all', allergens:['卵','乳製品','小麦'], cost:200 },
+    { name:'オーツポリッジ', ingredients:['オートミール','牛乳','バナナ','ハチミツ','シナモン'], calories:280, time:5, difficulty:'easy', mood:['diet','tired'], season:'winter', allergens:['乳製品'], cost:160 },
   ],
   lunch: [
     { name:'親子丼', ingredients:['鶏肉','卵','玉ねぎ','だし','醤油','みりん','ご飯'], calories:680, time:20, difficulty:'medium', mood:['normal','comfort'], season:'all', allergens:['卵','鶏肉'], cost:420 },
@@ -482,6 +518,14 @@ const MEALS = {
     { name:'ミートソースパスタ', ingredients:['スパゲッティ','牛ひき肉','トマト缶','玉ねぎ','にんにく','赤ワイン'], calories:720, time:35, difficulty:'medium', mood:['special','normal'], season:'all', allergens:['小麦'], cost:520 },
     { name:'チキン南蛮', ingredients:['鶏肉','卵','タルタルソース','酢醤油','キャベツ','ご飯'], calories:750, time:30, difficulty:'hard', mood:['special','energetic'], season:'all', allergens:['卵','鶏肉'], cost:600 },
     { name:'豆腐チャンプルー', ingredients:['豆腐','ゴーヤ','豚肉','卵','かつお節','醤油'], calories:380, time:20, difficulty:'medium', mood:['diet','normal'], season:'summer', allergens:['卵'], cost:320 },
+    { name:'牛丼', ingredients:['ご飯','牛肉','玉ねぎ','醤油','みりん','砂糖','だし','紅ショウガ'], calories:720, time:20, difficulty:'easy', mood:['energetic','normal'], season:'all', allergens:[], cost:480 },
+    { name:'ざるそば', ingredients:['そば','めんつゆ','長ネギ','わさび','のり'], calories:380, time:10, difficulty:'easy', mood:['diet','normal'], season:'summer', allergens:['そば'], cost:280 },
+    { name:'焼きそば', ingredients:['中華麺','豚肉','キャベツ','もやし','にんじん','ソース','青のり'], calories:580, time:15, difficulty:'easy', mood:['comfort','normal'], season:'all', allergens:['小麦','豚肉'], cost:320 },
+    { name:'えびドリア', ingredients:['ご飯','えび','玉ねぎ','バター','薄力粉','牛乳','チーズ'], calories:680, time:30, difficulty:'hard', mood:['special'], season:'all', allergens:['えび','乳製品','小麦'], cost:680 },
+    { name:'タンドリーチキンサラダ', ingredients:['鶏肉','ヨーグルト','スパイス','レタス','トマト','きゅうり'], calories:360, time:25, difficulty:'medium', mood:['diet','energetic'], season:'summer', allergens:['鶏肉','乳製品'], cost:480 },
+    { name:'天ぷらうどん', ingredients:['うどん','えび','なす','薄力粉','卵','めんつゆ','長ネギ'], calories:650, time:25, difficulty:'medium', mood:['comfort','normal'], season:'all', allergens:['えび','卵','小麦'], cost:520 },
+    { name:'オムライス', ingredients:['ご飯','卵','鶏肉','玉ねぎ','ケチャップ','バター'], calories:680, time:25, difficulty:'medium', mood:['comfort','special'], season:'all', allergens:['卵','鶏肉','乳製品'], cost:380 },
+    { name:'焼き魚定食（ほっけ）', ingredients:['ほっけ','ご飯','味噌汁','大根おろし','漬物'], calories:540, time:20, difficulty:'easy', mood:['normal','diet'], season:'all', allergens:['魚介類'], cost:420 },
   ],
   dinner: [
     { name:'鶏の照り焼き', ingredients:['鶏もも肉','醤油','みりん','砂糖','サラダ油'], calories:520, time:20, difficulty:'easy', mood:['normal','comfort'], season:'all', allergens:['鶏肉'], cost:380 },
@@ -499,7 +543,86 @@ const MEALS = {
     { name:'茶碗蒸し', ingredients:['卵','だし','鶏肉','えび','三つ葉','醤油','みりん'], calories:220, time:35, difficulty:'hard', mood:['special','comfort'], season:'all', allergens:['卵','鶏肉','えび'], cost:420 },
     { name:'アクアパッツァ', ingredients:['白身魚','あさり','ミニトマト','にんにく','オリーブオイル','白ワイン'], calories:350, time:30, difficulty:'medium', mood:['special','diet'], season:'all', allergens:['魚介類'], cost:780 },
     { name:'唐揚げ', ingredients:['鶏もも肉','醤油','酒','にんにく','生姜','片栗粉','揚げ油'], calories:620, time:30, difficulty:'medium', mood:['energetic','normal','comfort'], season:'all', allergens:['鶏肉'], cost:460 },
+    { name:'すき焼き', ingredients:['牛肉','白菜','長ネギ','豆腐','しらたき','しいたけ','卵','醤油','みりん','砂糖'], calories:680, time:35, difficulty:'medium', mood:['special','comfort'], season:'winter', allergens:['卵'], cost:1200 },
+    { name:'サバの味噌煮', ingredients:['鯖','味噌','みりん','砂糖','酒','生姜'], calories:480, time:25, difficulty:'medium', mood:['normal','diet'], season:'all', allergens:['魚介類'], cost:380 },
+    { name:'ポークソテー', ingredients:['豚ロース肉','塩胡椒','にんにく','バター','醤油','レモン'], calories:560, time:20, difficulty:'easy', mood:['normal','energetic'], season:'all', allergens:['豚肉','乳製品'], cost:480 },
+    { name:'豆腐ステーキ', ingredients:['豆腐','バター','醤油','みりん','にんにく','かつお節'], calories:280, time:15, difficulty:'easy', mood:['diet','normal'], season:'all', allergens:['乳製品'], cost:200 },
+    { name:'ビーフストロガノフ', ingredients:['牛肉','玉ねぎ','マッシュルーム','バター','薄力粉','牛乳','サワークリーム'], calories:680, time:35, difficulty:'hard', mood:['special'], season:'all', allergens:['乳製品','小麦'], cost:780 },
+    { name:'春巻き', ingredients:['春巻きの皮','豚肉','にんじん','しいたけ','春雨','ごま油'], calories:520, time:35, difficulty:'hard', mood:['special','energetic'], season:'all', allergens:['豚肉','小麦'], cost:480 },
+    { name:'鱈のちり鍋', ingredients:['鱈','白菜','長ネギ','豆腐','ポン酢','だし'], calories:320, time:25, difficulty:'easy', mood:['comfort','diet','tired'], season:'winter', allergens:['魚介類'], cost:520 },
+    { name:'ガーリックシュリンプ', ingredients:['えび','にんにく','バター','パセリ','レモン','塩胡椒'], calories:380, time:15, difficulty:'easy', mood:['special','energetic'], season:'all', allergens:['えび','乳製品'], cost:580 },
   ]
+};
+
+// ==================== RECIPE DATA ====================
+const RECIPES = {
+  '和風朝食セット': { steps:['米を炊く。だし・味噌・お好みの具で味噌汁を作る。','魚（鮭や干物など）を魚焼きグリルで中火8〜10分焼く。','漬物を器に盛り付けて完成。'], tip:'魚は皮目から焼くとパリッと仕上がります。' },
+  'フレンチトースト': { steps:['卵・牛乳・砂糖をボウルで混ぜ、卵液を作る。','食パンを卵液に両面10分ずつ浸す。','フライパンにバターを溶かし、弱〜中火で両面2〜3分ずつ焼く。','メープルシロップをかけて完成。'], tip:'じっくり浸すことでふんわり仕上がります。' },
+  'アボカドトースト': { steps:['食パンをトースターで2〜3分焼く。','アボカドを半分に割り、スプーンで実をすくい出してフォークで粗くつぶす。','レモン汁・塩を加えてよく混ぜる。','トーストに塗り、オリーブオイルをひと垂らしして完成。'], tip:'アボカドは完熟のものを選ぶと塗りやすいです。' },
+  '卵かけご飯': { steps:['温かいご飯を茶碗によそう。','生卵を割って乗せる。','醤油を好みの量かけ、よく混ぜて完成。'], tip:'だし醤油を使うとさらに風味豊かになります。' },
+  'バナナスムージーボウル': { steps:['凍らせたバナナをミキサーに入れ、ヨーグルトを加えてなめらかになるまで撹拌する。','器に注ぎ、グラノーラ・ブルーベリーをトッピング。','ハチミツをかけて完成。'], tip:'バナナを前日に冷凍しておくとシャーベット状で美味しくなります。' },
+  'おにぎり2個': { steps:['ご飯を茶碗1杯分用意し、塩少々を振る。','鮭は焼いてほぐす。梅干しは種を除く。','手を水で濡らして塩を馴染ませ、具を包みながら三角に握る。','のりを巻いて完成。'], tip:'ご飯が熱いうちに握ると形が整いやすいです。' },
+  'パンケーキ': { steps:['薄力粉・砂糖・卵・牛乳をボウルに入れてダマがなくなるまで混ぜる。','フライパンにバターを溶かし、弱火で生地を流し込む。','表面にぷつぷつ気泡が出てきたら裏返し、さらに1〜2分焼く。','お皿に盛り、メープルシロップをかけて完成。'], tip:'蓋をして蒸らすとふんわり厚焼きになります。' },
+  'シリアル＆牛乳': { steps:['器にシリアルを適量注ぐ。','冷たい牛乳を注ぐ。','スライスしたバナナを乗せて完成。'], tip:'食べる直前に牛乳を注ぐとシリアルのサクサク感が保てます。' },
+  'ハムチーズサンド': { steps:['食パン2枚の片面にマスタードを薄く塗る。','ハム・チーズ・レタスをそれぞれ乗せて挟む。','半分に切って完成。'], tip:'チーズはスライスチーズを使うと手軽です。レンジで20秒温めると溶けて美味しくなります。' },
+  'お粥（梅・卵）': { steps:['ご飯1杯に対して水5〜6倍を鍋に入れる。','だし少々を加え、弱火で15〜20分コトコト煮る。','溶き卵を回し入れてふんわりしたら火を止める。','器に盛り、梅干しを乗せて完成。'], tip:'ご飯を煮立ったお湯に入れるより、水から入れる方がとろみが出ます。' },
+  'グリーンスムージー': { steps:['ほうれん草は洗って適当にちぎる。','バナナ・リンゴは一口大に切る。','全材料をミキサーに入れ、牛乳を加えてなめらかになるまで撹拌。','グラスに注いで完成。'], tip:'前日に材料を冷凍しておくと冷たく飲めます。' },
+  'チャーハン風卵炒め': { steps:['長ネギを小口切りにする。','フライパンにごま油を中火で熱し、ネギを炒める。','ご飯を加えてほぐしながら炒める。','溶き卵を回し入れて素早くかき混ぜる。','醤油を鍋肌から回しかけて炒め合わせ完成。'], tip:'ご飯は冷ご飯を使うとパラパラに仕上がります。' },
+
+  '親子丼': { steps:['鶏肉は一口大に切る。玉ねぎは薄切りにする。','だし・醤油・みりんを合わせてフライパンに入れ、玉ねぎを中火で2〜3分煮る。','鶏肉を加えてさらに3〜4分、火が通るまで煮る。','溶き卵を回し入れ、半熟になったら火を止める。','ご飯の上に盛って完成。'], tip:'卵は2回に分けて入れると外側がふんわりしたまま仕上がります。' },
+  'ナポリタン': { steps:['スパゲッティを袋の指示通り塩茹でする。','玉ねぎは薄切り、ピーマンは輪切りにする。','フライパンにバターを溶かし、玉ねぎ・ウインナー・ピーマンを炒める。','ケチャップを加えて炒め合わせ、茹でたスパゲッティを入れて和える。','塩胡椒で味を調えて完成。'], tip:'ケチャップは多めに入れると本格的な味わいになります。' },
+  '海鮮丼': { steps:['刺身用の魚介（まぐろ・サーモン・いか・海老）を用意する。','ご飯を酢飯にする場合は寿司酢を混ぜる。','ご飯を器に盛り、魚介を並べる。','わさびを添え、食べる際に醤油をかけて完成。'], tip:'魚介は食べる直前まで冷蔵庫で保管し、新鮮なうちに食べましょう。' },
+  'カレーライス': { steps:['牛肉・玉ねぎ・にんじん・じゃがいもを一口大に切る。','鍋に油を熱し、玉ねぎを飴色になるまで炒める。','牛肉・にんじん・じゃがいもを加えて炒め、水を注いで15〜20分煮る。','火を弱めてカレールウを割り入れ、溶かしながら5〜10分煮込む。','ご飯と一緒に盛り付けて完成。'], tip:'玉ねぎをじっくり炒めることで甘みと深みが増します。' },
+  'ツナサラダうどん': { steps:['うどんを袋の指示通り茹でて冷水でしめる。','キャベツは千切りにして電子レンジで1分加熱する。','器にうどん・キャベツ・ツナを盛り付ける。','のりを乗せ、ごまドレッシングをかけて完成。'], tip:'うどんは冷水でよく洗うとコシが出ます。' },
+  'アボカドサーモン丼': { steps:['アボカドは半分に割り種を除き、薄切りにする。','サーモン（刺身用）を適当な厚さに切る。','ご飯を器に盛り、のりを敷く。','サーモンとアボカドを並べ、わさびを添える。','食べる際に醤油をかけて完成。'], tip:'アボカドにレモン汁を少しかけると変色防止になります。' },
+  'ガパオライス': { steps:['にんにく・唐辛子をみじん切りにする。','フライパンに油を熱し、にんにく・唐辛子を炒めて香りを出す。','鶏ひき肉を加えて炒め、ナンプラー・砂糖で味付けする。','バジルを加えてさっと炒める。','目玉焼きをのせ、ご飯と一緒に盛り付けて完成。'], tip:'バジルは火を止める直前に入れると香りが飛びません。' },
+  '冷やし中華': { steps:['中華麺を茹でて冷水でよくしめる。','きゅうりは千切り、トマトは薄切り、ハムは細切りにする。','卵は薄焼き卵にして細切りにする。','器に麺を盛り、具を彩りよく並べる。','冷やし中華タレをかけて完成。'], tip:'麺は十分に冷やすことでコシが出て美味しくなります。' },
+  'ビビンバ': { steps:['牛肉は醤油・にんにく・ごま油で下味をつけて炒める。','ほうれん草・もやし・人参はそれぞれ茹でて、ごま油・塩で和える。','卵は目玉焼きにする。','器にご飯を盛り、具材を彩りよく並べ、コチュジャンを中央に乗せる。','食べる際に全体を混ぜて完成。'], tip:'コチュジャンの量は辛さの好みで調節してください。' },
+  'チャーシュー麺': { steps:['ラーメンスープを温める（市販のスープ素でもOK）。','麺を茹でて器に盛り付ける。','スープを注ぎ、チャーシュー・メンマ・ゆで卵・ネギを乗せる。','好みでラー油や胡椒を加えて完成。'], tip:'スープは沸騰させると風味が飛ぶので、温める程度にしましょう。' },
+  '鯖の塩焼き定食': { steps:['鯖に塩を振り、10分ほど置いて水分をふき取る。','魚焼きグリルで皮目から中火8〜10分焼く。','味噌汁・ご飯・漬物を準備して定食として盛り付けて完成。'], tip:'塩を振って時間を置くことで臭みが抜けます。' },
+  'ミートソースパスタ': { steps:['玉ねぎ・にんにくをみじん切りにする。','フライパンに油を熱してにんにく→玉ねぎの順に炒める。','牛ひき肉を加えて炒め、赤ワインを加えてアルコールを飛ばす。','トマト缶・塩胡椒を加えて弱火で15〜20分煮込む。','茹でたパスタに和えて完成。'], tip:'煮込む時間が長いほど旨みが深くなります。' },
+  'チキン南蛮': { steps:['鶏肉は厚みを均一にし、塩胡椒する。薄力粉→溶き卵の順にまぶす。','170℃の油で4〜5分揚げ、一度取り出して休ませてから再度1分揚げる。','酢醤油に浸してすぐに取り出す。','タルタルソース（茹で卵・マヨネーズ・玉ねぎ）をかけて完成。'], tip:'二度揚げすることでカリッとした食感が長持ちします。' },
+  '豆腐チャンプルー': { steps:['豆腐はキッチンペーパーで水気をしっかり取り、一口大に切る。','フライパンに油を熱し、豆腐を焼き色がつくまで炒めて取り出す。','豚肉・ゴーヤを炒め、豆腐を戻し入れる。','溶き卵を回し入れてふんわり炒める。','かつお節・醤油で味付けして完成。'], tip:'豆腐の水切りをしっかりするとべちゃつかずに仕上がります。' },
+
+  '鶏の照り焼き': { steps:['鶏もも肉は常温に戻し、余分な脂肪を取り除く。','フライパンに油を熱し、皮目から中火で5〜6分焼く。','裏返してふたをし、弱火で4〜5分蒸し焼きにする。','醤油・みりん・砂糖を合わせたタレを加え、煮詰めながら絡める。','食べやすく切り、タレをかけて完成。'], tip:'皮目をしっかり焼いてパリッとさせることが美味しさのポイント。' },
+  '肉じゃが': { steps:['牛肉・玉ねぎ・にんじん・じゃがいもを一口大に切る。','鍋に油を熱して牛肉を炒め、野菜を加えてさらに炒める。','だしと醤油・みりん・砂糖を加え、落し蓋をして中火で15分煮る。','じゃがいもに竹串がスッと入ったら完成。'], tip:'じゃがいもは煮崩れしやすいので、動かしすぎないようにしましょう。' },
+  '麻婆豆腐': { steps:['豆腐は一口大に切り、熱湯で2分ゆでて水気を切る。','フライパンにごま油を熱し、豚ひき肉・にんにく・生姜を炒める。','豆板醤を加えて炒め、スープ（水＋鶏ガラ素）を加える。','豆腐を入れて3分ほど煮る。水溶き片栗粉でとろみをつける。','花椒を振って完成。'], tip:'最後に花椒（またはラー油）を加えると風味が引き立ちます。' },
+  'ハンバーグ': { steps:['玉ねぎをみじん切りにしてバターで炒め、冷ます。','ひき肉・玉ねぎ・パン粉・卵・塩胡椒をよく練り混ぜる。','楕円形に成形し、中央を少しへこませる。','フライパンで両面に焼き色をつけてから、ふたをして弱火で8分蒸し焼き。','デミグラスソースをかけて完成。'], tip:'生地が手に付くときは手を水で濡らすと成形しやすいです。' },
+  '鮭のちゃんちゃん焼き': { steps:['鮭は一口大に切り、塩を振る。キャベツはざく切り、もやしはそのまま使う。','フライパンにバターを熱し、鮭を両面焼く。','野菜を鮭の周りに並べ、味噌・みりんを合わせたタレを全体にかける。','ふたをして弱火で8〜10分蒸し焼きにして完成。'], tip:'タレは焦げやすいので弱火でゆっくり蒸し焼きにしましょう。' },
+  '豚の生姜焼き': { steps:['豚肉は筋を包丁の先で切り、醤油・みりん・砂糖・生姜汁に10分漬ける。','フライパンに油を熱し、漬け汁ごと豚肉を入れて中火で焼く。','両面に焼き色がついたら完成。','千切りキャベツを添えて盛り付け。'], tip:'漬け汁は焦げやすいので火加減に注意してください。' },
+  'チキンカレー': { steps:['鶏肉は一口大に切り、ヨーグルトとスパイスで30分以上マリネする。','玉ねぎを飴色になるまで20〜30分炒める。','トマト・マリネした鶏肉を加えて炒める。','水を加えて20〜25分煮込み、カレールウで味を整える。','ご飯と盛り付けて完成。'], tip:'玉ねぎをじっくり炒めることがカレーの旨みの要です。' },
+  '寄せ鍋': { steps:['だしを鍋に入れて沸かし、塩・醤油で薄く味付けする。','白菜は芯と葉を分けてざく切り、長ネギは斜め切りにする。','芯から順に入れ、鶏肉・魚介・豆腐を加えて煮る。','火が通ったものから取り出しながらポン酢で食べる。'], tip:'具材を入れすぎると温度が下がるので、少しずつ足していきましょう。' },
+  'ローストビーフ': { steps:['牛もも肉は常温に1時間戻し、表面に塩胡椒・にんにく・ローズマリーをすり込む。','フライパンで全面に焼き色をつける。','アルミホイルで包み、150℃のオーブンで30〜40分焼く。','取り出して20〜30分休ませてから薄切りにする。','赤ワインソースと盛り付けて完成。'], tip:'休ませることで肉汁が安定し、切ったときに溢れ出ません。' },
+  'エビチリ': { steps:['えびは殻・背ワタを取り、塩・酒で下味をつける。','フライパンに油を熱し、にんにく・生姜・豆板醤を炒めて香りを出す。','えびを加えて炒め、ケチャップ・砂糖・スープを加えて煮絡める。','長ネギを加え、水溶き片栗粉でとろみをつけて完成。'], tip:'えびは炒めすぎると固くなるので、変色したらすぐに次の工程へ。' },
+  '豚汁定食': { steps:['豚肉・大根・にんじん・ごぼうを食べやすい大きさに切る。','鍋に油を熱し、豚肉を炒めてから野菜を加えてさらに炒める。','だし汁を加えて野菜が柔らかくなるまで煮る。','火を弱めて味噌を溶き入れ、沸騰直前で止める。','ご飯と一緒に盛り付けて完成。'], tip:'味噌は沸騰させると風味が飛ぶので、必ず火を止めてから入れましょう。' },
+  'タコス': { steps:['牛ひき肉を塩胡椒・クミン・パプリカで炒める。','レタスは千切り、トマトはダイスカットにする。','トルティーヤを乾煎りして温める。','トルティーヤにひき肉・レタス・トマト・チーズを乗せる。','サルサソースをかけて完成。'], tip:'トルティーヤは食べる直前に温めるとやわらかく折りたたみやすいです。' },
+  '茶碗蒸し': { steps:['だし・醤油・みりんを合わせて冷ます。','卵をほぐし、だし汁と混ぜてこし器でこす。','器に鶏肉・えびを入れ、卵液を静かに注ぐ。','湯気の立った蒸し器に入れ、弱火で12〜15分蒸す。','三つ葉を乗せて完成。'], tip:'強火で蒸すと「す」が入るので、必ず弱火でゆっくり蒸しましょう。' },
+  'アクアパッツァ': { steps:['白身魚に塩を振り10分おき、水気をふき取る。','フライパンにオリーブオイルとにんにくを熱し、魚を両面焼く。','あさり・ミニトマト・白ワイン・水を加えてふたをし、5〜7分蒸す。','あさりが開いたら塩で味を整え、器に盛り付けて完成。'], tip:'あさりは事前に砂抜きしておきましょう。' },
+  '唐揚げ': { steps:['鶏もも肉を一口大に切り、醤油・酒・にんにく・生姜で30分以上漬ける。','片栗粉をしっかりまぶす。','170℃の油で3〜4分揚げ、取り出して2分休ませる。','190℃に上げた油で再度1〜2分揚げてカリッとさせる。','レモンを添えて完成。'], tip:'二度揚げが外カリッ・中ジューシーの秘訣です。' },
+  '納豆ご飯': { steps:['ご飯を茶碗によそう。','納豆をパックのたれ・からしと混ぜ、50回ほどよくかき混ぜる。','ご飯の上に納豆を乗せ、長ネギの小口切りを散らす。','好みで生卵を落として完成。'], tip:'納豆はよく混ぜるほど旨みが増します。糸を多く引くくらいが目安です。' },
+  'スクランブルエッグトースト': { steps:['食パンをトースターで焼く。','卵・牛乳・塩胡椒をボウルで混ぜる。','フライパンにバターを中火で溶かし、卵液を流し入れ弱火でゆっくりかき混ぜる。','半熟のうちに火を止め、トーストの上に乗せて完成。'], tip:'卵は火を止めた後も余熱で進むので、少し早めに止めるのがポイントです。' },
+  'アサイーボウル': { steps:['アサイーパウダー・ヨーグルト・凍らせたバナナをミキサーで滑らかになるまで撹拌する。','器に注ぎ、グラノーラ・ブルーベリーをトッピングする。','ハチミツをかけて完成。'], tip:'バナナを冷凍しておくとシャーベット状になりより美味しくなります。' },
+  'クロックムッシュ': { steps:['バターで薄力粉を炒め、牛乳を少しずつ加えてベシャメルソースを作る。','食パンにバターを塗り、ハム・チーズを挟む。','上面にベシャメルソースを塗り、チーズを乗せてオーブントースターで5〜7分焼く。','チーズが溶けてこんがりしたら完成。'], tip:'ベシャメルソースの代わりにマヨネーズで代用しても手軽に作れます。' },
+  '豆腐みそ汁定食': { steps:['だし汁を鍋で温め、豆腐を一口大に切って入れる。','わかめを加え、味噌を溶き入れる。沸騰直前で火を止める。','塩鮭を魚焼きグリルで中火8分焼く。','ご飯と一緒に定食として盛り付けて完成。'], tip:'味噌汁は沸騰させると風味が飛ぶので要注意。' },
+  'ヨーグルトパフェ': { steps:['器の底にグラノーラを敷く。','プレーンヨーグルトをたっぷり乗せる。','イチゴを半分に切り、バナナは輪切りにして彩りよく並べる。','ハチミツをかけて完成。'], tip:'フルーツは季節のものに変えるとバリエーションが楽しめます。' },
+  '目玉焼きサンド': { steps:['フライパンにバターを溶かし、卵を割り入れて目玉焼きを作る（黄身は半熟に）。','食パンを軽くトーストし、ケチャップを塗る。','レタス・ハム・目玉焼きの順に乗せて挟む。','半分に切って完成。'], tip:'黄身が半熟のうちに挟むと、食べる時にとろけて美味しいです。' },
+  'オーツポリッジ': { steps:['鍋にオートミールと牛乳を入れ、弱火で3〜5分かき混ぜながら加熱する。','とろみが出たら器に盛る。','スライスしたバナナを乗せ、ハチミツとシナモンをかけて完成。'], tip:'牛乳の代わりに豆乳を使うと植物性になります。電子レンジでも作れます。' },
+  '牛丼': { steps:['玉ねぎを薄切りにする。','だし・醤油・みりん・砂糖を合わせて鍋で沸かし、玉ねぎを2〜3分煮る。','牛肉を加え、色が変わったらすぐ火を止める（煮すぎない）。','ご飯の上に乗せ、紅ショウガを添えて完成。'], tip:'牛肉は火を通しすぎると硬くなるので、色が変わったらすぐ止めましょう。' },
+  'ざるそば': { steps:['そばを袋の表示通り茹でる。','茹でたら冷水でよくもみ洗いし、ザルに盛る。','めんつゆを器に入れ、長ネギ・わさびを添える。','そばをめんつゆにつけて食べる。'], tip:'そばは冷水でしっかり洗うとコシが増します。' },
+  '焼きそば': { steps:['豚肉は一口大、キャベツはざく切り、にんじんは千切りにする。','フライパンに油を熱し、豚肉を炒める。','野菜・もやしを加えてさらに炒める。','麺を加えてほぐしながら炒め、ソースで味付けする。','青のりをかけて完成。'], tip:'麺は電子レンジで1分温めてからほぐすと炒めやすいです。' },
+  'えびドリア': { steps:['バターで薄力粉を炒め、牛乳を少しずつ加えてホワイトソースを作る。','玉ねぎとえびをバターで炒め、ホワイトソースと混ぜる。','ご飯を耐熱皿に盛り、ソースをかけてチーズを乗せる。','220℃のオーブントースターで15分、チーズに焼き色がついたら完成。'], tip:'ご飯にバター醤油で下味をつけておくと旨みが増します。' },
+  'タンドリーチキンサラダ': { steps:['鶏肉をヨーグルト・スパイス（クミン・パプリカ・ターメリック）で一晩マリネする。','フライパンで鶏肉を両面各4〜5分焼く。','食べやすく切り、レタス・トマト・きゅうりと一緒に盛り付ける。','レモンをかけて完成。'], tip:'マリネ時間が長いほどスパイスが染み込みます。' },
+  '天ぷらうどん': { steps:['えびは尾を残して殻をむき、背わたを取る。','衣（薄力粉・卵・冷水）を軽く混ぜ（ダマOK）、えびとなすをくぐらせて180℃の油で揚げる。','うどんを茹でて器に盛り、めんつゆをかける。','天ぷらと長ネギを乗せて完成。'], tip:'衣は混ぜすぎないことがポイント。少しダマが残るくらいでさっくり揚がります。' },
+  'オムライス': { steps:['玉ねぎと鶏肉を細かく切り、バターで炒める。','ご飯・ケチャップ・塩胡椒で炒め合わせてケチャップライスにする。','卵2個を溶いてフライパンで薄く広げ、半熟のうちにライスを包む。','ケチャップをかけて完成。'], tip:'卵は弱火で素早くかき混ぜるととろとろに仕上がります。' },
+  '焼き魚定食（ほっけ）': { steps:['ほっけの水分をキッチンペーパーでふき取る。','魚焼きグリルで皮目から中火10〜12分焼く。','大根をすりおろし水気を軽く切る。','味噌汁・ご飯と一緒に定食として盛り付け、大根おろしを添えて完成。'], tip:'水分をしっかりふき取ることで臭みが抑えられます。' },
+  'すき焼き': { steps:['鍋（鉄鍋）を中火で熱し、牛肉を焼く。','割り下（醤油1:みりん1:酒1＋砂糖大さじ2）を加える。','白菜・長ネギ・豆腐・しらたき・しいたけを加えて煮る。','火が通ったら溶き卵につけて食べる。'], tip:'割り下は1:1:1（醤油：みりん：酒）に砂糖大さじ2が基本です。' },
+  'サバの味噌煮': { steps:['鯖を食べやすい大きさに切り、熱湯をかけて臭みを取る（霜降り）。','鍋に酒・みりん・醤油・砂糖・水を合わせ、鯖を加えて落し蓋で中火7〜8分煮る。','味噌を溶き入れ、さらに5分煮る。','生姜の千切りを乗せて完成。'], tip:'霜降り（熱湯をかける処理）をすることで臭みが大幅に減ります。' },
+  'ポークソテー': { steps:['豚ロース肉の筋を切り、塩胡椒で下味をつける。','フライパンにオイルを熱し、にんにくを炒めて香りを出す。','豚肉を中火で両面2〜3分ずつ焼く。','バター・醤油・レモン汁を加えてソースにし、肉にかけて完成。'], tip:'肉は常温に戻してから焼くと中まで均一に火が通ります。' },
+  '豆腐ステーキ': { steps:['豆腐（木綿）をキッチンペーパーで包み、重石をのせて30分水切りする。','フライパンにごま油を熱し、豆腐を両面こんがりと焼く。','醤油・みりんを合わせたタレを加えて絡める。','かつお節をたっぷり乗せて完成。'], tip:'しっかり水切りすることで豆腐が崩れにくくなります。' },
+  'ビーフストロガノフ': { steps:['牛肉は細切りにして塩胡椒する。玉ねぎ・マッシュルームはスライスする。','フライパンにバターを熱し、玉ねぎ・マッシュルームを炒める。','牛肉を加えて炒め、薄力粉を振り入れてさらに炒める。','牛乳を加えて煮詰め、サワークリームを加えてソースにする。','ご飯またはパスタと一緒に盛り付けて完成。'], tip:'サワークリームは最後に入れ、沸騰させないようにしましょう。' },
+  '春巻き': { steps:['豚肉・にんじん・しいたけを千切りにし、春雨は水で戻してから切る。','ごま油で具材を炒め、醤油・砂糖で味付けして冷ます。','春巻きの皮に具を包み、端を水溶き薄力粉で留める。','170℃の油でこんがり色になるまで5分揚げて完成。'], tip:'具材をしっかり冷ましてから包まないと皮が破れやすくなります。' },
+  '鱈のちり鍋': { steps:['鱈を一口大に切り、熱湯をかけて臭みを取る。','鍋にだし汁を入れて温める。','白菜の芯から入れ、長ネギ・豆腐・鱈を加えて煮る。','火が通ったらポン酢で食べる。'], tip:'鱈は火が通りやすいので最後に入れ、煮すぎないようにしましょう。' },
+  'ガーリックシュリンプ': { steps:['えびは殻・背わたを取り、塩・酒で下味をつける。','フライパンにバターとみじん切りにしたにんにくを入れ、弱火で香りを出す。','えびを加えて両面炒め、塩胡椒で味を整える。','パセリを散らし、レモンを絞って完成。'], tip:'バターは焦げやすいので弱〜中火でじっくり炒めましょう。' }
 };
 
 // ==================== STATE ====================
@@ -603,6 +726,21 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// Weight selection by fridge score — expiring items count 3x, regular fridge items 2x
+function pickWeighted(arr) {
+  if (!arr.length) return null;
+  const scores = arr.map(m => fridgeScore(m) * 2 + 1);
+  const total = scores.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < arr.length; i++) { r -= scores[i]; if (r <= 0) return arr[i]; }
+  return arr[arr.length - 1];
+}
+
+// Local date key — avoids UTC timezone offset shifting the date
+function localDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 // ==================== FRIDGE HELPERS ====================
 function getFridgeNames() {
   return state.fridgeItems.map(f => f.name.toLowerCase());
@@ -644,10 +782,13 @@ function fridgeScore(meal) {
 
 // ==================== GENERATE ====================
 function generateAll() {
-  state.currentMeals.breakfast = pickRandom(getMoodMeals('breakfast'));
-  state.currentMeals.lunch = pickRandom(getMoodMeals('lunch'));
-  state.currentMeals.dinner = pickRandom(getMoodMeals('dinner'));
+  // Use weighted selection when fridge has expiring items, otherwise purely random
+  const pick = getExpiringItems(3).length > 0 ? pickWeighted : pickRandom;
+  state.currentMeals.breakfast = pick(getMoodMeals('breakfast'));
+  state.currentMeals.lunch    = pick(getMoodMeals('lunch'));
+  state.currentMeals.dinner   = pick(getMoodMeals('dinner'));
   postGenerate();
+  if (getExpiringItems(3).length > 0) showToast('🧊 賞味期限が近い食材を優先して提案しました');
 }
 
 // ==================== NUTRITION OPTIMIZATION ====================
@@ -704,11 +845,15 @@ function renderMeals() {
   const hasMeal = timeKeys.some(t => state.currentMeals[t]);
   if (!hasMeal) { c.innerHTML = ''; return; }
 
+  // Bug fix: check the full combo key, not individual meal name
+  const currentKey = timeKeys.map(t => state.currentMeals[t]?.name || '').join('|');
+  const isFavCombo = state.favorites.some(f => f.key === currentKey);
+
   c.innerHTML = timeKeys.map(type => {
     const meal = state.currentMeals[type];
     if (!meal) return `<div class="meal-card glass"><div class="meal-body" style="padding:30px;text-align:center;color:var(--muted)">条件に合う献立が見つかりませんでした</div></div>`;
 
-    const isFav = state.favorites.some(f => f.meals[type] === meal.name);
+    const isFav = isFavCombo;
     const ingredientsHTML = meal.ingredients.map(i => {
       let cls = 'normal';
       if (isIngredientExpiring(i)) cls = 'expiring';
@@ -732,10 +877,11 @@ function renderMeals() {
         </div>
         <div class="ingredients-list">${ingredientsHTML}</div>
       </div>
-      <div class="meal-actions">
+      <div class="meal-actions" style="flex-wrap:wrap">
         <button class="btn-action regen" onclick="regenerateMeal('${type}')">🔄 再生成</button>
         <button class="btn-action fav${isFav?' saved':''}" onclick="toggleFav('${type}')">${isFav?'★ 保存済':'☆ お気に入り'}</button>
         <button class="btn-action timer-btn" onclick="openTimer('${meal.name.replace(/'/g,"\\'")}',${meal.time})">⏱ タイマー</button>
+        <button class="btn-action" style="color:#fbc2eb;border-color:rgba(251,194,235,0.4);flex:1 0 100%;margin-top:4px" onclick="openRecipe('${meal.name.replace(/'/g,"\\'")}')">📖 作り方を見る</button>
       </div>
     </div>`;
   }).join('');
@@ -812,9 +958,27 @@ function renderFavorites() {
         <span>☀️ ${f.meals.lunch || '-'}</span>
         <span>🌙 ${f.meals.dinner || '-'}</span>
       </div>
-      <button class="btn-remove-fav" onclick="removeFav(${i})">🗑 削除</button>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button style="flex:1;padding:8px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent),#45b7d1);color:#fff;cursor:pointer;font-size:0.78rem;font-weight:700" onclick="loadFavorite(${i})">🍽️ この献立を試す</button>
+        <button class="btn-remove-fav" style="flex:0 0 auto;margin:0" onclick="removeFav(${i})">🗑</button>
+      </div>
     </div>`
   ).join('');
+}
+
+function loadFavorite(i) {
+  const fav = state.favorites[i];
+  timeKeys.forEach(type => {
+    const name = fav.meals[type];
+    state.currentMeals[type] = name ? (MEALS[type].find(m => m.name === name) || null) : null;
+  });
+  postGenerate();
+  // Switch to planner tab
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-planner').classList.add('active');
+  document.querySelector('.tab').classList.add('active');
+  showToast('✅ お気に入りの献立を読み込みました');
 }
 
 function removeFav(i) {
@@ -1004,8 +1168,13 @@ function renderWeekly() {
   const dates = getWeekDates(state.weekOffset), today = new Date();
   document.getElementById('weekLabel').textContent = `${dates[0].getMonth()+1}/${dates[0].getDate()} 〜 ${dates[6].getMonth()+1}/${dates[6].getDate()}`;
   document.getElementById('weekGrid').innerHTML = dates.map((d, i) => {
-    const key = d.toISOString().split('T')[0], plan = state.weekPlan[key] || {};
+    const key = localDateKey(d), plan = state.weekPlan[key] || {};
     const isToday = d.toDateString() === today.toDateString();
+    const dayCalories = ['breakfast','lunch','dinner'].reduce((sum, type) => {
+      if (!plan[type]) return sum;
+      const meal = MEALS[type].find(m => m.name === plan[type]);
+      return sum + (meal?.calories || 0);
+    }, 0);
     return `<div class="day-col">
       <div class="day-header${isToday?' today':''}">${DAY_NAMES[i]}<br><small>${d.getMonth()+1}/${d.getDate()}</small></div>
       ${['breakfast','lunch','dinner'].map(type => `
@@ -1013,6 +1182,7 @@ function renderWeekly() {
           <div class="cell-time">${type==='breakfast'?'朝':type==='lunch'?'昼':'夜'}</div>
           ${plan[type] || 'タップして設定'}
         </div>`).join('')}
+      ${dayCalories > 0 ? `<div style="text-align:center;font-size:0.65rem;color:#ffd700;margin-top:2px">🔥${dayCalories}kcal</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1028,7 +1198,7 @@ function setWeekMeal(key, type) {
 
 function fillWeek() {
   getWeekDates(state.weekOffset).forEach(d => {
-    const key = d.toISOString().split('T')[0];
+    const key = localDateKey(d);
     state.weekPlan[key] = {
       breakfast: pickRandom(getMoodMeals('breakfast'))?.name,
       lunch: pickRandom(getMoodMeals('lunch'))?.name,
@@ -1041,7 +1211,7 @@ function fillWeek() {
 }
 
 function clearWeek() {
-  getWeekDates(state.weekOffset).forEach(d => delete state.weekPlan[d.toISOString().split('T')[0]]);
+  getWeekDates(state.weekOffset).forEach(d => delete state.weekPlan[localDateKey(d)]);
   localStorage.setItem('weekPlan', JSON.stringify(state.weekPlan));
   renderWeekly();
 }
@@ -1159,6 +1329,59 @@ function suggestLeftover() {
   ).join('');
 }
 
+// ==================== RECIPE ====================
+let currentRecipeMeal = null;
+
+function openRecipe(mealName) {
+  currentRecipeMeal = null;
+  // Find meal data across all types
+  for (const type of timeKeys) {
+    if (state.currentMeals[type]?.name === mealName) {
+      currentRecipeMeal = state.currentMeals[type];
+      break;
+    }
+  }
+  const recipe = RECIPES[mealName];
+  if (!currentRecipeMeal && !recipe) return;
+
+  const meal = currentRecipeMeal;
+  const steps = recipe?.steps || ['レシピ情報がありません。'];
+  const tip = recipe?.tip || '';
+
+  document.getElementById('recipeContent').innerHTML = `
+    <div class="recipe-title">${mealName}</div>
+    ${meal ? `<div class="recipe-meta">
+      <span class="meta-badge calories">🔥 ${meal.calories} kcal</span>
+      <span class="meta-badge time">⏱ ${meal.time}分</span>
+      <span class="meta-badge difficulty">${diffLabel[meal.difficulty]}</span>
+      <span class="meta-badge cost">💰 約${meal.cost}円</span>
+    </div>` : ''}
+    ${meal ? `<div class="recipe-section">
+      <h4>🛒 材料（1人分）</h4>
+      <div class="recipe-ingredients">
+        ${meal.ingredients.map(i => `<span class="recipe-ing-tag">${i}</span>`).join('')}
+      </div>
+    </div>` : ''}
+    <div class="recipe-section">
+      <h4>👨‍🍳 作り方</h4>
+      <ol class="recipe-steps">
+        ${steps.map((s, i) => `<li class="recipe-step"><span class="step-num">${i+1}</span><span class="step-text">${s}</span></li>`).join('')}
+      </ol>
+    </div>
+    ${tip ? `<div class="recipe-tip">💡 <strong>コツ：</strong>${tip}</div>` : ''}
+  `;
+  document.getElementById('recipeModal').classList.add('open');
+}
+
+function closeRecipe() {
+  document.getElementById('recipeModal').classList.remove('open');
+}
+
+function openTimerFromRecipe() {
+  closeRecipe();
+  if (currentRecipeMeal) openTimer(currentRecipeMeal.name, currentRecipeMeal.time);
+}
+
 // ==================== TIMER ====================
 // Bug fix: setTimer now takes explicit `el` argument instead of relying on implicit event
 function openTimer(mealName, mins) {
@@ -1259,6 +1482,8 @@ function updateTimerDisplay() {
 // ==================== INIT ====================
 updateTimerDisplay();
 renderWeekly();
+document.getElementById('mealCountLabel').textContent =
+  `朝食${MEALS.breakfast.length}種 · 昼食${MEALS.lunch.length}種 · 夕食${MEALS.dinner.length}種 · 合計${MEALS.breakfast.length+MEALS.lunch.length+MEALS.dinner.length}レシピ収録`;
 </script>
 </body>
 </html>
