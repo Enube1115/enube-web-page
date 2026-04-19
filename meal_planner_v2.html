@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍱 AI献立プランナー</title>
+<style>
+  :root {
+    --primary: #ff6b6b; --secondary: #ffa07a; --accent: #4ecdc4;
+    --card: rgba(255,255,255,0.08); --card-border: rgba(255,255,255,0.15);
+    --text: #f0f0f0; --muted: rgba(255,255,255,0.5);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Sans','Meiryo',sans-serif; background: linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%); min-height: 100vh; color: var(--text); overflow-x: hidden; }
+  .particles { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+  .container { max-width:1100px; margin:0 auto; padding:20px; position:relative; z-index:1; }
+  header { text-align:center; padding:40px 0 20px; }
+  header h1 { font-size:2.8rem; background:linear-gradient(135deg,#ff6b6b,#ffa07a,#ffd700); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  header p { color:var(--muted); font-size:1rem; margin-top:8px; }
+  .tabs { display:flex; gap:8px; justify-content:center; margin:24px 0; flex-wrap:wrap; }
+  .tab { padding:10px 22px; border-radius:50px; border:1px solid var(--card-border); background:var(--card); color:var(--muted); cursor:pointer; transition:all 0.3s; font-size:0.9rem; backdrop-filter:blur(10px); }
+  .tab.active,.tab:hover { background:linear-gradient(135deg,var(--primary),var(--secondary)); border-color:transparent; color:#fff; transform:translateY(-2px); box-shadow:0 8px 25px rgba(255,107,107,0.35); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; animation:fadeIn 0.4s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .glass { background:var(--card); backdrop-filter:blur(20px); border:1px solid var(--card-border); border-radius:20px; padding:24px; }
+  .mood-section { margin-bottom:20px; }
+  .mood-section h3,.filter-section h3 { font-size:1rem; color:var(--muted); margin-bottom:12px; }
+  .moods { display:flex; gap:10px; flex-wrap:wrap; }
+  .mood-btn { padding:8px 18px; border-radius:50px; border:1px solid var(--card-border); background:var(--card); cursor:pointer; font-size:0.85rem; transition:all 0.3s; color:var(--text); }
+  .mood-btn.active { background:linear-gradient(135deg,#a18cd1,#fbc2eb); border-color:transparent; color:#fff; box-shadow:0 4px 15px rgba(161,140,209,0.4); }
+  .filter-section { margin-bottom:20px; }
+  .filter-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .filter-input { background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:12px; padding:10px 16px; color:var(--text); font-size:0.9rem; flex:1; min-width:200px; }
+  .filter-input:focus { outline:none; border-color:var(--accent); }
+  .filter-input::placeholder { color:var(--muted); }
+  .allergen-tags { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .allergen-tag { padding:6px 14px; border-radius:50px; border:1px solid rgba(255,107,107,0.4); background:rgba(255,107,107,0.1); cursor:pointer; font-size:0.8rem; transition:all 0.3s; color:var(--muted); }
+  .allergen-tag.active { background:rgba(255,107,107,0.3); border-color:var(--primary); color:var(--primary); }
+  .filter-chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .chip { padding:6px 14px; border-radius:50px; border:1px solid var(--card-border); background:var(--card); cursor:pointer; font-size:0.8rem; transition:all 0.3s; color:var(--muted); }
+  .chip.active { background:linear-gradient(135deg,var(--accent),#45b7d1); border-color:transparent; color:#fff; }
+  /* Budget/calorie settings */
+  .settings-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+  .setting-item { flex:1; min-width:160px; }
+  .setting-item label { font-size:0.78rem; color:var(--muted); display:block; margin-bottom:6px; }
+  .setting-input { width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:10px; padding:9px 14px; color:var(--text); font-size:0.9rem; }
+  .setting-input:focus { outline:none; border-color:var(--accent); }
+  /* Generate buttons */
+  .btn-row { display:flex; gap:10px; margin-bottom:24px; }
+  .btn-generate { flex:1; padding:16px; border-radius:16px; border:none; background:linear-gradient(135deg,#ff6b6b,#ffa07a); color:#fff; font-size:1.05rem; font-weight:700; cursor:pointer; transition:all 0.3s; letter-spacing:0.04em; }
+  .btn-generate:hover { transform:translateY(-3px); box-shadow:0 12px 35px rgba(255,107,107,0.45); }
+  .btn-optimize { flex:1; padding:16px; border-radius:16px; border:none; background:linear-gradient(135deg,#a18cd1,#fbc2eb); color:#fff; font-size:1.05rem; font-weight:700; cursor:pointer; transition:all 0.3s; letter-spacing:0.04em; }
+  .btn-optimize:hover { transform:translateY(-3px); box-shadow:0 12px 35px rgba(161,140,209,0.45); }
+  /* Meal cards */
+  .meals-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .meal-card { background:var(--card); border:1px solid var(--card-border); border-radius:18px; overflow:hidden; transition:all 0.3s; }
+  .meal-card:hover { transform:translateY(-4px); box-shadow:0 12px 35px rgba(0,0,0,0.3); }
+  .meal-header { padding:16px 20px 10px; display:flex; justify-content:space-between; align-items:center; }
+  .meal-time { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+  .meal-time-icon { font-size:1.4rem; }
+  .meal-body { padding:0 20px 16px; }
+  .meal-name { font-size:1.3rem; font-weight:700; margin-bottom:8px; line-height:1.3; }
+  .meal-meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .meta-badge { font-size:0.75rem; padding:3px 10px; border-radius:50px; background:rgba(255,255,255,0.08); }
+  .meta-badge.calories { color:#ffd700; border:1px solid rgba(255,215,0,0.3); }
+  .meta-badge.time { color:#4ecdc4; border:1px solid rgba(78,205,196,0.3); }
+  .meta-badge.difficulty { color:#a18cd1; border:1px solid rgba(161,140,209,0.3); }
+  .meta-badge.cost { color:#90ee90; border:1px solid rgba(144,238,144,0.3); }
+  .ingredients-list { font-size:0.8rem; color:var(--muted); margin-bottom:12px; }
+  .ingredient-tag { display:inline-block; border-radius:6px; padding:2px 8px; margin:2px; font-size:0.75rem; }
+  .ingredient-tag.normal { background:rgba(255,255,255,0.05); }
+  .ingredient-tag.in-fridge { background:rgba(78,205,196,0.2); color:var(--accent); }
+  .ingredient-tag.expiring { background:rgba(255,165,0,0.2); color:orange; }
+  .meal-actions { display:flex; gap:8px; padding:0 20px 16px; }
+  .btn-action { flex:1; padding:9px; border-radius:10px; border:1px solid var(--card-border); background:transparent; color:var(--text); cursor:pointer; font-size:0.8rem; transition:all 0.3s; }
+  .btn-action:hover { background:rgba(255,255,255,0.1); }
+  .btn-action.regen { color:var(--accent); border-color:rgba(78,205,196,0.4); }
+  .btn-action.fav { color:#ffd700; border-color:rgba(255,215,0,0.4); }
+  .btn-action.fav.saved { background:rgba(255,215,0,0.15); }
+  .btn-action.timer-btn { color:#ff6b6b; border-color:rgba(255,107,107,0.4); }
+  /* Daily totals */
+  .daily-totals { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+  .total-card { flex:1; min-width:140px; background:rgba(255,255,255,0.04); border:1px solid var(--card-border); border-radius:14px; padding:14px 16px; text-align:center; }
+  .total-label { font-size:0.75rem; color:var(--muted); margin-bottom:6px; }
+  .total-value { font-size:1.3rem; font-weight:700; }
+  .total-value.over-budget { color:#ff6b6b; }
+  .budget-bar-track { background:rgba(255,255,255,0.08); border-radius:10px; height:6px; margin-top:8px; overflow:hidden; }
+  .budget-bar-fill { height:100%; border-radius:10px; transition:width 0.8s ease; background:linear-gradient(90deg,#90ee90,#4ecdc4); }
+  .budget-bar-fill.over { background:linear-gradient(90deg,#ff6b6b,#ff4500); }
+  /* Nutrition */
+  .nutrition-section { margin-top:24px; }
+  .nutrition-section h3 { font-size:1rem; color:var(--muted); margin-bottom:16px; }
+  canvas#radarChart { max-width:260px; max-height:260px; }
+  .nutrition-bars { margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .bar-item {}
+  .bar-label { display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:4px; color:var(--muted); }
+  .bar-track { background:rgba(255,255,255,0.08); border-radius:10px; height:6px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:10px; transition:width 0.8s ease; }
+  .nutrition-alerts { margin-top:16px; display:flex; flex-direction:column; gap:8px; }
+  .nutrition-alert { padding:10px 14px; border-radius:10px; font-size:0.82rem; display:flex; align-items:center; gap:8px; }
+  .nutrition-alert.warn { background:rgba(255,165,0,0.15); border:1px solid rgba(255,165,0,0.35); color:orange; }
+  .nutrition-alert.good { background:rgba(78,205,196,0.12); border:1px solid rgba(78,205,196,0.3); color:var(--accent); }
+  .calorie-progress { margin-top:12px; }
+  .calorie-progress-label { display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); margin-bottom:6px; }
+  /* Shopping */
+  .shop-category { margin-bottom:20px; }
+  .shop-category h4 { font-size:0.85rem; color:var(--muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.08em; border-bottom:1px solid var(--card-border); padding-bottom:8px; }
+  .shop-items { display:flex; flex-wrap:wrap; gap:8px; }
+  .shop-item { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); border-radius:10px; padding:8px 14px; font-size:0.85rem; cursor:pointer; transition:all 0.3s; border:1px solid transparent; }
+  .shop-item.checked { text-decoration:line-through; color:var(--muted); border-color:rgba(78,205,196,0.3); background:rgba(78,205,196,0.05); }
+  .shop-item input[type="checkbox"] { accent-color:var(--accent); width:14px; height:14px; }
+  .shop-item.has-in-fridge { border-color:rgba(78,205,196,0.4); background:rgba(78,205,196,0.06); }
+  .shop-item.has-in-fridge .fridge-badge { font-size:0.7rem; color:var(--accent); background:rgba(78,205,196,0.15); padding:1px 6px; border-radius:4px; }
+  /* Favorites */
+  .favorites-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+  .fav-card { background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:18px; transition:all 0.3s; }
+  .fav-card:hover { transform:translateY(-3px); }
+  .fav-card .fav-date { font-size:0.72rem; color:var(--muted); margin-bottom:6px; }
+  .fav-card .fav-meals { font-size:0.88rem; line-height:1.7; }
+  .fav-card .fav-meals span { display:block; }
+  .btn-remove-fav { margin-top:12px; width:100%; padding:8px; border-radius:10px; border:1px solid rgba(255,107,107,0.3); background:transparent; color:rgba(255,107,107,0.7); cursor:pointer; font-size:0.78rem; transition:all 0.3s; }
+  .btn-remove-fav:hover { background:rgba(255,107,107,0.1); }
+  /* Weekly */
+  .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; overflow-x:auto; }
+  .day-col { min-width:110px; }
+  .day-header { text-align:center; font-size:0.8rem; font-weight:700; padding:8px; border-radius:10px; margin-bottom:8px; background:rgba(255,255,255,0.06); }
+  .day-header.today { background:linear-gradient(135deg,var(--primary),var(--secondary)); }
+  .day-cell { background:rgba(255,255,255,0.04); border:1px solid var(--card-border); border-radius:10px; padding:7px; min-height:56px; font-size:0.72rem; color:var(--muted); cursor:pointer; transition:all 0.3s; margin-bottom:5px; }
+  .day-cell:hover { background:rgba(255,255,255,0.08); }
+  .day-cell.filled { color:var(--text); background:rgba(78,205,196,0.08); border-color:rgba(78,205,196,0.25); }
+  .day-cell .cell-time { font-size:0.6rem; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+  .week-controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .btn-week { padding:8px 20px; border-radius:50px; border:1px solid var(--card-border); background:var(--card); color:var(--text); cursor:pointer; font-size:0.85rem; transition:all 0.3s; }
+  .btn-week:hover { background:rgba(255,255,255,0.12); }
+  /* Fridge */
+  .fridge-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:16px; }
+  .fridge-item { background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:14px; padding:14px; position:relative; transition:all 0.3s; }
+  .fridge-item.expiring-soon { border-color:rgba(255,165,0,0.5); background:rgba(255,165,0,0.07); }
+  .fridge-item.expired { border-color:rgba(255,107,107,0.5); background:rgba(255,107,107,0.07); }
+  .fridge-item-name { font-size:0.95rem; font-weight:700; margin-bottom:4px; }
+  .fridge-item-qty { font-size:0.8rem; color:var(--muted); }
+  .fridge-item-expiry { font-size:0.75rem; margin-top:6px; }
+  .fridge-item-expiry.ok { color:var(--accent); }
+  .fridge-item-expiry.soon { color:orange; }
+  .fridge-item-expiry.expired { color:#ff6b6b; }
+  .btn-remove-fridge { position:absolute; top:10px; right:10px; background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.9rem; padding:2px 6px; border-radius:6px; transition:all 0.3s; }
+  .btn-remove-fridge:hover { color:#ff6b6b; background:rgba(255,107,107,0.1); }
+  .fridge-add-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .fridge-input { background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:10px; padding:10px 14px; color:var(--text); font-size:0.88rem; }
+  .fridge-input:focus { outline:none; border-color:var(--accent); }
+  .fridge-input.name { flex:2; min-width:120px; }
+  .fridge-input.qty { width:80px; }
+  .fridge-input.unit { width:70px; }
+  .fridge-input.expiry { width:140px; }
+  .btn-add-fridge { padding:10px 20px; border-radius:10px; border:none; background:linear-gradient(135deg,var(--accent),#45b7d1); color:#fff; font-weight:700; cursor:pointer; font-size:0.88rem; white-space:nowrap; }
+  .fridge-stats { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+  .fridge-stat { flex:1; min-width:120px; background:rgba(255,255,255,0.04); border:1px solid var(--card-border); border-radius:12px; padding:12px; text-align:center; }
+  .fridge-stat-val { font-size:1.4rem; font-weight:700; }
+  .fridge-stat-label { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+  /* Leftover */
+  .leftover-input-row { display:flex; gap:10px; margin-bottom:16px; }
+  .leftover-input { flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:12px; padding:12px 16px; color:var(--text); font-size:0.9rem; }
+  .leftover-input:focus { outline:none; border-color:var(--accent); }
+  .btn-leftover { padding:12px 24px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--accent),#45b7d1); color:#fff; font-weight:700; cursor:pointer; font-size:0.9rem; white-space:nowrap; }
+  .ltag { padding:6px 14px; border-radius:50px; background:rgba(78,205,196,0.15); border:1px solid rgba(78,205,196,0.35); color:var(--accent); font-size:0.8rem; cursor:pointer; transition:all 0.3s; }
+  .ltag:hover { background:rgba(255,107,107,0.15); border-color:rgba(255,107,107,0.35); color:var(--primary); }
+  .leftover-result-card { background:rgba(255,255,255,0.04); border:1px solid var(--card-border); border-radius:14px; padding:16px; margin-bottom:12px; }
+  .lr-name { font-size:1.1rem; font-weight:700; margin-bottom:6px; }
+  .lr-match { font-size:0.8rem; color:var(--accent); margin-bottom:6px; }
+  /* Timer modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:1000; justify-content:center; align-items:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:linear-gradient(135deg,#1a1a3e,#2d2d5e); border:1px solid var(--card-border); border-radius:24px; padding:36px; max-width:380px; width:90%; text-align:center; animation:slideUp 0.3s ease; }
+  @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+  .timer-display { font-size:4rem; font-weight:700; background:linear-gradient(135deg,#ff6b6b,#ffd700); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin:20px 0; font-variant-numeric:tabular-nums; }
+  .timer-label { font-size:1rem; color:var(--muted); margin-bottom:8px; }
+  .timer-controls { display:flex; gap:10px; justify-content:center; margin-top:16px; }
+  .btn-timer-ctrl { padding:12px 24px; border-radius:50px; border:none; cursor:pointer; font-size:0.9rem; font-weight:700; transition:all 0.3s; }
+  .btn-timer-ctrl.start { background:linear-gradient(135deg,var(--accent),#45b7d1); color:#fff; }
+  .btn-timer-ctrl.pause { background:linear-gradient(135deg,#ffd700,#ffaa00); color:#000; }
+  .btn-timer-ctrl.reset { background:rgba(255,255,255,0.1); color:var(--text); border:1px solid var(--card-border); }
+  .btn-timer-ctrl.close-btn { background:rgba(255,107,107,0.2); color:var(--primary); border:1px solid rgba(255,107,107,0.3); }
+  .timer-presets { display:flex; gap:8px; justify-content:center; margin-bottom:16px; flex-wrap:wrap; }
+  .preset-btn { padding:6px 14px; border-radius:50px; border:1px solid var(--card-border); background:rgba(255,255,255,0.05); color:var(--muted); cursor:pointer; font-size:0.78rem; transition:all 0.3s; }
+  .preset-btn:hover,.preset-btn.active { background:rgba(78,205,196,0.2); color:var(--accent); border-color:rgba(78,205,196,0.4); }
+  .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(100px); background:rgba(78,205,196,0.9); color:#000; padding:12px 24px; border-radius:50px; font-size:0.9rem; font-weight:700; transition:transform 0.3s ease; z-index:9999; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+  .empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+  .empty-state .emoji { font-size:3rem; margin-bottom:16px; }
+  @media(max-width:600px) {
+    header h1{font-size:2rem}
+    .meals-grid{grid-template-columns:1fr}
+    .week-grid{grid-template-columns:repeat(7,100px)}
+    .nutrition-bars{grid-template-columns:1fr}
+    .btn-row{flex-direction:column}
+  }
+</style>
+</head>
+<body>
+<canvas class="particles" id="particles"></canvas>
+<div class="container">
+  <header>
+    <h1>🍱 AI献立プランナー</h1>
+    <p>あなただけの献立を、毎日おいしく。</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active"  onclick="switchTab('planner',this)">🍽️ 献立生成</button>
+    <button class="tab" onclick="switchTab('shopping',this)">🛒 買い物リスト</button>
+    <button class="tab" onclick="switchTab('favorites',this)">⭐ お気に入り</button>
+    <button class="tab" onclick="switchTab('weekly',this)">📅 週間プラン</button>
+    <button class="tab" onclick="switchTab('fridge',this)">🧊 冷蔵庫在庫</button>
+    <button class="tab" onclick="switchTab('leftover',this)">♻️ 使い回し</button>
+  </div>
+
+  <!-- PLANNER TAB -->
+  <div id="tab-planner" class="tab-content active">
+    <div class="glass" style="margin-bottom:20px">
+      <div class="mood-section">
+        <h3>✨ 今日の気分は？</h3>
+        <div class="moods">
+          <button class="mood-btn active" onclick="selectMood(this,'normal')">😊 ふつう</button>
+          <button class="mood-btn" onclick="selectMood(this,'tired')">😴 疲れた</button>
+          <button class="mood-btn" onclick="selectMood(this,'energetic')">⚡ 元気</button>
+          <button class="mood-btn" onclick="selectMood(this,'special')">🎉 特別な日</button>
+          <button class="mood-btn" onclick="selectMood(this,'diet')">🥗 ダイエット</button>
+          <button class="mood-btn" onclick="selectMood(this,'comfort')">🏠 ほっこり</button>
+        </div>
+      </div>
+      <div class="filter-section">
+        <h3>🚫 アレルギー・除外食材</h3>
+        <div class="allergen-tags">
+          <span class="allergen-tag" onclick="toggleAllergen(this,'卵')">卵</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'乳製品')">乳製品</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'小麦')">小麦</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'そば')">そば</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'落花生')">落花生</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'えび')">えび</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'かに')">かに</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'魚介類')">魚介類</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'豚肉')">豚肉</span>
+          <span class="allergen-tag" onclick="toggleAllergen(this,'鶏肉')">鶏肉</span>
+        </div>
+        <div class="filter-row" style="margin-top:12px">
+          <input class="filter-input" id="customExclude" placeholder="その他除外食材（例：ナス）" onkeydown="if(event.key==='Enter')addCustomExclude()">
+          <button class="btn-action" style="flex:0;padding:10px 16px;border-radius:12px;background:rgba(255,255,255,0.08)" onclick="addCustomExclude()">追加</button>
+        </div>
+        <div id="customTags" class="allergen-tags" style="margin-top:8px"></div>
+      </div>
+      <div class="filter-section">
+        <h3>⚙️ 調理フィルター</h3>
+        <div style="margin-bottom:6px;font-size:0.8rem;color:var(--muted)">難易度</div>
+        <div class="filter-chips">
+          <span class="chip active" onclick="toggleChip(this,'diff','all')">すべて</span>
+          <span class="chip" onclick="toggleChip(this,'diff','easy')">🟢 簡単</span>
+          <span class="chip" onclick="toggleChip(this,'diff','medium')">🟡 普通</span>
+          <span class="chip" onclick="toggleChip(this,'diff','hard')">🔴 本格的</span>
+        </div>
+        <div style="margin-top:10px;margin-bottom:6px;font-size:0.8rem;color:var(--muted)">調理時間</div>
+        <div class="filter-chips">
+          <span class="chip active" onclick="toggleChip(this,'time','all')">すべて</span>
+          <span class="chip" onclick="toggleChip(this,'time','quick')">⚡ 15分以内</span>
+          <span class="chip" onclick="toggleChip(this,'time','medium')">🕐 30分以内</span>
+          <span class="chip" onclick="toggleChip(this,'time','long')">🍳 30分以上</span>
+        </div>
+      </div>
+      <!-- Budget & Calorie Target -->
+      <div class="filter-section">
+        <h3>💰 カロリー・予算設定</h3>
+        <div class="settings-row">
+          <div class="setting-item">
+            <label>1日の目標カロリー (kcal)</label>
+            <input class="setting-input" id="calorieTarget" type="number" placeholder="例: 2000" value="2000" min="500" max="4000">
+          </div>
+          <div class="setting-item">
+            <label>1日の食費予算 (円)</label>
+            <input class="setting-input" id="budgetTarget" type="number" placeholder="例: 1500" value="1500" min="100" max="10000">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-generate" onclick="generateAll()">🎲 今日の献立を生成する</button>
+      <button class="btn-optimize" onclick="optimizeMeals()">🎯 栄養バランスを最適化</button>
+    </div>
+
+    <div id="meals-container" class="meals-grid"></div>
+
+    <!-- Daily Totals -->
+    <div id="daily-totals" style="display:none;margin-top:16px">
+      <div class="daily-totals">
+        <div class="total-card">
+          <div class="total-label">🔥 合計カロリー</div>
+          <div class="total-value" id="totalCalVal">—</div>
+          <div class="calorie-progress">
+            <div class="calorie-progress-label">
+              <span id="calProgressText"></span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" id="calProgressBar" style="background:linear-gradient(90deg,#ffd700,#ff6b6b)"></div></div>
+          </div>
+        </div>
+        <div class="total-card">
+          <div class="total-label">💰 合計費用（目安）</div>
+          <div class="total-value" id="totalCostVal">—</div>
+          <div class="budget-bar-track"><div class="budget-bar-fill" id="budgetBar"></div></div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:4px" id="budgetText"></div>
+        </div>
+        <div class="total-card">
+          <div class="total-label">⏱ 合計調理時間</div>
+          <div class="total-value" id="totalTimeVal">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nutrition -->
+    <div id="nutrition-section" class="glass nutrition-section" style="display:none;margin-top:20px">
+      <h3>📊 今日の栄養バランス</h3>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-top:16px">
+        <div style="flex:0 0 auto;display:flex;justify-content:center">
+          <canvas id="radarChart" width="260" height="260"></canvas>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div class="nutrition-bars" id="nutritionBars"></div>
+          <div id="nutritionAlerts" class="nutrition-alerts"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOPPING TAB -->
+  <div id="tab-shopping" class="tab-content">
+    <div class="glass">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <h2 style="font-size:1.3rem">🛒 買い物リスト</h2>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-action" style="padding:9px 16px;border-radius:10px;font-size:0.82rem" onclick="clearChecked()">チェック済み削除</button>
+          <button class="btn-action" style="padding:9px 16px;border-radius:10px;font-size:0.82rem;color:var(--accent);border-color:rgba(78,205,196,0.4)" onclick="copyShoppingList()">📋 コピー</button>
+        </div>
+      </div>
+      <div id="shopping-list-container">
+        <div class="empty-state"><div class="emoji">🛒</div><p>献立を生成すると買い物リストが作られます</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAVORITES TAB -->
+  <div id="tab-favorites" class="tab-content">
+    <div class="glass">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2 style="font-size:1.3rem">⭐ お気に入りの献立</h2>
+        <button class="btn-action" style="padding:9px 16px;border-radius:10px;font-size:0.82rem;color:#ff6b6b;border-color:rgba(255,107,107,0.4)" onclick="clearFavorites()">すべて削除</button>
+      </div>
+      <div id="favorites-container" class="favorites-grid">
+        <div class="empty-state"><div class="emoji">⭐</div><p>気に入った献立の★を押して保存しましょう</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEEKLY TAB -->
+  <div id="tab-weekly" class="tab-content">
+    <div class="glass">
+      <div class="week-controls">
+        <button class="btn-week" onclick="changeWeek(-1)">← 前の週</button>
+        <div style="font-size:1rem;font-weight:700" id="weekLabel"></div>
+        <button class="btn-week" onclick="changeWeek(1)">次の週 →</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn-action" style="padding:9px 16px;border-radius:10px;font-size:0.82rem;color:var(--accent);border-color:rgba(78,205,196,0.4)" onclick="fillWeek()">🎲 週全体を自動生成</button>
+        <button class="btn-action" style="padding:9px 16px;border-radius:10px;font-size:0.82rem" onclick="clearWeek()">🗑 週をクリア</button>
+      </div>
+      <div class="week-grid" id="weekGrid"></div>
+    </div>
+  </div>
+
+  <!-- FRIDGE TAB -->
+  <div id="tab-fridge" class="tab-content">
+    <div class="glass">
+      <h2 style="font-size:1.3rem;margin-bottom:6px">🧊 冷蔵庫在庫管理</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:18px">在庫を登録すると献立生成時に優先活用・買い物リストに反映されます</p>
+      <div class="fridge-stats">
+        <div class="fridge-stat">
+          <div class="fridge-stat-val" id="fridgeTotalCount">0</div>
+          <div class="fridge-stat-label">登録食材数</div>
+        </div>
+        <div class="fridge-stat">
+          <div class="fridge-stat-val" style="color:orange" id="fridgeExpiringCount">0</div>
+          <div class="fridge-stat-label">もうすぐ期限切れ</div>
+        </div>
+        <div class="fridge-stat">
+          <div class="fridge-stat-val" style="color:#ff6b6b" id="fridgeExpiredCount">0</div>
+          <div class="fridge-stat-label">期限切れ</div>
+        </div>
+      </div>
+      <div class="fridge-add-row">
+        <input class="fridge-input name" id="fridgeName" placeholder="食材名（例：鶏もも肉）" onkeydown="if(event.key==='Enter')addFridgeItem()">
+        <input class="fridge-input qty" id="fridgeQty" type="number" placeholder="量" min="1" value="1">
+        <input class="fridge-input unit" id="fridgeUnit" placeholder="単位" value="個">
+        <input class="fridge-input expiry" id="fridgeExpiry" type="date">
+        <button class="btn-add-fridge" onclick="addFridgeItem()">+ 追加</button>
+      </div>
+      <div id="fridge-grid" class="fridge-grid">
+        <div class="empty-state" style="grid-column:1/-1"><div class="emoji">🧊</div><p>食材を追加してください</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEFTOVER TAB -->
+  <div id="tab-leftover" class="tab-content">
+    <div class="glass">
+      <h2 style="font-size:1.3rem;margin-bottom:6px">♻️ 食材使い回し提案</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:20px">冷蔵庫にある食材から使える料理を提案します</p>
+      <div class="leftover-input-row">
+        <input class="leftover-input" id="leftoverInput" placeholder="食材を入力（例：豆腐）" onkeydown="if(event.key==='Enter')addLeftover()">
+        <button class="btn-leftover" onclick="addLeftover()">追加</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn-action" style="padding:8px 16px;border-radius:10px;font-size:0.8rem;flex:0;color:var(--accent);border-color:rgba(78,205,196,0.4)" onclick="importFridgeToLeftover()">🧊 冷蔵庫から取り込む</button>
+      </div>
+      <div id="leftoverTags" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px"></div>
+      <button class="btn-generate" style="margin-bottom:20px" onclick="suggestLeftover()">🔍 料理を提案する</button>
+      <div id="leftoverResults"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Timer Modal -->
+<div class="modal-overlay" id="timerModal">
+  <div class="modal">
+    <h3 style="margin-bottom:8px;font-size:1.2rem" id="timerMealName">調理タイマー</h3>
+    <div class="timer-label">タイマー設定</div>
+    <div class="timer-presets">
+      <button class="preset-btn" onclick="setTimer(5,this)">5分</button>
+      <button class="preset-btn" onclick="setTimer(10,this)">10分</button>
+      <button class="preset-btn" onclick="setTimer(15,this)">15分</button>
+      <button class="preset-btn" onclick="setTimer(20,this)">20分</button>
+      <button class="preset-btn" onclick="setTimer(30,this)">30分</button>
+      <button class="preset-btn" onclick="setTimer(45,this)">45分</button>
+    </div>
+    <div class="timer-display" id="timerDisplay">00:00</div>
+    <div class="timer-controls">
+      <button class="btn-timer-ctrl start" id="timerStartBtn" onclick="timerToggle()">▶ スタート</button>
+      <button class="btn-timer-ctrl reset" onclick="timerReset()">↺ リセット</button>
+      <button class="btn-timer-ctrl close-btn" onclick="closeTimer()">✕ 閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== MEAL DATA ====================
+// Each meal has: name, ingredients, calories, time, difficulty, mood[], season, allergens[], cost(¥)
+const MEALS = {
+  breakfast: [
+    { name:'和風朝食セット', ingredients:['ご飯','味噌汁','焼き魚','漬物'], calories:450, time:20, difficulty:'medium', mood:['normal','comfort'], season:'all', allergens:['魚介類'], cost:380 },
+    { name:'フレンチトースト', ingredients:['食パン','卵','牛乳','砂糖','バター'], calories:380, time:15, difficulty:'easy', mood:['normal','special','energetic'], season:'all', allergens:['卵','乳製品','小麦'], cost:200 },
+    { name:'アボカドトースト', ingredients:['食パン','アボカド','レモン','塩','オリーブオイル'], calories:320, time:10, difficulty:'easy', mood:['diet','energetic'], season:'all', allergens:['小麦'], cost:280 },
+    { name:'卵かけご飯', ingredients:['ご飯','卵','醤油'], calories:300, time:5, difficulty:'easy', mood:['tired','normal'], season:'all', allergens:['卵'], cost:100 },
+    { name:'バナナスムージーボウル', ingredients:['バナナ','ヨーグルト','グラノーラ','ブルーベリー','ハチミツ'], calories:340, time:8, difficulty:'easy', mood:['diet','energetic'], season:'summer', allergens:['乳製品'], cost:320 },
+    { name:'おにぎり2個', ingredients:['ご飯','梅干し','鮭','のり','塩'], calories:400, time:15, difficulty:'easy', mood:['tired','normal'], season:'all', allergens:['魚介類'], cost:180 },
+    { name:'パンケーキ', ingredients:['薄力粉','卵','牛乳','砂糖','バター','メープルシロップ'], calories:520, time:25, difficulty:'medium', mood:['special','comfort'], season:'all', allergens:['卵','乳製品','小麦'], cost:260 },
+    { name:'シリアル＆牛乳', ingredients:['シリアル','牛乳','バナナ'], calories:280, time:3, difficulty:'easy', mood:['tired'], season:'all', allergens:['乳製品'], cost:180 },
+    { name:'ハムチーズサンド', ingredients:['食パン','ハム','チーズ','レタス','マスタード'], calories:360, time:8, difficulty:'easy', mood:['normal','energetic'], season:'all', allergens:['乳製品','小麦'], cost:220 },
+    { name:'お粥（梅・卵）', ingredients:['ご飯','水','梅干し','卵','だし'], calories:220, time:20, difficulty:'easy', mood:['tired','comfort'], season:'winter', allergens:['卵'], cost:120 },
+    { name:'グリーンスムージー', ingredients:['ほうれん草','バナナ','リンゴ','牛乳'], calories:200, time:5, difficulty:'easy', mood:['diet','energetic'], season:'all', allergens:['乳製品'], cost:200 },
+    { name:'チャーハン風卵炒め', ingredients:['ご飯','卵','長ネギ','醤油','ごま油'], calories:420, time:12, difficulty:'easy', mood:['normal','energetic'], season:'all', allergens:['卵'], cost:150 },
+  ],
+  lunch: [
+    { name:'親子丼', ingredients:['鶏肉','卵','玉ねぎ','だし','醤油','みりん','ご飯'], calories:680, time:20, difficulty:'medium', mood:['normal','comfort'], season:'all', allergens:['卵','鶏肉'], cost:420 },
+    { name:'ナポリタン', ingredients:['スパゲッティ','ウインナー','玉ねぎ','ピーマン','ケチャップ','バター'], calories:620, time:25, difficulty:'easy', mood:['comfort','normal'], season:'all', allergens:['小麦','乳製品'], cost:380 },
+    { name:'海鮮丼', ingredients:['ご飯','まぐろ','サーモン','いか','海老','醤油','わさび'], calories:580, time:10, difficulty:'easy', mood:['special','energetic'], season:'all', allergens:['魚介類','えび'], cost:980 },
+    { name:'カレーライス', ingredients:['ご飯','カレールウ','牛肉','じゃがいも','にんじん','玉ねぎ'], calories:750, time:45, difficulty:'medium', mood:['comfort','normal'], season:'all', allergens:['小麦'], cost:560 },
+    { name:'ツナサラダうどん', ingredients:['うどん','ツナ','キャベツ','ごまドレッシング','のり'], calories:480, time:15, difficulty:'easy', mood:['diet','tired'], season:'summer', allergens:['魚介類','小麦'], cost:280 },
+    { name:'アボカドサーモン丼', ingredients:['ご飯','サーモン','アボカド','醤油','わさび','のり'], calories:580, time:12, difficulty:'easy', mood:['special','diet'], season:'all', allergens:['魚介類'], cost:680 },
+    { name:'ガパオライス', ingredients:['ご飯','鶏ひき肉','バジル','卵','ナンプラー','にんにく','唐辛子'], calories:640, time:20, difficulty:'medium', mood:['energetic','special'], season:'all', allergens:['卵','鶏肉'], cost:480 },
+    { name:'冷やし中華', ingredients:['中華麺','きゅうり','ハム','卵','トマト','冷やし中華タレ'], calories:520, time:15, difficulty:'easy', mood:['normal'], season:'summer', allergens:['卵','小麦'], cost:340 },
+    { name:'ビビンバ', ingredients:['ご飯','牛肉','ほうれん草','もやし','人参','コチュジャン','卵'], calories:700, time:30, difficulty:'medium', mood:['energetic','special'], season:'all', allergens:['卵'], cost:580 },
+    { name:'チャーシュー麺', ingredients:['ラーメン','チャーシュー','メンマ','ゆで卵','ネギ','スープ'], calories:780, time:30, difficulty:'medium', mood:['comfort','normal'], season:'winter', allergens:['卵','小麦'], cost:480 },
+    { name:'鯖の塩焼き定食', ingredients:['鯖','塩','ご飯','味噌汁','漬物'], calories:580, time:25, difficulty:'medium', mood:['normal','diet'], season:'all', allergens:['魚介類'], cost:420 },
+    { name:'ミートソースパスタ', ingredients:['スパゲッティ','牛ひき肉','トマト缶','玉ねぎ','にんにく','赤ワイン'], calories:720, time:35, difficulty:'medium', mood:['special','normal'], season:'all', allergens:['小麦'], cost:520 },
+    { name:'チキン南蛮', ingredients:['鶏肉','卵','タルタルソース','酢醤油','キャベツ','ご飯'], calories:750, time:30, difficulty:'hard', mood:['special','energetic'], season:'all', allergens:['卵','鶏肉'], cost:600 },
+    { name:'豆腐チャンプルー', ingredients:['豆腐','ゴーヤ','豚肉','卵','かつお節','醤油'], calories:380, time:20, difficulty:'medium', mood:['diet','normal'], season:'summer', allergens:['卵'], cost:320 },
+  ],
+  dinner: [
+    { name:'鶏の照り焼き', ingredients:['鶏もも肉','醤油','みりん','砂糖','サラダ油'], calories:520, time:20, difficulty:'easy', mood:['normal','comfort'], season:'all', allergens:['鶏肉'], cost:380 },
+    { name:'肉じゃが', ingredients:['牛肉','じゃがいも','にんじん','玉ねぎ','醤油','みりん','砂糖'], calories:480, time:35, difficulty:'medium', mood:['comfort','normal'], season:'all', allergens:[], cost:520 },
+    { name:'麻婆豆腐', ingredients:['豆腐','豚ひき肉','豆板醤','にんにく','生姜','花椒'], calories:420, time:20, difficulty:'medium', mood:['energetic','normal'], season:'all', allergens:['豚肉'], cost:380 },
+    { name:'ハンバーグ', ingredients:['合い挽き肉','玉ねぎ','パン粉','卵','塩胡椒','デミグラスソース'], calories:620, time:40, difficulty:'medium', mood:['special','comfort'], season:'all', allergens:['卵','小麦'], cost:580 },
+    { name:'鮭のちゃんちゃん焼き', ingredients:['鮭','キャベツ','もやし','バター','味噌','みりん'], calories:450, time:25, difficulty:'easy', mood:['comfort','normal'], season:'all', allergens:['魚介類','乳製品'], cost:480 },
+    { name:'豚の生姜焼き', ingredients:['豚肉','生姜','醤油','みりん','砂糖','キャベツ'], calories:540, time:20, difficulty:'easy', mood:['energetic','normal'], season:'all', allergens:['豚肉'], cost:420 },
+    { name:'チキンカレー', ingredients:['鶏肉','カレールウ','玉ねぎ','トマト','ヨーグルト','スパイス'], calories:620, time:50, difficulty:'hard', mood:['special','normal'], season:'all', allergens:['鶏肉','乳製品'], cost:560 },
+    { name:'寄せ鍋', ingredients:['白菜','豆腐','鶏肉','魚介','長ネギ','だし','塩'], calories:380, time:30, difficulty:'easy', mood:['comfort','tired'], season:'winter', allergens:['鶏肉','魚介類'], cost:680 },
+    { name:'ローストビーフ', ingredients:['牛もも肉','塩胡椒','にんにく','ローズマリー','赤ワイン'], calories:580, time:70, difficulty:'hard', mood:['special'], season:'all', allergens:[], cost:1200 },
+    { name:'エビチリ', ingredients:['えび','豆板醤','ケチャップ','長ネギ','生姜','にんにく'], calories:420, time:25, difficulty:'medium', mood:['special','normal'], season:'all', allergens:['えび'], cost:580 },
+    { name:'豚汁定食', ingredients:['豚肉','大根','にんじん','ごぼう','味噌','ご飯'], calories:520, time:30, difficulty:'medium', mood:['comfort','tired'], season:'winter', allergens:['豚肉'], cost:380 },
+    { name:'タコス', ingredients:['牛ひき肉','トルティーヤ','レタス','トマト','チーズ','サルサ'], calories:580, time:25, difficulty:'medium', mood:['special','energetic'], season:'all', allergens:['乳製品','小麦'], cost:620 },
+    { name:'茶碗蒸し', ingredients:['卵','だし','鶏肉','えび','三つ葉','醤油','みりん'], calories:220, time:35, difficulty:'hard', mood:['special','comfort'], season:'all', allergens:['卵','鶏肉','えび'], cost:420 },
+    { name:'アクアパッツァ', ingredients:['白身魚','あさり','ミニトマト','にんにく','オリーブオイル','白ワイン'], calories:350, time:30, difficulty:'medium', mood:['special','diet'], season:'all', allergens:['魚介類'], cost:780 },
+    { name:'唐揚げ', ingredients:['鶏もも肉','醤油','酒','にんにく','生姜','片栗粉','揚げ油'], calories:620, time:30, difficulty:'medium', mood:['energetic','normal','comfort'], season:'all', allergens:['鶏肉'], cost:460 },
+  ]
+};
+
+// ==================== STATE ====================
+let state = {
+  mood: 'normal',
+  allergens: new Set(),
+  customExcludes: [],
+  currentMeals: { breakfast: null, lunch: null, dinner: null },
+  favorites: JSON.parse(localStorage.getItem('mealFavorites') || '[]'),
+  weekOffset: 0,
+  weekPlan: JSON.parse(localStorage.getItem('weekPlan') || '{}'),
+  fridgeItems: JSON.parse(localStorage.getItem('fridgeItems') || '[]'),
+  leftoverIngredients: [],
+  timer: { seconds: 0, total: 600, running: false, interval: null }
+};
+const chipFilters = { diff: 'all', time: 'all' };
+
+// ==================== UTILS ====================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Bug fix: accept the tab element explicitly instead of relying on implicit `event`
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  el.classList.add('active');
+  if (tab === 'shopping') renderShopping();
+  if (tab === 'favorites') renderFavorites();
+  if (tab === 'weekly') renderWeekly();
+  if (tab === 'fridge') renderFridge();
+}
+
+// ==================== MOOD ====================
+function selectMood(btn, mood) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.mood = mood;
+}
+
+// ==================== ALLERGENS ====================
+function toggleAllergen(el, name) {
+  el.classList.toggle('active');
+  state.allergens.has(name) ? state.allergens.delete(name) : state.allergens.add(name);
+}
+
+function addCustomExclude() {
+  const input = document.getElementById('customExclude');
+  const val = input.value.trim();
+  if (!val || state.customExcludes.includes(val)) { input.value = ''; return; }
+  state.customExcludes.push(val);
+  renderCustomTags();
+  input.value = '';
+}
+
+function renderCustomTags() {
+  document.getElementById('customTags').innerHTML = state.customExcludes.map((tag, i) =>
+    `<span class="allergen-tag active" onclick="removeCustomExclude(${i})">${tag} ✕</span>`
+  ).join('');
+}
+
+function removeCustomExclude(i) {
+  state.customExcludes.splice(i, 1);
+  renderCustomTags();
+}
+
+function toggleChip(el, type, val) {
+  el.closest('.filter-chips').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  chipFilters[type] = val;
+}
+
+// ==================== FILTERING ====================
+function isExcluded(meal) {
+  for (const a of state.allergens) {
+    if (meal.allergens.some(x => x.toLowerCase().includes(a.toLowerCase()))) return true;
+  }
+  for (const c of state.customExcludes) {
+    if (meal.ingredients.some(x => x.toLowerCase().includes(c.toLowerCase()))) return true;
+  }
+  if (chipFilters.diff !== 'all' && meal.difficulty !== chipFilters.diff) return true;
+  if (chipFilters.time !== 'all') {
+    if (chipFilters.time === 'quick' && meal.time > 15) return true;
+    if (chipFilters.time === 'medium' && meal.time > 30) return true;
+  }
+  return false;
+}
+
+function getMoodMeals(type) {
+  const all = MEALS[type].filter(m => !isExcluded(m));
+  const moodMatch = all.filter(m => m.mood.includes(state.mood));
+  return moodMatch.length > 0 ? moodMatch : all;
+}
+
+function pickRandom(arr) {
+  if (!arr.length) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ==================== FRIDGE HELPERS ====================
+function getFridgeNames() {
+  return state.fridgeItems.map(f => f.name.toLowerCase());
+}
+
+function getExpiringItems(days = 3) {
+  const now = new Date();
+  return state.fridgeItems.filter(f => {
+    if (!f.expiry) return false;
+    const exp = new Date(f.expiry);
+    const diff = (exp - now) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= days;
+  });
+}
+
+function getExpiredItems() {
+  const now = new Date();
+  return state.fridgeItems.filter(f => f.expiry && new Date(f.expiry) < now);
+}
+
+function isIngredientInFridge(ing) {
+  return state.fridgeItems.some(f => f.name.toLowerCase().includes(ing.toLowerCase()) || ing.toLowerCase().includes(f.name.toLowerCase()));
+}
+
+function isIngredientExpiring(ing) {
+  return getExpiringItems(3).some(f => f.name.toLowerCase().includes(ing.toLowerCase()) || ing.toLowerCase().includes(f.name.toLowerCase()));
+}
+
+// Score a meal by how many fridge items (especially expiring) it uses
+function fridgeScore(meal) {
+  const expiring = getExpiringItems(3).map(f => f.name.toLowerCase());
+  let score = 0;
+  meal.ingredients.forEach(ing => {
+    if (expiring.some(e => ing.toLowerCase().includes(e) || e.includes(ing.toLowerCase()))) score += 3;
+    else if (isIngredientInFridge(ing)) score += 1;
+  });
+  return score;
+}
+
+// ==================== GENERATE ====================
+function generateAll() {
+  state.currentMeals.breakfast = pickRandom(getMoodMeals('breakfast'));
+  state.currentMeals.lunch = pickRandom(getMoodMeals('lunch'));
+  state.currentMeals.dinner = pickRandom(getMoodMeals('dinner'));
+  postGenerate();
+}
+
+// ==================== NUTRITION OPTIMIZATION ====================
+function nutritionScore(b, l, d) {
+  const prev = state.currentMeals;
+  state.currentMeals = { breakfast: b, lunch: l, dinner: d };
+  const n = calcNutrition();
+  state.currentMeals = prev;
+  // Score: sum of all nutrient %s — penalize values far from 70% (ideal)
+  return Object.values(n).reduce((acc, v) => acc - Math.abs(v - 70), 0);
+}
+
+function optimizeMeals() {
+  const bpool = getMoodMeals('breakfast');
+  const lpool = getMoodMeals('lunch');
+  const dpool = getMoodMeals('dinner');
+  if (!bpool.length || !lpool.length || !dpool.length) {
+    showToast('条件に合う献立がありません');
+    return;
+  }
+  let best = { score: -Infinity, b: null, l: null, d: null };
+  // Sample 120 random combos and pick the best nutritional balance
+  for (let i = 0; i < 120; i++) {
+    const b = pickRandom(bpool), l = pickRandom(lpool), d = pickRandom(dpool);
+    const s = nutritionScore(b, l, d);
+    if (s > best.score) best = { score: s, b, l, d };
+  }
+  state.currentMeals = { breakfast: best.b, lunch: best.l, dinner: best.d };
+  postGenerate();
+  showToast('🎯 栄養バランスを最適化しました！');
+}
+
+function regenerateMeal(type) {
+  const current = state.currentMeals[type];
+  const pool = getMoodMeals(type).filter(m => m.name !== (current ? current.name : ''));
+  state.currentMeals[type] = pickRandom(pool) || current;
+  postGenerate();
+}
+
+function postGenerate() {
+  renderMeals();
+  renderNutrition();
+  renderTotals();
+  renderShopping();
+}
+
+// ==================== RENDER MEALS ====================
+const timeLabels = { breakfast: '🌅 朝食', lunch: '☀️ 昼食', dinner: '🌙 夕食' };
+const timeKeys = ['breakfast', 'lunch', 'dinner'];
+const diffLabel = { easy: '🟢 簡単', medium: '🟡 普通', hard: '🔴 本格的' };
+
+function renderMeals() {
+  const c = document.getElementById('meals-container');
+  const hasMeal = timeKeys.some(t => state.currentMeals[t]);
+  if (!hasMeal) { c.innerHTML = ''; return; }
+
+  c.innerHTML = timeKeys.map(type => {
+    const meal = state.currentMeals[type];
+    if (!meal) return `<div class="meal-card glass"><div class="meal-body" style="padding:30px;text-align:center;color:var(--muted)">条件に合う献立が見つかりませんでした</div></div>`;
+
+    const isFav = state.favorites.some(f => f.meals[type] === meal.name);
+    const ingredientsHTML = meal.ingredients.map(i => {
+      let cls = 'normal';
+      if (isIngredientExpiring(i)) cls = 'expiring';
+      else if (isIngredientInFridge(i)) cls = 'in-fridge';
+      return `<span class="ingredient-tag ${cls}">${i}</span>`;
+    }).join('');
+
+    return `
+    <div class="meal-card">
+      <div class="meal-header">
+        <span class="meal-time">${timeLabels[type]}</span>
+        <span class="meal-time-icon">${type==='breakfast'?'🌅':type==='lunch'?'🍱':'🍽️'}</span>
+      </div>
+      <div class="meal-body">
+        <div class="meal-name">${meal.name}</div>
+        <div class="meal-meta">
+          <span class="meta-badge calories">🔥 ${meal.calories} kcal</span>
+          <span class="meta-badge time">⏱ ${meal.time}分</span>
+          <span class="meta-badge difficulty">${diffLabel[meal.difficulty]}</span>
+          <span class="meta-badge cost">💰 約${meal.cost}円</span>
+        </div>
+        <div class="ingredients-list">${ingredientsHTML}</div>
+      </div>
+      <div class="meal-actions">
+        <button class="btn-action regen" onclick="regenerateMeal('${type}')">🔄 再生成</button>
+        <button class="btn-action fav${isFav?' saved':''}" onclick="toggleFav('${type}')">${isFav?'★ 保存済':'☆ お気に入り'}</button>
+        <button class="btn-action timer-btn" onclick="openTimer('${meal.name.replace(/'/g,"\\'")}',${meal.time})">⏱ タイマー</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ==================== DAILY TOTALS ====================
+function renderTotals() {
+  const hasMeal = timeKeys.some(t => state.currentMeals[t]);
+  document.getElementById('daily-totals').style.display = hasMeal ? 'block' : 'none';
+  if (!hasMeal) return;
+
+  const totalCal = timeKeys.reduce((a, t) => a + (state.currentMeals[t]?.calories || 0), 0);
+  const totalCost = timeKeys.reduce((a, t) => a + (state.currentMeals[t]?.cost || 0), 0);
+  const totalTime = timeKeys.reduce((a, t) => a + (state.currentMeals[t]?.time || 0), 0);
+
+  const calTarget = parseInt(document.getElementById('calorieTarget').value) || 2000;
+  const budgetTarget = parseInt(document.getElementById('budgetTarget').value) || 1500;
+
+  const calPct = Math.min(Math.round(totalCal / calTarget * 100), 150);
+  const budgetPct = Math.min(Math.round(totalCost / budgetTarget * 100), 150);
+
+  document.getElementById('totalCalVal').textContent = `${totalCal} kcal`;
+  document.getElementById('totalCalVal').className = 'total-value' + (totalCal > calTarget * 1.1 ? ' over-budget' : '');
+  document.getElementById('calProgressText').textContent = `目標 ${calTarget} kcal の ${calPct}%`;
+  document.getElementById('calProgressBar').style.width = Math.min(calPct, 100) + '%';
+
+  document.getElementById('totalCostVal').textContent = `${totalCost}円`;
+  document.getElementById('totalCostVal').className = 'total-value' + (totalCost > budgetTarget ? ' over-budget' : '');
+  const budgetBar = document.getElementById('budgetBar');
+  budgetBar.style.width = Math.min(budgetPct, 100) + '%';
+  budgetBar.className = 'budget-bar-fill' + (totalCost > budgetTarget ? ' over' : '');
+  document.getElementById('budgetText').textContent = totalCost > budgetTarget
+    ? `⚠️ 予算 ${budgetTarget}円 を${totalCost - budgetTarget}円 超過`
+    : `✅ 予算内 残り ${budgetTarget - totalCost}円`;
+
+  document.getElementById('totalTimeVal').textContent = `${totalTime}分`;
+}
+
+// ==================== FAVORITES ====================
+function toggleFav(type) {
+  const meal = state.currentMeals[type];
+  if (!meal) return;
+  const key = timeKeys.map(t => state.currentMeals[t]?.name || '').join('|');
+  const idx = state.favorites.findIndex(f => f.key === key);
+  if (idx >= 0) {
+    state.favorites.splice(idx, 1);
+    showToast('お気に入りから削除しました');
+  } else {
+    const totalCost = timeKeys.reduce((a, t) => a + (state.currentMeals[t]?.cost || 0), 0);
+    state.favorites.push({
+      key,
+      date: new Date().toLocaleDateString('ja-JP'),
+      meals: { breakfast: state.currentMeals.breakfast?.name, lunch: state.currentMeals.lunch?.name, dinner: state.currentMeals.dinner?.name },
+      calories: timeKeys.reduce((a, t) => a + (state.currentMeals[t]?.calories || 0), 0),
+      cost: totalCost
+    });
+    showToast('⭐ お気に入りに追加しました！');
+  }
+  localStorage.setItem('mealFavorites', JSON.stringify(state.favorites));
+  renderMeals();
+}
+
+function renderFavorites() {
+  const c = document.getElementById('favorites-container');
+  if (!state.favorites.length) {
+    c.innerHTML = '<div class="empty-state"><div class="emoji">⭐</div><p>気に入った献立の★を押して保存しましょう</p></div>';
+    return;
+  }
+  c.innerHTML = state.favorites.map((f, i) => `
+    <div class="fav-card">
+      <div class="fav-date">${f.date} · 🔥${f.calories}kcal · 💰${f.cost||'?'}円</div>
+      <div class="fav-meals">
+        <span>🌅 ${f.meals.breakfast || '-'}</span>
+        <span>☀️ ${f.meals.lunch || '-'}</span>
+        <span>🌙 ${f.meals.dinner || '-'}</span>
+      </div>
+      <button class="btn-remove-fav" onclick="removeFav(${i})">🗑 削除</button>
+    </div>`
+  ).join('');
+}
+
+function removeFav(i) {
+  state.favorites.splice(i, 1);
+  localStorage.setItem('mealFavorites', JSON.stringify(state.favorites));
+  renderFavorites();
+}
+
+function clearFavorites() {
+  if (!confirm('すべてのお気に入りを削除しますか？')) return;
+  state.favorites = [];
+  localStorage.setItem('mealFavorites', JSON.stringify(state.favorites));
+  renderFavorites();
+}
+
+// ==================== SHOPPING LIST ====================
+const ingredientCategories = {
+  '肉・魚': ['鶏肉','牛肉','豚肉','鶏もも肉','鶏ひき肉','牛ひき肉','豚ひき肉','合い挽き肉','チャーシュー','ハム','ウインナー','鮭','まぐろ','サーモン','えび','海老','白身魚','あさり','いか','魚介'],
+  '野菜': ['玉ねぎ','にんじん','じゃがいも','キャベツ','ほうれん草','白菜','長ネギ','ネギ','もやし','ゴーヤ','ピーマン','きゅうり','トマト','アボカド','レタス','大根','ごぼう','三つ葉','バジル','生姜','にんにく'],
+  '豆腐・大豆': ['豆腐','豆板醤','コチュジャン'],
+  '調味料': ['醤油','みりん','砂糖','塩','塩胡椒','ケチャップ','マスタード','バター','サラダ油','ごま油','オリーブオイル','酢','酒','赤ワイン','白ワイン','ナンプラー','ローズマリー','花椒','唐辛子','スパイス','デミグラスソース','サルサ','ごまドレッシング','冷やし中華タレ','わさび'],
+  '米・麺・パン': ['ご飯','食パン','スパゲッティ','うどん','中華麺','ラーメン','薄力粉','片栗粉','パン粉','トルティーヤ','カレールウ'],
+  '乳製品・卵': ['卵','牛乳','バター','チーズ','ヨーグルト','ゆで卵'],
+  'その他': ['梅干し','のり','かつお節','だし','メンマ','シリアル','グラノーラ','ブルーベリー','バナナ','リンゴ','ハチミツ','メープルシロップ','漬物','揚げ油','タルタルソース','味噌','ミニトマト']
+};
+
+function categorizeIngredient(ing) {
+  for (const [cat, items] of Object.entries(ingredientCategories)) {
+    if (items.some(item => ing.includes(item) || item.includes(ing))) return cat;
+  }
+  return 'その他';
+}
+
+function renderShopping() {
+  const c = document.getElementById('shopping-list-container');
+  const allIngredients = new Set();
+  timeKeys.forEach(type => { const m = state.currentMeals[type]; if (m) m.ingredients.forEach(i => allIngredients.add(i)); });
+  if (!allIngredients.size) {
+    c.innerHTML = '<div class="empty-state"><div class="emoji">🛒</div><p>献立を生成すると買い物リストが作られます</p></div>';
+    return;
+  }
+  const categorized = {};
+  allIngredients.forEach(ing => {
+    const cat = categorizeIngredient(ing);
+    if (!categorized[cat]) categorized[cat] = [];
+    categorized[cat].push(ing);
+  });
+  c.innerHTML = Object.entries(categorized).map(([cat, items]) => `
+    <div class="shop-category">
+      <h4>${cat}</h4>
+      <div class="shop-items">
+        ${items.map(item => {
+          const inFridge = isIngredientInFridge(item);
+          return `<label class="shop-item${inFridge?' has-in-fridge':''}">
+            <input type="checkbox" onchange="toggleShopItem(this)"${inFridge?' checked':''}>
+            <span>${item}</span>
+            ${inFridge ? '<span class="fridge-badge">在庫あり</span>' : ''}
+          </label>`;
+        }).join('')}
+      </div>
+    </div>`
+  ).join('');
+  // auto-check fridge items' checkboxes → also mark as checked
+  document.querySelectorAll('.shop-item.has-in-fridge input[type="checkbox"]').forEach(cb => {
+    cb.closest('.shop-item').classList.add('checked');
+  });
+}
+
+function toggleShopItem(cb) {
+  cb.closest('.shop-item').classList.toggle('checked', cb.checked);
+}
+
+function clearChecked() {
+  document.querySelectorAll('.shop-item.checked').forEach(el => el.remove());
+  showToast('チェック済み食材を削除しました');
+}
+
+function copyShoppingList() {
+  const items = [...document.querySelectorAll('.shop-item:not(.checked) span:first-of-type')].map(s => '・' + s.textContent).join('\n');
+  if (!items) { showToast('リストが空です'); return; }
+  navigator.clipboard.writeText('🛒 買い物リスト\n' + items).then(() => showToast('📋 コピーしました！'));
+}
+
+// ==================== NUTRITION ====================
+function calcNutrition() {
+  const meals = timeKeys.map(t => state.currentMeals[t]).filter(Boolean);
+  const base = { 炭水化物:0, タンパク質:0, 脂質:0, ビタミン:0, 食物繊維:0, ミネラル:0 };
+  meals.forEach(m => {
+    base.炭水化物 += m.ingredients.filter(i => ['ご飯','パン','麺','うどん','スパゲッティ','食パン','ラーメン','トルティーヤ'].some(c => i.includes(c))).length * 30;
+    base.タンパク質 += m.ingredients.filter(i => ['肉','魚','卵','豆腐','ツナ'].some(c => i.includes(c))).length * 25;
+    base.脂質 += m.calories * 0.025;
+    base.ビタミン += m.ingredients.filter(i => ['トマト','ほうれん草','にんじん','キャベツ','ピーマン','きゅうり','レタス','アボカド','バナナ','リンゴ'].some(c => i.includes(c))).length * 20;
+    base.食物繊維 += m.ingredients.filter(i => ['ごぼう','キャベツ','もやし','大根','ほうれん草','バナナ'].some(c => i.includes(c))).length * 15;
+    base.ミネラル += m.ingredients.filter(i => ['魚','海老','あさり','のり','豆腐','牛乳','ヨーグルト'].some(c => i.includes(c))).length * 20;
+  });
+  const max = { 炭水化物:100, タンパク質:80, 脂質:60, ビタミン:80, 食物繊維:60, ミネラル:60 };
+  Object.keys(base).forEach(k => base[k] = Math.min(100, Math.round(base[k] / max[k] * 100)));
+  return base;
+}
+
+function renderNutrition() {
+  const sec = document.getElementById('nutrition-section');
+  if (!timeKeys.some(t => state.currentMeals[t])) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  const n = calcNutrition();
+  drawRadar(n);
+  renderBars(n);
+  renderNutritionAlerts(n);
+}
+
+function renderNutritionAlerts(n) {
+  const container = document.getElementById('nutritionAlerts');
+  const alerts = [];
+  const warn = (k, msg) => { if (n[k] < 40) alerts.push({ type:'warn', msg:`⚠️ ${k}が不足しています。${msg}` }); };
+  const good = (k) => { if (n[k] >= 70) alerts.push({ type:'good', msg:`✅ ${k}は良好です！` }); };
+  warn('タンパク質', '肉・魚・卵・豆腐を含む料理を追加してみましょう');
+  warn('ビタミン', '野菜・果物を含む料理を増やしましょう');
+  warn('食物繊維', 'ごぼう・キャベツなど食物繊維豊富な食材を加えましょう');
+  warn('ミネラル', '魚介類・乳製品・海藻類を取り入れましょう');
+  good('炭水化物'); good('タンパク質'); good('ビタミン');
+  if (!alerts.length) alerts.push({ type:'good', msg:'✅ 全体的にバランスが取れています！' });
+  container.innerHTML = alerts.slice(0, 4).map(a =>
+    `<div class="nutrition-alert ${a.type}">${a.msg}</div>`
+  ).join('');
+}
+
+const barColors = { 炭水化物:'#ffd700', タンパク質:'#ff6b6b', 脂質:'#ffa07a', ビタミン:'#4ecdc4', 食物繊維:'#a18cd1', ミネラル:'#45b7d1' };
+
+function renderBars(data) {
+  document.getElementById('nutritionBars').innerHTML = Object.entries(data).map(([k, v]) => `
+    <div class="bar-item">
+      <div class="bar-label"><span>${k}</span><span style="color:${barColors[k]}">${v}%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${v}%;background:${barColors[k]}"></div></div>
+    </div>`
+  ).join('');
+}
+
+function drawRadar(data) {
+  const canvas = document.getElementById('radarChart');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 260, 260);
+  const labels = Object.keys(data), values = Object.values(data);
+  const cx = 130, cy = 130, r = 88, n = labels.length;
+  const step = (Math.PI * 2) / n;
+  const pt = (i, v) => ({ x: cx + Math.cos(i * step - Math.PI / 2) * r * (v / 100), y: cy + Math.sin(i * step - Math.PI / 2) * r * (v / 100) });
+  // Grid rings
+  for (let ring = 1; ring <= 5; ring++) {
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a = i * step - Math.PI / 2, x = cx + Math.cos(a) * r * (ring / 5), y = cy + Math.sin(a) * r * (ring / 5);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+  }
+  // Axes + labels
+  const colors = ['#ff6b6b','#ffd700','#ffa07a','#4ecdc4','#a18cd1','#45b7d1'];
+  labels.forEach((label, i) => {
+    const a = i * step - Math.PI / 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = colors[i]; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx + Math.cos(a) * (r + 22), cy + Math.sin(a) * (r + 22));
+  });
+  // Fill polygon
+  ctx.beginPath();
+  values.forEach((v, i) => { const p = pt(i, v); i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+  ctx.closePath();
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, 'rgba(255,107,107,0.5)'); grad.addColorStop(1, 'rgba(78,205,196,0.2)');
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,107,107,0.8)'; ctx.lineWidth = 2; ctx.stroke();
+  // Dots
+  values.forEach((v, i) => { const p = pt(i, v); ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fillStyle = colors[i]; ctx.fill(); });
+}
+
+// ==================== WEEKLY ====================
+const DAY_NAMES = ['月','火','水','木','金','土','日'];
+
+function getWeekDates(offset) {
+  const now = new Date(), day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  return Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
+}
+
+function renderWeekly() {
+  const dates = getWeekDates(state.weekOffset), today = new Date();
+  document.getElementById('weekLabel').textContent = `${dates[0].getMonth()+1}/${dates[0].getDate()} 〜 ${dates[6].getMonth()+1}/${dates[6].getDate()}`;
+  document.getElementById('weekGrid').innerHTML = dates.map((d, i) => {
+    const key = d.toISOString().split('T')[0], plan = state.weekPlan[key] || {};
+    const isToday = d.toDateString() === today.toDateString();
+    return `<div class="day-col">
+      <div class="day-header${isToday?' today':''}">${DAY_NAMES[i]}<br><small>${d.getMonth()+1}/${d.getDate()}</small></div>
+      ${['breakfast','lunch','dinner'].map(type => `
+        <div class="day-cell${plan[type]?' filled':''}" onclick="setWeekMeal('${key}','${type}')">
+          <div class="cell-time">${type==='breakfast'?'朝':type==='lunch'?'昼':'夜'}</div>
+          ${plan[type] || 'タップして設定'}
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function setWeekMeal(key, type) {
+  const meal = pickRandom(getMoodMeals(type));
+  if (!meal) return;
+  if (!state.weekPlan[key]) state.weekPlan[key] = {};
+  state.weekPlan[key][type] = meal.name;
+  localStorage.setItem('weekPlan', JSON.stringify(state.weekPlan));
+  renderWeekly();
+}
+
+function fillWeek() {
+  getWeekDates(state.weekOffset).forEach(d => {
+    const key = d.toISOString().split('T')[0];
+    state.weekPlan[key] = {
+      breakfast: pickRandom(getMoodMeals('breakfast'))?.name,
+      lunch: pickRandom(getMoodMeals('lunch'))?.name,
+      dinner: pickRandom(getMoodMeals('dinner'))?.name
+    };
+  });
+  localStorage.setItem('weekPlan', JSON.stringify(state.weekPlan));
+  renderWeekly();
+  showToast('🎲 週間プランを生成しました！');
+}
+
+function clearWeek() {
+  getWeekDates(state.weekOffset).forEach(d => delete state.weekPlan[d.toISOString().split('T')[0]]);
+  localStorage.setItem('weekPlan', JSON.stringify(state.weekPlan));
+  renderWeekly();
+}
+
+function changeWeek(dir) { state.weekOffset += dir; renderWeekly(); }
+
+// ==================== FRIDGE ====================
+function addFridgeItem() {
+  const name = document.getElementById('fridgeName').value.trim();
+  const qty = document.getElementById('fridgeQty').value || '1';
+  const unit = document.getElementById('fridgeUnit').value.trim() || '個';
+  const expiry = document.getElementById('fridgeExpiry').value;
+  if (!name) { showToast('食材名を入力してください'); return; }
+  state.fridgeItems.push({ id: Date.now(), name, qty, unit, expiry });
+  localStorage.setItem('fridgeItems', JSON.stringify(state.fridgeItems));
+  document.getElementById('fridgeName').value = '';
+  document.getElementById('fridgeQty').value = '1';
+  document.getElementById('fridgeUnit').value = '個';
+  document.getElementById('fridgeExpiry').value = '';
+  renderFridge();
+  showToast('🧊 冷蔵庫に追加しました');
+}
+
+function removeFridgeItem(id) {
+  state.fridgeItems = state.fridgeItems.filter(f => f.id !== id);
+  localStorage.setItem('fridgeItems', JSON.stringify(state.fridgeItems));
+  renderFridge();
+}
+
+function renderFridge() {
+  const now = new Date();
+  const expiring = getExpiringItems(3);
+  const expired = getExpiredItems();
+  document.getElementById('fridgeTotalCount').textContent = state.fridgeItems.length;
+  document.getElementById('fridgeExpiringCount').textContent = expiring.length;
+  document.getElementById('fridgeExpiredCount').textContent = expired.length;
+
+  const grid = document.getElementById('fridge-grid');
+  if (!state.fridgeItems.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="emoji">🧊</div><p>食材を追加してください</p></div>';
+    return;
+  }
+  // Sort: expired first, then expiring, then by name
+  const sorted = [...state.fridgeItems].sort((a, b) => {
+    const da = a.expiry ? new Date(a.expiry) : new Date('2099-01-01');
+    const db = b.expiry ? new Date(b.expiry) : new Date('2099-01-01');
+    return da - db;
+  });
+  grid.innerHTML = sorted.map(item => {
+    let expiryClass = '', expiryText = '', cardClass = '';
+    if (item.expiry) {
+      const exp = new Date(item.expiry), diff = (exp - now) / (1000 * 60 * 60 * 24);
+      if (diff < 0) { expiryClass = 'expired'; expiryText = '⛔ 期限切れ'; cardClass = 'expired'; }
+      else if (diff <= 3) { expiryClass = 'soon'; expiryText = `⚠️ あと${Math.ceil(diff)}日`; cardClass = 'expiring-soon'; }
+      else { expiryClass = 'ok'; expiryText = `✅ ${item.expiry}`; }
+    }
+    return `<div class="fridge-item ${cardClass}">
+      <button class="btn-remove-fridge" onclick="removeFridgeItem(${item.id})">✕</button>
+      <div class="fridge-item-name">${item.name}</div>
+      <div class="fridge-item-qty">${item.qty} ${item.unit}</div>
+      ${item.expiry ? `<div class="fridge-item-expiry ${expiryClass}">${expiryText}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ==================== LEFTOVER ====================
+function addLeftover() {
+  const input = document.getElementById('leftoverInput');
+  const val = input.value.trim();
+  if (!val || state.leftoverIngredients.includes(val)) { input.value = ''; return; }
+  state.leftoverIngredients.push(val);
+  renderLeftoverTags();
+  input.value = '';
+}
+
+function importFridgeToLeftover() {
+  state.fridgeItems.forEach(f => {
+    if (!state.leftoverIngredients.includes(f.name)) state.leftoverIngredients.push(f.name);
+  });
+  renderLeftoverTags();
+  showToast('🧊 冷蔵庫の食材を取り込みました');
+}
+
+function renderLeftoverTags() {
+  document.getElementById('leftoverTags').innerHTML = state.leftoverIngredients.map((t, i) =>
+    `<span class="ltag" onclick="removeLeftover(${i})">${t} ✕</span>`
+  ).join('');
+}
+
+function removeLeftover(i) {
+  state.leftoverIngredients.splice(i, 1);
+  renderLeftoverTags();
+}
+
+function suggestLeftover() {
+  if (!state.leftoverIngredients.length) { showToast('食材を入力してください'); return; }
+  const all = [...MEALS.breakfast, ...MEALS.lunch, ...MEALS.dinner];
+  const scored = all.map(meal => {
+    const matches = state.leftoverIngredients.filter(ing =>
+      meal.ingredients.some(mi => mi.includes(ing) || ing.includes(mi))
+    );
+    return { meal, matches };
+  }).filter(r => r.matches.length > 0).sort((a, b) => b.matches.length - a.matches.length);
+
+  const c = document.getElementById('leftoverResults');
+  if (!scored.length) { c.innerHTML = '<div style="text-align:center;color:var(--muted);padding:30px">マッチする料理が見つかりませんでした</div>'; return; }
+  c.innerHTML = scored.slice(0, 8).map(({ meal, matches }) => `
+    <div class="leftover-result-card">
+      <div class="lr-name">${meal.name} <span style="font-size:0.8rem;color:#90ee90">💰 約${meal.cost}円</span></div>
+      <div class="lr-match">✅ 使用食材: ${matches.join('、')} (${matches.length}/${meal.ingredients.length}品)</div>
+      <div style="font-size:0.78rem;color:var(--muted)">${meal.ingredients.map(i =>
+        `<span class="ingredient-tag" style="${matches.some(m => i.includes(m) || m.includes(i)) ? 'color:var(--accent);background:rgba(78,205,196,0.12)' : 'background:rgba(255,255,255,0.05)'}">${i}</span>`
+      ).join('')}</div>
+    </div>`
+  ).join('');
+}
+
+// ==================== TIMER ====================
+// Bug fix: setTimer now takes explicit `el` argument instead of relying on implicit event
+function openTimer(mealName, mins) {
+  document.getElementById('timerMealName').textContent = '⏱ ' + mealName;
+  document.getElementById('timerModal').classList.add('open');
+  // Highlight the closest preset button
+  const presets = [5, 10, 15, 20, 30, 45];
+  const closest = presets.reduce((a, b) => Math.abs(b - mins) < Math.abs(a - mins) ? b : a);
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.textContent) === closest);
+  });
+  setTimer(mins, null);
+}
+
+function setTimer(mins, el) {
+  timerStop();
+  state.timer.total = mins * 60;
+  state.timer.seconds = mins * 60;
+  updateTimerDisplay();
+  if (el) {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+}
+
+function closeTimer() {
+  timerStop();
+  state.timer.seconds = state.timer.total;
+  updateTimerDisplay();
+  document.getElementById('timerModal').classList.remove('open');
+}
+
+function timerStop() {
+  clearInterval(state.timer.interval);
+  state.timer.running = false;
+  const btn = document.getElementById('timerStartBtn');
+  if (btn) { btn.textContent = '▶ スタート'; btn.className = 'btn-timer-ctrl start'; }
+}
+
+function timerToggle() {
+  if (state.timer.running) {
+    timerStop();
+    document.getElementById('timerStartBtn').textContent = '▶ 再開';
+  } else {
+    if (state.timer.seconds <= 0) return;
+    state.timer.running = true;
+    document.getElementById('timerStartBtn').textContent = '⏸ 一時停止';
+    document.getElementById('timerStartBtn').className = 'btn-timer-ctrl pause';
+    state.timer.interval = setInterval(() => {
+      state.timer.seconds--;
+      updateTimerDisplay();
+      if (state.timer.seconds <= 0) {
+        timerStop();
+        showToast('🔔 調理時間になりました！');
+      }
+    }, 1000);
+  }
+}
+
+function timerReset() {
+  timerStop();
+  state.timer.seconds = state.timer.total;
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timerDisplay');
+  if (!el) return;
+  const m = Math.floor(state.timer.seconds / 60).toString().padStart(2, '0');
+  const s = (state.timer.seconds % 60).toString().padStart(2, '0');
+  el.textContent = `${m}:${s}`;
+}
+
+// ==================== PARTICLES ====================
+(function() {
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  const particles = [];
+  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < 55; i++) particles.push({ x: Math.random() * 1000, y: Math.random() * 800, r: Math.random() * 2 + 0.5, vx: (Math.random() - 0.5) * 0.3, vy: -Math.random() * 0.4 - 0.1, alpha: Math.random() * 0.4 + 0.1 });
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${p.alpha})`; ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if (p.y < -5) { p.y = H + 5; p.x = Math.random() * W; }
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ==================== INIT ====================
+updateTimerDisplay();
+renderWeekly();
+</script>
+</body>
+</html>
