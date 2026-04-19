@@ -551,6 +551,12 @@ const MEALS = {
     { name:'春巻き', ingredients:['春巻きの皮','豚肉','にんじん','しいたけ','春雨','ごま油'], calories:520, time:35, difficulty:'hard', mood:['special','energetic'], season:'all', allergens:['豚肉','小麦'], cost:480 },
     { name:'鱈のちり鍋', ingredients:['鱈','白菜','長ネギ','豆腐','ポン酢','だし'], calories:320, time:25, difficulty:'easy', mood:['comfort','diet','tired'], season:'winter', allergens:['魚介類'], cost:520 },
     { name:'ガーリックシュリンプ', ingredients:['えび','にんにく','バター','パセリ','レモン','塩胡椒'], calories:380, time:15, difficulty:'easy', mood:['special','energetic'], season:'all', allergens:['えび','乳製品'], cost:580 },
+    { name:'お茶漬け', ingredients:['ご飯','お茶','塩昆布','梅干し','わさび','のり'], calories:200, time:3, difficulty:'easy', mood:['tired','comfort'], season:'all', allergens:[], cost:80 },
+    { name:'冷奴', ingredients:['豆腐','醤油','生姜','かつお節','長ネギ'], calories:150, time:3, difficulty:'easy', mood:['diet','tired'], season:'summer', allergens:[], cost:120 },
+    { name:'野菜たっぷりスープ', ingredients:['玉ねぎ','にんじん','じゃがいも','キャベツ','コンソメ','塩胡椒'], calories:220, time:15, difficulty:'easy', mood:['diet','tired','comfort'], season:'all', allergens:[], cost:180 },
+    { name:'もやし炒め定食', ingredients:['もやし','長ネギ','ごま油','醤油','ご飯','塩胡椒'], calories:350, time:10, difficulty:'easy', mood:['tired','diet'], season:'all', allergens:[], cost:160 },
+    { name:'卵雑炊', ingredients:['ご飯','卵','だし','醤油','長ネギ','塩'], calories:300, time:10, difficulty:'easy', mood:['tired','comfort'], season:'winter', allergens:['卵'], cost:130 },
+    { name:'焼きおにぎり定食', ingredients:['ご飯','醤油','塩','みそ汁','漬物'], calories:420, time:12, difficulty:'easy', mood:['tired','normal'], season:'all', allergens:[], cost:150 },
   ]
 };
 
@@ -622,7 +628,13 @@ const RECIPES = {
   'ビーフストロガノフ': { steps:['牛肉は細切りにして塩胡椒する。玉ねぎ・マッシュルームはスライスする。','フライパンにバターを熱し、玉ねぎ・マッシュルームを炒める。','牛肉を加えて炒め、薄力粉を振り入れてさらに炒める。','牛乳を加えて煮詰め、サワークリームを加えてソースにする。','ご飯またはパスタと一緒に盛り付けて完成。'], tip:'サワークリームは最後に入れ、沸騰させないようにしましょう。' },
   '春巻き': { steps:['豚肉・にんじん・しいたけを千切りにし、春雨は水で戻してから切る。','ごま油で具材を炒め、醤油・砂糖で味付けして冷ます。','春巻きの皮に具を包み、端を水溶き薄力粉で留める。','170℃の油でこんがり色になるまで5分揚げて完成。'], tip:'具材をしっかり冷ましてから包まないと皮が破れやすくなります。' },
   '鱈のちり鍋': { steps:['鱈を一口大に切り、熱湯をかけて臭みを取る。','鍋にだし汁を入れて温める。','白菜の芯から入れ、長ネギ・豆腐・鱈を加えて煮る。','火が通ったらポン酢で食べる。'], tip:'鱈は火が通りやすいので最後に入れ、煮すぎないようにしましょう。' },
-  'ガーリックシュリンプ': { steps:['えびは殻・背わたを取り、塩・酒で下味をつける。','フライパンにバターとみじん切りにしたにんにくを入れ、弱火で香りを出す。','えびを加えて両面炒め、塩胡椒で味を整える。','パセリを散らし、レモンを絞って完成。'], tip:'バターは焦げやすいので弱〜中火でじっくり炒めましょう。' }
+  'ガーリックシュリンプ': { steps:['えびは殻・背わたを取り、塩・酒で下味をつける。','フライパンにバターとみじん切りにしたにんにくを入れ、弱火で香りを出す。','えびを加えて両面炒め、塩胡椒で味を整える。','パセリを散らし、レモンを絞って完成。'], tip:'バターは焦げやすいので弱〜中火でじっくり炒めましょう。' },
+  'お茶漬け': { steps:['ご飯を茶碗によそう。','お茶（または出汁）を熱々に用意する。','塩昆布・梅干し・わさびをトッピングする。','のりをちぎって乗せ、お茶を注いで完成。'], tip:'お茶は緑茶・ほうじ茶・だし汁など好みで変えてみましょう。' },
+  '冷奴': { steps:['豆腐を半分に切り、器に盛る。','生姜をすりおろす。','かつお節・長ネギ・生姜を乗せる。','醤油をかけて完成。'], tip:'豆腐は水切りしなくてもOK。冷蔵庫でよく冷やしてから盛るとより美味しいです。' },
+  '野菜たっぷりスープ': { steps:['玉ねぎ・にんじん・じゃがいも・キャベツを一口大に切る。','鍋に水と野菜を入れて中火にかける。','沸騰したらコンソメを加え、野菜が柔らかくなるまで10分煮る。','塩胡椒で味を整えて完成。'], tip:'野菜はその日に冷蔵庫に残っているものを何でも使えます。' },
+  'もやし炒め定食': { steps:['もやしを洗って水気を切る。長ネギを小口切りにする。','フライパンにごま油を中火で熱し、長ネギを炒めて香りを出す。','もやしを加えて強火でさっと炒める（1〜2分）。','醤油・塩胡椒で味を整え、ご飯と一緒に盛り付けて完成。'], tip:'もやしは炒めすぎるとべちゃっとするので、強火で短時間がポイントです。' },
+  '卵雑炊': { steps:['だし汁を鍋に入れて温める。','ご飯を加えて弱火で5分ほど煮る。','醤油・塩で味を整える。','溶き卵を回し入れ、ふんわりしたら火を止める。','長ネギを散らして完成。'], tip:'ご飯は水で一度洗ってぬめりを取るとさらっとした雑炊になります。' },
+  '焼きおにぎり定食': { steps:['ご飯を三角形に握り、両面に醤油を塗る。','魚焼きグリルまたはフライパンで両面2〜3分ずつ焼く。','片面に味噌を塗って軽く炙る。','みそ汁・漬物と一緒に定食として盛り付けて完成。'], tip:'醤油を塗ってから焼くと香ばしい焦げ目がつきます。' }
 };
 
 // ==================== STATE ====================
@@ -700,25 +712,47 @@ function toggleChip(el, type, val) {
 }
 
 // ==================== FILTERING ====================
-function isExcluded(meal) {
-  for (const a of state.allergens) {
-    if (meal.allergens.some(x => x.toLowerCase().includes(a.toLowerCase()))) return true;
-  }
-  for (const c of state.customExcludes) {
-    if (meal.ingredients.some(x => x.toLowerCase().includes(c.toLowerCase()))) return true;
-  }
-  if (chipFilters.diff !== 'all' && meal.difficulty !== chipFilters.diff) return true;
-  if (chipFilters.time !== 'all') {
-    if (chipFilters.time === 'quick' && meal.time > 15) return true;
-    if (chipFilters.time === 'medium' && meal.time > 30) return true;
-  }
-  return false;
+// Allergen/exclude check only (never relaxed)
+function passesAllergens(meal) {
+  for (const a of state.allergens)
+    if (meal.allergens.some(x => x.toLowerCase().includes(a.toLowerCase()))) return false;
+  for (const c of state.customExcludes)
+    if (meal.ingredients.some(x => x.toLowerCase().includes(c.toLowerCase()))) return false;
+  return true;
 }
 
-function getMoodMeals(type) {
-  const all = MEALS[type].filter(m => !isExcluded(m));
-  const moodMatch = all.filter(m => m.mood.includes(state.mood));
-  return moodMatch.length > 0 ? moodMatch : all;
+function passesDiff(meal) {
+  return chipFilters.diff === 'all' || meal.difficulty === chipFilters.diff;
+}
+
+function passesTime(meal) {
+  if (chipFilters.time === 'all') return true;
+  if (chipFilters.time === 'quick')  return meal.time <= 15;
+  if (chipFilters.time === 'medium') return meal.time <= 30;
+  return true; // 'long' = no upper limit
+}
+
+// Tracks what was relaxed during the last generateAll call
+const relaxedLabels = [];
+
+// Progressive fallback: relax time → difficulty → mood, but NEVER allergens/excludes
+function getMoodMeals(type, relaxLabel) {
+  const base = MEALS[type].filter(passesAllergens);
+
+  const tries = [
+    { pool: base.filter(m => passesDiff(m) && passesTime(m) && m.mood.includes(state.mood)), label: null },
+    { pool: base.filter(m => passesDiff(m) && passesTime(m)),                                label: '気分フィルター' },
+    { pool: base.filter(m => passesDiff(m)),                                                  label: '調理時間フィルター' },
+    { pool: base.filter(() => true),                                                           label: '難易度フィルター' },
+  ];
+
+  for (const { pool, label } of tries) {
+    if (pool.length > 0) {
+      if (label && relaxLabel !== undefined) relaxLabel.push(label);
+      return pool;
+    }
+  }
+  return []; // only if ALL meals excluded by allergens (user's explicit choice)
 }
 
 function pickRandom(arr) {
@@ -782,13 +816,17 @@ function fridgeScore(meal) {
 
 // ==================== GENERATE ====================
 function generateAll() {
-  // Use weighted selection when fridge has expiring items, otherwise purely random
   const pick = getExpiringItems(3).length > 0 ? pickWeighted : pickRandom;
-  state.currentMeals.breakfast = pick(getMoodMeals('breakfast'));
-  state.currentMeals.lunch    = pick(getMoodMeals('lunch'));
-  state.currentMeals.dinner   = pick(getMoodMeals('dinner'));
+  const relaxed = [];
+  state.currentMeals.breakfast = pick(getMoodMeals('breakfast', relaxed));
+  state.currentMeals.lunch    = pick(getMoodMeals('lunch',     relaxed));
+  state.currentMeals.dinner   = pick(getMoodMeals('dinner',    relaxed));
   postGenerate();
-  if (getExpiringItems(3).length > 0) showToast('🧊 賞味期限が近い食材を優先して提案しました');
+  const unique = [...new Set(relaxed)];
+  if (unique.length > 0)
+    showToast(`⚡ ${unique.join('・')}を自動解除して提案しました`);
+  else if (getExpiringItems(3).length > 0)
+    showToast('🧊 賞味期限が近い食材を優先して提案しました');
 }
 
 // ==================== NUTRITION OPTIMIZATION ====================
@@ -802,9 +840,9 @@ function nutritionScore(b, l, d) {
 }
 
 function optimizeMeals() {
-  const bpool = getMoodMeals('breakfast');
-  const lpool = getMoodMeals('lunch');
-  const dpool = getMoodMeals('dinner');
+  const bpool = getMoodMeals('breakfast', []);
+  const lpool = getMoodMeals('lunch',     []);
+  const dpool = getMoodMeals('dinner',    []);
   if (!bpool.length || !lpool.length || !dpool.length) {
     showToast('条件に合う献立がありません');
     return;
@@ -823,7 +861,7 @@ function optimizeMeals() {
 
 function regenerateMeal(type) {
   const current = state.currentMeals[type];
-  const pool = getMoodMeals(type).filter(m => m.name !== (current ? current.name : ''));
+  const pool = getMoodMeals(type, []).filter(m => m.name !== (current ? current.name : ''));
   state.currentMeals[type] = pickRandom(pool) || current;
   postGenerate();
 }
@@ -1188,7 +1226,7 @@ function renderWeekly() {
 }
 
 function setWeekMeal(key, type) {
-  const meal = pickRandom(getMoodMeals(type));
+  const meal = pickRandom(getMoodMeals(type, []));
   if (!meal) return;
   if (!state.weekPlan[key]) state.weekPlan[key] = {};
   state.weekPlan[key][type] = meal.name;
@@ -1200,9 +1238,9 @@ function fillWeek() {
   getWeekDates(state.weekOffset).forEach(d => {
     const key = localDateKey(d);
     state.weekPlan[key] = {
-      breakfast: pickRandom(getMoodMeals('breakfast'))?.name,
-      lunch: pickRandom(getMoodMeals('lunch'))?.name,
-      dinner: pickRandom(getMoodMeals('dinner'))?.name
+      breakfast: pickRandom(getMoodMeals('breakfast', []))?.name,
+      lunch:     pickRandom(getMoodMeals('lunch',     []))?.name,
+      dinner:    pickRandom(getMoodMeals('dinner',    []))?.name
     };
   });
   localStorage.setItem('weekPlan', JSON.stringify(state.weekPlan));
