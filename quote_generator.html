@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUOTOPIA — 名言の世界</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --border: rgba(255,255,255,0.08);
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --gold: #f59e0b;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --danger: #ef4444;
+    --success: #10b981;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  .bg-orbs {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    animation: float linear infinite;
+  }
+  .orb1 { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -200px; animation-duration: 20s; }
+  .orb2 { width: 400px; height: 400px; background: var(--accent2); bottom: -100px; right: -100px; animation-duration: 15s; animation-direction: reverse; }
+  .orb3 { width: 300px; height: 300px; background: var(--gold); top: 50%; left: 50%; animation-duration: 25s; }
+
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -30px) scale(1.05); }
+    66% { transform: translate(-20px, 20px) scale(0.95); }
+  }
+
+  /* Header */
+  header {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 3rem 1rem 1.5rem;
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    background: linear-gradient(135deg, #7c3aed, #06b6d4, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -1px;
+  }
+  .logo-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 0.25rem;
+  }
+
+  /* Streak badge */
+  .streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: linear-gradient(135deg, #f59e0b22, #f59e0b11);
+    border: 1px solid #f59e0b44;
+    border-radius: 999px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.8rem;
+    color: var(--gold);
+    margin-top: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .streak-badge:hover { background: #f59e0b22; }
+  .streak-badge .flame { font-size: 1rem; }
+
+  /* Main layout */
+  main {
+    position: relative;
+    z-index: 10;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1rem 4rem;
+  }
+
+  /* Category filter */
+  .categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+  }
+  .cat-btn {
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .cat-btn:hover { border-color: var(--accent); color: var(--text); }
+  .cat-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    box-shadow: 0 0 20px rgba(124,58,237,0.4);
+  }
+
+  /* Quote card */
+  .quote-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 3rem 2.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .quote-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 60%, rgba(124,58,237,0.05));
+    pointer-events: none;
+  }
+  .quote-card.animate-in {
+    animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .quote-mark {
+    font-family: 'Playfair Display', serif;
+    font-size: 6rem;
+    line-height: 1;
+    color: var(--accent);
+    opacity: 0.3;
+    position: absolute;
+    top: 1rem;
+    left: 1.5rem;
+    user-select: none;
+  }
+  .category-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .quote-text-ja {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    font-weight: 300;
+    line-height: 1.9;
+    color: var(--text);
+    margin-bottom: 1.25rem;
+    padding-top: 1rem;
+  }
+  .quote-text-en {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: clamp(0.95rem, 2vw, 1.1rem);
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin-bottom: 1.75rem;
+    border-left: 2px solid var(--accent);
+    padding-left: 1rem;
+  }
+  .quote-author {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .author-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+  .author-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .author-title {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* Mood rating */
+  .mood-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .mood-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .mood-emojis {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .mood-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.4rem 0.7rem;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .mood-btn:hover { transform: scale(1.15); border-color: var(--accent); }
+  .mood-btn.selected { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 15px rgba(124,58,237,0.4); }
+  .mood-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e1e2e;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .mood-btn:hover .mood-tooltip { opacity: 1; }
+
+  /* Action buttons */
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn:hover { border-color: var(--accent); background: var(--surface2); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #9333ea);
+    border-color: transparent;
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,58,237,0.5); }
+  .btn-fav.active { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.1); }
+  .btn-speak.speaking { border-color: var(--accent2); color: var(--accent2); background: rgba(6,182,212,0.1); }
+
+  /* Generate button area */
+  .generate-area {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  .tab {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: inherit;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Favorites */
+  .fav-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .fav-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    transition: border-color 0.2s;
+  }
+  .fav-item:hover { border-color: rgba(124,58,237,0.4); }
+  .fav-text {
+    flex: 1;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  .fav-author-small {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+  }
+  .fav-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.2rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: color 0.2s;
+  }
+  .fav-remove:hover { color: var(--danger); }
+
+  /* Timecapsule modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 2rem;
+    max-width: 480px;
+    width: 100%;
+    position: relative;
+    animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .modal h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .modal p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+  .modal textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.85rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.85rem;
+    resize: vertical;
+    min-height: 100px;
+    margin-bottom: 0.75rem;
+    outline: none;
+  }
+  .modal textarea:focus { border-color: var(--accent); }
+  .modal input[type=date] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    outline: none;
+    cursor: pointer;
+  }
+  .modal input[type=date]:focus { border-color: var(--accent); }
+  .modal-close {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 32px; height: 32px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  /* Capsule list */
+  .capsule-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .capsule-icon { font-size: 1.5rem; }
+  .capsule-meta { flex: 1; }
+  .capsule-date { font-size: 0.75rem; color: var(--accent2); }
+  .capsule-preview { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  .capsule-locked { font-size: 0.7rem; color: var(--gold); background: rgba(245,158,11,0.1); padding: 0.2rem 0.5rem; border-radius: 6px; }
+  .capsule-open-btn {
+    background: linear-gradient(135deg, var(--accent), #9333ea);
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    color: white;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* Canvas download */
+  #downloadCanvas { display: none; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.85rem;
+    z-index: 200;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+  }
+  .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .stat-item { display: flex; align-items: center; gap: 0.4rem; }
+  .stat-val { color: var(--text); font-weight: 600; }
+
+  /* Scroll reveal */
+  .reveal { opacity: 0; transform: translateY(20px); transition: all 0.5s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  canvas { display: none; }
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+
+<header>
+  <div class="logo">QUOTOPIA</div>
+  <div class="logo-sub">名言の宇宙へようこそ</div>
+  <div class="streak-badge" onclick="showStreakDetail()">
+    <span class="flame">🔥</span>
+    <span id="streakCount">0</span>日連続訪問中
+  </div>
+</header>
+
+<main>
+  <!-- Stats -->
+  <div class="stats-bar reveal">
+    <div class="stat-item">📚 総名言数 <span class="stat-val" id="totalQuotes">0</span></div>
+    <div class="stat-item">⭐ お気に入り <span class="stat-val" id="favCount">0</span></div>
+    <div class="stat-item">🌟 閲覧数 <span class="stat-val" id="viewCount">0</span></div>
+    <div class="stat-item">💊 カプセル <span class="stat-val" id="capsuleCount">0</span></div>
+  </div>
+
+  <!-- Categories -->
+  <div class="categories reveal">
+    <button class="cat-btn active" onclick="setCategory('all')" data-cat="all">✨ すべて</button>
+    <button class="cat-btn" onclick="setCategory('study')" data-cat="study">📚 勉強</button>
+    <button class="cat-btn" onclick="setCategory('life')" data-cat="life">🌱 人生</button>
+    <button class="cat-btn" onclick="setCategory('challenge')" data-cat="challenge">⚡ 挑戦</button>
+    <button class="cat-btn" onclick="setCategory('success')" data-cat="success">🏆 成功</button>
+    <button class="cat-btn" onclick="setCategory('love')" data-cat="love">💜 愛・友情</button>
+    <button class="cat-btn" onclick="setCategory('mindset')" data-cat="mindset">🧠 マインド</button>
+    <button class="cat-btn" onclick="setCategory('creativity')" data-cat="creativity">🎨 創造</button>
+  </div>
+
+  <!-- Quote Card -->
+  <div class="quote-card reveal" id="quoteCard">
+    <div class="quote-mark">"</div>
+    <div id="categoryTag" class="category-tag"></div>
+    <div class="quote-text-ja" id="quoteJa">ボタンを押して名言を表示しよう。</div>
+    <div class="quote-text-en" id="quoteEn">Press the button to reveal a quote.</div>
+    <div class="quote-author">
+      <div class="author-avatar" id="authorAvatar">💭</div>
+      <div>
+        <div class="author-name" id="authorName">—</div>
+        <div class="author-title" id="authorTitle"></div>
+      </div>
+    </div>
+
+    <!-- Mood Rating (Unique Feature 1) -->
+    <div class="mood-section">
+      <div class="mood-label">この名言、どう感じた？</div>
+      <div class="mood-emojis">
+        <button class="mood-btn" onclick="rateMood('inspired')" data-mood="inspired">
+          🚀<div class="mood-tooltip">インスパイア</div>
+        </button>
+        <button class="mood-btn" onclick="rateMood('calm')" data-mood="calm">
+          😌<div class="mood-tooltip">穏やか</div>
+        </button>
+        <button class="mood-btn" onclick="rateMood('motivated')" data-mood="motivated">
+          💪<div class="mood-tooltip">やる気</div>
+        </button>
+        <button class="mood-btn" onclick="rateMood('thoughtful')" data-mood="thoughtful">
+          🤔<div class="mood-tooltip">考えさせられる</div>
+        </button>
+        <button class="mood-btn" onclick="rateMood('happy')" data-mood="happy">
+          😊<div class="mood-tooltip">嬉しい</div>
+        </button>
+        <button class="mood-btn" onclick="rateMood('moved')" data-mood="moved">
+          😭<div class="mood-tooltip">感動</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions reveal">
+    <button class="btn btn-primary" onclick="generateQuote()">
+      ✨ 新しい名言
+    </button>
+    <button class="btn btn-fav" id="favBtn" onclick="toggleFavorite()">
+      🤍 お気に入り
+    </button>
+    <button class="btn" onclick="copyQuote()">
+      📋 コピー
+    </button>
+    <button class="btn" onclick="shareQuote()">
+      🔗 シェア
+    </button>
+    <button class="btn btn-speak" id="speakBtn" onclick="speakQuote()">
+      🔊 読み上げ
+    </button>
+    <button class="btn" onclick="downloadCard()">
+      🖼️ 画像DL
+    </button>
+    <button class="btn" onclick="openTimeCapsule()">
+      ⏳ タイムカプセル
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs reveal">
+    <button class="tab active" onclick="showTab('favorites')" id="tab-favorites">⭐ お気に入り</button>
+    <button class="tab" onclick="showTab('capsules')" id="tab-capsules">⏳ タイムカプセル</button>
+    <button class="tab" onclick="showTab('stats')" id="tab-stats">📊 統計</button>
+  </div>
+
+  <!-- Favorites Panel -->
+  <div id="panel-favorites" class="reveal">
+    <div class="fav-list" id="favList">
+      <div class="empty-state">
+        <div class="empty-icon">⭐</div>
+        <div>お気に入りはまだありません</div>
+        <div style="font-size:0.8rem;margin-top:0.3rem">気に入った名言を保存しよう</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Capsules Panel -->
+  <div id="panel-capsules" class="reveal" style="display:none">
+    <div id="capsuleList">
+      <div class="empty-state">
+        <div class="empty-icon">⏳</div>
+        <div>タイムカプセルがありません</div>
+        <div style="font-size:0.8rem;margin-top:0.3rem">未来の自分へメッセージを送ろう</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Panel -->
+  <div id="panel-stats" class="reveal" style="display:none">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;">
+      <h3 style="font-family:'Playfair Display',serif;margin-bottom:1.25rem;font-size:1.2rem;">📊 あなたの名言ライフ</h3>
+      <div id="moodStats" style="margin-bottom:1.5rem;"></div>
+      <div id="catStats"></div>
+    </div>
+  </div>
+</main>
+
+<!-- Time Capsule Modal -->
+<div class="modal-overlay" id="capsuleModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeTimeCapsule()">✕</button>
+    <h3>⏳ タイムカプセル</h3>
+    <p>今の名言と共に、未来の自分へメッセージを残そう。</p>
+    <div id="currentQuotePreview" style="background:var(--surface2);border-radius:10px;padding:0.75rem;font-size:0.8rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.5;"></div>
+    <textarea id="capsuleMessage" placeholder="未来の自分へ... (例: この名言を読んで何を感じた？あなたは夢を叶えられた？)"></textarea>
+    <input type="date" id="capsuleDate" />
+    <div style="display:flex;gap:0.75rem;">
+      <button class="btn btn-primary" onclick="saveCapsule()" style="flex:1">📮 送る</button>
+      <button class="btn" onclick="closeTimeCapsule()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- Streak Detail Modal -->
+<div class="modal-overlay" id="streakModal">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('streakModal').classList.remove('open')">✕</button>
+    <h3>🔥 連続訪問</h3>
+    <p>毎日名言を読んでストリークを伸ばそう！</p>
+    <div id="streakDetail" style="text-align:center;padding:1.5rem 0;">
+      <div style="font-size:4rem;font-weight:700;color:var(--gold);" id="streakBig">0</div>
+      <div style="color:var(--text-muted);font-size:0.85rem;margin-top:0.5rem;">日連続</div>
+    </div>
+    <div id="streakCal" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✅</span>
+  <span id="toastMsg">完了！</span>
+</div>
+
+<canvas id="downloadCanvas" width="1200" height="630"></canvas>
+
+<script>
+// ======================== DATA ========================
+const quotes = [
+  // 勉強
+  { ja: "知識は力なり。しかし最も重要なのは、その知識をどう使うかだ。", en: "Knowledge is power. But what matters most is how you use it.", author: "フランシス・ベーコン", title: "哲学者", avatar: "📖", cat: "study" },
+  { ja: "学ぶことをやめたとき、人は老いる。", en: "Anyone who stops learning is old, whether at twenty or eighty.", author: "ヘンリー・フォード", title: "実業家", avatar: "🚗", cat: "study" },
+  { ja: "今日の努力が、明日の才能になる。", en: "Today's efforts become tomorrow's talents.", author: "マルコム・グラッドウェル", title: "作家", avatar: "✍️", cat: "study" },
+  { ja: "読書は、他の人の頭脳で考えることだ。", en: "Reading is thinking with other people's minds.", author: "アルトゥル・ショーペンハウアー", title: "哲学者", avatar: "📚", cat: "study" },
+  { ja: "教育とは、学校で習ったことを全て忘れた後に残るものだ。", en: "Education is what remains after one has forgotten everything one learned in school.", author: "アルベルト・アインシュタイン", title: "物理学者", avatar: "🔬", cat: "study" },
+  { ja: "一度も失敗したことがない人は、何も新しいことに挑戦していない人だ。", en: "Anyone who has never made a mistake has never tried anything new.", author: "アルベルト・アインシュタイン", title: "物理学者", avatar: "🔬", cat: "study" },
+
+  // 人生
+  { ja: "人生は近くで見ると悲劇だが、遠くから見ると喜劇だ。", en: "Life is a tragedy when seen in close-up, but a comedy in long shot.", author: "チャールズ・チャップリン", title: "俳優・映画監督", avatar: "🎬", cat: "life" },
+  { ja: "桜の花びらが散るように、人生も美しく短い。だからこそ、今この瞬間を大切に。", en: "Like cherry blossoms, life is beautiful and short. Cherish every moment.", author: "松尾芭蕉", title: "俳人", avatar: "🌸", cat: "life" },
+  { ja: "人生で最も重要な決断は、何をするかではなく、何をしないかだ。", en: "The most important decisions in life are not what to do, but what not to do.", author: "スティーブ・ジョブズ", title: "Apple 共同創業者", avatar: "🍎", cat: "life" },
+  { ja: "七転び八起き。何度倒れても立ち上がれる者が勝者だ。", en: "Fall seven times, stand up eight. Those who rise every time are the true winners.", author: "日本の諺", title: "", avatar: "⛩️", cat: "life" },
+  { ja: "最後に笑う者が、最もよく笑う。", en: "He who laughs last, laughs best.", author: "欧州の諺", title: "", avatar: "😄", cat: "life" },
+  { ja: "人は死ぬとき、やったことよりやらなかったことを後悔する。", en: "At the end of life, we regret the things we didn't do, not the things we did.", author: "マーク・トウェイン", title: "作家", avatar: "✍️", cat: "life" },
+
+  // 挑戦
+  { ja: "船は港にいると安全だ。しかし、そのために船はあるのではない。", en: "A ship in harbor is safe, but that is not what ships are built for.", author: "ジョン・A・シェッド", title: "作家", avatar: "⚓", cat: "challenge" },
+  { ja: "限界とは、しばしば、他人の意見でしかない。", en: "Limits, like fears, are often just an illusion.", author: "マイケル・ジョーダン", title: "バスケットボール選手", avatar: "🏀", cat: "challenge" },
+  { ja: "不可能とは、小さな人間が大きなことを成し遂げられないと思い込む嘘だ。", en: "Impossible is just a big word thrown around by small men.", author: "モハメド・アリ", title: "ボクシング世界チャンピオン", avatar: "🥊", cat: "challenge" },
+  { ja: "嵐が怖くて、航海に出られないなら、何も成し遂げられない。", en: "You can't discover new oceans unless you have the courage to lose sight of the shore.", author: "アンドレ・ジッド", title: "作家", avatar: "🌊", cat: "challenge" },
+  { ja: "自分を信じること——それが成功への第一歩だ。", en: "Believe in yourself — that's the first step to success.", author: "オードリー・ヘプバーン", title: "女優", avatar: "🌟", cat: "challenge" },
+  { ja: "転んだ時に地面を嘆くな。立ち方を学べ。", en: "When you fall, don't curse the ground. Learn how to rise.", author: "ルーミー", title: "詩人・神秘家", avatar: "🌙", cat: "challenge" },
+
+  // 成功
+  { ja: "成功とは、情熱を失わずに失敗から失敗へと進むことだ。", en: "Success is going from failure to failure without losing your enthusiasm.", author: "ウィンストン・チャーチル", title: "英国首相", avatar: "🎖️", cat: "success" },
+  { ja: "天才とは、努力する才能を持つ者だ。", en: "Genius is the ability to put into effect what is in your mind.", author: "F・スコット・フィッツジェラルド", title: "作家", avatar: "🖊️", cat: "success" },
+  { ja: "夢を見る勇気がある者には、夢を実現する力が宿る。", en: "All our dreams can come true, if we have the courage to pursue them.", author: "ウォルト・ディズニー", title: "映画制作者・実業家", avatar: "🏰", cat: "success" },
+  { ja: "成功した人ほど、見えないところで人一倍努力している。", en: "The more I practice, the luckier I get.", author: "ゲーリー・プレーヤー", title: "ゴルファー", avatar: "⛳", cat: "success" },
+  { ja: "結果ではなく、プロセスを愛せ。そうすれば成功はついてくる。", en: "Love the process, not the result. Success will follow.", author: "スティーブン・キング", title: "作家", avatar: "📕", cat: "success" },
+  { ja: "今日できることを明日に延ばすな。", en: "Never put off till tomorrow what you can do today.", author: "トーマス・ジェファーソン", title: "米国第3代大統領", avatar: "🗽", cat: "success" },
+
+  // 愛・友情
+  { ja: "真の友人とは、あなたが成功しても嫉妬せず、失敗しても見捨てない人だ。", en: "A true friend doesn't envy your success or abandon you in failure.", author: "アリストテレス", title: "哲学者", avatar: "🏛️", cat: "love" },
+  { ja: "愛することは、共に同じ方向を見ることだ。", en: "Love does not consist in gazing at each other, but in looking outward together.", author: "アントワーヌ・ド・サン=テグジュペリ", title: "作家", avatar: "✈️", cat: "love" },
+  { ja: "心が通じ合えば、言葉はいらない。", en: "When hearts speak, words become unnecessary.", author: "ヴィクトル・ユーゴー", title: "作家", avatar: "🖋️", cat: "love" },
+  { ja: "最良の鏡は古い友人だ。", en: "The best mirror is an old friend.", author: "ジョージ・ハーバート", title: "詩人", avatar: "🪞", cat: "love" },
+  { ja: "愛とは、相手の幸福を自分の幸福とすることだ。", en: "Love is when the other person's happiness is more important than your own.", author: "ヘンリー・H・スウェット", title: "作家", avatar: "💜", cat: "love" },
+
+  // マインド
+  { ja: "あなたの考えが変われば、あなたの世界が変わる。", en: "Change your thoughts and you change your world.", author: "ノーマン・ヴィンセント・ピール", title: "牧師・著者", avatar: "💭", cat: "mindset" },
+  { ja: "幸福は外から来るものではなく、内から育てるものだ。", en: "Happiness is not something you find, it's something you create.", author: "ジェームズ・オッペンハイム", title: "詩人", avatar: "🌅", cat: "mindset" },
+  { ja: "比較は喜びを奪う泥棒だ。", en: "Comparison is the thief of joy.", author: "セオドア・ルーズベルト", title: "米国第26代大統領", avatar: "🦁", cat: "mindset" },
+  { ja: "怒りを持ち続けることは、自分が毒を飲んで相手が死ぬことを期待するようなものだ。", en: "Holding anger is like drinking poison and expecting the other person to die.", author: "ガウタマ・ブッダ", title: "仏陀", avatar: "☮️", cat: "mindset" },
+  { ja: "過去を変えることはできない。未来を変えることはできる。だから今を生きろ。", en: "You can't change the past. You can change the future. So live in the now.", author: "マックス・フリッシュ", title: "作家", avatar: "⏰", cat: "mindset" },
+  { ja: "心が静かなら、嵐の中でも笑っていられる。", en: "With a calm mind, you can smile even in the eye of the storm.", author: "ラルフ・ワルド・エマーソン", title: "詩人・思想家", avatar: "🌿", cat: "mindset" },
+
+  // 創造
+  { ja: "創造とは、既存のものを新しい目で見ることだ。", en: "Creativity is seeing what others see and thinking what no one else has thought.", author: "アルベルト・アインシュタイン", title: "物理学者", avatar: "🔬", cat: "creativity" },
+  { ja: "始めることが、全ての魔法の秘密だ。", en: "The secret of getting ahead is getting started.", author: "マーク・トウェイン", title: "作家", avatar: "🖊️", cat: "creativity" },
+  { ja: "芸術は、人生という嘘を言う真実だ。", en: "Art is a lie that makes us realize the truth.", author: "パブロ・ピカソ", title: "画家", avatar: "🎨", cat: "creativity" },
+  { ja: "想像力は知識より重要だ。知識には限界があるが、想像力は世界を包む。", en: "Imagination is more important than knowledge.", author: "アルベルト・アインシュタイン", title: "物理学者", avatar: "🔬", cat: "creativity" },
+  { ja: "完璧を待つな。今日の不完全な作品が、明日の傑作を生む。", en: "Don't wait for perfection. Today's imperfect creation gives birth to tomorrow's masterpiece.", author: "レオナルド・ダ・ヴィンチ", title: "芸術家・科学者", avatar: "🎭", cat: "creativity" },
+  { ja: "規則を破るためには、まず規則を知らなければならない。", en: "Learn the rules like a pro, so you can break them like an artist.", author: "パブロ・ピカソ", title: "画家", avatar: "🎨", cat: "creativity" },
+  { ja: "音楽は、言葉が届かない場所へ魂を届ける。", en: "Music gives a soul to the universe, wings to the mind, flight to the imagination.", author: "プラトン", title: "哲学者", avatar: "🎵", cat: "creativity" },
+  { ja: "書くことは、自分自身を発見する旅だ。", en: "Writing is the journey of discovering yourself.", author: "フランツ・カフカ", title: "作家", avatar: "📝", cat: "creativity" },
+  { ja: "創造の苦しみなくして、傑作は生まれない。", en: "Without the agony of creation, no masterpiece is born.", author: "ミケランジェロ", title: "彫刻家・画家", avatar: "🗿", cat: "creativity" },
+  { ja: "すべての子どもは芸術家だ。問題は、大人になっても芸術家でいられるかどうかだ。", en: "Every child is an artist. The problem is how to remain an artist once we grow up.", author: "パブロ・ピカソ", title: "画家", avatar: "🎨", cat: "creativity" },
+  { ja: "デザインとは、どう見えるかではなく、どう機能するかだ。", en: "Design is not just what it looks like. Design is how it works.", author: "スティーブ・ジョブズ", title: "Apple 共同創業者", avatar: "🍎", cat: "creativity" },
+  { ja: "空白も、また音楽の一部である。", en: "The notes I handle no better than many pianists. But the pauses between the notes — that is where the art resides.", author: "アルトゥル・シュナーベル", title: "ピアニスト", avatar: "🎹", cat: "creativity" },
+
+  // 勉強（追加）
+  { ja: "井の中の蛙、大海を知らず。されど、空の深さを知る。", en: "A frog in a well knows not of the great ocean — yet knows the depth of the sky.", author: "荘子", title: "哲学者", avatar: "🐸", cat: "study" },
+  { ja: "疑問を持つことが、学びの出発点だ。", en: "The beginning of wisdom is the discovery of our own ignorance.", author: "ウィル・デュラント", title: "歴史家", avatar: "🦉", cat: "study" },
+  { ja: "失敗は成功のもと。その失敗から何かを学べば、決して無駄ではない。", en: "Failure is the mother of success — as long as you learn from it.", author: "日本の諺", title: "", avatar: "⛩️", cat: "study" },
+  { ja: "本を読むことは、過去の最も偉大な人々と語らうことだ。", en: "Reading books is conversing with the greatest minds of the past.", author: "ルネ・デカルト", title: "哲学者・数学者", avatar: "📐", cat: "study" },
+  { ja: "練習は完璧を作らない。完璧な練習が完璧を作る。", en: "Practice doesn't make perfect. Perfect practice makes perfect.", author: "ヴィンス・ロンバルディ", title: "アメフトコーチ", avatar: "🏈", cat: "study" },
+  { ja: "今日の自分が、昨日の自分より少しでも賢ければそれでいい。", en: "Be a little wiser today than you were yesterday.", author: "チャールズ・エドワード・モンタギュー", title: "著者", avatar: "📗", cat: "study" },
+  { ja: "人に教えることが、最も深く学ぶ方法だ。", en: "To teach is to learn twice.", author: "ジョゼフ・ジュベール", title: "哲学者", avatar: "🏫", cat: "study" },
+  { ja: "好奇心こそ、知識への扉を開く鍵だ。", en: "Curiosity is the key that opens the door to knowledge.", author: "マリー・キュリー", title: "物理学者・化学者", avatar: "⚗️", cat: "study" },
+  { ja: "千里の道も一歩から。", en: "A journey of a thousand miles begins with a single step.", author: "老子", title: "哲学者", avatar: "🛤️", cat: "study" },
+  { ja: "無知を知ることが、本当の知識の始まりだ。", en: "The only true wisdom is in knowing you know nothing.", author: "ソクラテス", title: "哲学者", avatar: "🏛️", cat: "study" },
+  { ja: "時間を無駄にするな。人生は時間でできている。", en: "Do not squander time, for that is the stuff life is made of.", author: "ベンジャミン・フランクリン", title: "政治家・発明家", avatar: "⚡", cat: "study" },
+
+  // 人生（追加）
+  { ja: "生きることは、息をすることではない。行動することだ。", en: "To live is not to breathe, but to act.", author: "ジャン＝ジャック・ルソー", title: "哲学者", avatar: "🌍", cat: "life" },
+  { ja: "人は変えられない。変えられるのは自分だけだ。", en: "You cannot change others. You can only change yourself.", author: "カール・ユング", title: "心理学者", avatar: "🧬", cat: "life" },
+  { ja: "花は咲くだけで、存在を証明する。あなたもそれでいい。", en: "A flower does not think of competing with the flower next to it. It just blooms.", author: "禅の言葉", title: "", avatar: "🌺", cat: "life" },
+  { ja: "雨が降らなければ、虹は出ない。", en: "Without rain, there would be no rainbow.", author: "ジョン・レイ", title: "博物学者", avatar: "🌈", cat: "life" },
+  { ja: "人生に意味を与えるのは、あなた自身だ。", en: "It's not the meaning of life, but the meaning you give to life that matters.", author: "ヴィクトール・フランクル", title: "精神科医・著者", avatar: "💡", cat: "life" },
+  { ja: "今この瞬間が、残りの人生で最も若い時だ。", en: "This moment is the youngest you will ever be for the rest of your life.", author: "エレナ・バスティダス", title: "作家", avatar: "⌛", cat: "life" },
+  { ja: "どんな暗闇にも、星はある。", en: "Even the darkest night will end, and the sun will rise.", author: "ヴィクトル・ユーゴー", title: "作家", avatar: "⭐", cat: "life" },
+  { ja: "人生は短い。笑えるときに笑え。愛せるときに愛せ。", en: "Life is short. Laugh when you can, love while you may.", author: "ウィリアム・W・パーキー", title: "教育者", avatar: "😄", cat: "life" },
+  { ja: "木は嵐の中で、根を深く張ることを学ぶ。", en: "The tree that survives the storm grows its roots deeper.", author: "ドリス・マーティン", title: "詩人", avatar: "🌳", cat: "life" },
+  { ja: "すべては過ぎ去る。しかし、その瞬間は永遠だ。", en: "Everything passes, but the moment itself is eternal.", author: "カール・ヴィルヘルム", title: "哲学者", avatar: "🕰️", cat: "life" },
+  { ja: "人生の目的は、幸せになることではなく、役に立つことだ。", en: "The purpose of life is not to be happy — it is to be useful.", author: "ラルフ・ワルド・エマーソン", title: "詩人・思想家", avatar: "🌿", cat: "life" },
+  { ja: "自分の人生に責任を持つ者だけが、本当の意味で自由だ。", en: "Only those who take responsibility for their own lives are truly free.", author: "エーリッヒ・フロム", title: "心理学者", avatar: "🔓", cat: "life" },
+
+  // 挑戦（追加）
+  { ja: "恐怖は現実ではない。それは想像の産物だ。", en: "Fear is not real. The only place that fear can exist is in our thoughts.", author: "ウィル・スミス", title: "俳優", avatar: "🎥", cat: "challenge" },
+  { ja: "大きな夢を持て。小さな夢は人の心を動かさない。", en: "Dream big. Small dreams do not move hearts.", author: "ノーマン・リンゼイ", title: "芸術家・著者", avatar: "🌠", cat: "challenge" },
+  { ja: "道は歩くことで開ける。", en: "The road is made by walking.", author: "アントニオ・マチャード", title: "詩人", avatar: "🛤️", cat: "challenge" },
+  { ja: "鳥は木の枝が折れるのを恐れない。翼を信じているから。", en: "A bird sitting on a tree is never afraid of the branch breaking — it trusts its wings.", author: "不詳", title: "", avatar: "🐦", cat: "challenge" },
+  { ja: "ライオンは振り返らない。前だけを見て走る。", en: "The lion does not look back when it runs. It focuses only on what's ahead.", author: "アフリカの諺", title: "", avatar: "🦁", cat: "challenge" },
+  { ja: "あなたがあきらめる前に、もう一度だけ試してみろ。", en: "Before you give up, try one more time.", author: "トーマス・エジソン", title: "発明家", avatar: "💡", cat: "challenge" },
+  { ja: "川の流れに逆らう魚だけが、上流へたどり着ける。", en: "Only the fish that swims against the current reaches the source.", author: "アラビアの諺", title: "", avatar: "🐟", cat: "challenge" },
+  { ja: "痛みは一時的だ。しかし諦めた後悔は永遠に続く。", en: "Pain is temporary. Quitting lasts forever.", author: "ランス・アームストロング", title: "サイクリスト", avatar: "🚴", cat: "challenge" },
+  { ja: "月を目指せ。たとえ外れても、星の中に着地できる。", en: "Shoot for the moon. Even if you miss, you'll land among the stars.", author: "レス・ブラウン", title: "モチベーショナルスピーカー", avatar: "🌙", cat: "challenge" },
+  { ja: "強者が勝つのではない。勝ち続ける者が強者になる。", en: "It's not the strong who survive — it's those who keep going.", author: "チャールズ・ダーウィン", title: "博物学者", avatar: "🦋", cat: "challenge" },
+
+  // 成功（追加）
+  { ja: "成功の秘訣は、人よりも少し長く続けることだ。", en: "The secret of success is to persevere a little longer than anyone else.", author: "ウィリアム・プラット", title: "著者", avatar: "🏅", cat: "success" },
+  { ja: "ゆっくりでも、止まらなければ意味がある。", en: "It does not matter how slowly you go as long as you do not stop.", author: "孔子", title: "思想家", avatar: "☯️", cat: "success" },
+  { ja: "成功した人に共通することは、成功するまでやり続けたことだ。", en: "The common denominator of success is doing what successful people do until you succeed.", author: "E・W・ハーヴィー", title: "著者", avatar: "🎯", cat: "success" },
+  { ja: "1万時間の練習が、天才を作る。", en: "Ten thousand hours of practice creates a genius.", author: "マルコム・グラッドウェル", title: "作家", avatar: "⏱️", cat: "success" },
+  { ja: "偉大な仕事をする唯一の方法は、あなたがすることを愛することだ。", en: "The only way to do great work is to love what you do.", author: "スティーブ・ジョブズ", title: "Apple 共同創業者", avatar: "🍎", cat: "success" },
+  { ja: "あなたが報われないと感じる日こそ、努力が根を張っている日だ。", en: "The day you feel unrewarded is the day your efforts are taking root.", author: "不詳", title: "", avatar: "🌱", cat: "success" },
+  { ja: "勝利とは、諦めなかった自分への贈り物だ。", en: "Victory is a gift you give yourself for never giving up.", author: "ビル・ラッセル", title: "バスケットボール選手", avatar: "🏆", cat: "success" },
+  { ja: "小さなことに誠実であれ。偉大さはそこから始まる。", en: "Be faithful in small things, because it is in them that your strength lies.", author: "マザー・テレサ", title: "修道女・社会活動家", avatar: "🙏", cat: "success" },
+  { ja: "才能はギフトだが、努力は選択だ。", en: "Talent is a gift, but effort is a choice.", author: "アンジェラ・ダックワース", title: "心理学者", avatar: "🧠", cat: "success" },
+  { ja: "成功は終わりではなく、失敗は致命的ではない。大切なのは続ける勇気だ。", en: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "ウィンストン・チャーチル", title: "英国首相", avatar: "🎖️", cat: "success" },
+
+  // 愛・友情（追加）
+  { ja: "あなたは誰かにとって、今日を生きる理由になっているかもしれない。", en: "You might be someone's reason to smile today.", author: "不詳", title: "", avatar: "💫", cat: "love" },
+  { ja: "愛は見返りを求めない。それが愛の本質だ。", en: "Love seeks no return. That is the very essence of love.", author: "エーリッヒ・フロム", title: "心理学者", avatar: "💞", cat: "love" },
+  { ja: "一人でいる時間も愛せる者だけが、真に誰かを愛せる。", en: "Only those who can love themselves in solitude can truly love another.", author: "カール・ユング", title: "心理学者", avatar: "🧬", cat: "love" },
+  { ja: "友情とは、二つの身体に宿る一つの魂だ。", en: "Friendship is a single soul dwelling in two bodies.", author: "アリストテレス", title: "哲学者", avatar: "🏛️", cat: "love" },
+  { ja: "本当の愛は、相手を変えようとしない。", en: "True love doesn't try to change the other person.", author: "レオ・ブスカーリア", title: "教育者・著者", avatar: "🌹", cat: "love" },
+  { ja: "家族とは、あなたが生まれた人たちではなく、あなたのために残ってくれた人たちだ。", en: "Family is not who you're born with. It's who stays.", author: "不詳", title: "", avatar: "🏡", cat: "love" },
+  { ja: "あなたが笑うとき、あなたを愛している全ての人も笑う。", en: "When you smile, everyone who loves you smiles with you.", author: "不詳", title: "", avatar: "😊", cat: "love" },
+  { ja: "親切は言語だ。耳の聞こえない人も聞き、目の見えない人も見ることができる。", en: "Kindness is a language the deaf can hear and the blind can see.", author: "マーク・トウェイン", title: "作家", avatar: "💙", cat: "love" },
+  { ja: "人は去るかもしれないが、心に刻まれた思い出は永遠に残る。", en: "People may leave, but memories etched in the heart last forever.", author: "不詳", title: "", avatar: "🕊️", cat: "love" },
+
+  // マインド（追加）
+  { ja: "あなたの心が向かうところに、人生は続く。", en: "Where your mind goes, your life follows.", author: "ジョイス・マイヤー", title: "著者", avatar: "🧭", cat: "mindset" },
+  { ja: "自分を愛することは、エゴではない。自分を枯らさないための義務だ。", en: "Loving yourself isn't vanity — it's sanity.", author: "マーニー・リード・ホール", title: "著者", avatar: "🌻", cat: "mindset" },
+  { ja: "あなたが思うほど、他人はあなたのことを気にしていない。", en: "You wouldn't worry so much about what others think of you if you realized how seldom they do.", author: "エレノア・ルーズベルト", title: "人権活動家", avatar: "🕊️", cat: "mindset" },
+  { ja: "平和は外に探すものではなく、内に作るものだ。", en: "Peace is not something you find. It's something you create within.", author: "ダライ・ラマ14世", title: "チベット仏教指導者", avatar: "☮️", cat: "mindset" },
+  { ja: "問題を引き起こした同じ思考では、問題を解決できない。", en: "We can't solve problems by using the same kind of thinking we used when we created them.", author: "アルベルト・アインシュタイン", title: "物理学者", avatar: "🔬", cat: "mindset" },
+  { ja: "感謝は心の記憶だ。", en: "Gratitude is the memory of the heart.", author: "ジャン＝バティスト・マスィヨン", title: "聖職者", avatar: "🙏", cat: "mindset" },
+  { ja: "恐れるより、後悔の方が辛い。", en: "The pain of regret is greater than the pain of fear.", author: "ジェフ・ベゾス", title: "実業家", avatar: "🚀", cat: "mindset" },
+  { ja: "人の評価はあなたを定義しない。あなたの行動があなたを定義する。", en: "What others think of you doesn't define you. Your actions do.", author: "不詳", title: "", avatar: "💠", cat: "mindset" },
+  { ja: "マインドフルネスとは、今この瞬間に完全に存在することだ。", en: "Mindfulness is being fully present in this very moment.", author: "ジョン・カバット＝ジン", title: "医学者", avatar: "🧘", cat: "mindset" },
+  { ja: "あなたの価値は、あなたの生産性で決まるわけではない。", en: "Your worth is not measured by your productivity.", author: "不詳", title: "", avatar: "💜", cat: "mindset" },
+];
+
+// ======================== STATE ========================
+let currentQuote = null;
+let currentCategory = 'all';
+let favorites = JSON.parse(localStorage.getItem('quotopia_favs') || '[]');
+let timeCapsules = JSON.parse(localStorage.getItem('quotopia_capsules') || '[]');
+let viewCount = parseInt(localStorage.getItem('quotopia_views') || '0');
+let moodData = JSON.parse(localStorage.getItem('quotopia_moods') || '{}');
+let catData = JSON.parse(localStorage.getItem('quotopia_cats') || '{}');
+let speaking = false;
+
+// ======================== STREAK ========================
+function updateStreak() {
+  const today = new Date().toDateString();
+  const data = JSON.parse(localStorage.getItem('quotopia_streak') || '{"streak":0,"lastVisit":null,"history":[]}');
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+  if (data.lastVisit === today) return data;
+  if (data.lastVisit === yesterday) {
+    data.streak++;
+  } else if (data.lastVisit !== today) {
+    data.streak = 1;
+  }
+  data.lastVisit = today;
+  if (!data.history) data.history = [];
+  data.history.push(today);
+  if (data.history.length > 30) data.history.shift();
+  localStorage.setItem('quotopia_streak', JSON.stringify(data));
+  return data;
+}
+
+function showStreakDetail() {
+  const data = JSON.parse(localStorage.getItem('quotopia_streak') || '{"streak":0,"lastVisit":null,"history":[]}');
+  document.getElementById('streakBig').textContent = data.streak;
+  const cal = document.getElementById('streakCal');
+  cal.innerHTML = '';
+  const days = ['日','月','火','水','木','金','土'];
+  days.forEach(d => {
+    const el = document.createElement('div');
+    el.style.cssText = 'text-align:center;font-size:0.65rem;color:var(--text-muted);padding:2px 0;';
+    el.textContent = d;
+    cal.appendChild(el);
+  });
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    const ds = d.toDateString();
+    const visited = (data.history || []).includes(ds);
+    const el = document.createElement('div');
+    el.style.cssText = `width:100%;aspect-ratio:1;border-radius:4px;background:${visited ? 'var(--accent)' : 'var(--surface2)'};opacity:${visited ? 1 : 0.3};`;
+    cal.appendChild(el);
+  }
+  document.getElementById('streakModal').classList.add('open');
+}
+
+// ======================== CATEGORY ========================
+const catColors = {
+  study: '#3b82f6', life: '#10b981', challenge: '#f59e0b',
+  success: '#f59e0b', love: '#ec4899', mindset: '#8b5cf6',
+  creativity: '#06b6d4', all: '#7c3aed'
+};
+const catEmojis = {
+  study: '📚', life: '🌱', challenge: '⚡', success: '🏆',
+  love: '💜', mindset: '🧠', creativity: '🎨', all: '✨'
+};
+const catNames = {
+  study: '勉強', life: '人生', challenge: '挑戦', success: '成功',
+  love: '愛・友情', mindset: 'マインド', creativity: '創造', all: 'すべて'
+};
+
+function setCategory(cat) {
+  currentCategory = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === cat);
+  });
+  generateQuote();
+}
+
+// ======================== GENERATE ========================
+function generateQuote() {
+  let pool = currentCategory === 'all' ? quotes : quotes.filter(q => q.cat === currentCategory);
+  if (pool.length === 0) return showToast('⚠️', 'この カテゴリに名言がありません');
+
+  let q;
+  do { q = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && q === currentQuote);
+  currentQuote = q;
+
+  viewCount++;
+  localStorage.setItem('quotopia_views', viewCount);
+  if (!catData[q.cat]) catData[q.cat] = 0;
+  catData[q.cat]++;
+  localStorage.setItem('quotopia_cats', JSON.stringify(catData));
+
+  document.getElementById('quoteJa').textContent = q.ja;
+  document.getElementById('quoteEn').textContent = q.en;
+  document.getElementById('authorName').textContent = `— ${q.author}`;
+  document.getElementById('authorTitle').textContent = q.title;
+  document.getElementById('authorAvatar').textContent = q.avatar;
+
+  const tag = document.getElementById('categoryTag');
+  const col = catColors[q.cat];
+  tag.style.cssText = `background:${col}22;color:${col};border:1px solid ${col}44;display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.7rem;border-radius:999px;font-size:0.72rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:1.5rem;`;
+  tag.textContent = `${catEmojis[q.cat]} ${catNames[q.cat]}`;
+
+  // Reset mood
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+
+  // Fav button state
+  const isFav = favorites.some(f => f.ja === q.ja);
+  const favBtn = document.getElementById('favBtn');
+  favBtn.classList.toggle('active', isFav);
+  favBtn.textContent = isFav ? '❤️ お気に入り済' : '🤍 お気に入り';
+
+  // Animate
+  const card = document.getElementById('quoteCard');
+  card.classList.remove('animate-in');
+  void card.offsetWidth;
+  card.classList.add('animate-in');
+
+  // Stop speaking
+  if (speaking) { speechSynthesis.cancel(); setSpeaking(false); }
+
+  updateStats();
+}
+
+// ======================== FAVORITE ========================
+function toggleFavorite() {
+  if (!currentQuote) return showToast('⚠️', '先に名言を表示してください');
+  const idx = favorites.findIndex(f => f.ja === currentQuote.ja);
+  if (idx >= 0) {
+    favorites.splice(idx, 1);
+    showToast('💔', 'お気に入りから削除しました');
+    document.getElementById('favBtn').textContent = '🤍 お気に入り';
+    document.getElementById('favBtn').classList.remove('active');
+  } else {
+    favorites.push({ ...currentQuote });
+    showToast('❤️', 'お気に入りに追加しました！');
+    document.getElementById('favBtn').textContent = '❤️ お気に入り済';
+    document.getElementById('favBtn').classList.add('active');
+  }
+  localStorage.setItem('quotopia_favs', JSON.stringify(favorites));
+  renderFavorites();
+  updateStats();
+}
+
+function renderFavorites() {
+  const list = document.getElementById('favList');
+  if (favorites.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">⭐</div><div>お気に入りはまだありません</div><div style="font-size:0.8rem;margin-top:0.3rem">気に入った名言を保存しよう</div></div>';
+    return;
+  }
+  list.innerHTML = favorites.map((f, i) => `
+    <div class="fav-item">
+      <div style="font-size:1.5rem;flex-shrink:0">${f.avatar}</div>
+      <div class="fav-text">
+        <div>${f.ja}</div>
+        <div class="fav-author-small">— ${f.author}</div>
+      </div>
+      <button class="fav-remove" onclick="removeFav(${i})" title="削除">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeFav(i) {
+  favorites.splice(i, 1);
+  localStorage.setItem('quotopia_favs', JSON.stringify(favorites));
+  renderFavorites();
+  updateStats();
+  showToast('🗑️', '削除しました');
+}
+
+// ======================== COPY & SHARE ========================
+function copyQuote() {
+  if (!currentQuote) return showToast('⚠️', '先に名言を表示してください');
+  const text = `${currentQuote.ja}\n\n${currentQuote.en}\n\n— ${currentQuote.author}`;
+  navigator.clipboard.writeText(text).then(() => showToast('📋', 'コピーしました！'));
+}
+
+function shareQuote() {
+  if (!currentQuote) return showToast('⚠️', '先に名言を表示してください');
+  const text = `${currentQuote.ja}\n\n— ${currentQuote.author}\n\n#QUOTOPIA #名言`;
+  if (navigator.share) {
+    navigator.share({ text });
+  } else {
+    const encoded = encodeURIComponent(text);
+    window.open(`https://twitter.com/intent/tweet?text=${encoded}`, '_blank');
+  }
+}
+
+// ======================== SPEAK (Unique Feature 1) ========================
+function speakQuote() {
+  if (!currentQuote) return showToast('⚠️', '先に名言を表示してください');
+  if (speaking) {
+    speechSynthesis.cancel();
+    setSpeaking(false);
+    return;
+  }
+  const utter = new SpeechSynthesisUtterance(currentQuote.ja + '。' + currentQuote.author);
+  utter.lang = 'ja-JP';
+  utter.rate = 0.85;
+  utter.pitch = 1;
+  const voices = speechSynthesis.getVoices();
+  const jpVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (jpVoice) utter.voice = jpVoice;
+  utter.onend = () => setSpeaking(false);
+  utter.onerror = () => setSpeaking(false);
+  speechSynthesis.speak(utter);
+  setSpeaking(true);
+}
+
+function setSpeaking(state) {
+  speaking = state;
+  const btn = document.getElementById('speakBtn');
+  btn.classList.toggle('speaking', state);
+  btn.textContent = state ? '⏹️ 停止' : '🔊 読み上げ';
+}
+
+// ======================== DOWNLOAD CARD (Unique Feature 2) ========================
+function downloadCard() {
+  if (!currentQuote) return showToast('⚠️', '先に名言を表示してください');
+  const canvas = document.getElementById('downloadCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = 1200, H = 630;
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, '#0a0a0f');
+  grad.addColorStop(0.5, '#12121a');
+  grad.addColorStop(1, '#1a0a2e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Accent orb
+  const radGrad = ctx.createRadialGradient(200, 200, 0, 200, 200, 400);
+  radGrad.addColorStop(0, 'rgba(124,58,237,0.3)');
+  radGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = radGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Border
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 30, 30, W-60, H-60, 24);
+  ctx.stroke();
+
+  // Quote mark
+  ctx.fillStyle = 'rgba(124,58,237,0.4)';
+  ctx.font = 'bold 120px serif';
+  ctx.fillText('"', 80, 180);
+
+  // Japanese quote
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '300 42px "Noto Sans JP", sans-serif';
+  wrapText(ctx, currentQuote.ja, 100, 220, W - 200, 60);
+
+  // English quote
+  ctx.fillStyle = '#64748b';
+  ctx.font = 'italic 28px "Georgia", serif';
+  wrapText(ctx, currentQuote.en, 100, 420, W - 200, 40);
+
+  // Author
+  ctx.fillStyle = '#7c3aed';
+  ctx.font = '600 26px "Inter", sans-serif';
+  ctx.fillText(`— ${currentQuote.author}`, 100, 560);
+
+  // Logo
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '22px serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('QUOTOPIA', W - 60, 560);
+  ctx.textAlign = 'left';
+
+  const link = document.createElement('a');
+  link.download = `quotopia-${Date.now()}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('🖼️', '画像をダウンロードしました！');
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH) {
+  const chars = text.split('');
+  let line = '';
+  let lineY = y;
+  for (const c of chars) {
+    const test = line + c;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, lineY);
+      lineY += lineH;
+      line = c;
+    } else {
+      line = test;
+    }
+  }
+  if (line) ctx.fillText(line, x, lineY);
+}
+
+// ======================== MOOD RATING (Unique Feature 3 - already shown) ========================
+function rateMood(mood) {
+  if (!currentQuote) return;
+  document.querySelectorAll('.mood-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.mood === mood);
+  });
+  if (!moodData[mood]) moodData[mood] = 0;
+  moodData[mood]++;
+  localStorage.setItem('quotopia_moods', JSON.stringify(moodData));
+  renderStats();
+  showToast('😊', `「${getMoodLabel(mood)}」と記録しました`);
+}
+
+function getMoodLabel(m) {
+  return { inspired:'インスパイア', calm:'穏やか', motivated:'やる気', thoughtful:'考えさせられる', happy:'嬉しい', moved:'感動' }[m] || m;
+}
+
+// ======================== TIME CAPSULE (Unique Feature 4) ========================
+function openTimeCapsule() {
+  if (currentQuote) {
+    document.getElementById('currentQuotePreview').textContent = `"${currentQuote.ja}" — ${currentQuote.author}`;
+  }
+  const minDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  document.getElementById('capsuleDate').min = minDate;
+  document.getElementById('capsuleDate').value = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+  document.getElementById('capsuleModal').classList.add('open');
+}
+
+function closeTimeCapsule() {
+  document.getElementById('capsuleModal').classList.remove('open');
+}
+
+function saveCapsule() {
+  const msg = document.getElementById('capsuleMessage').value.trim();
+  const date = document.getElementById('capsuleDate').value;
+  if (!msg) return showToast('⚠️', 'メッセージを入力してください');
+  if (!date) return showToast('⚠️', '日付を選択してください');
+
+  const capsule = {
+    id: Date.now(),
+    quote: currentQuote,
+    message: msg,
+    openDate: date,
+    createdAt: new Date().toISOString()
+  };
+  timeCapsules.push(capsule);
+  localStorage.setItem('quotopia_capsules', JSON.stringify(timeCapsules));
+  closeTimeCapsule();
+  renderCapsules();
+  updateStats();
+  showToast('📮', `${date}に届きます！`);
+  document.getElementById('capsuleMessage').value = '';
+}
+
+function renderCapsules() {
+  const list = document.getElementById('capsuleList');
+  if (timeCapsules.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div>タイムカプセルがありません</div><div style="font-size:0.8rem;margin-top:0.3rem">未来の自分へメッセージを送ろう</div></div>';
+    return;
+  }
+  const today = new Date().toISOString().split('T')[0];
+  list.innerHTML = timeCapsules.map((c, i) => {
+    const canOpen = c.openDate <= today;
+    return `<div class="capsule-item">
+      <div class="capsule-icon">${canOpen ? '📬' : '🔒'}</div>
+      <div class="capsule-meta">
+        <div class="capsule-date">${canOpen ? '開封可能！' : `開封日: ${c.openDate}`}</div>
+        <div class="capsule-preview">${canOpen ? c.message : '••••••••••••••'}</div>
+      </div>
+      ${canOpen
+        ? `<button class="capsule-open-btn" onclick="openCapsule(${i})">開封する</button>`
+        : `<span class="capsule-locked">${daysUntil(c.openDate)}日後</span>`
+      }
+    </div>`;
+  }).join('');
+}
+
+function openCapsule(i) {
+  const c = timeCapsules[i];
+  alert(`📬 タイムカプセルが届きました！\n\n${c.createdAt.split('T')[0]}の自分より:\n${c.message}\n\n────\n"${c.quote?.ja}"\n— ${c.quote?.author}`);
+}
+
+function daysUntil(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return Math.ceil((d - now) / 86400000);
+}
+
+// ======================== TABS ========================
+function showTab(name) {
+  ['favorites','capsules','stats'].forEach(t => {
+    document.getElementById(`panel-${t}`).style.display = t === name ? '' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
+  });
+  if (name === 'stats') renderStats();
+}
+
+// ======================== STATS (Unique Feature 5 - Mood analytics) ========================
+function renderStats() {
+  const moodEl = document.getElementById('moodStats');
+  const catEl = document.getElementById('catStats');
+
+  const totalMoods = Object.values(moodData).reduce((a,b)=>a+b, 0);
+  if (totalMoods === 0) {
+    moodEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">まだ気分を記録していません</div>';
+  } else {
+    moodEl.innerHTML = `<div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">気分の記録</div>` +
+      Object.entries(moodData).map(([k,v]) => {
+        const pct = Math.round(v / totalMoods * 100);
+        const emoji = { inspired:'🚀', calm:'😌', motivated:'💪', thoughtful:'🤔', happy:'😊', moved:'😭' }[k];
+        return `<div style="margin-bottom:0.6rem">
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.25rem">
+            <span>${emoji} ${getMoodLabel(k)}</span><span style="color:var(--text-muted)">${pct}%</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:999px;height:6px;overflow:hidden">
+            <div style="background:var(--accent);height:100%;width:${pct}%;border-radius:999px;transition:width 0.5s"></div>
+          </div>
+        </div>`;
+      }).join('');
+  }
+
+  const totalCats = Object.values(catData).reduce((a,b)=>a+b, 0);
+  if (totalCats === 0) {
+    catEl.innerHTML = '';
+  } else {
+    catEl.innerHTML = `<div style="font-size:0.85rem;color:var(--text-muted);margin-top:1.5rem;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">カテゴリ別閲覧</div>` +
+      Object.entries(catData).sort((a,b)=>b[1]-a[1]).map(([k,v]) => {
+        const pct = Math.round(v / totalCats * 100);
+        const col = catColors[k] || 'var(--accent)';
+        return `<div style="margin-bottom:0.6rem">
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.25rem">
+            <span>${catEmojis[k]} ${catNames[k]}</span><span style="color:var(--text-muted)">${v}回</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:999px;height:6px;overflow:hidden">
+            <div style="background:${col};height:100%;width:${pct}%;border-radius:999px;transition:width 0.5s"></div>
+          </div>
+        </div>`;
+      }).join('');
+  }
+}
+
+function updateStats() {
+  document.getElementById('totalQuotes').textContent = quotes.length;
+  document.getElementById('favCount').textContent = favorites.length;
+  document.getElementById('viewCount').textContent = viewCount;
+  document.getElementById('capsuleCount').textContent = timeCapsules.length;
+}
+
+// ======================== TOAST ========================
+function showToast(icon, msg, duration = 2500) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), duration);
+}
+
+// ======================== SCROLL REVEAL ========================
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ======================== INIT ========================
+function init() {
+  const streak = updateStreak();
+  document.getElementById('streakCount').textContent = streak.streak;
+  speechSynthesis.getVoices();
+  generateQuote();
+  renderFavorites();
+  renderCapsules();
+  updateStats();
+}
+
+init();
+</script>
+</body>
+</html>
