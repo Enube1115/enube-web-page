@@ -371,7 +371,6 @@
   .cat-tool     { --cat-color: #7c5cfc; --cat-bg: rgba(124,92,252,0.12); }
   .cat-lifestyle{ --cat-color: #5cf0c8; --cat-bg: rgba(92,240,200,0.12); }
   .cat-fun      { --cat-color: #fcb45c; --cat-bg: rgba(252,180,92,0.12); }
-  .cat-ai       { --cat-color: #5cb4fc; --cat-bg: rgba(92,180,252,0.12); }
 
   .card-icon    { background: var(--cat-bg); }
   .card-tag     { background: var(--cat-bg); color: var(--cat-color); }
@@ -448,7 +447,7 @@
   <p class="subtitle">Claude Code で作った全アプリを一挙公開。ゲームから便利ツールまで。</p>
   <div class="stats-row">
     <div class="stat"><div class="stat-num" id="totalCount">0</div><div class="stat-label">Total Apps</div></div>
-    <div class="stat"><div class="stat-num">5</div><div class="stat-label">Categories</div></div>
+    <div class="stat"><div class="stat-num">4</div><div class="stat-label">Categories</div></div>
     <div class="stat"><div class="stat-num" id="gameCount">0</div><div class="stat-label">Games</div></div>
     <div class="stat"><div class="stat-num" id="toolCount">0</div><div class="stat-label">Tools</div></div>
   </div>
@@ -486,9 +485,6 @@
     <button class="filter-btn cat-fun" data-cat="fun">
       <span class="dot" style="background:#fcb45c"></span> エンタメ
     </button>
-    <button class="filter-btn cat-ai" data-cat="ai">
-      <span class="dot" style="background:#5cb4fc"></span> AI
-    </button>
   </div>
 </div>
 
@@ -496,21 +492,6 @@
 
 <!-- CARD GRID -->
 <div class="grid" id="grid">
-
-  <!-- AI -->
-  <a class="card cat-ai" href="ai-chat.html" data-cat="ai" data-title="AIに聞く AI Chat" data-order="1">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🤖</div>
-      <span class="card-tag">AI</span>
-    </div>
-    <div class="card-title">AIに聞く</div>
-    <div class="card-desc">Claude にテキストで質問できるシンプルなAIチャットUI。気になることをすぐ聞ける。</div>
-    <div class="card-footer">
-      <span class="card-link-text">開く →</span>
-      <span class="card-new">NEW</span>
-    </div>
-  </a>
 
   <!-- GAMES -->
   <a class="card cat-game" href="battleship.html" data-cat="game" data-title="バトルシップ Battleship" data-order="2">
