@@ -1220,21 +1220,27 @@ function applySpecial(r, c, side, chain, moraleActive = false) {
   switch (cd.special) {
     case 'lightning': {
       addLog('⚡ 雷撃発動！周囲の空白マスを占領', 'important');
-      const captured = [];
+      let lightningCount = 0;
       for (const [dr,dc] of DIRS) {
         const nr=r+dr, nc=c+dc;
         if (nr<0||nr>=GS||nc<0||nc>=GS) continue;
-        if (!G.grid[nr][nc].owner) {
-          G.grid[nr][nc].owner = side;
-          const el = cellEl(nr,nc);
-          if (el) { el.classList.add(`capture-${side}`); setTimeout(() => el.classList.remove(`capture-${side}`), 500); }
-          spawnParticles(nr, nc, side);
-          const pts = Math.round(BASE_SCORE * (side==='player'?G.pMul:G.cMul));
-          if (side==='player') G.pScore += pts; else G.cScore += pts;
-          captured.push([nr,nc]);
+        const t = G.grid[nr][nc];
+        // FIX: skip owned cells and fortresses (maxHp > 1 bypassed the HP system before)
+        if (t.owner || t.maxHp > 1) continue;
+        t.owner = side;
+        const el = cellEl(nr,nc);
+        if (el) { el.classList.add(`capture-${side}`); setTimeout(() => el.classList.remove(`capture-${side}`), 500); }
+        spawnParticles(nr, nc, side);
+        const pts = Math.round(BASE_SCORE * (side==='player'?G.pMul:G.cMul));
+        if (side==='player') G.pScore += pts; else G.cScore += pts;
+        // FIX: update crystal ownership when lightning captures a crystal cell
+        if (t.special === 'crystal') {
+          const cr = G.crystals.find(x => x.r===nr && x.c===nc);
+          if (cr) cr.owner = side;
         }
+        lightningCount++;
       }
-      if (captured.length > 0) addLog(`⚡ 雷撃で${captured.length}マス追加占領！`, side==='player'?'player-ev':'cpu-ev');
+      if (lightningCount > 0) addLog(`⚡ 雷撃で${lightningCount}マス追加占領！`, side==='player'?'player-ev':'cpu-ev');
       cd.special = null;
       break;
     }
@@ -1307,7 +1313,9 @@ function doCpuTurn() {
   const moves = getValidMoves('cpu');
   if (moves.length === 0) {
     addLog('CPU: 有効な手がありません', 'cpu-ev');
-    finishCpuTurn();
+    // FIX: weather events can isolate CPU after checkWin already passed — must re-check here
+    checkWin();
+    if (!G.over) finishCpuTurn();
     return;
   }
 
@@ -1464,7 +1472,9 @@ function triggerWeatherEvent(callback) {
     renderGrid();
     updateHUD();
     setEventText(`${ev.icon} ${ev.title}`, 'weather');
-    callback();
+    // FIX: weather events (tornado etc.) can create a win condition — check before CPU turn
+    checkWin();
+    if (!G.over) callback();
   });
 }
 
@@ -1591,6 +1601,9 @@ function updateHUD() {
     setEventText('🎁 フリーキャプチャ使用可！どこでも占領OK', 'weather');
   } else if (G.doubleNext > 0) {
     setEventText(`⚡ 2倍スコア発動中！残り${G.doubleNext}ターン`, 'chain');
+  } else {
+    // Reset to neutral hint when no status effects are active
+    setEventText('マスをクリックして占領 — 隣接占領でチェーンボーナス獲得', 'info');
   }
 }
 
