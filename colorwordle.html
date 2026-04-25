@@ -82,6 +82,7 @@ body{
 }
 .ms-card::before{
   content:'';position:absolute;inset:0;opacity:0;transition:opacity 0.22s;
+  pointer-events:none;
 }
 .ms-card--daily::before{background:radial-gradient(circle at top left,var(--accent-glow),transparent 70%)}
 .ms-card--free::before{background:radial-gradient(circle at top right,var(--success-glow),transparent 70%)}
