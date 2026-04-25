@@ -187,7 +187,33 @@ header{
 }
 .mode-tag--daily{background:rgba(124,109,255,0.2);color:var(--accent)}
 .mode-tag--free{background:rgba(78,204,163,0.2);color:var(--success)}
-.mode-bar-right{color:var(--text-muted)}
+.mode-bar-right{display:flex;align-items:center;gap:8px;color:var(--text-muted)}
+.live-score-wrap{display:flex;align-items:center;gap:4px;font-size:0.72rem}
+.live-score-val{font-family:var(--font-mono);font-weight:700;font-size:0.82rem;color:var(--accent);transition:color 0.3s}
+.live-score-val.low{color:var(--warning)}
+.live-score-val.very-low{color:var(--error)}
+
+/* Extend button */
+.extend-btn{
+  width:100%;padding:10px 14px;background:var(--card);
+  border:1.5px dashed var(--border);border-radius:var(--radius);
+  color:var(--text-muted);font-family:var(--font-sans);font-size:0.83rem;
+  font-weight:600;cursor:pointer;transition:all var(--transition);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.extend-btn:hover{border-color:var(--accent);color:var(--text);background:var(--card-hover);box-shadow:0 0 10px var(--accent-glow)}
+.extend-btn:disabled{opacity:0.35;cursor:not-allowed}
+.ext-cost{font-size:0.7rem;background:rgba(255,204,92,0.15);color:var(--warning);padding:2px 8px;border-radius:8px;font-weight:600}
+.ext-limit{font-size:0.7rem;color:var(--text-dim)}
+
+/* Score in result */
+.score-result-box{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 16px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-sm);margin:8px 0;
+}
+.score-result-label{font-size:0.78rem;color:var(--text-muted)}
+.score-result-val{font-family:var(--font-mono);font-size:1.5rem;font-weight:700;color:var(--accent)}
 
 /* Daily done notice */
 .daily-done-notice{
@@ -571,7 +597,10 @@ header{
 
   <div class="mode-bar">
     <span class="mode-tag" id="mode-tag"></span>
-    <span style="font-size:0.72rem;color:var(--text-muted)" id="mode-bar-info"></span>
+    <div class="mode-bar-right">
+      <span class="live-score-wrap">スコア: <span class="live-score-val" id="live-score">1000</span></span>
+      <span style="font-size:0.72rem;color:var(--text-muted)" id="mode-bar-info"></span>
+    </div>
   </div>
 
   <!-- Daily already done notice -->
@@ -645,6 +674,10 @@ header{
         <div class="result-hex" id="result-hex"></div>
         <div class="result-name" id="result-name"></div>
       </div>
+    </div>
+    <div class="score-result-box" id="score-result-box" style="display:none">
+      <span class="score-result-label">🏆 最終スコア</span>
+      <span class="score-result-val" id="score-result-val">0</span>
     </div>
     <div class="coin-reward-badge" id="coin-reward-badge" style="display:none"></div>
     <div class="result-next" id="result-next" style="display:none">
@@ -871,7 +904,8 @@ const SK='cw_v1',SK_STATS='cw_v1_stats',SK_COINS='cw_v1_coins';
 const TODAY=todayKey();
 const DAILY_REWARD=10;
 const HINT_COST=5;
-const MAX=6;
+const MAX_LIMIT=15;   // 最大推測回数
+const BASE_GUESSES=6; // 初期推測回数
 
 function loadGame(){try{return JSON.parse(localStorage.getItem(SK)||'null')}catch{return null}}
 function saveGame(d){try{localStorage.setItem(SK,JSON.stringify(d))}catch{}}
@@ -893,6 +927,8 @@ let won=false;
 let purchasedHints=[];      // [{ch:'r'|'g'|'b', val:number}]
 let dailyAlreadyDone=false; // true when daily was already completed this session open
 let countdownTid=null;
+let maxGuesses=BASE_GUESSES; // 現在の最大推測回数 (6〜15)
+let extensionCount=0;        // 「+」を押した回数
 
 // ── Toast ──────────────────────────────────────────────────────
 let toastTid;
@@ -934,6 +970,32 @@ function spendCoins(amount){
   if(coins<amount)return false;
   coins-=amount;saveCoins(coins);updateCoinUI(false);
   return true;
+}
+
+// ── Score System ──────────────────────────────────────────────
+function calculateScore(){
+  // 1000点スタート、推測1回ごとに-100点、拡張1回ごとに-50点
+  return Math.max(0,1000-guesses.length*100-extensionCount*50);
+}
+
+function updateLiveScore(){
+  const el=document.getElementById('live-score');
+  if(!el)return;
+  const score=gameOver?calculateScore():Math.max(0,1000-guesses.length*100-extensionCount*50);
+  el.textContent=score;
+  el.className='live-score-val';
+  if(score<=200)el.classList.add('very-low');
+  else if(score<=500)el.classList.add('low');
+}
+
+function extendGuesses(){
+  if(maxGuesses>=MAX_LIMIT||gameOver)return;
+  maxGuesses++;extensionCount++;
+  if(currentMode==='daily'){
+    saveGame({key:TODAY,guesses,gameOver,won,maxGuesses,extensionCount});
+  }
+  updateLiveScore();
+  renderBoard();renderDots();renderTarget();
 }
 
 // ── Hint System ────────────────────────────────────────────────
@@ -990,7 +1052,7 @@ function buyHint(ch){
 // ── Render functions ───────────────────────────────────────────
 function renderDots(){
   const c=document.getElementById('attempt-dots');c.innerHTML='';
-  for(let i=0;i<MAX;i++){
+  for(let i=0;i<maxGuesses;i++){
     const dot=document.createElement('div');dot.className='dot';
     if(i<guesses.length){
       if(gameOver&&won&&i===guesses.length-1)dot.classList.add('won');
@@ -1044,10 +1106,17 @@ function renderBoard(){
     }
     board.appendChild(row);
   });
-  for(let i=guesses.length;i<MAX;i++){
+  for(let i=guesses.length;i<maxGuesses;i++){
     const e=document.createElement('div');e.className='empty-row';
     e.innerHTML=`<div class="empty-sw"></div><span class="empty-txt">推測 ${i+1}</span>`;
     board.appendChild(e);
+  }
+  // 「+」拡張ボタン
+  if(!gameOver&&maxGuesses<MAX_LIMIT&&!dailyAlreadyDone){
+    const extBtn=document.createElement('button');extBtn.className='extend-btn';
+    extBtn.innerHTML=`＋ 推測を1回追加 <span class="ext-cost">スコア -50pt</span><span class="ext-limit">（残り${MAX_LIMIT-maxGuesses}回追加可）</span>`;
+    extBtn.addEventListener('click',extendGuesses);
+    board.appendChild(extBtn);
   }
 }
 
@@ -1060,7 +1129,7 @@ function renderTarget(){
     disp.textContent=activeTarget.hex.toUpperCase();
     document.getElementById('target-swatch').classList.add('revealed');
   }else{
-    disp.textContent=`残り ${MAX-guesses.length} 回`;
+    disp.textContent=`残り ${maxGuesses-guesses.length} 回`;
   }
 }
 
@@ -1096,6 +1165,17 @@ function renderResult(){
   document.getElementById('result-name').textContent=`🏷️ ${nearestName(activeTarget.r,activeTarget.g,activeTarget.b)}`;
   if(!dailyAlreadyDone)document.getElementById('input-section').style.cssText='opacity:0.45;pointer-events:none';
 
+  // Score display (show only when won, or always?)
+  const scoreBox=document.getElementById('score-result-box');
+  const scoreVal=document.getElementById('score-result-val');
+  if(won){
+    const finalScore=calculateScore();
+    scoreBox.style.display='flex';scoreVal.textContent=finalScore;
+    if(finalScore>=800)scoreVal.style.color='var(--success)';
+    else if(finalScore>=400)scoreVal.style.color='var(--accent)';
+    else scoreVal.style.color='var(--warning)';
+  }else{scoreBox.style.display='none';}
+
   // Coin reward badge
   const crb=document.getElementById('coin-reward-badge');
   if(won&&currentMode==='daily'&&!dailyAlreadyDone){
@@ -1128,7 +1208,7 @@ function renderModeBar(){
 function renderAll(){
   if(!activeTarget)return;
   renderBoard();renderDots();renderTarget();renderPalette();
-  renderHintsBar();updateHintBtn();
+  renderHintsBar();updateHintBtn();updateLiveScore();
   if(gameOver)renderResult();
 }
 
@@ -1159,7 +1239,7 @@ function buildShareText(){
     const e=h=>h.sym==='✓'?'🟩':h.sym==='↑'?'🟦':'🟥';
     return e(r)+e(gv)+e(b);
   };
-  const result=won?`${guesses.length}/${MAX}`:`X/${MAX}`;
+  const result=won?`${guesses.length}/${maxGuesses}`:`X/${maxGuesses}`;
   const mode=currentMode==='daily'?'デイリー':'フリープレイ';
   return[
     `🎨 ColorWordle ${TODAY} [${mode}]`,
@@ -1218,7 +1298,7 @@ function submit(){
   guesses.push({r:parsed.r,g:parsed.g,b:parsed.b,hex:parsed.hex});
   if(parsed.r===activeTarget.r&&parsed.g===activeTarget.g&&parsed.b===activeTarget.b){
     won=true;gameOver=true;
-  }else if(guesses.length>=MAX){
+  }else if(guesses.length>=maxGuesses){
     gameOver=true;}
 
   if(gameOver){
@@ -1249,11 +1329,11 @@ function submit(){
         saveStats(st);
       }
       // Persist daily game state
-      saveGame({key:TODAY,guesses,gameOver,won});
+      saveGame({key:TODAY,guesses,gameOver,won,maxGuesses,extensionCount});
     }
   }else{
     // Save daily progress mid-game
-    if(currentMode==='daily')saveGame({key:TODAY,guesses,gameOver,won});
+    if(currentMode==='daily')saveGame({key:TODAY,guesses,gameOver,won,maxGuesses,extensionCount});
   }
 
   input.value='';input.classList.remove('valid','invalid');
@@ -1335,6 +1415,7 @@ function showModeScreen(){
   ms.classList.remove('hidden','hiding');
   // Reset game screen state
   dailyAlreadyDone=false;
+  maxGuesses=BASE_GUESSES;extensionCount=0;
   document.getElementById('daily-done-notice').style.display='none';
   document.getElementById('result-banner').classList.remove('show');
   document.getElementById('palette-section').style.display='none';
@@ -1368,6 +1449,7 @@ function startDaily(){
     const saved=loadGame();
     activeTarget=getDailyColor();
     guesses=saved.guesses||[];gameOver=saved.gameOver;won=saved.won;
+    maxGuesses=saved.maxGuesses||BASE_GUESSES;extensionCount=saved.extensionCount||0;
     purchasedHints=[];dailyAlreadyDone=true;
     enterGame();
     // Show done notice
@@ -1379,12 +1461,14 @@ function startDaily(){
     const saved=loadGame();
     activeTarget=getDailyColor();
     guesses=saved.guesses||[];gameOver=false;won=false;purchasedHints=[];dailyAlreadyDone=false;
+    maxGuesses=saved.maxGuesses||BASE_GUESSES;extensionCount=saved.extensionCount||0;
     enterGame();
     if(!gameOver)setTimeout(()=>document.getElementById('hex-input').focus(),400);
   }else{
     activeTarget=getDailyColor();
     guesses=[];gameOver=false;won=false;purchasedHints=[];dailyAlreadyDone=false;
-    saveGame({key:TODAY,guesses:[],gameOver:false,won:false});
+    maxGuesses=BASE_GUESSES;extensionCount=0;
+    saveGame({key:TODAY,guesses:[],gameOver:false,won:false,maxGuesses:BASE_GUESSES,extensionCount:0});
     enterGame();
     setTimeout(()=>document.getElementById('hex-input').focus(),400);
   }
@@ -1394,6 +1478,7 @@ function startFreePlay(){
   currentMode='freeplay';
   activeTarget=getRandomColor();
   guesses=[];gameOver=false;won=false;purchasedHints=[];dailyAlreadyDone=false;
+  maxGuesses=BASE_GUESSES;extensionCount=0;
   enterGame();
   setTimeout(()=>document.getElementById('hex-input').focus(),400);
 }
@@ -1401,6 +1486,7 @@ function startFreePlay(){
 function restartFreePlay(){
   activeTarget=getRandomColor();
   guesses=[];gameOver=false;won=false;purchasedHints=[];
+  maxGuesses=BASE_GUESSES;extensionCount=0;
   document.getElementById('result-banner').classList.remove('show');
   document.getElementById('palette-section').style.display='none';
   document.getElementById('hints-bar').style.display='none';
