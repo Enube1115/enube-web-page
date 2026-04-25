@@ -449,6 +449,148 @@ body::before {
   border-radius: 4px; padding: 3px 8px;
 }
 
+/* ===== RULES BUTTON ===== */
+.rules-link {
+  margin-top: 28px;
+  background: transparent;
+  border: 1px solid rgba(200,210,255,0.2);
+  border-radius: 6px;
+  color: rgba(200,210,255,0.45);
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  letter-spacing: 2px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.rules-link:hover {
+  color: rgba(200,210,255,0.85);
+  border-color: rgba(200,210,255,0.4);
+  background: rgba(255,255,255,0.04);
+}
+.rules-link.in-game {
+  margin-top: 0;
+  font-size: 0.7rem;
+  padding: 5px 14px;
+  position: absolute;
+  right: 0; top: 0;
+}
+.header { position: relative; }
+
+/* ===== RULES MODAL ===== */
+.rules-box {
+  max-width: 680px;
+  padding: 30px 36px;
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.rules-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  flex-shrink: 0;
+}
+
+.rules-title {
+  font-size: 1.6rem !important;
+  margin-bottom: 0 !important;
+  background: linear-gradient(135deg, var(--p), #7b2fff, var(--c));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rules-close {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(200,210,255,0.5);
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.rules-close:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.3); }
+
+.rules-body {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+  flex: 1;
+  padding-right: 4px;
+}
+
+.rules-section {
+  margin-bottom: 20px;
+}
+
+.rules-section-title {
+  font-size: 0.78rem;
+  letter-spacing: 3px;
+  color: var(--gold);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,215,0,0.15);
+}
+
+.rules-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rules-list li {
+  font-size: 0.78rem;
+  color: rgba(200,210,255,0.7);
+  padding-left: 14px;
+  position: relative;
+  line-height: 1.5;
+}
+.rules-list li::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  color: var(--p);
+  opacity: 0.6;
+}
+
+.rules-list strong { color: rgba(200,210,255,0.95); }
+
+.rc-p { color: var(--p); font-weight: bold; }
+.rc-c { color: var(--c); font-weight: bold; }
+
+.rules-specials {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.rs-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.rs-icon { font-size: 1.4rem; flex-shrink: 0; line-height: 1.3; }
+
+.rs-item div {
+  font-size: 0.74rem;
+  color: rgba(200,210,255,0.65);
+  line-height: 1.5;
+}
+.rs-item strong { color: rgba(200,210,255,0.95); }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 700px) {
   .cell { width: 38px; height: 38px; font-size: 0.9rem; }
@@ -487,12 +629,15 @@ body::before {
     <button class="diff-btn normal" onclick="startGame('normal')">NORMAL</button>
     <button class="diff-btn hard" onclick="startGame('hard')">HARD</button>
   </div>
+
+  <button class="rules-link" onclick="openRules()">📖 ルールを確認する</button>
 </div>
 
 <!-- ===== GAME SCREEN ===== -->
 <div id="game-screen">
   <div class="header">
     <div class="game-title">GRID WARS</div>
+    <button class="rules-link in-game" onclick="openRules()">📖 ルール</button>
   </div>
 
   <div class="hud">
@@ -546,6 +691,85 @@ body::before {
     <div class="event-popup-icon" id="evIcon">⛈️</div>
     <div class="event-popup-title" id="evTitle">WEATHER EVENT</div>
     <div class="event-popup-desc" id="evDesc">Something is happening...</div>
+  </div>
+</div>
+
+<!-- ===== RULES MODAL ===== -->
+<div id="rulesModal" class="modal-overlay" style="display:none" onclick="closeRulesOnBg(event)">
+  <div class="modal-box rules-box">
+    <div class="rules-header">
+      <div class="modal-title rules-title">GAME RULES</div>
+      <button class="rules-close" onclick="closeRules()">✕</button>
+    </div>
+
+    <div class="rules-body">
+      <div class="rules-section">
+        <div class="rules-section-title">🎯 基本ルール</div>
+        <ul class="rules-list">
+          <li>プレイヤー（<span class="rc-p">青</span>）とCPU（<span class="rc-c">赤</span>）が交互にマスを占領する</li>
+          <li>占領できるのは<strong>自分の領地に隣接するマスのみ</strong>（上下左右4方向）</li>
+          <li>全マスが埋まるか、どちらかが動けなくなったらゲーム終了</li>
+          <li>スコアが多い方が勝利（領地数ではなく獲得点数で勝敗判定）</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">⚔️ 攻撃とHP</div>
+        <ul class="rules-list">
+          <li>空きマスは1回のクリックで即占領できる</li>
+          <li>敵のマスも隣接していれば攻撃可能。HPを0にすれば奪える</li>
+          <li>通常マスのHP: <strong>1</strong>（1回で奪取）、🛡️要塞のHP: <strong>3</strong>（3回必要）</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">🔗 チェーンボーナス & コンボ</div>
+        <ul class="rules-list">
+          <li>占領したマスの隣に<strong>自分のマスが多いほど</strong>スコアボーナス増加（+18pt/隣接マス）</li>
+          <li>チェーンが繋がると<strong>コンボカウンター</strong>が上昇しスコア倍率アップ</li>
+          <li>3連鎖: ×1.5 ／ 5連鎖: ×2.0 ／ 8連鎖: ×3.0</li>
+          <li>孤立したマスを占領するとコンボリセット</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">✨ パワーセル一覧</div>
+        <div class="rules-specials">
+          <div class="rs-item"><span class="rs-icon">⚡</span><div><strong>雷撃</strong><br>占領時に周囲4マスの空きマスを一括占領</div></div>
+          <div class="rs-item"><span class="rs-icon">🛡️</span><div><strong>要塞</strong><br>HP3の難攻不落マス。占領後も高い守備力を誇る</div></div>
+          <div class="rs-item"><span class="rs-icon">💣</span><div><strong>爆弾</strong><br>占領時に周囲8マス全員を強制中立化（自分のマスも含む）</div></div>
+          <div class="rs-item"><span class="rs-icon">⭐</span><div><strong>スター</strong><br>即時 +100pt ボーナス。モラルブースト中は +150pt</div></div>
+          <div class="rs-item"><span class="rs-icon">🔮</span><div><strong>クリスタル</strong><br>ゲーム終了時に自分の領地数×2のボーナス点を獲得</div></div>
+          <div class="rs-item"><span class="rs-icon">🌀</span><div><strong>ポータル</strong><br>対になるマスを占領すると遠距離の隣接ルートが開通</div></div>
+        </div>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">💪 モラルブースト</div>
+        <ul class="rules-list">
+          <li>チェーンボーナス付きで3連続占領すると発動</li>
+          <li>次の占領に <strong>+30pt</strong> のモラルボーナスが加算される</li>
+          <li>スターを踏んだ場合はさらに +50pt（合計150pt）</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">⛈️ 天候イベント（5ターンごと）</div>
+        <div class="rules-specials">
+          <div class="rs-item"><span class="rs-icon">☀️</span><div><strong>Solar Surge</strong> — 全領地に+5pt</div></div>
+          <div class="rs-item"><span class="rs-icon">🌊</span><div><strong>Tidal Reset</strong> — CPUの領地3か所が中立に</div></div>
+          <div class="rs-item"><span class="rs-icon">⚡</span><div><strong>Power Surge</strong> — 次3ターンのスコアが2倍</div></div>
+          <div class="rs-item"><span class="rs-icon">🎁</span><div><strong>Free Capture</strong> — 次の1手にどこでも占領OK</div></div>
+          <div class="rs-item"><span class="rs-icon">🌑</span><div><strong>CPU Glitch</strong> — 次2ターンCPUがランダム行動</div></div>
+          <div class="rs-item"><span class="rs-icon">💫</span><div><strong>Crystal Rain</strong> — クリスタルが3か所に出現</div></div>
+          <div class="rs-item"><span class="rs-icon">🌪️</span><div><strong>Tornado</strong> — 中央2×2マスがシャッフル</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top:8px;">
+      <button class="modal-btn" onclick="closeRules()">CLOSE</button>
+    </div>
   </div>
 </div>
 
@@ -651,6 +875,16 @@ function goToMenu() {
   document.getElementById('gameOverModal').style.display = 'none';
   document.getElementById('game-screen').style.display = 'none';
   document.getElementById('start-screen').style.display = 'flex';
+}
+
+function openRules() {
+  document.getElementById('rulesModal').style.display = 'flex';
+}
+function closeRules() {
+  document.getElementById('rulesModal').style.display = 'none';
+}
+function closeRulesOnBg(e) {
+  if (e.target === document.getElementById('rulesModal')) closeRules();
 }
 
 function restartGame() {
