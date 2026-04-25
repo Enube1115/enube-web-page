@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ColorWordle - 毎日の色当てゲーム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0d0d1a;--surface:#13132b;--card:#1a1a35;--card-hover:#1f1f40;
+  --border:#2a2a55;--text:#e8e8ff;--text-muted:#8888bb;--text-dim:#5555aa;
+  --accent:#7c6dff;--accent-glow:rgba(124,109,255,0.3);
+  --success:#4ecca3;--success-glow:rgba(78,204,163,0.3);
+  --error:#ff6b6b;--warning:#ffcc5c;
+  --font-mono:'JetBrains Mono',monospace;--font-sans:'Inter',sans-serif;
+  --radius:12px;--radius-sm:8px;--transition:0.2s ease;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);--shadow-lg:0 8px 48px rgba(0,0,0,0.6);
+}
+[data-theme="light"]{
+  --bg:#f0f0ff;--surface:#ffffff;--card:#f8f8ff;--card-hover:#f0f0ff;
+  --border:#d0d0ee;--text:#111133;--text-muted:#5555aa;--text-dim:#9999cc;
+  --accent:#6050ee;--accent-glow:rgba(96,80,238,0.2);
+  --success:#27a87e;--success-glow:rgba(39,168,126,0.2);
+  --error:#cc3344;--warning:#cc8800;
+  --shadow:0 4px 24px rgba(0,0,0,0.1);--shadow-lg:0 8px 48px rgba(0,0,0,0.2);
+}
+
+html{font-size:16px}
+body{
+  font-family:var(--font-sans);background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  transition:background 0.3s,color 0.3s;padding-bottom:40px;
+}
+
+#app{width:100%;max-width:520px;padding:16px;display:flex;flex-direction:column;gap:14px}
+
+/* Header */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);
+}
+.header-title h1{
+  font-size:1.45rem;font-weight:700;letter-spacing:-0.5px;
+  background:linear-gradient(135deg,var(--accent),var(--success));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.header-title .date{font-size:0.72rem;color:var(--text-muted);font-family:var(--font-mono);margin-top:2px}
+.header-actions{display:flex;gap:7px}
+.icon-btn{
+  background:var(--card);border:1px solid var(--border);color:var(--text-muted);
+  width:36px;height:36px;border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+  transition:all var(--transition);
+}
+.icon-btn:hover{background:var(--card-hover);color:var(--text);border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow)}
+
+/* Target Preview */
+.target-preview{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 18px;box-shadow:var(--shadow);
+}
+.section-label{
+  font-size:0.68rem;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--text-muted);margin-bottom:10px;font-weight:600;
+}
+.target-row{display:flex;gap:12px;align-items:center}
+.target-swatch{
+  width:54px;height:54px;border-radius:var(--radius-sm);
+  border:2px solid var(--border);position:relative;overflow:hidden;flex-shrink:0;
+}
+.target-swatch.revealed{box-shadow:0 0 20px var(--accent-glow)}
+.target-mask{
+  position:absolute;inset:0;
+  background:repeating-conic-gradient(#333 0% 25%,#444 0% 50%) 0 0/14px 14px;
+  display:flex;align-items:center;justify-content:center;font-size:1.4rem;
+  transition:opacity 0.6s ease;
+}
+.target-fill{position:absolute;inset:0;opacity:0;transition:opacity 0.6s ease}
+.target-info{flex:1}
+.target-info .lbl{font-size:0.75rem;color:var(--text-muted);margin-bottom:3px}
+.target-info .val{font-family:var(--font-mono);font-size:1.1rem;font-weight:600;letter-spacing:1px}
+.attempt-dots{display:flex;gap:5px;align-items:center}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--border);transition:all var(--transition)}
+.dot.used{background:var(--accent)}
+.dot.won{background:var(--success)}
+.dot.lost{background:var(--error)}
+
+/* Guess Board */
+.guess-board{display:flex;flex-direction:column;gap:9px}
+.guess-row{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:11px 14px;display:flex;
+  flex-direction:column;gap:8px;box-shadow:var(--shadow);
+  animation:slideIn 0.3s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.guess-top{display:flex;align-items:center;gap:10px}
+.guess-num{font-size:0.68rem;color:var(--text-dim);font-family:var(--font-mono);min-width:18px}
+.guess-swatch{
+  width:42px;height:42px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);flex-shrink:0;cursor:pointer;
+  transition:box-shadow var(--transition);
+}
+.guess-swatch:hover{box-shadow:0 0 14px rgba(255,255,255,0.25)}
+.guess-info{flex:1;min-width:0}
+.guess-hex{
+  font-family:var(--font-mono);font-size:0.95rem;font-weight:600;
+  cursor:pointer;letter-spacing:1px;transition:color var(--transition);
+  white-space:nowrap;
+}
+.guess-hex:hover{color:var(--accent);text-decoration:underline}
+.guess-name{font-size:0.7rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.guess-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.prox-wrap{display:flex;align-items:center;gap:5px}
+.prox-bar{width:52px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.prox-fill{height:100%;border-radius:3px;transition:width 0.5s ease}
+.prox-pct{font-family:var(--font-mono);font-size:0.68rem;color:var(--text-muted);min-width:28px;text-align:right}
+.temp-badge{
+  font-size:0.65rem;padding:2px 6px;border-radius:10px;
+  font-weight:600;letter-spacing:0.3px;white-space:nowrap;
+}
+.warm{background:rgba(255,160,50,0.2);color:#ffaa33}
+.cool{background:rgba(80,180,255,0.2);color:#55aaff}
+.neutral{background:rgba(160,160,160,0.2);color:#aaa}
+
+/* RGB hints */
+.rgb-hints{display:flex;gap:7px}
+.rgb-cell{
+  flex:1;background:var(--card);border-radius:var(--radius-sm);
+  padding:7px 9px;display:flex;flex-direction:column;gap:3px;
+  border:1px solid var(--border);
+}
+.rgb-lbl{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.rgb-lbl.r{color:#ff6666}.rgb-lbl.g{color:#66ee88}.rgb-lbl.b{color:#6699ff}
+.rgb-arrow{font-size:0.85rem;font-weight:700;line-height:1}
+.rgb-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.rgb-bar-fill{height:100%;border-radius:2px;transition:width 0.5s ease}
+.rgb-bar-fill.r{background:#ff6666}.rgb-bar-fill.g{background:#66ee88}.rgb-bar-fill.b{background:#6699ff}
+.rgb-val{font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted)}
+.c-correct{color:var(--success)}
+.c-up{color:#88aaff}
+.c-down{color:#ff8888}
+.win-label{text-align:center;font-size:0.72rem;color:var(--success);font-weight:700;padding-top:2px}
+
+/* Empty rows */
+.empty-row{
+  background:var(--surface);border:1px dashed var(--border);
+  border-radius:var(--radius);padding:18px 14px;
+  display:flex;align-items:center;gap:10px;opacity:0.45;
+}
+.empty-sw{width:42px;height:42px;border-radius:var(--radius-sm);border:1px dashed var(--border);background:var(--card)}
+.empty-txt{font-family:var(--font-mono);font-size:0.78rem;color:var(--text-dim);letter-spacing:2px}
+
+/* Input section */
+.input-section{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 18px;box-shadow:var(--shadow);
+}
+.live-preview{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;
+  background:var(--card);border-radius:var(--radius-sm);
+  margin-bottom:11px;border:1px solid var(--border);
+}
+.prev-swatch{width:34px;height:34px;border-radius:6px;border:1px solid var(--border);background:#888;flex-shrink:0;transition:background 0.15s}
+.prev-info{flex:1;min-width:0}
+.prev-hex{font-family:var(--font-mono);font-size:0.88rem;font-weight:600;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prev-name{font-size:0.68rem;color:var(--text-muted);margin-top:1px}
+.input-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.hex-prefix{font-family:var(--font-mono);font-size:1.2rem;color:var(--text-muted);font-weight:600;flex-shrink:0}
+.hex-input{
+  flex:1;background:var(--card);border:2px solid var(--border);
+  border-radius:var(--radius-sm);padding:9px 12px;
+  font-family:var(--font-mono);font-size:1.05rem;font-weight:600;
+  color:var(--text);letter-spacing:2px;text-transform:uppercase;
+  outline:none;transition:all var(--transition);width:100%;
+}
+.hex-input:focus{border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow)}
+.hex-input.valid{border-color:var(--success)}
+.hex-input.invalid{border-color:var(--error)}
+.picker-wrap{
+  width:42px;height:42px;border-radius:var(--radius-sm);
+  border:2px solid var(--border);cursor:pointer;flex-shrink:0;
+  overflow:hidden;position:relative;transition:border-color var(--transition);
+}
+.picker-wrap:hover{border-color:var(--accent)}
+.picker-wrap input[type="color"]{
+  position:absolute;inset:-4px;width:calc(100% + 8px);
+  height:calc(100% + 8px);cursor:pointer;opacity:0;
+}
+.picker-face{
+  position:absolute;inset:0;background:#888;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;pointer-events:none;transition:background 0.15s;
+}
+.submit-btn{
+  width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),#9b8dff);
+  border:none;border-radius:var(--radius-sm);color:#fff;
+  font-family:var(--font-sans);font-size:0.92rem;font-weight:700;
+  cursor:pointer;letter-spacing:0.5px;transition:all var(--transition);
+  box-shadow:0 4px 14px var(--accent-glow);margin-bottom:9px;
+}
+.submit-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px var(--accent-glow)}
+.submit-btn:active:not(:disabled){transform:translateY(0)}
+.submit-btn:disabled{opacity:0.45;cursor:not-allowed}
+.shortcuts{display:flex;gap:10px;flex-wrap:wrap}
+.shortcut{display:flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--text-dim)}
+.key{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted)}
+
+/* Result banner */
+.result-banner{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);
+  animation:slideIn 0.4s ease;display:none;
+}
+.result-banner.show{display:block}
+.result-title{font-size:1.3rem;font-weight:700;margin-bottom:10px;text-align:center}
+.result-title.win{background:linear-gradient(135deg,var(--success),#7cffdf);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.result-title.lose{color:var(--error)}
+.result-color{
+  display:flex;align-items:center;gap:14px;padding:12px;
+  background:var(--card);border-radius:var(--radius-sm);
+  margin:10px 0;border:1px solid var(--border);
+}
+.result-swatch{width:48px;height:48px;border-radius:var(--radius-sm);border:1px solid var(--border);flex-shrink:0}
+.result-hex{font-family:var(--font-mono);font-size:1.1rem;font-weight:700;letter-spacing:1px}
+.result-name{font-size:0.78rem;color:var(--text-muted);margin-top:3px}
+.result-next{font-size:0.78rem;color:var(--text-muted);text-align:center;margin:8px 0}
+.countdown{font-family:var(--font-mono);font-weight:700;color:var(--accent)}
+.result-actions{display:flex;gap:8px;margin-top:12px}
+.share-btn{
+  flex:1;padding:10px;background:linear-gradient(135deg,#27a87e,var(--success));
+  border:none;border-radius:var(--radius-sm);color:#fff;font-weight:700;
+  font-size:0.88rem;cursor:pointer;transition:all var(--transition);
+  box-shadow:0 4px 14px var(--success-glow);
+}
+.share-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--success-glow)}
+.copy-result-btn{
+  padding:10px 14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text-muted);cursor:pointer;
+  font-size:0.88rem;transition:all var(--transition);
+}
+.copy-result-btn:hover{border-color:var(--accent);color:var(--text)}
+
+/* Palette gallery */
+.palette-section{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 18px;box-shadow:var(--shadow);
+}
+.palette-swatches{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.pal-sw{
+  width:38px;height:38px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);cursor:pointer;position:relative;
+  transition:transform var(--transition),box-shadow var(--transition);
+}
+.pal-sw:hover{transform:scale(1.12);box-shadow:0 4px 10px rgba(0,0,0,0.4)}
+.pal-tip{
+  position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);
+  background:var(--text);color:var(--bg);font-family:var(--font-mono);
+  font-size:0.62rem;padding:3px 6px;border-radius:4px;
+  white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.15s;
+}
+.pal-sw:hover .pal-tip{opacity:1}
+
+/* Modal */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.72);
+  display:flex;align-items:center;justify-content:center;z-index:100;
+  opacity:0;pointer-events:none;transition:opacity 0.25s;padding:20px;
+}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:22px;width:100%;max-width:400px;
+  box-shadow:var(--shadow-lg);transform:scale(0.95);transition:transform 0.25s;
+}
+.modal-overlay.show .modal{transform:scale(1)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal-title{font-size:1.1rem;font-weight:700}
+.modal-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;padding:4px;transition:color var(--transition)}
+.modal-close:hover{color:var(--text)}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:18px}
+.stat-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 7px;text-align:center}
+.stat-val{font-family:var(--font-mono);font-size:1.5rem;font-weight:700;color:var(--accent);line-height:1;margin-bottom:4px}
+.stat-lbl{font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px}
+.dist-section{margin-top:14px}
+.dist-lbl{font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;font-weight:600}
+.dist-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.dist-num{font-family:var(--font-mono);font-size:0.78rem;width:11px;text-align:right;flex-shrink:0;color:var(--text-muted)}
+.dist-bar{flex:1;height:20px;background:var(--card);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.dist-fill{
+  height:100%;background:var(--accent);border-radius:4px;
+  display:flex;align-items:center;justify-content:flex-end;padding-right:7px;
+  font-size:0.68rem;font-weight:700;color:#fff;transition:width 0.7s ease;min-width:22px;
+}
+.dist-fill.cur{background:var(--success)}
+
+/* How to play */
+.howto{
+  font-size:0.76rem;color:var(--text-muted);line-height:1.65;
+  padding:11px 14px;background:var(--card);border-radius:var(--radius-sm);
+  border:1px solid var(--border);margin-top:14px;
+}
+.howto strong{color:var(--text)}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--text);color:var(--bg);padding:9px 18px;
+  border-radius:100px;font-size:0.83rem;font-weight:600;
+  opacity:0;transition:all 0.28s ease;pointer-events:none;z-index:1000;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Confetti */
+.confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden}
+.cp{position:absolute;animation:fall linear forwards}
+@keyframes fall{
+  0%{transform:translateY(-20px) rotate(0deg);opacity:1}
+  100%{transform:translateY(110vh) rotate(720deg);opacity:0}
+}
+
+/* Responsive */
+@media(max-width:400px){.rgb-hints{gap:5px}.rgb-cell{padding:6px 7px}.stats-grid{gap:6px}}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="header-title">
+    <h1>🎨 ColorWordle</h1>
+    <div class="date" id="date-display"></div>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="help-btn" title="遊び方">❓</button>
+    <button class="icon-btn" id="stats-btn" title="統計">📊</button>
+    <button class="icon-btn" id="theme-btn" title="テーマ">🌙</button>
+  </div>
+</header>
+
+<div class="target-preview">
+  <div class="section-label">今日の正解色</div>
+  <div class="target-row">
+    <div class="target-swatch" id="target-swatch">
+      <div class="target-mask" id="target-mask">🔒</div>
+      <div class="target-fill" id="target-fill"></div>
+    </div>
+    <div class="target-info">
+      <div class="lbl">正解カラーコード</div>
+      <div class="val" id="target-display">??????</div>
+    </div>
+    <div class="attempt-dots" id="attempt-dots"></div>
+  </div>
+</div>
+
+<div class="guess-board" id="guess-board"></div>
+
+<div class="input-section" id="input-section">
+  <div class="section-label">カラーコードを入力</div>
+  <div class="live-preview">
+    <div class="prev-swatch" id="prev-swatch"></div>
+    <div class="prev-info">
+      <div class="prev-hex" id="prev-hex">入力してください...</div>
+      <div class="prev-name" id="prev-name">-</div>
+    </div>
+  </div>
+  <div class="input-row">
+    <span class="hex-prefix">#</span>
+    <input type="text" id="hex-input" class="hex-input" maxlength="6"
+      placeholder="RRGGBB" autocomplete="off" autocorrect="off"
+      autocapitalize="none" spellcheck="false">
+    <div class="picker-wrap" title="カラーピッカー">
+      <div class="picker-face" id="picker-face">🎨</div>
+      <input type="color" id="color-picker" value="#888888">
+    </div>
+  </div>
+  <button class="submit-btn" id="submit-btn" disabled>推測する</button>
+  <div class="shortcuts">
+    <span class="shortcut"><span class="key">Enter</span>送信</span>
+    <span class="shortcut"><span class="key">Esc</span>クリア</span>
+    <span class="shortcut"><span class="key">↑↓</span>HEX調整</span>
+  </div>
+</div>
+
+<div class="result-banner" id="result-banner">
+  <div class="result-title" id="result-title"></div>
+  <div class="result-color">
+    <div class="result-swatch" id="result-swatch"></div>
+    <div>
+      <div class="result-hex" id="result-hex"></div>
+      <div class="result-name" id="result-name"></div>
+    </div>
+  </div>
+  <div class="result-next">次のチャレンジまで: <span class="countdown" id="countdown">--:--:--</span></div>
+  <div class="result-actions">
+    <button class="share-btn" id="share-btn">📤 結果をシェア</button>
+    <button class="copy-result-btn" id="copy-hex-btn">📋 HEXコピー</button>
+  </div>
+</div>
+
+<div class="palette-section" id="palette-section" style="display:none">
+  <div class="section-label">推測した色のパレット</div>
+  <div class="palette-swatches" id="palette-swatches"></div>
+</div>
+
+</div>
+
+<!-- Stats Modal -->
+<div class="modal-overlay" id="stats-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">📊 統計</div>
+      <button class="modal-close" id="stats-close">✕</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-item"><div class="stat-val" id="s-played">0</div><div class="stat-lbl">プレイ</div></div>
+      <div class="stat-item"><div class="stat-val" id="s-winrate">0%</div><div class="stat-lbl">勝率</div></div>
+      <div class="stat-item"><div class="stat-val" id="s-streak">0</div><div class="stat-lbl">連続</div></div>
+      <div class="stat-item"><div class="stat-val" id="s-max">0</div><div class="stat-lbl">最高連続</div></div>
+    </div>
+    <div class="dist-section">
+      <div class="dist-lbl">推測回数の分布</div>
+      <div id="dist-bars"></div>
+    </div>
+    <div class="howto">
+      <strong>5つの特別な機能：</strong><br>
+      🎨 <strong>ライブプレビュー</strong> — 入力中にリアルタイムで色確認<br>
+      📏 <strong>近さ%</strong> — 正解との数学的距離をパーセント表示<br>
+      🏷️ <strong>色の名前</strong> — 最も近いCSS色名を日本語で表示<br>
+      🌡️ <strong>色温度</strong> — 暖色・寒色・中間を自動分類<br>
+      📊 <strong>RGBバー</strong> — R・G・Bの値を視覚的にバー表示
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="help-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">❓ 遊び方</div>
+      <button class="modal-close" id="help-close">✕</button>
+    </div>
+    <div class="howto">
+      <strong>ColorWordleとは？</strong><br>
+      毎日1つのHEXカラーコードが出題。6回以内に当ててください！<br><br>
+      <strong>入力方法：</strong><br>
+      • HEXコード（例: FF5733）をテキスト入力<br>
+      • 🎨ボタンでカラーピッカーを使用<br>
+      • ↑↓キーで入力中の値を微調整<br><br>
+      <strong>ヒントの見方：</strong><br>
+      ↑ = 正解より低い（値を上げて）<br>
+      ↓ = 正解より高い（値を下げて）<br>
+      ✓ = 正解！<br><br>
+      <strong>特別な機能：</strong><br>
+      🎨 ライブプレビュー — 入力中に色を確認<br>
+      📏 近さ% — 正解との距離をパーセント表示<br>
+      🏷️ 色の名前 — 最も近いCSS色名（日本語）<br>
+      🌡️ 色温度 — 暖色/寒色/中間の分類<br>
+      📊 RGBバー — 各チャンネルを視覚化<br>
+      📋 HEXコピー — クリックでコードをコピー<br>
+      🎊 コンフェッティ — 正解時に紙吹雪！
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="confetti-wrap" id="confetti-wrap"></div>
+
+<script>
+'use strict';
+
+// ── CSS Color Names ──────────────────────────────────────────
+const CSS_COLORS = {
+  'アリスブルー':[240,248,255],'アンティークホワイト':[250,235,215],
+  'アクア':[0,255,255],'アクアマリン':[127,255,212],
+  'ベージュ':[245,245,220],'ビスク':[255,228,196],
+  '黒':[0,0,0],'青':[0,0,255],'青紫':[138,43,226],
+  '茶色':[165,42,42],'バーリーウッド':[222,184,135],
+  'ケイデットブルー':[95,158,160],'チャートルーズ':[127,255,0],
+  'チョコレート':[210,105,30],'コーラル':[255,127,80],
+  'コーンフラワーブルー':[100,149,237],'クリムゾン':[220,20,60],
+  'シアン':[0,255,255],'ダークブルー':[0,0,139],'ダークシアン':[0,139,139],
+  'ダークゴールデンロッド':[184,134,11],'ダークグレー':[169,169,169],
+  'ダークグリーン':[0,100,0],'ダークカーキ':[189,183,107],
+  'ダークマゼンタ':[139,0,139],'ダークオリーブグリーン':[85,107,47],
+  'ダークオレンジ':[255,140,0],'ダークオーキッド':[153,50,204],
+  'ダークレッド':[139,0,0],'ダークサーモン':[233,150,122],
+  'ダークターコイズ':[0,206,209],'ダークバイオレット':[148,0,211],
+  'ディープピンク':[255,20,147],'ディープスカイブルー':[0,191,255],
+  'ドジャーブルー':[30,144,255],'ファイアブリック':[178,34,34],
+  'フォレストグリーン':[34,139,34],'フクシア':[255,0,255],
+  'ゴールド':[255,215,0],'ゴールデンロッド':[218,165,32],
+  'グレー':[128,128,128],'緑':[0,128,0],'グリーンイエロー':[173,255,47],
+  'ホットピンク':[255,105,180],'インディアンレッド':[205,92,92],
+  'インディゴ':[75,0,130],'アイボリー':[255,255,240],
+  'カーキ':[240,230,140],'ラベンダー':[230,230,250],
+  'ライトブルー':[173,216,230],'ライトコーラル':[240,128,128],
+  'ライトシアン':[224,255,255],'ライトグレー':[211,211,211],
+  'ライトグリーン':[144,238,144],'ライトピンク':[255,182,193],
+  'ライトサーモン':[255,160,122],'ライムグリーン':[50,205,50],
+  'マゼンタ':[255,0,255],'マルーン':[128,0,0],'ミッドナイトブルー':[25,25,112],
+  'ネイビー':[0,0,128],'オリーブ':[128,128,0],'オレンジ':[255,165,0],
+  'オレンジレッド':[255,69,0],'オーキッド':[218,112,214],'ペールグリーン':[152,251,152],
+  'ペルー':[205,133,63],'ピンク':[255,192,203],'プラム':[221,160,221],
+  'パウダーブルー':[176,224,230],'紫':[128,0,128],'赤':[255,0,0],
+  'ロイヤルブルー':[65,105,225],'サドルブラウン':[139,69,19],
+  'サーモン':[250,128,114],'サンディブラウン':[244,164,96],
+  'シーグリーン':[46,139,87],'シエナ':[160,82,45],
+  'シルバー':[192,192,192],'スカイブルー':[135,206,235],
+  'スレートブルー':[106,90,205],'スレートグレー':[112,128,144],
+  'スプリンググリーン':[0,255,127],'スチールブルー':[70,130,180],
+  'タン':[210,180,140],'ティール':[0,128,128],'シスル':[216,191,216],
+  'トマト':[255,99,71],'ターコイズ':[64,224,208],'バイオレット':[238,130,238],
+  'ウィート':[245,222,179],'白':[255,255,255],'黄':[255,255,0],
+  'イエローグリーン':[154,205,50],'ライム':[0,255,0],
+};
+
+// ── Utilities ────────────────────────────────────────────────
+function hslToRgb(h,s,l){
+  let r,g,b;
+  if(s===0){r=g=b=l}else{
+    const f=(p,q,t)=>{
+      if(t<0)t+=1;if(t>1)t-=1;
+      if(t<1/6)return p+(q-p)*6*t;
+      if(t<1/2)return q;
+      if(t<2/3)return p+(q-p)*(2/3-t)*6;
+      return p;
+    };
+    const q=l<0.5?l*(1+s):l+s-l*s;
+    const p=2*l-q;
+    r=f(p,q,h/360+1/3);g=f(p,q,h/360);b=f(p,q,h/360-1/3);
+  }
+  r=Math.round(r*255);g=Math.round(g*255);b=Math.round(b*255);
+  return{r,g,b,hex:'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('')};
+}
+
+function hexToRgb(hex){
+  hex=hex.replace(/^#/,'').trim();
+  if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
+  if(!/^[0-9a-f]{6}$/i.test(hex))return null;
+  const r=parseInt(hex.slice(0,2),16);
+  const g=parseInt(hex.slice(2,4),16);
+  const b=parseInt(hex.slice(4,6),16);
+  return{r,g,b,hex:'#'+hex.toLowerCase()};
+}
+
+function colorDist(r1,g1,b1,r2,g2,b2){
+  return Math.sqrt((r1-r2)**2+(g1-g2)**2+(b1-b2)**2);
+}
+function proximity(r1,g1,b1,r2,g2,b2){
+  const MAX_DIST=Math.sqrt(255*255*3);
+  return Math.max(0,Math.round((1-colorDist(r1,g1,b1,r2,g2,b2)/MAX_DIST)*100));
+}
+function proxColor(pct){
+  return `hsl(${Math.round(pct*1.2)},75%,55%)`;
+}
+
+function nearestName(r,g,b){
+  let min=Infinity,name='不明';
+  for(const[n,[cr,cg,cb]] of Object.entries(CSS_COLORS)){
+    const d=colorDist(r,g,b,cr,cg,cb);
+    if(d<min){min=d;name=n;}
+  }
+  return name;
+}
+
+function temperature(r,g,b){
+  const warm=r-b;
+  if(warm>45)return{label:'暖色',cls:'warm',emoji:'🔥'};
+  if(warm<-45)return{label:'寒色',cls:'cool',emoji:'❄️'};
+  return{label:'中間',cls:'neutral',emoji:'🌤️'};
+}
+
+function hintArrow(guess,target){
+  if(guess===target)return{sym:'✓',cls:'c-correct',txt:'正解'};
+  if(guess<target)return{sym:'↑',cls:'c-up',txt:'低い'};
+  return{sym:'↓',cls:'c-down',txt:'高い'};
+}
+
+// ── Daily Color ───────────────────────────────────────────────
+function todayJST(){
+  const now=new Date();
+  const jst=new Date(now.getTime()+(9*3600000));
+  return{
+    y:jst.getUTCFullYear(),
+    m:jst.getUTCMonth()+1,
+    d:jst.getUTCDate(),
+    w:jst.getUTCDay(),
+  };
+}
+function todayKey(){
+  const{y,m,d}=todayJST();
+  return`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function getDailyColor(){
+  const{y,m,d}=todayJST();
+  let seed=(y*10000+m*100+d)>>>0;
+  const lcg=s=>((Math.imul(s,1664525)+1013904223)>>>0);
+  seed=lcg(seed);const h=seed%360;
+  seed=lcg(seed);const s=45+(seed%46);
+  seed=lcg(seed);const l=28+(seed%40);
+  return hslToRgb(h,s/100,l/100);
+}
+
+// ── Storage ───────────────────────────────────────────────────
+const SK='cw_v1',SK_STATS='cw_v1_stats';
+function loadGame(){
+  try{const d=JSON.parse(localStorage.getItem(SK)||'null');return d;}catch{return null;}
+}
+function saveGame(data){try{localStorage.setItem(SK,JSON.stringify(data));}catch{}}
+function loadStats(){
+  try{
+    const d=JSON.parse(localStorage.getItem(SK_STATS)||'null');
+    return d||{played:0,won:0,streak:0,max:0,dist:[0,0,0,0,0,0],lastWin:null};
+  }catch{return{played:0,won:0,streak:0,max:0,dist:[0,0,0,0,0,0],lastWin:null};}
+}
+function saveStats(s){try{localStorage.setItem(SK_STATS,JSON.stringify(s));}catch{}}
+
+// ── Game State ────────────────────────────────────────────────
+const MAX=6;
+const TODAY=todayKey();
+const TARGET=getDailyColor();
+let guesses=[],gameOver=false,won=false;
+
+const saved=loadGame();
+if(saved&&saved.key===TODAY){
+  guesses=saved.guesses||[];gameOver=saved.gameOver||false;won=saved.won||false;
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+let toastTid;
+function toast(msg,dur=2200){
+  const el=document.getElementById('toast');
+  clearTimeout(toastTid);
+  el.textContent=msg;el.classList.add('show');
+  toastTid=setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+// ── Confetti ──────────────────────────────────────────────────
+function confetti(){
+  const w=document.getElementById('confetti-wrap');
+  w.innerHTML='';
+  const cols=['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff9f1c','#4ecca3'];
+  for(let i=0;i<90;i++){
+    const el=document.createElement('div');el.className='cp';
+    const sz=6+Math.random()*8;
+    el.style.cssText=`
+      left:${Math.random()*100}%;top:-20px;
+      width:${sz}px;height:${sz}px;
+      background:${cols[i%cols.length]};
+      border-radius:${Math.random()>.5?'50%':'2px'};
+      animation-duration:${1.5+Math.random()*2.5}s;
+      animation-delay:${Math.random()*.8}s;
+    `;
+    w.appendChild(el);
+  }
+  setTimeout(()=>w.innerHTML='',4500);
+}
+
+// ── Render ────────────────────────────────────────────────────
+function renderDots(){
+  const c=document.getElementById('attempt-dots');c.innerHTML='';
+  for(let i=0;i<MAX;i++){
+    const dot=document.createElement('div');dot.className='dot';
+    if(i<guesses.length){
+      if(gameOver&&won&&i===guesses.length-1)dot.classList.add('won');
+      else if(gameOver&&!won)dot.classList.add('lost');
+      else dot.classList.add('used');
+    }
+    c.appendChild(dot);
+  }
+}
+
+function renderBoard(){
+  const board=document.getElementById('guess-board');
+  board.innerHTML='';
+  guesses.forEach((g,idx)=>{
+    const{r,g:gv,b,hex}=g;
+    const pct=proximity(r,gv,b,TARGET.r,TARGET.g,TARGET.b);
+    const name=nearestName(r,gv,b);
+    const temp=temperature(r,gv,b);
+    const rh=hintArrow(r,TARGET.r);
+    const gh=hintArrow(gv,TARGET.g);
+    const bh=hintArrow(b,TARGET.b);
+    const isWin=won&&idx===guesses.length-1;
+
+    const row=document.createElement('div');row.className='guess-row';
+
+    // Build top section
+    const top=document.createElement('div');top.className='guess-top';
+    top.innerHTML=`<span class="guess-num">${idx+1}</span>`;
+
+    const sw=document.createElement('div');sw.className='guess-swatch';
+    sw.style.background=hex;sw.title='クリックでコピー';
+    sw.addEventListener('click',()=>copyHex(hex));
+    top.appendChild(sw);
+
+    const info=document.createElement('div');info.className='guess-info';
+    const hexEl=document.createElement('div');hexEl.className='guess-hex';
+    hexEl.textContent=hex.toUpperCase();hexEl.title='クリックでコピー';
+    hexEl.addEventListener('click',()=>copyHex(hex));
+    const nameEl=document.createElement('div');nameEl.className='guess-name';
+    nameEl.textContent=`🏷️ ${name}`;
+    info.appendChild(hexEl);info.appendChild(nameEl);
+    top.appendChild(info);
+
+    const right=document.createElement('div');right.className='guess-right';
+    right.innerHTML=`
+      <div class="prox-wrap">
+        <div class="prox-bar"><div class="prox-fill" style="width:${pct}%;background:${proxColor(pct)}"></div></div>
+        <span class="prox-pct">${pct}%</span>
+      </div>
+      <span class="temp-badge ${temp.cls}">${temp.emoji} ${temp.label}</span>
+    `;
+    top.appendChild(right);
+
+    // RGB hints
+    const rgb=document.createElement('div');rgb.className='rgb-hints';
+    [
+      {lbl:'R',ch:'r',val:r,hint:rh,pct:Math.round(r/255*100)},
+      {lbl:'G',ch:'g',val:gv,hint:gh,pct:Math.round(gv/255*100)},
+      {lbl:'B',ch:'b',val:b,hint:bh,pct:Math.round(b/255*100)},
+    ].forEach(({lbl,ch,val,hint,pct:bp})=>{
+      const cell=document.createElement('div');cell.className='rgb-cell';
+      cell.innerHTML=`
+        <div class="rgb-lbl ${ch}">${lbl}</div>
+        <div class="rgb-arrow ${hint.cls}">${hint.sym} ${hint.txt}</div>
+        <div class="rgb-bar"><div class="rgb-bar-fill ${ch}" style="width:${bp}%"></div></div>
+        <div class="rgb-val">${val}/255</div>
+      `;
+      rgb.appendChild(cell);
+    });
+
+    row.appendChild(top);
+    row.appendChild(rgb);
+    if(isWin){
+      const wl=document.createElement('div');wl.className='win-label';
+      wl.textContent='🎉 正解！おめでとうございます！';
+      row.appendChild(wl);
+    }
+    board.appendChild(row);
+  });
+
+  // Empty rows
+  for(let i=guesses.length;i<MAX;i++){
+    const e=document.createElement('div');e.className='empty-row';
+    e.innerHTML=`<div class="empty-sw"></div><span class="empty-txt">推測 ${i+1}</span>`;
+    board.appendChild(e);
+  }
+}
+
+function renderTarget(){
+  const mask=document.getElementById('target-mask');
+  const fill=document.getElementById('target-fill');
+  const disp=document.getElementById('target-display');
+  if(gameOver){
+    fill.style.background=TARGET.hex;
+    fill.style.opacity='1';mask.style.opacity='0';
+    disp.textContent=TARGET.hex.toUpperCase();
+    document.getElementById('target-swatch').classList.add('revealed');
+  }else{
+    disp.textContent=`残り ${MAX-guesses.length} 回`;
+  }
+}
+
+function renderPalette(){
+  if(!guesses.length)return;
+  const sec=document.getElementById('palette-section');
+  const sw=document.getElementById('palette-swatches');
+  sec.style.display='block';sw.innerHTML='';
+  guesses.forEach(g=>{
+    const el=document.createElement('div');el.className='pal-sw';
+    el.style.background=g.hex;
+    const tip=document.createElement('div');tip.className='pal-tip';
+    tip.textContent=g.hex.toUpperCase();
+    el.appendChild(tip);
+    el.addEventListener('click',()=>copyHex(g.hex));
+    sw.appendChild(el);
+  });
+}
+
+function renderResult(){
+  if(!gameOver)return;
+  const banner=document.getElementById('result-banner');
+  const title=document.getElementById('result-title');
+  banner.classList.add('show');
+  if(won){
+    title.textContent=`🎉 正解！ ${guesses.length}回目で当てました！`;
+    title.className='result-title win';
+  }else{
+    title.textContent='😢 残念… また明日チャレンジ！';
+    title.className='result-title lose';
+  }
+  document.getElementById('result-swatch').style.background=TARGET.hex;
+  document.getElementById('result-hex').textContent=TARGET.hex.toUpperCase();
+  document.getElementById('result-name').textContent=`🏷️ ${nearestName(TARGET.r,TARGET.g,TARGET.b)}`;
+  document.getElementById('input-section').style.cssText='opacity:0.45;pointer-events:none';
+}
+
+function renderAll(){
+  renderBoard();renderDots();renderTarget();renderPalette();
+  if(gameOver)renderResult();
+}
+
+// ── Countdown ─────────────────────────────────────────────────
+function updateCountdown(){
+  const now=new Date();
+  const{y,m,d}=todayJST();
+  const tomorrow=new Date(Date.UTC(y,m-1,d+1,0,0,0)-(9*3600000));
+  const diff=Math.max(0,tomorrow-now);
+  const h=Math.floor(diff/3600000);
+  const min=Math.floor((diff%3600000)/60000);
+  const s=Math.floor((diff%60000)/1000);
+  document.getElementById('countdown').textContent=
+    `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// ── Share ─────────────────────────────────────────────────────
+function buildShareText(){
+  const emojiRow=g=>{
+    const r=hintArrow(g.r,TARGET.r);
+    const gv=hintArrow(g.g,TARGET.g);
+    const b=hintArrow(g.b,TARGET.b);
+    const e=h=>h.sym==='✓'?'🟩':h.sym==='↑'?'🟦':'🟥';
+    return e(r)+e(gv)+e(b);
+  };
+  const result=won?`${guesses.length}/${MAX}`:`X/${MAX}`;
+  return[
+    `🎨 ColorWordle ${TODAY}`,
+    `${result}  ${TARGET.hex.toUpperCase()}`,
+    '',
+    ...guesses.map(emojiRow),
+    '',
+    '🟩=✓正解  🟦=↑低い  🟥=↓高い',
+    '（R・G・Bそれぞれのヒント）',
+  ].join('\n');
+}
+
+async function writeClipboard(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    await navigator.clipboard.writeText(text);
+  }else{
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);
+  }
+}
+
+async function shareResult(){
+  try{await writeClipboard(buildShareText());toast('📋 結果をコピーしました！');}
+  catch{toast('コピーに失敗しました');}
+}
+
+async function copyHex(hex){
+  try{await writeClipboard(hex.toUpperCase());toast(`📋 ${hex.toUpperCase()} をコピー`);}
+  catch{toast('コピーに失敗しました');}
+}
+
+// ── Live Preview ──────────────────────────────────────────────
+function updatePreview(val){
+  const sw=document.getElementById('prev-swatch');
+  const hexEl=document.getElementById('prev-hex');
+  const nameEl=document.getElementById('prev-name');
+  const pf=document.getElementById('picker-face');
+  const parsed=val?hexToRgb(val):null;
+  if(parsed){
+    sw.style.background=parsed.hex;
+    hexEl.textContent=parsed.hex.toUpperCase();
+    nameEl.textContent=`🏷️ ${nearestName(parsed.r,parsed.g,parsed.b)}`;
+    pf.style.background=parsed.hex;pf.textContent='';
+    document.getElementById('color-picker').value=parsed.hex;
+  }else{
+    sw.style.background='#888';
+    hexEl.textContent=val?val.toUpperCase():'入力してください...';
+    nameEl.textContent='-';
+    pf.style.background='';pf.textContent='🎨';
+  }
+}
+
+// ── Submit ────────────────────────────────────────────────────
+function submit(){
+  if(gameOver)return;
+  const input=document.getElementById('hex-input');
+  const parsed=hexToRgb(input.value.trim());
+  if(!parsed){
+    toast('有効な6桁HEXコードを入力してください');
+    input.classList.add('invalid');
+    setTimeout(()=>input.classList.remove('invalid'),700);
+    return;
+  }
+  if(guesses.some(g=>g.hex===parsed.hex)){
+    toast('このカラーはすでに試しました');return;
+  }
+  guesses.push({r:parsed.r,g:parsed.g,b:parsed.b,hex:parsed.hex});
+  if(parsed.r===TARGET.r&&parsed.g===TARGET.g&&parsed.b===TARGET.b){
+    won=true;gameOver=true;
+  }else if(guesses.length>=MAX){
+    gameOver=true;
+  }
+  if(gameOver){
+    const st=loadStats();
+    st.played++;
+    if(won){
+      st.won++;
+      if(st.dist.length<6)st.dist=[...st.dist,...Array(6-st.dist.length).fill(0)];
+      st.dist[guesses.length-1]++;
+      const prev=st.lastWin;
+      const{y,m,d}=todayJST();
+      const yesterday=new Date(Date.UTC(y,m-1,d-1));
+      const yk=`${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth()+1).padStart(2,'0')}-${String(yesterday.getUTCDate()).padStart(2,'0')}`;
+      if(prev===yk)st.streak++;
+      else if(prev!==TODAY)st.streak=1;
+      st.max=Math.max(st.streak,st.max);
+      st.lastWin=TODAY;
+    }else{
+      if(st.lastWin!==TODAY)st.streak=0;
+    }
+    saveStats(st);
+  }
+  saveGame({key:TODAY,guesses,gameOver,won});
+  input.value='';
+  input.classList.remove('valid','invalid');
+  document.getElementById('submit-btn').disabled=true;
+  updatePreview('');
+  renderAll();
+  if(gameOver&&won)setTimeout(confetti,350);
+  if(gameOver)setInterval(updateCountdown,1000),updateCountdown();
+}
+
+// ── Stats Modal ───────────────────────────────────────────────
+function showStats(){
+  const st=loadStats();
+  const wr=st.played>0?Math.round(st.won/st.played*100):0;
+  document.getElementById('s-played').textContent=st.played;
+  document.getElementById('s-winrate').textContent=wr+'%';
+  document.getElementById('s-streak').textContent=st.streak;
+  document.getElementById('s-max').textContent=st.max;
+  const bars=document.getElementById('dist-bars');bars.innerHTML='';
+  const mx=Math.max(...(st.dist||[]),1);
+  for(let i=0;i<6;i++){
+    const v=(st.dist||[])[i]||0;
+    const pct=Math.round(v/mx*100);
+    const cur=gameOver&&won&&guesses.length===i+1;
+    const row=document.createElement('div');row.className='dist-row';
+    row.innerHTML=`<span class="dist-num">${i+1}</span>
+      <div class="dist-bar"><div class="dist-fill${cur?' cur':''}" style="width:${Math.max(pct,5)}%">${v}</div></div>`;
+    bars.appendChild(row);
+  }
+  document.getElementById('stats-modal').classList.add('show');
+}
+
+// ── Theme ─────────────────────────────────────────────────────
+function toggleTheme(){
+  const html=document.documentElement;
+  const dark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('theme-btn').textContent=dark?'☀️':'🌙';
+  try{localStorage.setItem('cw_theme',dark?'light':'dark');}catch{}
+}
+
+// ── Arrow Key Adjustment ──────────────────────────────────────
+// Allow ↑↓ to nudge hex values when caret is in input
+function nudgeHex(dir){
+  const input=document.getElementById('hex-input');
+  const val=input.value.trim();
+  if(val.length!==6)return;
+  const parsed=hexToRgb(val);
+  if(!parsed)return;
+  const pos=input.selectionStart;
+  // determine which component to nudge based on cursor position (0-1=R,2-3=G,4-5=B)
+  const compIdx=Math.min(Math.floor(pos/2),2);
+  const keys=['r','g','b'];
+  const key=keys[compIdx];
+  const newVal=Math.max(0,Math.min(255,parsed[key]+dir));
+  const newRgb={...parsed,[key]:newVal};
+  const hex=[newRgb.r,newRgb.g,newRgb.b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+  input.value=hex;
+  input.setSelectionRange(pos,pos);
+  input.dispatchEvent(new Event('input'));
+}
+
+// ── Init ──────────────────────────────────────────────────────
+function init(){
+  // Date display
+  const{y,m,d,w}=todayJST();
+  const days=['日','月','火','水','木','金','土'];
+  document.getElementById('date-display').textContent=`${y}年${m}月${d}日（${days[w]}）`;
+
+  // Theme
+  try{
+    const t=localStorage.getItem('cw_theme');
+    if(t){document.documentElement.setAttribute('data-theme',t);
+      document.getElementById('theme-btn').textContent=t==='light'?'☀️':'🌙';}
+  }catch{}
+
+  renderAll();
+  if(gameOver){setInterval(updateCountdown,1000);updateCountdown();}
+
+  const input=document.getElementById('hex-input');
+  const subBtn=document.getElementById('submit-btn');
+
+  input.addEventListener('input',()=>{
+    const v=input.value.trim();
+    const p=hexToRgb(v);
+    if(p){input.classList.add('valid');input.classList.remove('invalid');subBtn.disabled=false;}
+    else{
+      input.classList.remove('valid','invalid');
+      // only show invalid border when input is complete-length but wrong (3 or 6 chars)
+      if(v.length===3||v.length===6)input.classList.add('invalid');
+      subBtn.disabled=true;
+    }
+    updatePreview(v||'');
+  });
+
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!subBtn.disabled)submit();
+    if(e.key==='Escape'){input.value='';input.classList.remove('valid','invalid');subBtn.disabled=true;updatePreview('');}
+    if(e.key==='ArrowUp'){e.preventDefault();nudgeHex(1);}
+    if(e.key==='ArrowDown'){e.preventDefault();nudgeHex(-1);}
+  });
+
+  document.getElementById('color-picker').addEventListener('input',e=>{
+    const hex=e.target.value.slice(1).toUpperCase();
+    input.value=hex;input.dispatchEvent(new Event('input'));
+  });
+
+  subBtn.addEventListener('click',submit);
+
+  document.getElementById('stats-btn').addEventListener('click',showStats);
+  document.getElementById('stats-close').addEventListener('click',()=>document.getElementById('stats-modal').classList.remove('show'));
+  document.getElementById('stats-modal').addEventListener('click',e=>{if(e.target.id==='stats-modal')document.getElementById('stats-modal').classList.remove('show');});
+
+  document.getElementById('help-btn').addEventListener('click',()=>document.getElementById('help-modal').classList.add('show'));
+  document.getElementById('help-close').addEventListener('click',()=>document.getElementById('help-modal').classList.remove('show'));
+  document.getElementById('help-modal').addEventListener('click',e=>{if(e.target.id==='help-modal')document.getElementById('help-modal').classList.remove('show');});
+
+  document.getElementById('theme-btn').addEventListener('click',toggleTheme);
+  document.getElementById('share-btn').addEventListener('click',shareResult);
+  document.getElementById('copy-hex-btn').addEventListener('click',()=>copyHex(TARGET.hex));
+
+  if(!gameOver)input.focus();
+}
+
+init();
+</script>
+</body>
+</html>
