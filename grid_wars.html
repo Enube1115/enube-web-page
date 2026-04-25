@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRID WARS - 領域征服</title>
+<style>
+:root {
+  --p: #00d4ff;
+  --c: #ff3366;
+  --bg: #06060f;
+  --panel: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --gold: #ffd700;
+  --purple: #aa44ff;
+  --green: #44ff88;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: #dde0ff;
+  font-family: 'Courier New', monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 40%, rgba(0,80,160,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 60%, rgba(160,0,60,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 10%, rgba(80,0,160,0.12) 0%, transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ===== START SCREEN ===== */
+#start-screen {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+
+.start-title {
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 900; letter-spacing: 6px;
+  background: linear-gradient(135deg, var(--p), #7b2fff, var(--c));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  animation: titleGlow 3s infinite;
+  margin-bottom: 8px;
+}
+
+@keyframes titleGlow {
+  0%,100% { filter: brightness(1) drop-shadow(0 0 10px rgba(0,212,255,0.5)); }
+  50% { filter: brightness(1.4) drop-shadow(0 0 30px rgba(123,47,255,0.8)); }
+}
+
+.start-sub {
+  color: rgba(200,200,255,0.6); letter-spacing: 8px;
+  font-size: 0.85rem; margin-bottom: 50px;
+}
+
+.feature-list {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px; max-width: 700px; width: 90%; margin-bottom: 50px;
+}
+
+.feature-item {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 16px;
+  font-size: 0.78rem; color: rgba(200,210,255,0.75);
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.feature-item .icon { font-size: 1.2rem; flex-shrink: 0; }
+
+.diff-label {
+  color: rgba(200,200,255,0.5); font-size: 0.8rem;
+  letter-spacing: 4px; margin-bottom: 16px;
+}
+
+.diff-buttons {
+  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+}
+
+.diff-btn {
+  padding: 14px 32px; font-family: 'Courier New', monospace;
+  font-size: 1rem; font-weight: bold; letter-spacing: 3px;
+  border: 2px solid; border-radius: 6px; cursor: pointer;
+  background: transparent; transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.diff-btn.easy { color: var(--green); border-color: var(--green); }
+.diff-btn.easy:hover { background: rgba(68,255,136,0.15); box-shadow: 0 0 20px rgba(68,255,136,0.4); }
+.diff-btn.normal { color: var(--p); border-color: var(--p); }
+.diff-btn.normal:hover { background: rgba(0,212,255,0.15); box-shadow: 0 0 20px rgba(0,212,255,0.4); }
+.diff-btn.hard { color: var(--c); border-color: var(--c); }
+.diff-btn.hard:hover { background: rgba(255,51,102,0.15); box-shadow: 0 0 20px rgba(255,51,102,0.4); }
+
+/* ===== GAME LAYOUT ===== */
+#game-screen { display: none; position: relative; z-index: 1; width: 100%; max-width: 1100px; padding: 16px; }
+
+.header {
+  text-align: center; margin-bottom: 16px;
+}
+
+.game-title {
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  font-weight: 900; letter-spacing: 5px;
+  background: linear-gradient(135deg, var(--p), #7b2fff, var(--c));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* ===== SCORE PANELS ===== */
+.hud {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  gap: 12px; margin-bottom: 12px; align-items: start;
+}
+
+.side-panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+}
+
+.panel-player { border-color: rgba(0,212,255,0.3); }
+.panel-cpu { border-color: rgba(255,51,102,0.3); }
+
+.panel-name {
+  font-size: 0.7rem; letter-spacing: 4px; margin-bottom: 6px;
+  opacity: 0.6;
+}
+.panel-player .panel-name { color: var(--p); }
+.panel-cpu .panel-name { color: var(--c); }
+
+.panel-score {
+  font-size: 2.2rem; font-weight: 900; line-height: 1;
+  margin-bottom: 4px;
+}
+.panel-player .panel-score { color: var(--p); text-shadow: 0 0 20px rgba(0,212,255,0.6); }
+.panel-cpu .panel-score { color: var(--c); text-shadow: 0 0 20px rgba(255,51,102,0.6); }
+
+.panel-cells { font-size: 0.75rem; color: rgba(200,210,255,0.5); margin-bottom: 8px; }
+
+.panel-combo {
+  font-size: 0.72rem; padding: 3px 8px; border-radius: 4px;
+  display: inline-block; background: rgba(255,215,0,0.1);
+  border: 1px solid rgba(255,215,0,0.3); color: var(--gold);
+}
+.panel-combo.inactive { opacity: 0.35; }
+
+.panel-bar {
+  margin-top: 8px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.05); overflow: hidden;
+}
+.panel-bar-fill {
+  height: 100%; border-radius: 2px; transition: width 0.5s ease;
+}
+.panel-player .panel-bar-fill { background: linear-gradient(90deg, rgba(0,212,255,0.4), var(--p)); }
+.panel-cpu .panel-bar-fill { background: linear-gradient(90deg, rgba(255,51,102,0.4), var(--c)); }
+
+/* Center HUD */
+.center-hud {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 4px;
+}
+
+.turn-badge {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 16px; text-align: center;
+  min-width: 130px;
+}
+
+.turn-num { font-size: 0.65rem; color: rgba(200,210,255,0.4); letter-spacing: 3px; }
+.turn-who {
+  font-size: 1rem; font-weight: bold; letter-spacing: 2px;
+  transition: color 0.3s;
+}
+.turn-who.player { color: var(--p); }
+.turn-who.cpu { color: var(--c); }
+.turn-who.thinking { color: rgba(200,210,255,0.5); animation: blink 0.8s infinite; }
+
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.difficulty-badge {
+  font-size: 0.65rem; letter-spacing: 3px; padding: 4px 10px;
+  border-radius: 4px; border: 1px solid;
+}
+.difficulty-badge.easy { color: var(--green); border-color: rgba(68,255,136,0.4); }
+.difficulty-badge.normal { color: var(--p); border-color: rgba(0,212,255,0.4); }
+.difficulty-badge.hard { color: var(--c); border-color: rgba(255,51,102,0.4); }
+
+.multiplier-display {
+  font-size: 0.72rem; color: var(--gold); letter-spacing: 2px;
+  background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 4px; padding: 3px 10px;
+  transition: all 0.3s;
+}
+.multiplier-display.hot {
+  animation: mulPulse 0.5s infinite;
+  box-shadow: 0 0 12px rgba(255,215,0,0.4);
+}
+@keyframes mulPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+/* ===== EVENT TICKER ===== */
+.event-banner {
+  margin-bottom: 10px; height: 36px; display: flex; align-items: center;
+  justify-content: center; border-radius: 6px;
+  overflow: hidden; position: relative;
+  background: var(--panel); border: 1px solid var(--border);
+}
+
+.event-text {
+  font-size: 0.82rem; letter-spacing: 2px; text-align: center;
+  padding: 0 20px; transition: all 0.4s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.event-text.weather { color: var(--gold); }
+.event-text.chain { color: #44ffcc; }
+.event-text.info { color: rgba(200,210,255,0.55); }
+
+/* ===== GRID ===== */
+#grid-wrap {
+  display: flex; justify-content: center; margin-bottom: 12px;
+}
+
+#grid {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: inset 0 0 40px rgba(0,0,50,0.5);
+}
+
+.cell {
+  width: 54px; height: 54px;
+  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,0.07);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  position: relative; overflow: hidden;
+  cursor: default;
+  transition: transform 0.15s, box-shadow 0.15s, background-color 0.3s;
+  user-select: none;
+}
+
+.cell::before {
+  content: ''; position: absolute; inset: 0;
+  border-radius: inherit;
+  opacity: 0; transition: opacity 0.3s;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+}
+
+/* Neutral */
+.cell.neutral {
+  background: linear-gradient(145deg, #0e0e1f, #0a0a18);
+}
+
+/* Player owned */
+.cell.player {
+  background: linear-gradient(145deg, rgba(0,100,150,0.6), rgba(0,60,100,0.8));
+  border-color: rgba(0,212,255,0.35);
+  animation: playerPulse 2.5s infinite;
+}
+@keyframes playerPulse {
+  0%,100% { box-shadow: 0 0 6px rgba(0,212,255,0.3) inset; }
+  50% { box-shadow: 0 0 14px rgba(0,212,255,0.55) inset; }
+}
+
+/* CPU owned */
+.cell.cpu {
+  background: linear-gradient(145deg, rgba(150,0,60,0.6), rgba(100,0,40,0.8));
+  border-color: rgba(255,51,102,0.35);
+  animation: cpuPulse 2.5s infinite;
+}
+@keyframes cpuPulse {
+  0%,100% { box-shadow: 0 0 6px rgba(255,51,102,0.3) inset; }
+  50% { box-shadow: 0 0 14px rgba(255,51,102,0.55) inset; }
+}
+
+/* Damaged cell */
+.cell.damaged-p { border-color: rgba(0,212,255,0.7) !important; }
+.cell.damaged-c { border-color: rgba(255,51,102,0.7) !important; }
+
+/* Valid move highlight */
+.cell.valid {
+  cursor: pointer;
+  border-color: rgba(0,212,255,0.7) !important;
+  background: linear-gradient(145deg, rgba(0,80,120,0.4), rgba(0,50,90,0.6)) !important;
+}
+.cell.valid::before { opacity: 1; }
+.cell.valid:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 18px rgba(0,212,255,0.5), 0 0 6px rgba(0,212,255,0.3) inset;
+  z-index: 5;
+}
+
+/* Portal cells */
+.cell.portal-0 { box-shadow: 0 0 10px rgba(170,68,255,0.5); border-color: rgba(170,68,255,0.6); }
+.cell.portal-1 { box-shadow: 0 0 10px rgba(255,140,0,0.5); border-color: rgba(255,140,0,0.6); }
+.cell.portal-2 { box-shadow: 0 0 10px rgba(0,255,180,0.5); border-color: rgba(0,255,180,0.6); }
+
+/* HP bar inside cell */
+.hp-bar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+  background: rgba(255,255,255,0.1);
+}
+.hp-fill {
+  height: 100%; transition: width 0.3s;
+}
+.cell.player .hp-fill { background: var(--p); }
+.cell.cpu .hp-fill { background: var(--c); }
+
+/* Capture flash */
+@keyframes captureFlash {
+  0% { transform: scale(1.2); box-shadow: 0 0 30px rgba(0,212,255,0.9); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+.cell.capture-player { animation: captureFlash 0.4s ease-out !important; }
+
+@keyframes captureFlashCpu {
+  0% { transform: scale(1.2); box-shadow: 0 0 30px rgba(255,51,102,0.9); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+.cell.capture-cpu { animation: captureFlashCpu 0.4s ease-out !important; }
+
+@keyframes bombFlash {
+  0% { transform: scale(1.3); background: #ff6600; box-shadow: 0 0 40px rgba(255,100,0,0.9); }
+  100% { transform: scale(1); }
+}
+.cell.bomb-blast { animation: bombFlash 0.6s ease-out; }
+
+/* ===== LOG ===== */
+.log-panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px;
+  max-height: 90px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.log-entry {
+  font-size: 0.72rem; color: rgba(200,210,255,0.5);
+  padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+  animation: logFade 0.3s ease-in;
+}
+.log-entry:last-child { border-bottom: none; }
+@keyframes logFade { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; } }
+.log-entry.important { color: var(--gold); }
+.log-entry.player-ev { color: rgba(0,212,255,0.7); }
+.log-entry.cpu-ev { color: rgba(255,51,102,0.7); }
+.log-entry.event-ev { color: rgba(170,68,255,0.8); }
+
+/* ===== MODALS ===== */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-box {
+  background: linear-gradient(145deg, #0c0c1e, #080814);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 40px 50px; text-align: center;
+  max-width: 480px; width: 90%;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8);
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-title {
+  font-size: 2.4rem; font-weight: 900; letter-spacing: 4px; margin-bottom: 8px;
+}
+.modal-title.win { color: var(--p); text-shadow: 0 0 30px rgba(0,212,255,0.7); }
+.modal-title.lose { color: var(--c); text-shadow: 0 0 30px rgba(255,51,102,0.7); }
+.modal-title.draw { color: var(--gold); text-shadow: 0 0 30px rgba(255,215,0,0.7); }
+
+.modal-sub { color: rgba(200,210,255,0.5); margin-bottom: 24px; font-size: 0.85rem; letter-spacing: 2px; }
+
+.final-scores {
+  display: flex; gap: 24px; justify-content: center; margin-bottom: 28px;
+}
+.final-score-item { text-align: center; }
+.fsi-label { font-size: 0.65rem; letter-spacing: 3px; margin-bottom: 4px; opacity: 0.5; }
+.fsi-val { font-size: 2rem; font-weight: 900; }
+.fsi-val.p { color: var(--p); }
+.fsi-val.c { color: var(--c); }
+
+.modal-btn {
+  padding: 12px 36px; font-family: 'Courier New', monospace;
+  font-size: 0.95rem; font-weight: bold; letter-spacing: 3px;
+  border: 2px solid var(--p); border-radius: 6px;
+  color: var(--p); background: transparent; cursor: pointer;
+  transition: all 0.2s; text-transform: uppercase;
+  margin: 6px;
+}
+.modal-btn:hover { background: rgba(0,212,255,0.15); box-shadow: 0 0 20px rgba(0,212,255,0.4); }
+.modal-btn.secondary { border-color: rgba(200,210,255,0.3); color: rgba(200,210,255,0.5); }
+.modal-btn.secondary:hover { background: rgba(255,255,255,0.05); box-shadow: none; }
+
+/* ===== EVENT OVERLAY ===== */
+#event-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; opacity: 0;
+  transition: opacity 0.4s;
+}
+#event-overlay.show { opacity: 1; }
+
+.event-popup {
+  background: linear-gradient(145deg, rgba(20,10,40,0.97), rgba(10,5,25,0.97));
+  border: 1px solid rgba(170,68,255,0.5); border-radius: 10px;
+  padding: 20px 36px; text-align: center;
+  box-shadow: 0 0 40px rgba(170,68,255,0.4);
+  transform: translateY(-10px);
+  transition: transform 0.4s;
+}
+#event-overlay.show .event-popup { transform: translateY(0); }
+
+.event-popup-icon { font-size: 2.5rem; margin-bottom: 8px; }
+.event-popup-title { font-size: 1.2rem; font-weight: bold; color: var(--gold); letter-spacing: 3px; margin-bottom: 4px; }
+.event-popup-desc { font-size: 0.8rem; color: rgba(200,210,255,0.65); }
+
+/* ===== PARTICLES ===== */
+.particle {
+  position: fixed; pointer-events: none; z-index: 300;
+  border-radius: 50%; animation: particleFly 0.8s forwards;
+}
+@keyframes particleFly {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+
+/* ===== LEGEND ===== */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  margin-bottom: 10px;
+}
+.legend-item {
+  font-size: 0.68rem; color: rgba(200,210,255,0.5);
+  display: flex; align-items: center; gap: 5px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 8px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 700px) {
+  .cell { width: 38px; height: 38px; font-size: 0.9rem; }
+  #grid { gap: 2px; padding: 8px; }
+  .hud { grid-template-columns: 1fr auto 1fr; gap: 6px; }
+  .panel-score { font-size: 1.6rem; }
+  .modal-box { padding: 28px 24px; }
+}
+@media (max-width: 480px) {
+  .cell { width: 30px; height: 30px; font-size: 0.75rem; }
+  #grid { gap: 2px; padding: 6px; }
+  .hud { grid-template-columns: 1fr; }
+  .center-hud { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== START SCREEN ===== -->
+<div id="start-screen">
+  <div class="start-title">GRID WARS</div>
+  <div class="start-sub">領 域 征 服</div>
+
+  <div class="feature-list">
+    <div class="feature-item"><span class="icon">⚡</span><span>パワーセル — 占領時に特殊効果が発動。雷・要塞・爆弾・スター・クリスタルの5種</span></div>
+    <div class="feature-item"><span class="icon">🌀</span><span>ワームホール — マップ上の遠距離ポータルが隣接扱いになる奇襲ルート</span></div>
+    <div class="feature-item"><span class="icon">⛈️</span><span>天候イベント — 5ターン毎にランダムな世界変動が発生</span></div>
+    <div class="feature-item"><span class="icon">🔥</span><span>コンボ倍率 — 連続チェーン占領でスコア倍率が最大3倍まで上昇</span></div>
+    <div class="feature-item"><span class="icon">💪</span><span>モラルブースト — 3連続チェーンで次の1手が無敵ボーナスに</span></div>
+    <div class="feature-item"><span class="icon">❤️</span><span>HPシステム — 敵マスは複数回攻撃しないと奪えない。要塞は3回必要</span></div>
+  </div>
+
+  <div class="diff-label">DIFFICULTY</div>
+  <div class="diff-buttons">
+    <button class="diff-btn easy" onclick="startGame('easy')">EASY</button>
+    <button class="diff-btn normal" onclick="startGame('normal')">NORMAL</button>
+    <button class="diff-btn hard" onclick="startGame('hard')">HARD</button>
+  </div>
+</div>
+
+<!-- ===== GAME SCREEN ===== -->
+<div id="game-screen">
+  <div class="header">
+    <div class="game-title">GRID WARS</div>
+  </div>
+
+  <div class="hud">
+    <div class="side-panel panel-player">
+      <div class="panel-name">PLAYER</div>
+      <div class="panel-score" id="pScore">0</div>
+      <div class="panel-cells" id="pCells">1 cells</div>
+      <div class="panel-combo inactive" id="pCombo">COMBO ×1.0</div>
+      <div class="panel-bar"><div class="panel-bar-fill" id="pBar" style="width:50%"></div></div>
+    </div>
+
+    <div class="center-hud">
+      <div class="turn-badge">
+        <div class="turn-num" id="turnNum">TURN 1</div>
+        <div class="turn-who player" id="turnWho">YOUR TURN</div>
+      </div>
+      <div class="difficulty-badge normal" id="diffBadge">NORMAL</div>
+      <div class="multiplier-display" id="mulDisplay">× 1.0</div>
+    </div>
+
+    <div class="side-panel panel-cpu">
+      <div class="panel-name">CPU</div>
+      <div class="panel-score" id="cScore">0</div>
+      <div class="panel-cells" id="cCells">1 cells</div>
+      <div class="panel-combo inactive" id="cCombo">COMBO ×1.0</div>
+      <div class="panel-bar"><div class="panel-bar-fill" id="cBar" style="width:50%"></div></div>
+    </div>
+  </div>
+
+  <div class="event-banner">
+    <div class="event-text info" id="eventText">マスをクリックして占領 — 隣接占領でチェーンボーナス獲得</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">⚡ 雷撃 — 周囲空白一括占領</div>
+    <div class="legend-item">🛡️ 要塞 — HP3 難攻不落</div>
+    <div class="legend-item">💣 爆弾 — 周囲8マス中立化</div>
+    <div class="legend-item">⭐ スター — +100ボーナス</div>
+    <div class="legend-item">🔮 クリスタル — 終了時3倍</div>
+    <div class="legend-item">🌀 ポータル — 遠距離隣接</div>
+  </div>
+
+  <div id="grid-wrap"><div id="grid"></div></div>
+
+  <div class="log-panel" id="logPanel"></div>
+</div>
+
+<!-- ===== EVENT OVERLAY ===== -->
+<div id="event-overlay">
+  <div class="event-popup">
+    <div class="event-popup-icon" id="evIcon">⛈️</div>
+    <div class="event-popup-title" id="evTitle">WEATHER EVENT</div>
+    <div class="event-popup-desc" id="evDesc">Something is happening...</div>
+  </div>
+</div>
+
+<!-- ===== GAME OVER MODAL ===== -->
+<div id="gameOverModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="goTitle">YOU WIN</div>
+    <div class="modal-sub" id="goSub">TERRITORY CONQUERED</div>
+    <div class="final-scores">
+      <div class="final-score-item">
+        <div class="fsi-label">PLAYER</div>
+        <div class="fsi-val p" id="goPS">0</div>
+      </div>
+      <div class="final-score-item">
+        <div class="fsi-label">CPU</div>
+        <div class="fsi-val c" id="goCS">0</div>
+      </div>
+    </div>
+    <div>
+      <button class="modal-btn" onclick="restartGame()">PLAY AGAIN</button>
+      <button class="modal-btn secondary" onclick="goToMenu()">MENU</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  CONSTANTS
+// ============================================================
+const GS = 10;
+const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];
+const SPECIAL_EMOJIS = { lightning:'⚡', fortress:'🛡️', bomb:'💣', star:'⭐', crystal:'🔮' };
+const CHAIN_BONUS = 18;
+const BASE_SCORE = 10;
+// Animation classes that must be preserved across renderGrid calls
+const ANIM_CLASSES = ['capture-player','capture-cpu','bomb-blast','damaged-p','damaged-c'];
+
+// ============================================================
+//  GAME STATE
+// ============================================================
+let G = {};
+
+function freshState(diff) {
+  return {
+    grid: [],
+    pScore: 0, cScore: 0,
+    turn: 1,
+    whose: 'player',
+    diff,
+    pCombo: 0, cCombo: 0,
+    pMul: 1.0, cMul: 1.0,
+    pMorale: false,
+    doubleNext: 0,      // turns of double score remaining
+    freeCapture: false, // event: player gets free anywhere capture
+    cpuGlitch: 0,       // turns cpu plays random
+    portals: [],        // [[r1,c1,r2,c2], ...]
+    crystals: [],       // [{r,c,owner}]
+    busy: false,
+    over: false,
+  };
+}
+
+// ============================================================
+//  GRID CELL STRUCTURE
+// ============================================================
+function freshCell() {
+  return { owner: null, hp: 1, maxHp: 1, special: null, portalId: -1 };
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function startGame(diff) {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'block';
+
+  G = freshState(diff);
+  G.grid = [];
+  for (let r = 0; r < GS; r++) {
+    G.grid[r] = [];
+    for (let c = 0; c < GS; c++) G.grid[r][c] = freshCell();
+  }
+
+  // Starting cells
+  G.grid[0][0].owner = 'player';
+  G.grid[GS-1][GS-1].owner = 'cpu';
+
+  placeSpecials();
+  placePortals();
+  buildGridDOM();
+  updateHUD();
+  renderGrid();
+  highlightValid();
+
+  const db = document.getElementById('diffBadge');
+  db.className = 'difficulty-badge ' + diff;
+  db.textContent = diff.toUpperCase();
+
+  addLog('ゲーム開始！難易度: ' + diff.toUpperCase(), 'important');
+}
+
+function goToMenu() {
+  document.getElementById('gameOverModal').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'flex';
+}
+
+function restartGame() {
+  document.getElementById('gameOverModal').style.display = 'none';
+  startGame(G.diff);
+}
+
+// ============================================================
+//  PLACE SPECIALS
+// ============================================================
+function placeSpecials() {
+  const avoid = new Set(['0,0', `${GS-1},${GS-1}`]);
+  const candidates = [];
+  for (let r = 0; r < GS; r++)
+    for (let c = 0; c < GS; c++)
+      if (!avoid.has(r+','+c)) candidates.push([r,c]);
+
+  shuffle(candidates);
+  const counts = { lightning: 3, fortress: 3, bomb: 2, star: 3, crystal: 3 };
+  let idx = 0;
+  for (const [type, n] of Object.entries(counts)) {
+    for (let i = 0; i < n && idx < candidates.length; i++, idx++) {
+      const [r,c] = candidates[idx];
+      G.grid[r][c].special = type;
+      if (type === 'fortress') { G.grid[r][c].hp = 3; G.grid[r][c].maxHp = 3; }
+      if (type === 'crystal') G.crystals.push({r, c, owner: null});
+    }
+  }
+}
+
+// ============================================================
+//  PLACE PORTALS
+// ============================================================
+function placePortals() {
+  const avoid = new Set(['0,0',`${GS-1},${GS-1}`]);
+  // Already occupied by specials — just pick empties
+  const candidates = [];
+  for (let r = 0; r < GS; r++)
+    for (let c = 0; c < GS; c++)
+      if (!avoid.has(r+','+c) && G.grid[r][c].special === null) candidates.push([r,c]);
+
+  shuffle(candidates);
+  G.portals = [];
+  for (let p = 0; p < 3 && candidates.length >= 2; p++) {
+    const [r1,c1] = candidates.shift();
+    // Pick second portal far from first
+    let bestIdx = 0, bestDist = 0;
+    for (let i = 0; i < Math.min(candidates.length, 20); i++) {
+      const d = dist(r1,c1,candidates[i][0],candidates[i][1]);
+      if (d > bestDist) { bestDist = d; bestIdx = i; }
+    }
+    const [r2,c2] = candidates.splice(bestIdx, 1)[0];
+    G.grid[r1][c1].portalId = p;
+    G.grid[r2][c2].portalId = p;
+    G.grid[r1][c1].special = 'portal';
+    G.grid[r2][c2].special = 'portal';
+    G.portals.push([r1,c1,r2,c2]);
+  }
+}
+
+// ============================================================
+//  DOM BUILD
+// ============================================================
+function buildGridDOM() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${GS}, 1fr)`;
+  for (let r = 0; r < GS; r++) {
+    for (let c = 0; c < GS; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell neutral';
+      cell.id = `c${r}_${c}`;
+      cell.dataset.r = r; cell.dataset.c = c;
+      cell.addEventListener('click', onCellClick);
+      // hp bar
+      const hpBar = document.createElement('div');
+      hpBar.className = 'hp-bar';
+      const hpFill = document.createElement('div');
+      hpFill.className = 'hp-fill';
+      hpFill.style.width = '100%';
+      hpBar.appendChild(hpFill);
+      cell.appendChild(hpBar);
+      grid.appendChild(cell);
+    }
+  }
+}
+
+// ============================================================
+//  RENDER
+// ============================================================
+function renderGrid() {
+  for (let r = 0; r < GS; r++) {
+    for (let c = 0; c < GS; c++) {
+      const cd = G.grid[r][c];
+      const el = cellEl(r, c);
+      if (!el) continue;
+
+      // FIX: preserve active animation classes — renderGrid was wiping them out
+      const activeAnims = ANIM_CLASSES.filter(a => el.classList.contains(a));
+
+      let cls = 'cell ' + (cd.owner || 'neutral');
+      if (cd.portalId >= 0) cls += ` portal-${cd.portalId}`;
+      el.className = cls;
+
+      // Restore animation classes after className reset
+      activeAnims.forEach(a => el.classList.add(a));
+
+      // Emoji
+      let emoji = '';
+      if (cd.special === 'portal') emoji = '🌀';
+      else if (cd.special) emoji = SPECIAL_EMOJIS[cd.special] || '';
+
+      // HP bar
+      const hpFill = el.querySelector('.hp-fill');
+      if (hpFill) {
+        hpFill.style.width = (cd.hp / cd.maxHp * 100) + '%';
+        // FIX: show HP bar for damaged neutral fortress cells too (not only owned)
+        const showBar = cd.maxHp > 1 && (cd.owner || cd.hp < cd.maxHp);
+        hpFill.style.display = showBar ? 'block' : 'none';
+        // Neutral damaged cell: show white bar (no owner CSS color to rely on)
+        hpFill.style.background = (!cd.owner && cd.hp < cd.maxHp) ? 'rgba(255,255,255,0.5)' : '';
+      }
+
+      const hpBar = el.querySelector('.hp-bar');
+      el.innerHTML = emoji;
+      if (hpBar) el.appendChild(hpBar);
+    }
+  }
+}
+
+function cellEl(r,c) { return document.getElementById(`c${r}_${c}`); }
+
+// ============================================================
+//  VALID MOVES
+// ============================================================
+function getValidMoves(side, freeCapture = false) {
+  const moves = [];
+
+  // Portal adjacency: if target cell is adjacent to portal A,
+  // and 'side' owns portal B of that pair → counts as adjacent
+  function hasPortalAdj(r, c) {
+    for (const [r1,c1,r2,c2] of G.portals) {
+      for (const [dr,dc] of DIRS) {
+        if (r1+dr===r && c1+dc===c && G.grid[r2][c2].owner === side) return true;
+        if (r2+dr===r && c2+dc===c && G.grid[r1][c1].owner === side) return true;
+      }
+    }
+    return false;
+  }
+
+  for (let r = 0; r < GS; r++) {
+    for (let c = 0; c < GS; c++) {
+      if (G.grid[r][c].owner === side) continue;
+      // Free capture: all empty cells anywhere on the map are valid
+      if (freeCapture && !G.grid[r][c].owner) { moves.push([r,c]); continue; }
+
+      // Must be adjacent to own territory (orthogonal) or reachable via portal
+      let adj = false;
+      for (const [dr,dc] of DIRS) {
+        const nr = r+dr, nc = c+dc;
+        if (nr<0||nr>=GS||nc<0||nc>=GS) continue;
+        if (G.grid[nr][nc].owner === side) { adj = true; break; }
+      }
+      if (!adj) adj = hasPortalAdj(r, c);
+      if (adj) moves.push([r,c]);
+    }
+  }
+  return moves;
+}
+
+function highlightValid() {
+  // Clear all valid
+  for (let r = 0; r < GS; r++)
+    for (let c = 0; c < GS; c++) {
+      const el = cellEl(r,c);
+      if (el) el.classList.remove('valid');
+    }
+
+  if (G.over || G.whose !== 'player') return;
+  const moves = getValidMoves('player', G.freeCapture);
+  for (const [r,c] of moves) {
+    const el = cellEl(r,c);
+    if (el) el.classList.add('valid');
+  }
+}
+
+// ============================================================
+//  PLAYER CLICK
+// ============================================================
+function onCellClick(e) {
+  if (G.busy || G.over || G.whose !== 'player') return;
+  const r = +this.dataset.r, c = +this.dataset.c;
+  if (!this.classList.contains('valid')) return;
+
+  G.busy = true;
+  clearHighlight();
+
+  const wasChain = performCapture(r, c, 'player');
+  if (G.freeCapture) { G.freeCapture = false; addLog('フリーキャプチャ使用！', 'important'); }
+
+  // FIX: wasChain === -1 means damage-only (no capture) — don't touch combo
+  // wasChain >= 0 means successful capture: 0=isolated, >0=chain bonus count
+  if (wasChain >= 0) {
+    if (wasChain > 0) {
+      G.pCombo++;
+      if (G.pCombo >= 3 && !G.pMorale) {
+        G.pMorale = true;
+        addLog('💪 MORALE BOOST! 次手に無敵ボーナス', 'important');
+      }
+    } else {
+      G.pCombo = 0;
+      // pMorale is cleared inside performCapture when used; no need to clear here
+    }
+    G.pMul = comboToMul(G.pCombo);
+  }
+
+  updateHUD();
+  renderGrid();
+  checkWin();
+  if (G.over) return;
+
+  // Check weather event
+  if (G.turn % 5 === 0) {
+    triggerWeatherEvent(() => {
+      switchToCPU();
+    });
+  } else {
+    switchToCPU();
+  }
+}
+
+function clearHighlight() {
+  for (let r = 0; r < GS; r++)
+    for (let c = 0; c < GS; c++) {
+      const el = cellEl(r,c);
+      if (el) el.classList.remove('valid');
+    }
+}
+
+// ============================================================
+//  CAPTURE LOGIC
+// ============================================================
+function performCapture(r, c, side) {
+  const opp = side === 'player' ? 'cpu' : 'player';
+  const cd = G.grid[r][c];
+
+  // Count adjacent own cells (chain bonus)
+  let chainCount = 0;
+  for (const [dr,dc] of DIRS) {
+    const nr=r+dr, nc=c+dc;
+    if (nr<0||nr>=GS||nc<0||nc>=GS) continue;
+    if (G.grid[nr][nc].owner === side) chainCount++;
+  }
+  // Portal chain bonus
+  for (const [r1,c1,r2,c2] of G.portals) {
+    for (const [dr,dc] of DIRS) {
+      if (r1+dr===r && c1+dc===c && G.grid[r2][c2].owner === side) { chainCount++; break; }
+      if (r2+dr===r && c2+dc===c && G.grid[r1][c1].owner === side) { chainCount++; break; }
+    }
+  }
+
+  // Apply damage / capture
+  if (!cd.owner || cd.owner === opp) {
+    cd.hp -= 1;
+    if (cd.hp <= 0) {
+      cd.owner = side;
+      cd.hp = cd.maxHp;
+
+      const el = cellEl(r,c);
+      if (el) {
+        el.classList.add(`capture-${side}`);
+        setTimeout(() => el.classList.remove(`capture-${side}`), 500);
+      }
+      spawnParticles(r, c, side);
+
+      // Score
+      let pts = BASE_SCORE;
+      const mul = side === 'player' ? G.pMul : G.cMul;
+      const dbl = G.doubleNext > 0 ? 2 : 1;
+      if (chainCount > 0) pts += chainCount * CHAIN_BONUS;
+
+      // FIX: save morale state before clearing — applySpecial (star) needs the original value
+      const moraleActive = G.pMorale && side === 'player';
+      if (moraleActive) { pts += 30; addLog('💪 モラルボーナス！+30', 'player-ev'); G.pMorale = false; }
+      pts = Math.round(pts * mul * dbl);
+
+      // FIX: only decrement doubleNext on a successful capture, not on failed attacks
+      if (G.doubleNext > 0) G.doubleNext--;
+
+      if (side === 'player') {
+        G.pScore += pts;
+        if (chainCount > 0) setEventText(`⚡ CHAIN ×${chainCount} +${pts}pts!`, 'chain');
+      } else {
+        G.cScore += pts;
+      }
+
+      addLog(
+        (side === 'player' ? '🔵 PLAYER' : '🔴 CPU') +
+        ` (${r},${c}) 占領 +${pts}pts` +
+        (chainCount > 0 ? ` [CHAIN×${chainCount}]` : ''),
+        side === 'player' ? 'player-ev' : 'cpu-ev'
+      );
+
+      // FIX: pass moraleActive so star bonus can correctly use the pre-clear value
+      applySpecial(r, c, side, chainCount, moraleActive);
+      return chainCount; // >= 0 = successful capture
+
+    } else {
+      // Damage landed but cell not yet captured
+      const el = cellEl(r,c);
+      if (el) {
+        el.classList.add(`damaged-${side==='player'?'p':'c'}`);
+        setTimeout(() => el.classList.remove(`damaged-${side==='player'?'p':'c'}`), 600);
+      }
+      addLog(
+        (side==='player'?'🔵 PLAYER':'🔴 CPU') +
+        ` (${r},${c}) ダメージ! HP:${cd.hp}/${cd.maxHp}`,
+        side==='player'?'player-ev':'cpu-ev'
+      );
+      return -1; // FIX: signal "no capture" so callers don't update combo
+    }
+  }
+  return -1;
+}
+
+// ============================================================
+//  SPECIAL EFFECTS
+// ============================================================
+function applySpecial(r, c, side, chain, moraleActive = false) {
+  const cd = G.grid[r][c];
+  if (!cd.special) return;
+
+  switch (cd.special) {
+    case 'lightning': {
+      addLog('⚡ 雷撃発動！周囲の空白マスを占領', 'important');
+      const captured = [];
+      for (const [dr,dc] of DIRS) {
+        const nr=r+dr, nc=c+dc;
+        if (nr<0||nr>=GS||nc<0||nc>=GS) continue;
+        if (!G.grid[nr][nc].owner) {
+          G.grid[nr][nc].owner = side;
+          const el = cellEl(nr,nc);
+          if (el) { el.classList.add(`capture-${side}`); setTimeout(() => el.classList.remove(`capture-${side}`), 500); }
+          spawnParticles(nr, nc, side);
+          const pts = Math.round(BASE_SCORE * (side==='player'?G.pMul:G.cMul));
+          if (side==='player') G.pScore += pts; else G.cScore += pts;
+          captured.push([nr,nc]);
+        }
+      }
+      if (captured.length > 0) addLog(`⚡ 雷撃で${captured.length}マス追加占領！`, side==='player'?'player-ev':'cpu-ev');
+      cd.special = null;
+      break;
+    }
+    case 'bomb': {
+      addLog('💣 爆弾炸裂！周囲8マス中立化', 'important');
+      for (let dr=-1; dr<=1; dr++) {
+        for (let dc=-1; dc<=1; dc++) {
+          if (dr===0&&dc===0) continue;
+          const nr=r+dr, nc=c+dc;
+          if (nr<0||nr>=GS||nc<0||nc>=GS) continue;
+          if (G.grid[nr][nc].owner) {
+            G.grid[nr][nc].owner = null;
+            G.grid[nr][nc].hp = G.grid[nr][nc].maxHp;
+            const el = cellEl(nr,nc);
+            if (el) { el.classList.add('bomb-blast'); setTimeout(() => el.classList.remove('bomb-blast'), 700); }
+          }
+        }
+      }
+      cd.special = null;
+      break;
+    }
+    case 'star': {
+      // FIX: use saved moraleActive — G.pMorale is already false at this point
+      const bonus = (side==='player' && moraleActive) ? 150 : 100;
+      if (side==='player') G.pScore += bonus; else G.cScore += bonus;
+      addLog(`⭐ スターボーナス！+${bonus}pts`, 'important');
+      cd.special = null;
+      break;
+    }
+    case 'crystal': {
+      addLog('🔮 クリスタル取得！ゲーム終了時3倍ボーナス', 'important');
+      const crystal = G.crystals.find(x => x.r===r && x.c===c);
+      if (crystal) crystal.owner = side;
+      // Don't clear special (keep crystal emoji for visual clarity)
+      break;
+    }
+    case 'portal': {
+      addLog('🌀 ポータル占領！反対側も隣接エリアに', 'important');
+      // Portal captured — the other end is now reachable
+      break;
+    }
+    case 'fortress': {
+      addLog('🛡️ 要塞占領！堅固な守りを得た', 'important');
+      // Keep fortress emoji, no extra effect
+      break;
+    }
+  }
+}
+
+// ============================================================
+//  CPU AI
+// ============================================================
+function switchToCPU() {
+  G.turn++;
+  G.whose = 'cpu';
+  updateHUD();
+
+  const el = document.getElementById('turnWho');
+  el.className = 'turn-who thinking';
+  el.textContent = 'CPU...';
+
+  const delay = 600 + Math.random() * 400;
+  setTimeout(doCpuTurn, delay);
+}
+
+function doCpuTurn() {
+  const glitch = G.cpuGlitch > 0;
+  if (G.cpuGlitch > 0) G.cpuGlitch--;
+
+  const moves = getValidMoves('cpu');
+  if (moves.length === 0) {
+    addLog('CPU: 有効な手がありません', 'cpu-ev');
+    finishCpuTurn();
+    return;
+  }
+
+  let chosen;
+  const eff = glitch ? 'easy' : G.diff;
+
+  if (eff === 'easy') {
+    chosen = moves[Math.floor(Math.random() * moves.length)];
+  } else if (eff === 'normal') {
+    // Prefer cells with chain bonus or special cells
+    const scored = moves.map(([r,c]) => {
+      let s = Math.random() * 10;
+      s += countAdj(r,c,'cpu') * 15;
+      if (G.grid[r][c].special && G.grid[r][c].special !== 'bomb') s += 25;
+      if (G.grid[r][c].special === 'bomb') s -= 10;
+      return { r, c, s };
+    });
+    scored.sort((a,b) => b.s-a.s);
+    chosen = [scored[0].r, scored[0].c];
+  } else {
+    // Hard: full evaluation
+    const scored = moves.map(([r,c]) => {
+      let s = 0;
+      const chain = countAdj(r,c,'cpu');
+      s += chain * CHAIN_BONUS;
+      const sp = G.grid[r][c].special;
+      if (sp === 'star') s += 100;
+      if (sp === 'lightning') s += 60;
+      if (sp === 'crystal') s += 80;
+      if (sp === 'fortress') s += 30;
+      if (sp === 'bomb') s -= 20; // risky
+      if (sp === 'portal') s += 45;
+      // Block player
+      s += countAdj(r,c,'player') * 22;
+      // Center bonus
+      s += (9 - (Math.abs(r-4.5)+Math.abs(c-4.5))) * 2;
+      // HP damage progress
+      const cd = G.grid[r][c];
+      if (cd.owner === 'player') s += (cd.maxHp - cd.hp) * 10; // partially damaged — finish
+      s += Math.random() * 8; // tie-break
+      return { r, c, s };
+    });
+    scored.sort((a,b) => b.s-a.s);
+    chosen = [scored[0].r, scored[0].c];
+  }
+
+  const wasChain = performCapture(chosen[0], chosen[1], 'cpu');
+
+  // FIX: only update combo on successful capture (wasChain >= 0)
+  if (wasChain >= 0) {
+    if (wasChain > 0) G.cCombo++;
+    else G.cCombo = 0;
+    G.cMul = comboToMul(G.cCombo);
+  }
+
+  updateHUD();
+  renderGrid();
+  checkWin();
+  if (!G.over) finishCpuTurn();
+}
+
+function finishCpuTurn() {
+  G.whose = 'player';
+  G.busy = false;
+  updateHUD();
+  highlightValid();
+}
+
+// ============================================================
+//  WEATHER EVENTS
+// ============================================================
+const EVENTS = [
+  {
+    icon: '☀️', title: 'SOLAR SURGE',
+    desc: '全占領マスがオーナーに+5点！',
+    fn: () => {
+      let pp = 0, cp = 0;
+      for (let r=0;r<GS;r++) for (let c=0;c<GS;c++) {
+        if (G.grid[r][c].owner==='player') pp += 5;
+        if (G.grid[r][c].owner==='cpu') cp += 5;
+      }
+      G.pScore += pp; G.cScore += cp;
+      addLog(`☀️ Solar Surge: PLAYER +${pp} / CPU +${cp}`, 'event-ev');
+    }
+  },
+  {
+    icon: '🌊', title: 'TIDAL RESET',
+    desc: 'CPUのマス3か所がランダムに中立化',
+    fn: () => {
+      const cpuCells = [];
+      for (let r=0;r<GS;r++) for (let c=0;c<GS;c++)
+        if (G.grid[r][c].owner==='cpu') cpuCells.push([r,c]);
+      shuffle(cpuCells);
+      const n = Math.min(3, cpuCells.length);
+      for (let i=0;i<n;i++) {
+        const [r,c] = cpuCells[i];
+        G.grid[r][c].owner = null;
+        G.grid[r][c].hp = G.grid[r][c].maxHp;
+        const el = cellEl(r,c);
+        if (el) { el.classList.add('bomb-blast'); setTimeout(()=>el.classList.remove('bomb-blast'), 700); }
+      }
+      addLog(`🌊 Tidal Reset: CPU の${n}マスが中立化！`, 'event-ev');
+    }
+  },
+  {
+    icon: '⚡', title: 'POWER SURGE',
+    desc: '次の3ターンのスコアが2倍！',
+    fn: () => { G.doubleNext = 3; addLog('⚡ Power Surge: 次3ターン2倍スコア！', 'event-ev'); }
+  },
+  {
+    icon: '🎁', title: 'FREE CAPTURE',
+    desc: 'PLAYERはどこでも1マス無料占領！',
+    fn: () => { G.freeCapture = true; addLog('🎁 フリーキャプチャ獲得！次の手はどこでも可', 'event-ev'); }
+  },
+  {
+    icon: '🌑', title: 'CPU GLITCH',
+    desc: '次2ターンCPUがランダム行動',
+    fn: () => { G.cpuGlitch = 2; addLog('🌑 CPU GLITCH: 次2ターンCPUが混乱', 'event-ev'); }
+  },
+  {
+    icon: '💫', title: 'CRYSTAL RAIN',
+    desc: '新しいクリスタルが3か所に出現',
+    fn: () => {
+      const empties = [];
+      for (let r=0;r<GS;r++) for (let c=0;c<GS;c++)
+        if (!G.grid[r][c].owner && !G.grid[r][c].special) empties.push([r,c]);
+      shuffle(empties);
+      const n = Math.min(3, empties.length);
+      for (let i=0;i<n;i++) {
+        const [r,c] = empties[i];
+        G.grid[r][c].special = 'crystal';
+        G.crystals.push({r, c, owner: null});
+      }
+      addLog(`💫 Crystal Rain: ${n}個のクリスタルが降臨`, 'event-ev');
+    }
+  },
+  {
+    icon: '🌪️', title: 'TORNADO',
+    desc: '中央エリア2×2がシャッフル',
+    fn: () => {
+      const area = [[4,4],[4,5],[5,4],[5,5]];
+      const owners = area.map(([r,c]) => G.grid[r][c].owner);
+      shuffle(owners);
+      area.forEach(([r,c], i) => { G.grid[r][c].owner = owners[i]; });
+      addLog('🌪️ Tornado: 中央4マスがシャッフル！', 'event-ev');
+    }
+  },
+];
+
+function triggerWeatherEvent(callback) {
+  const ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+  showEventOverlay(ev.icon, ev.title, ev.desc, () => {
+    ev.fn();
+    renderGrid();
+    updateHUD();
+    setEventText(`${ev.icon} ${ev.title}`, 'weather');
+    callback();
+  });
+}
+
+function showEventOverlay(icon, title, desc, cb) {
+  document.getElementById('evIcon').textContent = icon;
+  document.getElementById('evTitle').textContent = title;
+  document.getElementById('evDesc').textContent = desc;
+  const ov = document.getElementById('event-overlay');
+  ov.classList.add('show');
+  setTimeout(() => {
+    ov.classList.remove('show');
+    setTimeout(cb, 400);
+  }, 2200);
+}
+
+// ============================================================
+//  WIN CHECK
+// ============================================================
+function checkWin() {
+  // Count empty cells
+  let empty = 0, pCells = 0, cCells = 0;
+  for (let r=0;r<GS;r++) for (let c=0;c<GS;c++) {
+    const o = G.grid[r][c].owner;
+    if (!o) empty++;
+    else if (o==='player') pCells++;
+    else cCells++;
+  }
+
+  // Crystal bonus
+  let pCrystal = 0, cCrystal = 0;
+  for (const cr of G.crystals) {
+    if (cr.owner === 'player') pCrystal += pCells * 2;
+    if (cr.owner === 'cpu') cCrystal += cCells * 2;
+  }
+
+  if (empty === 0 || getValidMoves('player').length === 0 || getValidMoves('cpu').length === 0) {
+    G.over = true;
+    G.busy = false;
+
+    const finalP = G.pScore + pCrystal;
+    const finalC = G.cScore + cCrystal;
+
+    if (pCrystal > 0) addLog(`🔮 クリスタルボーナス PLAYER +${pCrystal}`, 'important');
+    if (cCrystal > 0) addLog(`🔮 クリスタルボーナス CPU +${cCrystal}`, 'important');
+
+    setTimeout(() => showGameOver(finalP, finalC, pCells, cCells), 600);
+  }
+}
+
+function showGameOver(ps, cs, pCells, cCells) {
+  const modal = document.getElementById('gameOverModal');
+  const title = document.getElementById('goTitle');
+  const sub = document.getElementById('goSub');
+  document.getElementById('goPS').textContent = ps;
+  document.getElementById('goCS').textContent = cs;
+
+  const territory = `${pCells}マス vs ${cCells}マス`;
+  if (ps > cs) {
+    title.className = 'modal-title win'; title.textContent = 'YOU WIN!';
+    sub.textContent = `${territory} — TERRITORY CONQUERED`;
+  } else if (cs > ps) {
+    title.className = 'modal-title lose'; title.textContent = 'YOU LOSE';
+    sub.textContent = `${territory} — THE CPU PREVAILED`;
+  } else {
+    title.className = 'modal-title draw'; title.textContent = 'DRAW!';
+    sub.textContent = `${territory} — PERFECTLY MATCHED`;
+  }
+
+  modal.style.display = 'flex';
+}
+
+// ============================================================
+//  HUD UPDATE
+// ============================================================
+function updateHUD() {
+  let pCells = 0, cCells = 0;
+  for (let r=0;r<GS;r++) for (let c=0;c<GS;c++) {
+    if (G.grid[r][c].owner==='player') pCells++;
+    if (G.grid[r][c].owner==='cpu') cCells++;
+  }
+
+  document.getElementById('pScore').textContent = G.pScore;
+  document.getElementById('cScore').textContent = G.cScore;
+  document.getElementById('pCells').textContent = `${pCells} / ${GS*GS} cells`;
+  document.getElementById('cCells').textContent = `${cCells} / ${GS*GS} cells`;
+
+  // Territory bars
+  const total = GS * GS;
+  document.getElementById('pBar').style.width = (pCells/total*100) + '%';
+  document.getElementById('cBar').style.width = (cCells/total*100) + '%';
+
+  // Combo — show morale indicator when active
+  const pcc = document.getElementById('pCombo');
+  const ccc = document.getElementById('cCombo');
+  const moraleTag = G.pMorale ? ' 💪' : '';
+  pcc.textContent = `COMBO ×${G.pMul.toFixed(1)} [${G.pCombo}連]${moraleTag}`;
+  ccc.textContent = `COMBO ×${G.cMul.toFixed(1)} [${G.cCombo}連]`;
+  pcc.className = 'panel-combo' + (G.pCombo > 0 || G.pMorale ? '' : ' inactive');
+  ccc.className = 'panel-combo' + (G.cCombo > 0 ? '' : ' inactive');
+
+  // Multiplier display — also show remaining doubleNext turns
+  const maxMul = Math.max(G.pMul, G.cMul);
+  const mulEl = document.getElementById('mulDisplay');
+  mulEl.textContent = G.doubleNext > 0
+    ? `× ${maxMul.toFixed(1)}  [2倍 残${G.doubleNext}]`
+    : `× ${maxMul.toFixed(1)}`;
+  mulEl.className = 'multiplier-display' + (maxMul > 1 || G.doubleNext > 0 ? ' hot' : '');
+
+  // Turn display
+  document.getElementById('turnNum').textContent = `TURN ${G.turn}`;
+  const tw = document.getElementById('turnWho');
+  if (G.whose === 'player') {
+    tw.className = 'turn-who player';
+    tw.textContent = 'YOUR TURN';
+  } else {
+    tw.className = 'turn-who cpu';
+    tw.textContent = 'CPU TURN';
+  }
+
+  // Event banner: freeCapture > doubleNext > idle hint
+  // Don't overwrite here if a chain bonus text was just set by performCapture —
+  // the chain text will be naturally replaced on the next updateHUD cycle.
+  if (G.freeCapture) {
+    setEventText('🎁 フリーキャプチャ使用可！どこでも占領OK', 'weather');
+  } else if (G.doubleNext > 0) {
+    setEventText(`⚡ 2倍スコア発動中！残り${G.doubleNext}ターン`, 'chain');
+  }
+}
+
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function countAdj(r, c, side) {
+  let n = 0;
+  for (const [dr,dc] of DIRS) {
+    const nr=r+dr, nc=c+dc;
+    if (nr<0||nr>=GS||nc<0||nc>=GS) continue;
+    if (G.grid[nr][nc].owner === side) n++;
+  }
+  return n;
+}
+
+function comboToMul(combo) {
+  if (combo >= 8) return 3.0;
+  if (combo >= 5) return 2.0;
+  if (combo >= 3) return 1.5;
+  return 1.0;
+}
+
+function dist(r1,c1,r2,c2) { return Math.abs(r1-r2)+Math.abs(c1-c2); }
+
+function shuffle(arr) {
+  for (let i=arr.length-1;i>0;i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function setEventText(msg, cls) {
+  const el = document.getElementById('eventText');
+  el.textContent = msg;
+  el.className = 'event-text ' + cls;
+}
+
+function addLog(msg, cls = 'info') {
+  const panel = document.getElementById('logPanel');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + cls;
+  entry.textContent = msg;
+  panel.insertBefore(entry, panel.firstChild);
+  while (panel.children.length > 20) panel.removeChild(panel.lastChild);
+}
+
+// ============================================================
+//  PARTICLES
+// ============================================================
+function spawnParticles(r, c, side) {
+  const el = cellEl(r, c);
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const color = side === 'player' ? '#00d4ff' : '#ff3366';
+
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (Math.PI * 2 * i) / 8 + Math.random() * 0.4;
+    const speed = 30 + Math.random() * 40;
+    const dx = Math.cos(angle) * speed;
+    const dy = Math.sin(angle) * speed;
+    p.style.cssText = `
+      width: ${4 + Math.random()*4}px;
+      height: ${4 + Math.random()*4}px;
+      left: ${cx}px; top: ${cy}px;
+      background: ${color};
+      box-shadow: 0 0 4px ${color};
+      --dx: ${dx}px; --dy: ${dy}px;
+      animation-duration: ${0.5+Math.random()*0.3}s;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 900);
+  }
+}
+</script>
+</body>
+</html>
