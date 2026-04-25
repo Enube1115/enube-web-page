@@ -14,7 +14,7 @@
   --border:#2a2a55;--text:#e8e8ff;--text-muted:#8888bb;--text-dim:#5555aa;
   --accent:#7c6dff;--accent-glow:rgba(124,109,255,0.3);
   --success:#4ecca3;--success-glow:rgba(78,204,163,0.3);
-  --error:#ff6b6b;--warning:#ffcc5c;
+  --error:#ff6b6b;--warning:#ffcc5c;--coin:#f5c842;
   --font-mono:'JetBrains Mono',monospace;--font-sans:'Inter',sans-serif;
   --radius:12px;--radius-sm:8px;--transition:0.2s ease;
   --shadow:0 4px 24px rgba(0,0,0,0.4);--shadow-lg:0 8px 48px rgba(0,0,0,0.6);
@@ -24,7 +24,7 @@
   --border:#d0d0ee;--text:#111133;--text-muted:#5555aa;--text-dim:#9999cc;
   --accent:#6050ee;--accent-glow:rgba(96,80,238,0.2);
   --success:#27a87e;--success-glow:rgba(39,168,126,0.2);
-  --error:#cc3344;--warning:#cc8800;
+  --error:#cc3344;--warning:#cc8800;--coin:#c49a00;
   --shadow:0 4px 24px rgba(0,0,0,0.1);--shadow-lg:0 8px 48px rgba(0,0,0,0.2);
 }
 
@@ -35,37 +35,200 @@ body{
   transition:background 0.3s,color 0.3s;padding-bottom:40px;
 }
 
-#app{width:100%;max-width:520px;padding:16px;display:flex;flex-direction:column;gap:14px}
+/* ═══════════════════════════════════════
+   MODE SELECTION SCREEN
+══════════════════════════════════════ */
+#mode-screen{
+  position:fixed;inset:0;z-index:200;display:flex;align-items:center;
+  justify-content:center;padding:20px;
+  background:var(--bg);transition:opacity 0.35s ease,pointer-events 0s;
+}
+#mode-screen.hiding{opacity:0;pointer-events:none}
+#mode-screen.hidden{display:none}
+
+.ms-wrap{
+  width:100%;max-width:480px;display:flex;flex-direction:column;
+  align-items:center;gap:28px;
+}
+.ms-logo{
+  text-align:center;
+}
+.ms-logo-text{
+  font-size:2.4rem;font-weight:800;letter-spacing:-1px;
+  background:linear-gradient(135deg,var(--accent),var(--success));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.ms-sub{font-size:0.88rem;color:var(--text-muted);margin-top:4px}
+
+.ms-coins{
+  display:flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:100px;padding:8px 18px;font-size:0.88rem;color:var(--text-muted);
+  box-shadow:var(--shadow);
+}
+.ms-coin-val{
+  font-family:var(--font-mono);font-size:1.05rem;font-weight:700;color:var(--coin);
+}
+
+.ms-cards{display:flex;gap:14px;width:100%}
+@media(max-width:420px){.ms-cards{flex-direction:column}}
+
+.ms-card{
+  flex:1;background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:22px 18px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  text-align:center;transition:all 0.22s ease;box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+}
+.ms-card::before{
+  content:'';position:absolute;inset:0;opacity:0;transition:opacity 0.22s;
+}
+.ms-card--daily::before{background:radial-gradient(circle at top left,var(--accent-glow),transparent 70%)}
+.ms-card--free::before{background:radial-gradient(circle at top right,var(--success-glow),transparent 70%)}
+.ms-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.ms-card:hover::before{opacity:1}
+.ms-card--daily:hover{border-color:var(--accent)}
+.ms-card--free:hover{border-color:var(--success)}
+
+.ms-card-icon{font-size:2rem;line-height:1}
+.ms-card-title{font-size:1.05rem;font-weight:700;letter-spacing:-0.3px}
+.ms-card-desc{font-size:0.75rem;color:var(--text-muted);line-height:1.6}
+.ms-coin-note{color:var(--coin);font-weight:600}
+.ms-free-note{color:var(--text-dim)}
+
+.ms-status{
+  font-size:0.72rem;font-weight:600;padding:3px 10px;border-radius:10px;
+  margin-top:2px;
+}
+.ms-status--done{background:rgba(78,204,163,0.18);color:var(--success)}
+.ms-status--progress{background:rgba(124,109,255,0.18);color:var(--accent)}
+.ms-status--new{background:rgba(255,204,92,0.18);color:var(--warning)}
+
+.ms-btn{
+  margin-top:6px;padding:9px 22px;border:none;border-radius:var(--radius-sm);
+  font-family:var(--font-sans);font-size:0.88rem;font-weight:700;cursor:pointer;
+  transition:all var(--transition);width:100%;
+}
+.ms-btn--daily{
+  background:linear-gradient(135deg,var(--accent),#9b8dff);color:#fff;
+  box-shadow:0 4px 14px var(--accent-glow);
+}
+.ms-btn--daily:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--accent-glow)}
+.ms-btn--free{
+  background:linear-gradient(135deg,var(--success),#6ff8d4);color:#0d2018;
+  box-shadow:0 4px 14px var(--success-glow);
+}
+.ms-btn--free:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--success-glow)}
+
+/* ═══════════════════════════════════════
+   GAME SCREEN
+══════════════════════════════════════ */
+#app{
+  width:100%;max-width:520px;padding:16px;
+  display:none;flex-direction:column;gap:14px;
+}
+#app.active{display:flex}
 
 /* Header */
 header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:12px 16px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);gap:8px;
 }
+.header-left{display:flex;align-items:center;gap:8px;min-width:0}
+.header-title{min-width:0}
 .header-title h1{
-  font-size:1.45rem;font-weight:700;letter-spacing:-0.5px;
+  font-size:1.3rem;font-weight:700;letter-spacing:-0.5px;
   background:linear-gradient(135deg,var(--accent),var(--success));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  white-space:nowrap;
 }
-.header-title .date{font-size:0.72rem;color:var(--text-muted);font-family:var(--font-mono);margin-top:2px}
-.header-actions{display:flex;gap:7px}
+.header-title .date{font-size:0.68rem;color:var(--text-muted);font-family:var(--font-mono);margin-top:1px;white-space:nowrap}
+.header-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+
+/* Coin display in header */
+.coin-pill{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(245,200,66,0.12);border:1px solid rgba(245,200,66,0.3);
+  border-radius:100px;padding:4px 10px;cursor:default;
+  transition:all var(--transition);white-space:nowrap;
+}
+.coin-pill:hover{background:rgba(245,200,66,0.2)}
+.coin-pill-icon{font-size:0.9rem}
+.coin-pill-val{
+  font-family:var(--font-mono);font-size:0.82rem;font-weight:700;
+  color:var(--coin);min-width:16px;
+}
+.coin-earn-anim{
+  animation:coinPop 0.5s ease;
+}
+@keyframes coinPop{
+  0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}
+}
+
 .icon-btn{
   background:var(--card);border:1px solid var(--border);color:var(--text-muted);
-  width:36px;height:36px;border-radius:50%;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;font-size:1rem;
-  transition:all var(--transition);
+  width:34px;height:34px;border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:0.95rem;
+  transition:all var(--transition);flex-shrink:0;
 }
 .icon-btn:hover{background:var(--card-hover);color:var(--text);border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow)}
 
-/* Target Preview */
-.target-preview{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:14px 18px;box-shadow:var(--shadow);
+/* Mode badge bar */
+.mode-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 14px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);font-size:0.75rem;box-shadow:var(--shadow);
 }
+.mode-tag{
+  font-weight:700;padding:2px 10px;border-radius:100px;font-size:0.7rem;
+  letter-spacing:0.5px;
+}
+.mode-tag--daily{background:rgba(124,109,255,0.2);color:var(--accent)}
+.mode-tag--free{background:rgba(78,204,163,0.2);color:var(--success)}
+.mode-bar-right{color:var(--text-muted)}
+
+/* Daily done notice */
+.daily-done-notice{
+  background:var(--surface);border:1.5px solid var(--success);
+  border-radius:var(--radius);padding:14px 18px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  box-shadow:var(--shadow);
+}
+.ddn-text{font-size:0.82rem;color:var(--success);font-weight:600}
+.ddn-fp-btn{
+  background:linear-gradient(135deg,var(--success),#6ff8d4);
+  border:none;border-radius:var(--radius-sm);padding:7px 14px;
+  color:#0d2018;font-weight:700;font-size:0.8rem;cursor:pointer;
+  white-space:nowrap;transition:all var(--transition);flex-shrink:0;
+}
+.ddn-fp-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px var(--success-glow)}
+
+/* Purchased Hints Bar */
+.hints-bar{
+  background:var(--surface);border:1px solid rgba(245,200,66,0.35);
+  border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow);
+}
+.hints-bar-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--coin);font-weight:700;margin-bottom:8px}
+.hints-list{display:flex;gap:8px;flex-wrap:wrap}
+.hint-chip{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);
+  border-radius:var(--radius-sm);padding:6px 12px;
+}
+.hint-chip-ch{font-weight:800;font-size:0.85rem}
+.hint-chip-ch.r{color:#ff7070}.hint-chip-ch.g{color:#66ee88}.hint-chip-ch.b{color:#6699ff}
+.hint-chip-val{font-family:var(--font-mono);font-size:0.88rem;font-weight:600;color:var(--text)}
+.hint-chip-label{font-size:0.68rem;color:var(--text-muted)}
+
+/* Target Preview */
 .section-label{
   font-size:0.68rem;text-transform:uppercase;letter-spacing:1.5px;
   color:var(--text-muted);margin-bottom:10px;font-weight:600;
+}
+.target-preview{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 18px;box-shadow:var(--shadow);
 }
 .target-row{display:flex;gap:12px;align-items:center}
 .target-swatch{
@@ -85,32 +248,27 @@ header{
 .target-info .val{font-family:var(--font-mono);font-size:1.1rem;font-weight:600;letter-spacing:1px}
 .attempt-dots{display:flex;gap:5px;align-items:center}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--border);transition:all var(--transition)}
-.dot.used{background:var(--accent)}
-.dot.won{background:var(--success)}
-.dot.lost{background:var(--error)}
+.dot.used{background:var(--accent)}.dot.won{background:var(--success)}.dot.lost{background:var(--error)}
 
 /* Guess Board */
 .guess-board{display:flex;flex-direction:column;gap:9px}
 .guess-row{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);padding:11px 14px;display:flex;
-  flex-direction:column;gap:8px;box-shadow:var(--shadow);
-  animation:slideIn 0.3s ease;
+  flex-direction:column;gap:8px;box-shadow:var(--shadow);animation:slideIn 0.3s ease;
 }
 @keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 .guess-top{display:flex;align-items:center;gap:10px}
 .guess-num{font-size:0.68rem;color:var(--text-dim);font-family:var(--font-mono);min-width:18px}
 .guess-swatch{
   width:42px;height:42px;border-radius:var(--radius-sm);
-  border:1px solid var(--border);flex-shrink:0;cursor:pointer;
-  transition:box-shadow var(--transition);
+  border:1px solid var(--border);flex-shrink:0;cursor:pointer;transition:box-shadow var(--transition);
 }
 .guess-swatch:hover{box-shadow:0 0 14px rgba(255,255,255,0.25)}
 .guess-info{flex:1;min-width:0}
 .guess-hex{
   font-family:var(--font-mono);font-size:0.95rem;font-weight:600;
-  cursor:pointer;letter-spacing:1px;transition:color var(--transition);
-  white-space:nowrap;
+  cursor:pointer;letter-spacing:1px;transition:color var(--transition);white-space:nowrap;
 }
 .guess-hex:hover{color:var(--accent);text-decoration:underline}
 .guess-name{font-size:0.7rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -119,20 +277,14 @@ header{
 .prox-bar{width:52px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
 .prox-fill{height:100%;border-radius:3px;transition:width 0.5s ease}
 .prox-pct{font-family:var(--font-mono);font-size:0.68rem;color:var(--text-muted);min-width:28px;text-align:right}
-.temp-badge{
-  font-size:0.65rem;padding:2px 6px;border-radius:10px;
-  font-weight:600;letter-spacing:0.3px;white-space:nowrap;
-}
+.temp-badge{font-size:0.65rem;padding:2px 6px;border-radius:10px;font-weight:600;letter-spacing:0.3px;white-space:nowrap}
 .warm{background:rgba(255,160,50,0.2);color:#ffaa33}
 .cool{background:rgba(80,180,255,0.2);color:#55aaff}
 .neutral{background:rgba(160,160,160,0.2);color:#aaa}
-
-/* RGB hints */
 .rgb-hints{display:flex;gap:7px}
 .rgb-cell{
   flex:1;background:var(--card);border-radius:var(--radius-sm);
-  padding:7px 9px;display:flex;flex-direction:column;gap:3px;
-  border:1px solid var(--border);
+  padding:7px 9px;display:flex;flex-direction:column;gap:3px;border:1px solid var(--border);
 }
 .rgb-lbl{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1px}
 .rgb-lbl.r{color:#ff6666}.rgb-lbl.g{color:#66ee88}.rgb-lbl.b{color:#6699ff}
@@ -141,16 +293,11 @@ header{
 .rgb-bar-fill{height:100%;border-radius:2px;transition:width 0.5s ease}
 .rgb-bar-fill.r{background:#ff6666}.rgb-bar-fill.g{background:#66ee88}.rgb-bar-fill.b{background:#6699ff}
 .rgb-val{font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted)}
-.c-correct{color:var(--success)}
-.c-up{color:#88aaff}
-.c-down{color:#ff8888}
+.c-correct{color:var(--success)}.c-up{color:#88aaff}.c-down{color:#ff8888}
 .win-label{text-align:center;font-size:0.72rem;color:var(--success);font-weight:700;padding-top:2px}
-
-/* Empty rows */
 .empty-row{
   background:var(--surface);border:1px dashed var(--border);
-  border-radius:var(--radius);padding:18px 14px;
-  display:flex;align-items:center;gap:10px;opacity:0.45;
+  border-radius:var(--radius);padding:18px 14px;display:flex;align-items:center;gap:10px;opacity:0.45;
 }
 .empty-sw{width:42px;height:42px;border-radius:var(--radius-sm);border:1px dashed var(--border);background:var(--card)}
 .empty-txt{font-family:var(--font-mono);font-size:0.78rem;color:var(--text-dim);letter-spacing:2px}
@@ -162,8 +309,7 @@ header{
 }
 .live-preview{
   display:flex;align-items:center;gap:10px;padding:9px 12px;
-  background:var(--card);border-radius:var(--radius-sm);
-  margin-bottom:11px;border:1px solid var(--border);
+  background:var(--card);border-radius:var(--radius-sm);margin-bottom:11px;border:1px solid var(--border);
 }
 .prev-swatch{width:34px;height:34px;border-radius:6px;border:1px solid var(--border);background:#888;flex-shrink:0;transition:background 0.15s}
 .prev-info{flex:1;min-width:0}
@@ -175,8 +321,8 @@ header{
   flex:1;background:var(--card);border:2px solid var(--border);
   border-radius:var(--radius-sm);padding:9px 12px;
   font-family:var(--font-mono);font-size:1.05rem;font-weight:600;
-  color:var(--text);letter-spacing:2px;text-transform:uppercase;
-  outline:none;transition:all var(--transition);width:100%;
+  color:var(--text);letter-spacing:2px;text-transform:uppercase;outline:none;
+  transition:all var(--transition);width:100%;
 }
 .hex-input:focus{border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow)}
 .hex-input.valid{border-color:var(--success)}
@@ -187,15 +333,8 @@ header{
   overflow:hidden;position:relative;transition:border-color var(--transition);
 }
 .picker-wrap:hover{border-color:var(--accent)}
-.picker-wrap input[type="color"]{
-  position:absolute;inset:-4px;width:calc(100% + 8px);
-  height:calc(100% + 8px);cursor:pointer;opacity:0;
-}
-.picker-face{
-  position:absolute;inset:0;background:#888;
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.1rem;pointer-events:none;transition:background 0.15s;
-}
+.picker-wrap input[type="color"]{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);cursor:pointer;opacity:0}
+.picker-face{position:absolute;inset:0;background:#888;display:flex;align-items:center;justify-content:center;font-size:1.1rem;pointer-events:none;transition:background 0.15s}
 .submit-btn{
   width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),#9b8dff);
   border:none;border-radius:var(--radius-sm);color:#fff;
@@ -206,6 +345,23 @@ header{
 .submit-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px var(--accent-glow)}
 .submit-btn:active:not(:disabled){transform:translateY(0)}
 .submit-btn:disabled{opacity:0.45;cursor:not-allowed}
+
+/* Hint purchase button */
+.hint-purchase-btn{
+  width:100%;padding:9px;
+  background:rgba(245,200,66,0.08);border:1.5px solid rgba(245,200,66,0.3);
+  border-radius:var(--radius-sm);color:var(--coin);
+  font-family:var(--font-sans);font-size:0.85rem;font-weight:600;
+  cursor:pointer;transition:all var(--transition);margin-bottom:9px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.hint-purchase-btn:hover:not(:disabled){background:rgba(245,200,66,0.15);border-color:var(--coin);box-shadow:0 0 12px rgba(245,200,66,0.2)}
+.hint-purchase-btn:disabled{opacity:0.4;cursor:not-allowed}
+.hint-cost-badge{
+  background:rgba(245,200,66,0.2);border-radius:6px;
+  padding:1px 7px;font-size:0.75rem;
+}
+
 .shortcuts{display:flex;gap:10px;flex-wrap:wrap}
 .shortcut{display:flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--text-dim)}
 .key{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted)}
@@ -222,12 +378,19 @@ header{
 .result-title.lose{color:var(--error)}
 .result-color{
   display:flex;align-items:center;gap:14px;padding:12px;
-  background:var(--card);border-radius:var(--radius-sm);
-  margin:10px 0;border:1px solid var(--border);
+  background:var(--card);border-radius:var(--radius-sm);margin:10px 0;border:1px solid var(--border);
 }
 .result-swatch{width:48px;height:48px;border-radius:var(--radius-sm);border:1px solid var(--border);flex-shrink:0}
 .result-hex{font-family:var(--font-mono);font-size:1.1rem;font-weight:700;letter-spacing:1px}
 .result-name{font-size:0.78rem;color:var(--text-muted);margin-top:3px}
+
+/* Coin reward badge in result */
+.coin-reward-badge{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:9px;background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);
+  border-radius:var(--radius-sm);margin:8px 0;font-size:0.85rem;font-weight:600;color:var(--coin);
+}
+
 .result-next{font-size:0.78rem;color:var(--text-muted);text-align:center;margin:8px 0}
 .countdown{font-family:var(--font-mono);font-weight:700;color:var(--accent)}
 .result-actions{display:flex;gap:8px;margin-top:12px}
@@ -240,10 +403,19 @@ header{
 .share-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--success-glow)}
 .copy-result-btn{
   padding:10px 14px;background:var(--card);border:1px solid var(--border);
-  border-radius:var(--radius-sm);color:var(--text-muted);cursor:pointer;
-  font-size:0.88rem;transition:all var(--transition);
+  border-radius:var(--radius-sm);color:var(--text-muted);cursor:pointer;font-size:0.88rem;transition:all var(--transition);
 }
 .copy-result-btn:hover{border-color:var(--accent);color:var(--text)}
+
+/* Free play again button */
+.fp-again-btn{
+  width:100%;padding:11px;background:linear-gradient(135deg,var(--success),#6ff8d4);
+  border:none;border-radius:var(--radius-sm);color:#0d2018;
+  font-family:var(--font-sans);font-size:0.92rem;font-weight:700;
+  cursor:pointer;letter-spacing:0.5px;transition:all var(--transition);
+  box-shadow:0 4px 14px var(--success-glow);margin-top:10px;
+}
+.fp-again-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--success-glow)}
 
 /* Palette gallery */
 .palette-section{
@@ -252,36 +424,54 @@ header{
 }
 .palette-swatches{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 .pal-sw{
-  width:38px;height:38px;border-radius:var(--radius-sm);
-  border:1px solid var(--border);cursor:pointer;position:relative;
-  transition:transform var(--transition),box-shadow var(--transition);
+  width:38px;height:38px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  cursor:pointer;position:relative;transition:transform var(--transition),box-shadow var(--transition);
 }
 .pal-sw:hover{transform:scale(1.12);box-shadow:0 4px 10px rgba(0,0,0,0.4)}
 .pal-tip{
   position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);
-  background:var(--text);color:var(--bg);font-family:var(--font-mono);
-  font-size:0.62rem;padding:3px 6px;border-radius:4px;
-  white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.15s;
+  background:var(--text);color:var(--bg);font-family:var(--font-mono);font-size:0.62rem;
+  padding:3px 6px;border-radius:4px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.15s;
 }
 .pal-sw:hover .pal-tip{opacity:1}
 
 /* Modal */
 .modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,0.72);
-  display:flex;align-items:center;justify-content:center;z-index:100;
-  opacity:0;pointer-events:none;transition:opacity 0.25s;padding:20px;
+  position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;align-items:center;
+  justify-content:center;z-index:300;opacity:0;pointer-events:none;transition:opacity 0.25s;padding:20px;
 }
 .modal-overlay.show{opacity:1;pointer-events:all}
 .modal{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:22px;width:100%;max-width:400px;
-  box-shadow:var(--shadow-lg);transform:scale(0.95);transition:transform 0.25s;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;width:100%;max-width:400px;box-shadow:var(--shadow-lg);
+  transform:scale(0.95);transition:transform 0.25s;
 }
 .modal-overlay.show .modal{transform:scale(1)}
-.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .modal-title{font-size:1.1rem;font-weight:700}
 .modal-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;padding:4px;transition:color var(--transition)}
 .modal-close:hover{color:var(--text)}
+
+/* Hint Modal */
+.hint-modal-desc{font-size:0.8rem;color:var(--text-muted);margin-bottom:16px;line-height:1.6}
+.hint-ch-grid{display:flex;gap:8px;margin-bottom:14px}
+.hint-ch-btn{
+  flex:1;padding:12px 8px;background:var(--card);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-sans);
+  font-size:0.78rem;font-weight:600;color:var(--text);text-align:center;line-height:1.5;
+  transition:all var(--transition);
+}
+.hint-ch-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.hint-ch-btn:disabled{opacity:0.35;cursor:not-allowed;text-decoration:line-through}
+.hint-ch-btn[data-ch="r"]:hover:not(:disabled){border-color:#ff6666;background:rgba(255,102,102,0.1)}
+.hint-ch-btn[data-ch="g"]:hover:not(:disabled){border-color:#66ee88;background:rgba(102,238,136,0.1)}
+.hint-ch-btn[data-ch="b"]:hover:not(:disabled){border-color:#6699ff;background:rgba(102,153,255,0.1)}
+.hint-modal-balance{
+  font-size:0.78rem;color:var(--text-muted);text-align:center;
+  padding:8px;background:var(--card);border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+}
+.hm-coin{font-family:var(--font-mono);font-weight:700;color:var(--coin)}
 
 /* Stats */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:18px}
@@ -299,122 +489,182 @@ header{
   font-size:0.68rem;font-weight:700;color:#fff;transition:width 0.7s ease;min-width:22px;
 }
 .dist-fill.cur{background:var(--success)}
-
-/* How to play */
-.howto{
-  font-size:0.76rem;color:var(--text-muted);line-height:1.65;
-  padding:11px 14px;background:var(--card);border-radius:var(--radius-sm);
-  border:1px solid var(--border);margin-top:14px;
-}
+.howto{font-size:0.76rem;color:var(--text-muted);line-height:1.65;padding:11px 14px;background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--border);margin-top:14px}
 .howto strong{color:var(--text)}
 
 /* Toast */
 .toast{
-  position:fixed;bottom:28px;left:50%;
-  transform:translateX(-50%) translateY(16px);
-  background:var(--text);color:var(--bg);padding:9px 18px;
-  border-radius:100px;font-size:0.83rem;font-weight:600;
-  opacity:0;transition:all 0.28s ease;pointer-events:none;z-index:1000;white-space:nowrap;
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);
+  background:var(--text);color:var(--bg);padding:9px 18px;border-radius:100px;
+  font-size:0.83rem;font-weight:600;opacity:0;transition:all 0.28s ease;pointer-events:none;z-index:1000;white-space:nowrap;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* Confetti */
 .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden}
 .cp{position:absolute;animation:fall linear forwards}
-@keyframes fall{
-  0%{transform:translateY(-20px) rotate(0deg);opacity:1}
-  100%{transform:translateY(110vh) rotate(720deg);opacity:0}
-}
+@keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
 
-/* Responsive */
-@media(max-width:400px){.rgb-hints{gap:5px}.rgb-cell{padding:6px 7px}.stats-grid{gap:6px}}
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:400px){.rgb-hints{gap:5px}.rgb-cell{padding:6px 7px}.stats-grid{gap:6px}.hint-ch-grid{flex-direction:column}}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 </style>
 </head>
 <body>
+
+<!-- ═══ MODE SELECTION SCREEN ═══ -->
+<div id="mode-screen">
+  <div class="ms-wrap">
+    <div class="ms-logo">
+      <div class="ms-logo-text">🎨 ColorWordle</div>
+      <div class="ms-sub">毎日の色当てゲーム</div>
+    </div>
+    <div class="ms-coins">
+      保有コイン &nbsp;
+      <span class="ms-coin-val">🪙 <span id="ms-coin-val">0</span></span>
+    </div>
+    <div class="ms-cards">
+      <div class="ms-card ms-card--daily" id="daily-card" tabindex="0" role="button">
+        <div class="ms-card-icon">📅</div>
+        <div class="ms-card-title">デイリーチャレンジ</div>
+        <div class="ms-card-desc">
+          1日1回のみ<br>
+          正解で <span class="ms-coin-note">🪙 10コイン</span> 獲得！
+        </div>
+        <div class="ms-status" id="ms-daily-status"></div>
+        <button class="ms-btn ms-btn--daily" id="daily-start-btn">チャレンジ →</button>
+      </div>
+      <div class="ms-card ms-card--free" id="fp-card" tabindex="0" role="button">
+        <div class="ms-card-icon">🎲</div>
+        <div class="ms-card-title">フリープレイ</div>
+        <div class="ms-card-desc">
+          制限なし・何回でも<br>
+          <span class="ms-free-note">（コイン報酬なし）</span>
+        </div>
+        <button class="ms-btn ms-btn--free" id="fp-start-btn">はじめる →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GAME SCREEN ═══ -->
 <div id="app">
 
-<header>
-  <div class="header-title">
-    <h1>🎨 ColorWordle</h1>
-    <div class="date" id="date-display"></div>
-  </div>
-  <div class="header-actions">
-    <button class="icon-btn" id="help-btn" title="遊び方">❓</button>
-    <button class="icon-btn" id="stats-btn" title="統計">📊</button>
-    <button class="icon-btn" id="theme-btn" title="テーマ">🌙</button>
-  </div>
-</header>
-
-<div class="target-preview">
-  <div class="section-label">今日の正解色</div>
-  <div class="target-row">
-    <div class="target-swatch" id="target-swatch">
-      <div class="target-mask" id="target-mask">🔒</div>
-      <div class="target-fill" id="target-fill"></div>
+  <header>
+    <div class="header-left">
+      <button class="icon-btn" id="back-btn" title="モード選択へ戻る">←</button>
+      <div class="header-title">
+        <h1>🎨 ColorWordle</h1>
+        <div class="date" id="date-display"></div>
+      </div>
     </div>
-    <div class="target-info">
-      <div class="lbl">正解カラーコード</div>
-      <div class="val" id="target-display">??????</div>
+    <div class="header-actions">
+      <div class="coin-pill" id="coin-pill" title="保有コイン">
+        <span class="coin-pill-icon">🪙</span>
+        <span class="coin-pill-val" id="coin-count">0</span>
+      </div>
+      <button class="icon-btn" id="help-btn" title="遊び方">❓</button>
+      <button class="icon-btn" id="stats-btn" title="統計">📊</button>
+      <button class="icon-btn" id="theme-btn" title="テーマ">🌙</button>
     </div>
-    <div class="attempt-dots" id="attempt-dots"></div>
-  </div>
-</div>
+  </header>
 
-<div class="guess-board" id="guess-board"></div>
+  <div class="mode-bar">
+    <span class="mode-tag" id="mode-tag"></span>
+    <span style="font-size:0.72rem;color:var(--text-muted)" id="mode-bar-info"></span>
+  </div>
 
-<div class="input-section" id="input-section">
-  <div class="section-label">カラーコードを入力</div>
-  <div class="live-preview">
-    <div class="prev-swatch" id="prev-swatch"></div>
-    <div class="prev-info">
-      <div class="prev-hex" id="prev-hex">入力してください...</div>
-      <div class="prev-name" id="prev-name">-</div>
-    </div>
+  <!-- Daily already done notice -->
+  <div class="daily-done-notice" id="daily-done-notice" style="display:none">
+    <div class="ddn-text">✅ 今日のデイリーチャレンジは完了済みです！</div>
+    <button class="ddn-fp-btn" id="go-fp-btn">フリープレイへ →</button>
   </div>
-  <div class="input-row">
-    <span class="hex-prefix">#</span>
-    <input type="text" id="hex-input" class="hex-input" maxlength="6"
-      placeholder="RRGGBB" autocomplete="off" autocorrect="off"
-      autocapitalize="none" spellcheck="false">
-    <div class="picker-wrap" title="カラーピッカー">
-      <div class="picker-face" id="picker-face">🎨</div>
-      <input type="color" id="color-picker" value="#888888">
-    </div>
-  </div>
-  <button class="submit-btn" id="submit-btn" disabled>推測する</button>
-  <div class="shortcuts">
-    <span class="shortcut"><span class="key">Enter</span>送信</span>
-    <span class="shortcut"><span class="key">Esc</span>クリア</span>
-    <span class="shortcut"><span class="key">↑↓</span>HEX調整</span>
-  </div>
-</div>
 
-<div class="result-banner" id="result-banner">
-  <div class="result-title" id="result-title"></div>
-  <div class="result-color">
-    <div class="result-swatch" id="result-swatch"></div>
-    <div>
-      <div class="result-hex" id="result-hex"></div>
-      <div class="result-name" id="result-name"></div>
+  <!-- Purchased hints bar -->
+  <div class="hints-bar" id="hints-bar" style="display:none">
+    <div class="hints-bar-label">💡 購入したヒント</div>
+    <div class="hints-list" id="hints-list"></div>
+  </div>
+
+  <!-- Target Preview -->
+  <div class="target-preview">
+    <div class="section-label">正解の色</div>
+    <div class="target-row">
+      <div class="target-swatch" id="target-swatch">
+        <div class="target-mask" id="target-mask">🔒</div>
+        <div class="target-fill" id="target-fill"></div>
+      </div>
+      <div class="target-info">
+        <div class="lbl">正解カラーコード</div>
+        <div class="val" id="target-display">??????</div>
+      </div>
+      <div class="attempt-dots" id="attempt-dots"></div>
     </div>
   </div>
-  <div class="result-next">次のチャレンジまで: <span class="countdown" id="countdown">--:--:--</span></div>
-  <div class="result-actions">
-    <button class="share-btn" id="share-btn">📤 結果をシェア</button>
-    <button class="copy-result-btn" id="copy-hex-btn">📋 HEXコピー</button>
+
+  <div class="guess-board" id="guess-board"></div>
+
+  <!-- Input section -->
+  <div class="input-section" id="input-section">
+    <div class="section-label">カラーコードを入力</div>
+    <div class="live-preview">
+      <div class="prev-swatch" id="prev-swatch"></div>
+      <div class="prev-info">
+        <div class="prev-hex" id="prev-hex">入力してください...</div>
+        <div class="prev-name" id="prev-name">-</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <span class="hex-prefix">#</span>
+      <input type="text" id="hex-input" class="hex-input" maxlength="6"
+        placeholder="RRGGBB" autocomplete="off" autocorrect="off"
+        autocapitalize="none" spellcheck="false">
+      <div class="picker-wrap" title="カラーピッカー">
+        <div class="picker-face" id="picker-face">🎨</div>
+        <input type="color" id="color-picker" value="#888888">
+      </div>
+    </div>
+    <button class="submit-btn" id="submit-btn" disabled>推測する</button>
+    <button class="hint-purchase-btn" id="hint-btn" disabled>
+      🔍 ヒントを購入
+      <span class="hint-cost-badge" id="hint-cost-badge">5🪙</span>
+    </button>
+    <div class="shortcuts">
+      <span class="shortcut"><span class="key">Enter</span>送信</span>
+      <span class="shortcut"><span class="key">Esc</span>クリア</span>
+      <span class="shortcut"><span class="key">↑↓</span>HEX調整</span>
+    </div>
   </div>
+
+  <!-- Result banner -->
+  <div class="result-banner" id="result-banner">
+    <div class="result-title" id="result-title"></div>
+    <div class="result-color">
+      <div class="result-swatch" id="result-swatch"></div>
+      <div>
+        <div class="result-hex" id="result-hex"></div>
+        <div class="result-name" id="result-name"></div>
+      </div>
+    </div>
+    <div class="coin-reward-badge" id="coin-reward-badge" style="display:none"></div>
+    <div class="result-next" id="result-next" style="display:none">
+      次のチャレンジまで: <span class="countdown" id="countdown">--:--:--</span>
+    </div>
+    <div class="result-actions">
+      <button class="share-btn" id="share-btn">📤 結果をシェア</button>
+      <button class="copy-result-btn" id="copy-hex-btn">📋 HEXコピー</button>
+    </div>
+    <button class="fp-again-btn" id="fp-again-btn" style="display:none">🎲 もう一度プレイ</button>
+  </div>
+
+  <!-- Palette gallery -->
+  <div class="palette-section" id="palette-section" style="display:none">
+    <div class="section-label">推測した色のパレット</div>
+    <div class="palette-swatches" id="palette-swatches"></div>
+  </div>
+
 </div>
 
-<div class="palette-section" id="palette-section" style="display:none">
-  <div class="section-label">推測した色のパレット</div>
-  <div class="palette-swatches" id="palette-swatches"></div>
-</div>
-
-</div>
-
-<!-- Stats Modal -->
+<!-- ═══ STATS MODAL ═══ -->
 <div class="modal-overlay" id="stats-modal">
   <div class="modal">
     <div class="modal-head">
@@ -427,6 +677,10 @@ header{
       <div class="stat-item"><div class="stat-val" id="s-streak">0</div><div class="stat-lbl">連続</div></div>
       <div class="stat-item"><div class="stat-val" id="s-max">0</div><div class="stat-lbl">最高連続</div></div>
     </div>
+    <div class="stat-item" style="text-align:center;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;background:var(--card);margin-bottom:12px">
+      <div class="stat-val" style="color:var(--coin)" id="s-coins">0</div>
+      <div class="stat-lbl">総獲得コイン</div>
+    </div>
     <div class="dist-section">
       <div class="dist-lbl">推測回数の分布</div>
       <div id="dist-bars"></div>
@@ -435,14 +689,14 @@ header{
       <strong>5つの特別な機能：</strong><br>
       🎨 <strong>ライブプレビュー</strong> — 入力中にリアルタイムで色確認<br>
       📏 <strong>近さ%</strong> — 正解との数学的距離をパーセント表示<br>
-      🏷️ <strong>色の名前</strong> — 最も近いCSS色名を日本語で表示<br>
+      🏷️ <strong>色の名前</strong> — 最も近い色名を日本語で表示<br>
       🌡️ <strong>色温度</strong> — 暖色・寒色・中間を自動分類<br>
       📊 <strong>RGBバー</strong> — R・G・Bの値を視覚的にバー表示
     </div>
   </div>
 </div>
 
-<!-- Help Modal -->
+<!-- ═══ HELP MODAL ═══ -->
 <div class="modal-overlay" id="help-modal">
   <div class="modal">
     <div class="modal-head">
@@ -452,22 +706,40 @@ header{
     <div class="howto">
       <strong>ColorWordleとは？</strong><br>
       毎日1つのHEXカラーコードが出題。6回以内に当ててください！<br><br>
-      <strong>入力方法：</strong><br>
-      • HEXコード（例: FF5733）をテキスト入力<br>
-      • 🎨ボタンでカラーピッカーを使用<br>
-      • ↑↓キーで入力中の値を微調整<br><br>
+      <strong>モードについて：</strong><br>
+      📅 <strong>デイリー</strong> — 1日1回、正解で🪙10コイン獲得<br>
+      🎲 <strong>フリープレイ</strong> — 無制限・コイン報酬なし<br><br>
+      <strong>コインシステム：</strong><br>
+      🪙 デイリー正解で10コイン獲得<br>
+      🔍 5コインでR/G/Bのいずれか1つの正確な値をヒント購入可能<br><br>
       <strong>ヒントの見方：</strong><br>
-      ↑ = 正解より低い（値を上げて）<br>
-      ↓ = 正解より高い（値を下げて）<br>
+      ↑ = 正解より低い（値を上げて） &nbsp;↓ = 正解より高い<br>
       ✓ = 正解！<br><br>
       <strong>特別な機能：</strong><br>
-      🎨 ライブプレビュー — 入力中に色を確認<br>
-      📏 近さ% — 正解との距離をパーセント表示<br>
-      🏷️ 色の名前 — 最も近いCSS色名（日本語）<br>
-      🌡️ 色温度 — 暖色/寒色/中間の分類<br>
-      📊 RGBバー — 各チャンネルを視覚化<br>
-      📋 HEXコピー — クリックでコードをコピー<br>
-      🎊 コンフェッティ — 正解時に紙吹雪！
+      🎨 ライブプレビュー / 📏 近さ% / 🏷️ 色の名前<br>
+      🌡️ 色温度 / 📊 RGBバー / 📋 HEXコピー / 🎊 コンフェッティ
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HINT PURCHASE MODAL ═══ -->
+<div class="modal-overlay" id="hint-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">🔍 ヒント購入</div>
+      <button class="modal-close" id="hint-modal-close">✕</button>
+    </div>
+    <p class="hint-modal-desc">
+      R・G・B のどれか1チャンネルの正確な値を確認できます。<br>
+      各チャンネル1回のみ購入可能です。
+    </p>
+    <div class="hint-ch-grid" id="hint-ch-grid">
+      <button class="hint-ch-btn" data-ch="r">🔴 R<br><small>赤の値</small></button>
+      <button class="hint-ch-btn" data-ch="g">🟢 G<br><small>緑の値</small></button>
+      <button class="hint-ch-btn" data-ch="b">🔵 B<br><small>青の値</small></button>
+    </div>
+    <div class="hint-modal-balance">
+      現在 <span class="hm-coin" id="hm-now">0</span>🪙 → 購入後 <span class="hm-coin" id="hm-after">0</span>🪙
     </div>
   </div>
 </div>
@@ -478,8 +750,8 @@ header{
 <script>
 'use strict';
 
-// ── CSS Color Names ──────────────────────────────────────────
-const CSS_COLORS = {
+// ── CSS Color Names (Japanese) ────────────────────────────────
+const CSS_COLORS={
   'アリスブルー':[240,248,255],'アンティークホワイト':[250,235,215],
   'アクア':[0,255,255],'アクアマリン':[127,255,212],
   'ベージュ':[245,245,220],'ビスク':[255,228,196],
@@ -524,19 +796,12 @@ const CSS_COLORS = {
   'イエローグリーン':[154,205,50],'ライム':[0,255,0],
 };
 
-// ── Utilities ────────────────────────────────────────────────
+// ── Utilities ─────────────────────────────────────────────────
 function hslToRgb(h,s,l){
   let r,g,b;
   if(s===0){r=g=b=l}else{
-    const f=(p,q,t)=>{
-      if(t<0)t+=1;if(t>1)t-=1;
-      if(t<1/6)return p+(q-p)*6*t;
-      if(t<1/2)return q;
-      if(t<2/3)return p+(q-p)*(2/3-t)*6;
-      return p;
-    };
-    const q=l<0.5?l*(1+s):l+s-l*s;
-    const p=2*l-q;
+    const f=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};
+    const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;
     r=f(p,q,h/360+1/3);g=f(p,q,h/360);b=f(p,q,h/360-1/3);
   }
   r=Math.round(r*255);g=Math.round(g*255);b=Math.round(b*255);
@@ -547,36 +812,26 @@ function hexToRgb(hex){
   hex=hex.replace(/^#/,'').trim();
   if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
   if(!/^[0-9a-f]{6}$/i.test(hex))return null;
-  const r=parseInt(hex.slice(0,2),16);
-  const g=parseInt(hex.slice(2,4),16);
-  const b=parseInt(hex.slice(4,6),16);
+  const r=parseInt(hex.slice(0,2),16);const g=parseInt(hex.slice(2,4),16);const b=parseInt(hex.slice(4,6),16);
   return{r,g,b,hex:'#'+hex.toLowerCase()};
 }
 
-function colorDist(r1,g1,b1,r2,g2,b2){
-  return Math.sqrt((r1-r2)**2+(g1-g2)**2+(b1-b2)**2);
-}
-function proximity(r1,g1,b1,r2,g2,b2){
-  const MAX_DIST=Math.sqrt(255*255*3);
-  return Math.max(0,Math.round((1-colorDist(r1,g1,b1,r2,g2,b2)/MAX_DIST)*100));
-}
-function proxColor(pct){
-  return `hsl(${Math.round(pct*1.2)},75%,55%)`;
-}
+function colorDist(r1,g1,b1,r2,g2,b2){return Math.sqrt((r1-r2)**2+(g1-g2)**2+(b1-b2)**2)}
+function proximity(r1,g1,b1,r2,g2,b2){const M=Math.sqrt(255*255*3);return Math.max(0,Math.round((1-colorDist(r1,g1,b1,r2,g2,b2)/M)*100))}
+function proxColor(pct){return`hsl(${Math.round(pct*1.2)},75%,55%)`}
 
 function nearestName(r,g,b){
   let min=Infinity,name='不明';
   for(const[n,[cr,cg,cb]] of Object.entries(CSS_COLORS)){
-    const d=colorDist(r,g,b,cr,cg,cb);
-    if(d<min){min=d;name=n;}
+    const d=colorDist(r,g,b,cr,cg,cb);if(d<min){min=d;name=n;}
   }
   return name;
 }
 
 function temperature(r,g,b){
-  const warm=r-b;
-  if(warm>45)return{label:'暖色',cls:'warm',emoji:'🔥'};
-  if(warm<-45)return{label:'寒色',cls:'cool',emoji:'❄️'};
+  const w=r-b;
+  if(w>45)return{label:'暖色',cls:'warm',emoji:'🔥'};
+  if(w<-45)return{label:'寒色',cls:'cool',emoji:'❄️'};
   return{label:'中間',cls:'neutral',emoji:'🌤️'};
 }
 
@@ -586,24 +841,16 @@ function hintArrow(guess,target){
   return{sym:'↓',cls:'c-down',txt:'高い'};
 }
 
-// ── Daily Color ───────────────────────────────────────────────
-function todayJST(){
-  const now=new Date();
-  const jst=new Date(now.getTime()+(9*3600000));
-  return{
-    y:jst.getUTCFullYear(),
-    m:jst.getUTCMonth()+1,
-    d:jst.getUTCDate(),
-    w:jst.getUTCDay(),
-  };
+// ── Date helpers (JST) ─────────────────────────────────────────
+function jst(){
+  const now=new Date();const d=new Date(now.getTime()+(9*3600000));
+  return{y:d.getUTCFullYear(),m:d.getUTCMonth()+1,d:d.getUTCDate(),w:d.getUTCDay()};
 }
-function todayKey(){
-  const{y,m,d}=todayJST();
-  return`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-}
+function todayKey(){const{y,m,d}=jst();return`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+
+// ── Color generation ───────────────────────────────────────────
 function getDailyColor(){
-  const{y,m,d}=todayJST();
-  let seed=(y*10000+m*100+d)>>>0;
+  const{y,m,d}=jst();let seed=((y*10000+m*100+d)>>>0);
   const lcg=s=>((Math.imul(s,1664525)+1013904223)>>>0);
   seed=lcg(seed);const h=seed%360;
   seed=lcg(seed);const s=45+(seed%46);
@@ -611,62 +858,135 @@ function getDailyColor(){
   return hslToRgb(h,s/100,l/100);
 }
 
-// ── Storage ───────────────────────────────────────────────────
-const SK='cw_v1',SK_STATS='cw_v1_stats';
-function loadGame(){
-  try{const d=JSON.parse(localStorage.getItem(SK)||'null');return d;}catch{return null;}
+function getRandomColor(){
+  const h=Math.floor(Math.random()*360);
+  const s=0.45+Math.random()*0.45;
+  const l=0.28+Math.random()*0.40;
+  return hslToRgb(h,s,l);
 }
-function saveGame(data){try{localStorage.setItem(SK,JSON.stringify(data));}catch{}}
-function loadStats(){
-  try{
-    const d=JSON.parse(localStorage.getItem(SK_STATS)||'null');
-    return d||{played:0,won:0,streak:0,max:0,dist:[0,0,0,0,0,0],lastWin:null};
-  }catch{return{played:0,won:0,streak:0,max:0,dist:[0,0,0,0,0,0],lastWin:null};}
-}
-function saveStats(s){try{localStorage.setItem(SK_STATS,JSON.stringify(s));}catch{}}
 
-// ── Game State ────────────────────────────────────────────────
-const MAX=6;
+// ── Storage ────────────────────────────────────────────────────
+const SK='cw_v1',SK_STATS='cw_v1_stats',SK_COINS='cw_v1_coins';
 const TODAY=todayKey();
-const TARGET=getDailyColor();
-let guesses=[],gameOver=false,won=false;
+const DAILY_REWARD=10;
+const HINT_COST=5;
+const MAX=6;
 
-const saved=loadGame();
-if(saved&&saved.key===TODAY){
-  guesses=saved.guesses||[];gameOver=saved.gameOver||false;won=saved.won||false;
+function loadGame(){try{return JSON.parse(localStorage.getItem(SK)||'null')}catch{return null}}
+function saveGame(d){try{localStorage.setItem(SK,JSON.stringify(d))}catch{}}
+function loadStats(){
+  try{const d=JSON.parse(localStorage.getItem(SK_STATS)||'null');return d||{played:0,won:0,streak:0,max:0,dist:[0,0,0,0,0,0],lastWin:null,totalCoins:0};}
+  catch{return{played:0,won:0,streak:0,max:0,dist:[0,0,0,0,0,0],lastWin:null,totalCoins:0};}
 }
+function saveStats(s){try{localStorage.setItem(SK_STATS,JSON.stringify(s))}catch{}}
+function loadCoins(){try{return Math.max(0,parseInt(localStorage.getItem(SK_COINS)||'0',10))}catch{return 0}}
+function saveCoins(n){try{localStorage.setItem(SK_COINS,String(Math.max(0,n)))}catch{}}
 
-// ── Toast ─────────────────────────────────────────────────────
+// ── Game State ─────────────────────────────────────────────────
+let coins=loadCoins();
+let currentMode=null;       // 'daily' | 'freeplay'
+let activeTarget=null;      // current color to guess
+let guesses=[];
+let gameOver=false;
+let won=false;
+let purchasedHints=[];      // [{ch:'r'|'g'|'b', val:number}]
+let dailyAlreadyDone=false; // true when daily was already completed this session open
+let countdownTid=null;
+
+// ── Toast ──────────────────────────────────────────────────────
 let toastTid;
 function toast(msg,dur=2200){
-  const el=document.getElementById('toast');
-  clearTimeout(toastTid);
+  const el=document.getElementById('toast');clearTimeout(toastTid);
   el.textContent=msg;el.classList.add('show');
   toastTid=setTimeout(()=>el.classList.remove('show'),dur);
 }
 
-// ── Confetti ──────────────────────────────────────────────────
+// ── Confetti ───────────────────────────────────────────────────
 function confetti(){
-  const w=document.getElementById('confetti-wrap');
-  w.innerHTML='';
+  const w=document.getElementById('confetti-wrap');w.innerHTML='';
   const cols=['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff9f1c','#4ecca3'];
   for(let i=0;i<90;i++){
-    const el=document.createElement('div');el.className='cp';
-    const sz=6+Math.random()*8;
-    el.style.cssText=`
-      left:${Math.random()*100}%;top:-20px;
-      width:${sz}px;height:${sz}px;
-      background:${cols[i%cols.length]};
-      border-radius:${Math.random()>.5?'50%':'2px'};
-      animation-duration:${1.5+Math.random()*2.5}s;
-      animation-delay:${Math.random()*.8}s;
-    `;
+    const el=document.createElement('div');el.className='cp';const sz=6+Math.random()*8;
+    el.style.cssText=`left:${Math.random()*100}%;top:-20px;width:${sz}px;height:${sz}px;background:${cols[i%cols.length]};border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.5+Math.random()*2.5}s;animation-delay:${Math.random()*.8}s;`;
     w.appendChild(el);
   }
   setTimeout(()=>w.innerHTML='',4500);
 }
 
-// ── Render ────────────────────────────────────────────────────
+// ── Coin UI ────────────────────────────────────────────────────
+function updateCoinUI(animate){
+  document.getElementById('coin-count').textContent=coins;
+  document.getElementById('ms-coin-val').textContent=coins;
+  if(animate){
+    const pill=document.getElementById('coin-pill');
+    pill.classList.remove('coin-earn-anim');
+    void pill.offsetWidth;
+    pill.classList.add('coin-earn-anim');
+  }
+}
+
+function earnCoins(amount){
+  coins+=amount;saveCoins(coins);updateCoinUI(true);
+}
+
+function spendCoins(amount){
+  if(coins<amount)return false;
+  coins-=amount;saveCoins(coins);updateCoinUI(false);
+  return true;
+}
+
+// ── Hint System ────────────────────────────────────────────────
+function updateHintBtn(){
+  const btn=document.getElementById('hint-btn');
+  if(!btn)return;
+  const allBought=purchasedHints.length>=3;
+  const noCoins=coins<HINT_COST;
+  btn.disabled=gameOver||allBought||noCoins||dailyAlreadyDone;
+  const badge=document.getElementById('hint-cost-badge');
+  if(gameOver||dailyAlreadyDone)badge.textContent=allBought?'全購入済み':'終了';
+  else if(allBought)badge.textContent='全購入済み';
+  else if(noCoins)badge.textContent=`残${coins}🪙`;
+  else badge.textContent=`${HINT_COST}🪙`;
+}
+
+function renderHintsBar(){
+  const bar=document.getElementById('hints-bar');
+  const list=document.getElementById('hints-list');
+  if(purchasedHints.length===0){bar.style.display='none';return;}
+  bar.style.display='block';list.innerHTML='';
+  purchasedHints.forEach(({ch,val})=>{
+    const chip=document.createElement('div');chip.className='hint-chip';
+    const labels={r:'赤(R)',g:'緑(G)',b:'青(B)'};
+    chip.innerHTML=`<span class="hint-chip-ch ${ch}">${ch.toUpperCase()}</span><span class="hint-chip-val">${val}</span><span class="hint-chip-label">/ 255 (${labels[ch]})</span>`;
+    list.appendChild(chip);
+  });
+}
+
+function openHintModal(){
+  const modal=document.getElementById('hint-modal');
+  const grid=document.getElementById('hint-ch-grid');
+  document.getElementById('hm-now').textContent=coins;
+  document.getElementById('hm-after').textContent=coins-HINT_COST;
+  grid.querySelectorAll('.hint-ch-btn').forEach(btn=>{
+    const ch=btn.dataset.ch;
+    btn.disabled=purchasedHints.some(h=>h.ch===ch);
+  });
+  modal.classList.add('show');
+}
+
+function buyHint(ch){
+  if(purchasedHints.some(h=>h.ch===ch)){toast('このチャンネルは購入済みです');return;}
+  if(!spendCoins(HINT_COST)){toast('コインが足りません');return;}
+  const val=activeTarget[ch];
+  purchasedHints.push({ch,val});
+  document.getElementById('hint-modal').classList.remove('show');
+  renderHintsBar();
+  updateHintBtn();
+  const label={r:'赤(R)',g:'緑(G)',b:'青(B)'}[ch];
+  toast(`💡 ${label} = ${val} のヒントを購入しました！`);
+}
+
+// ── Render functions ───────────────────────────────────────────
 function renderDots(){
   const c=document.getElementById('attempt-dots');c.innerHTML='';
   for(let i=0;i<MAX;i++){
@@ -681,76 +1001,48 @@ function renderDots(){
 }
 
 function renderBoard(){
-  const board=document.getElementById('guess-board');
-  board.innerHTML='';
+  const board=document.getElementById('guess-board');board.innerHTML='';
   guesses.forEach((g,idx)=>{
     const{r,g:gv,b,hex}=g;
-    const pct=proximity(r,gv,b,TARGET.r,TARGET.g,TARGET.b);
+    const pct=proximity(r,gv,b,activeTarget.r,activeTarget.g,activeTarget.b);
     const name=nearestName(r,gv,b);
     const temp=temperature(r,gv,b);
-    const rh=hintArrow(r,TARGET.r);
-    const gh=hintArrow(gv,TARGET.g);
-    const bh=hintArrow(b,TARGET.b);
+    const rh=hintArrow(r,activeTarget.r);
+    const gh=hintArrow(gv,activeTarget.g);
+    const bh=hintArrow(b,activeTarget.b);
     const isWin=won&&idx===guesses.length-1;
-
     const row=document.createElement('div');row.className='guess-row';
-
-    // Build top section
     const top=document.createElement('div');top.className='guess-top';
     top.innerHTML=`<span class="guess-num">${idx+1}</span>`;
-
     const sw=document.createElement('div');sw.className='guess-swatch';
     sw.style.background=hex;sw.title='クリックでコピー';
-    sw.addEventListener('click',()=>copyHex(hex));
-    top.appendChild(sw);
-
+    sw.addEventListener('click',()=>copyHex(hex));top.appendChild(sw);
     const info=document.createElement('div');info.className='guess-info';
     const hexEl=document.createElement('div');hexEl.className='guess-hex';
     hexEl.textContent=hex.toUpperCase();hexEl.title='クリックでコピー';
     hexEl.addEventListener('click',()=>copyHex(hex));
     const nameEl=document.createElement('div');nameEl.className='guess-name';
     nameEl.textContent=`🏷️ ${name}`;
-    info.appendChild(hexEl);info.appendChild(nameEl);
-    top.appendChild(info);
-
+    info.appendChild(hexEl);info.appendChild(nameEl);top.appendChild(info);
     const right=document.createElement('div');right.className='guess-right';
-    right.innerHTML=`
-      <div class="prox-wrap">
-        <div class="prox-bar"><div class="prox-fill" style="width:${pct}%;background:${proxColor(pct)}"></div></div>
-        <span class="prox-pct">${pct}%</span>
-      </div>
-      <span class="temp-badge ${temp.cls}">${temp.emoji} ${temp.label}</span>
-    `;
+    right.innerHTML=`<div class="prox-wrap"><div class="prox-bar"><div class="prox-fill" style="width:${pct}%;background:${proxColor(pct)}"></div></div><span class="prox-pct">${pct}%</span></div><span class="temp-badge ${temp.cls}">${temp.emoji} ${temp.label}</span>`;
     top.appendChild(right);
-
-    // RGB hints
     const rgb=document.createElement('div');rgb.className='rgb-hints';
-    [
-      {lbl:'R',ch:'r',val:r,hint:rh,pct:Math.round(r/255*100)},
-      {lbl:'G',ch:'g',val:gv,hint:gh,pct:Math.round(gv/255*100)},
-      {lbl:'B',ch:'b',val:b,hint:bh,pct:Math.round(b/255*100)},
-    ].forEach(({lbl,ch,val,hint,pct:bp})=>{
+    [{lbl:'R',ch:'r',val:r,hint:rh,bp:Math.round(r/255*100)},
+     {lbl:'G',ch:'g',val:gv,hint:gh,bp:Math.round(gv/255*100)},
+     {lbl:'B',ch:'b',val:b,hint:bh,bp:Math.round(b/255*100)}
+    ].forEach(({lbl,ch,val,hint,bp})=>{
       const cell=document.createElement('div');cell.className='rgb-cell';
-      cell.innerHTML=`
-        <div class="rgb-lbl ${ch}">${lbl}</div>
-        <div class="rgb-arrow ${hint.cls}">${hint.sym} ${hint.txt}</div>
-        <div class="rgb-bar"><div class="rgb-bar-fill ${ch}" style="width:${bp}%"></div></div>
-        <div class="rgb-val">${val}/255</div>
-      `;
+      cell.innerHTML=`<div class="rgb-lbl ${ch}">${lbl}</div><div class="rgb-arrow ${hint.cls}">${hint.sym} ${hint.txt}</div><div class="rgb-bar"><div class="rgb-bar-fill ${ch}" style="width:${bp}%"></div></div><div class="rgb-val">${val}/255</div>`;
       rgb.appendChild(cell);
     });
-
-    row.appendChild(top);
-    row.appendChild(rgb);
+    row.appendChild(top);row.appendChild(rgb);
     if(isWin){
       const wl=document.createElement('div');wl.className='win-label';
-      wl.textContent='🎉 正解！おめでとうございます！';
-      row.appendChild(wl);
+      wl.textContent='🎉 正解！おめでとうございます！';row.appendChild(wl);
     }
     board.appendChild(row);
   });
-
-  // Empty rows
   for(let i=guesses.length;i<MAX;i++){
     const e=document.createElement('div');e.className='empty-row';
     e.innerHTML=`<div class="empty-sw"></div><span class="empty-txt">推測 ${i+1}</span>`;
@@ -763,9 +1055,8 @@ function renderTarget(){
   const fill=document.getElementById('target-fill');
   const disp=document.getElementById('target-display');
   if(gameOver){
-    fill.style.background=TARGET.hex;
-    fill.style.opacity='1';mask.style.opacity='0';
-    disp.textContent=TARGET.hex.toUpperCase();
+    fill.style.background=activeTarget.hex;fill.style.opacity='1';mask.style.opacity='0';
+    disp.textContent=activeTarget.hex.toUpperCase();
     document.getElementById('target-swatch').classList.add('revealed');
   }else{
     disp.textContent=`残り ${MAX-guesses.length} 回`;
@@ -781,8 +1072,7 @@ function renderPalette(){
     const el=document.createElement('div');el.className='pal-sw';
     el.style.background=g.hex;
     const tip=document.createElement('div');tip.className='pal-tip';
-    tip.textContent=g.hex.toUpperCase();
-    el.appendChild(tip);
+    tip.textContent=g.hex.toUpperCase();el.appendChild(tip);
     el.addEventListener('click',()=>copyHex(g.hex));
     sw.appendChild(el);
   });
@@ -797,46 +1087,82 @@ function renderResult(){
     title.textContent=`🎉 正解！ ${guesses.length}回目で当てました！`;
     title.className='result-title win';
   }else{
-    title.textContent='😢 残念… また明日チャレンジ！';
+    title.textContent='😢 残念… また挑戦してください！';
     title.className='result-title lose';
   }
-  document.getElementById('result-swatch').style.background=TARGET.hex;
-  document.getElementById('result-hex').textContent=TARGET.hex.toUpperCase();
-  document.getElementById('result-name').textContent=`🏷️ ${nearestName(TARGET.r,TARGET.g,TARGET.b)}`;
-  document.getElementById('input-section').style.cssText='opacity:0.45;pointer-events:none';
+  document.getElementById('result-swatch').style.background=activeTarget.hex;
+  document.getElementById('result-hex').textContent=activeTarget.hex.toUpperCase();
+  document.getElementById('result-name').textContent=`🏷️ ${nearestName(activeTarget.r,activeTarget.g,activeTarget.b)}`;
+  if(!dailyAlreadyDone)document.getElementById('input-section').style.cssText='opacity:0.45;pointer-events:none';
+
+  // Coin reward badge
+  const crb=document.getElementById('coin-reward-badge');
+  if(won&&currentMode==='daily'&&!dailyAlreadyDone){
+    crb.style.display='flex';crb.textContent=`🪙 +${DAILY_REWARD}コイン獲得！`;
+  }else{crb.style.display='none'}
+
+  // Countdown (daily only)
+  const rn=document.getElementById('result-next');
+  const again=document.getElementById('fp-again-btn');
+  if(currentMode==='daily'){
+    rn.style.display='block';again.style.display='none';
+    startCountdown();
+  }else{
+    rn.style.display='none';again.style.display='block';
+  }
+}
+
+function renderModeBar(){
+  const tag=document.getElementById('mode-tag');
+  const info=document.getElementById('mode-bar-info');
+  if(currentMode==='daily'){
+    tag.textContent='📅 デイリーチャレンジ';tag.className='mode-tag mode-tag--daily';
+    info.textContent=`正解で🪙${DAILY_REWARD}コイン獲得`;
+  }else{
+    tag.textContent='🎲 フリープレイ';tag.className='mode-tag mode-tag--free';
+    info.textContent='無制限・コイン報酬なし';
+  }
 }
 
 function renderAll(){
+  if(!activeTarget)return;
   renderBoard();renderDots();renderTarget();renderPalette();
+  renderHintsBar();updateHintBtn();
   if(gameOver)renderResult();
 }
 
-// ── Countdown ─────────────────────────────────────────────────
+// ── Countdown ──────────────────────────────────────────────────
+function startCountdown(){
+  if(countdownTid)return;
+  updateCountdown();
+  countdownTid=setInterval(updateCountdown,1000);
+}
+
 function updateCountdown(){
-  const now=new Date();
-  const{y,m,d}=todayJST();
+  const now=new Date();const{y,m,d}=jst();
   const tomorrow=new Date(Date.UTC(y,m-1,d+1,0,0,0)-(9*3600000));
   const diff=Math.max(0,tomorrow-now);
   const h=Math.floor(diff/3600000);
   const min=Math.floor((diff%3600000)/60000);
   const s=Math.floor((diff%60000)/1000);
-  document.getElementById('countdown').textContent=
-    `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const el=document.getElementById('countdown');
+  if(el)el.textContent=`${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-// ── Share ─────────────────────────────────────────────────────
+// ── Share ──────────────────────────────────────────────────────
 function buildShareText(){
   const emojiRow=g=>{
-    const r=hintArrow(g.r,TARGET.r);
-    const gv=hintArrow(g.g,TARGET.g);
-    const b=hintArrow(g.b,TARGET.b);
+    const r=hintArrow(g.r,activeTarget.r);
+    const gv=hintArrow(g.g,activeTarget.g);
+    const b=hintArrow(g.b,activeTarget.b);
     const e=h=>h.sym==='✓'?'🟩':h.sym==='↑'?'🟦':'🟥';
     return e(r)+e(gv)+e(b);
   };
   const result=won?`${guesses.length}/${MAX}`:`X/${MAX}`;
+  const mode=currentMode==='daily'?'デイリー':'フリープレイ';
   return[
-    `🎨 ColorWordle ${TODAY}`,
-    `${result}  ${TARGET.hex.toUpperCase()}`,
+    `🎨 ColorWordle ${TODAY} [${mode}]`,
+    `${result}  ${activeTarget.hex.toUpperCase()}`,
     '',
     ...guesses.map(emojiRow),
     '',
@@ -849,24 +1175,16 @@ async function writeClipboard(text){
   if(navigator.clipboard&&navigator.clipboard.writeText){
     await navigator.clipboard.writeText(text);
   }else{
-    const ta=document.createElement('textarea');
-    ta.value=text;ta.style.cssText='position:fixed;opacity:0';
-    document.body.appendChild(ta);ta.focus();ta.select();
-    document.execCommand('copy');document.body.removeChild(ta);
+    const ta=document.createElement('textarea');ta.value=text;
+    ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);
+    ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);
   }
 }
 
-async function shareResult(){
-  try{await writeClipboard(buildShareText());toast('📋 結果をコピーしました！');}
-  catch{toast('コピーに失敗しました');}
-}
+async function shareResult(){try{await writeClipboard(buildShareText());toast('📋 結果をコピーしました！')}catch{toast('コピーに失敗しました')}}
+async function copyHex(hex){try{await writeClipboard(hex.toUpperCase());toast(`📋 ${hex.toUpperCase()} をコピー`)}catch{toast('コピーに失敗しました')}}
 
-async function copyHex(hex){
-  try{await writeClipboard(hex.toUpperCase());toast(`📋 ${hex.toUpperCase()} をコピー`);}
-  catch{toast('コピーに失敗しました');}
-}
-
-// ── Live Preview ──────────────────────────────────────────────
+// ── Live Preview ───────────────────────────────────────────────
 function updatePreview(val){
   const sw=document.getElementById('prev-swatch');
   const hexEl=document.getElementById('prev-hex');
@@ -874,70 +1192,91 @@ function updatePreview(val){
   const pf=document.getElementById('picker-face');
   const parsed=val?hexToRgb(val):null;
   if(parsed){
-    sw.style.background=parsed.hex;
-    hexEl.textContent=parsed.hex.toUpperCase();
+    sw.style.background=parsed.hex;hexEl.textContent=parsed.hex.toUpperCase();
     nameEl.textContent=`🏷️ ${nearestName(parsed.r,parsed.g,parsed.b)}`;
     pf.style.background=parsed.hex;pf.textContent='';
     document.getElementById('color-picker').value=parsed.hex;
   }else{
-    sw.style.background='#888';
-    hexEl.textContent=val?val.toUpperCase():'入力してください...';
-    nameEl.textContent='-';
-    pf.style.background='';pf.textContent='🎨';
+    sw.style.background='#888';hexEl.textContent=val?val.toUpperCase():'入力してください...';
+    nameEl.textContent='-';pf.style.background='';pf.textContent='🎨';
   }
 }
 
-// ── Submit ────────────────────────────────────────────────────
+// ── Submit ─────────────────────────────────────────────────────
 function submit(){
-  if(gameOver)return;
+  if(gameOver||dailyAlreadyDone)return;
   const input=document.getElementById('hex-input');
   const parsed=hexToRgb(input.value.trim());
   if(!parsed){
     toast('有効な6桁HEXコードを入力してください');
     input.classList.add('invalid');
-    setTimeout(()=>input.classList.remove('invalid'),700);
-    return;
+    setTimeout(()=>input.classList.remove('invalid'),700);return;
   }
-  if(guesses.some(g=>g.hex===parsed.hex)){
-    toast('このカラーはすでに試しました');return;
-  }
+  if(guesses.some(g=>g.hex===parsed.hex)){toast('このカラーはすでに試しました');return;}
+
   guesses.push({r:parsed.r,g:parsed.g,b:parsed.b,hex:parsed.hex});
-  if(parsed.r===TARGET.r&&parsed.g===TARGET.g&&parsed.b===TARGET.b){
+  if(parsed.r===activeTarget.r&&parsed.g===activeTarget.g&&parsed.b===activeTarget.b){
     won=true;gameOver=true;
   }else if(guesses.length>=MAX){
-    gameOver=true;
-  }
+    gameOver=true;}
+
   if(gameOver){
-    const st=loadStats();
-    st.played++;
-    if(won){
-      st.won++;
-      if(st.dist.length<6)st.dist=[...st.dist,...Array(6-st.dist.length).fill(0)];
-      st.dist[guesses.length-1]++;
-      const prev=st.lastWin;
-      const{y,m,d}=todayJST();
-      const yesterday=new Date(Date.UTC(y,m-1,d-1));
-      const yk=`${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth()+1).padStart(2,'0')}-${String(yesterday.getUTCDate()).padStart(2,'0')}`;
-      if(prev===yk)st.streak++;
-      else if(prev!==TODAY)st.streak=1;
-      st.max=Math.max(st.streak,st.max);
-      st.lastWin=TODAY;
-    }else{
-      if(st.lastWin!==TODAY)st.streak=0;
+    // Update stats (daily only)
+    if(currentMode==='daily'){
+      const st=loadStats();
+      const isFirstWin=won&&st.lastWin!==TODAY;
+      st.played++;
+      if(won){
+        st.won++;
+        if(st.dist.length<6)st.dist=[...st.dist,...Array(6-st.dist.length).fill(0)];
+        st.dist[guesses.length-1]++;
+        const{y,m,d}=jst();
+        const yesterday=new Date(Date.UTC(y,m-1,d-1));
+        const yk=`${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth()+1).padStart(2,'0')}-${String(yesterday.getUTCDate()).padStart(2,'0')}`;
+        if(st.lastWin===yk)st.streak++;
+        else if(st.lastWin!==TODAY)st.streak=1;
+        st.max=Math.max(st.streak,st.max);
+        st.lastWin=TODAY;
+        if(isFirstWin){
+          st.totalCoins=(st.totalCoins||0)+DAILY_REWARD;
+          saveStats(st);
+          earnCoins(DAILY_REWARD);
+          setTimeout(()=>toast(`🎉 +${DAILY_REWARD}コイン獲得！`),600);
+        }else{saveStats(st);}
+      }else{
+        if(st.lastWin!==TODAY)st.streak=0;
+        saveStats(st);
+      }
+      // Persist daily game state
+      saveGame({key:TODAY,guesses,gameOver,won});
     }
-    saveStats(st);
+  }else{
+    // Save daily progress mid-game
+    if(currentMode==='daily')saveGame({key:TODAY,guesses,gameOver,won});
   }
-  saveGame({key:TODAY,guesses,gameOver,won});
-  input.value='';
-  input.classList.remove('valid','invalid');
+
+  input.value='';input.classList.remove('valid','invalid');
   document.getElementById('submit-btn').disabled=true;
   updatePreview('');
   renderAll();
   if(gameOver&&won)setTimeout(confetti,350);
-  if(gameOver)setInterval(updateCountdown,1000),updateCountdown();
 }
 
-// ── Stats Modal ───────────────────────────────────────────────
+// ── Nudge HEX with arrow keys ──────────────────────────────────
+function nudgeHex(dir){
+  const input=document.getElementById('hex-input');
+  const val=input.value.trim();if(val.length!==6)return;
+  const parsed=hexToRgb(val);if(!parsed)return;
+  const pos=input.selectionStart;
+  const compIdx=Math.min(Math.floor(pos/2),2);
+  const key=['r','g','b'][compIdx];
+  const newVal=Math.max(0,Math.min(255,parsed[key]+dir));
+  const newRgb={...parsed,[key]:newVal};
+  const hex=[newRgb.r,newRgb.g,newRgb.b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+  input.value=hex;input.setSelectionRange(pos,pos);input.dispatchEvent(new Event('input'));
+}
+
+// ── Stats Modal ────────────────────────────────────────────────
 function showStats(){
   const st=loadStats();
   const wr=st.played>0?Math.round(st.won/st.played*100):0;
@@ -945,110 +1284,224 @@ function showStats(){
   document.getElementById('s-winrate').textContent=wr+'%';
   document.getElementById('s-streak').textContent=st.streak;
   document.getElementById('s-max').textContent=st.max;
+  document.getElementById('s-coins').textContent=st.totalCoins||0;
   const bars=document.getElementById('dist-bars');bars.innerHTML='';
   const mx=Math.max(...(st.dist||[]),1);
   for(let i=0;i<6;i++){
-    const v=(st.dist||[])[i]||0;
-    const pct=Math.round(v/mx*100);
-    const cur=gameOver&&won&&guesses.length===i+1;
+    const v=(st.dist||[])[i]||0;const pct=Math.round(v/mx*100);
+    const cur=gameOver&&won&&guesses.length===i+1&&currentMode==='daily';
     const row=document.createElement('div');row.className='dist-row';
-    row.innerHTML=`<span class="dist-num">${i+1}</span>
-      <div class="dist-bar"><div class="dist-fill${cur?' cur':''}" style="width:${Math.max(pct,5)}%">${v}</div></div>`;
+    row.innerHTML=`<span class="dist-num">${i+1}</span><div class="dist-bar"><div class="dist-fill${cur?' cur':''}" style="width:${Math.max(pct,5)}%">${v}</div></div>`;
     bars.appendChild(row);
   }
   document.getElementById('stats-modal').classList.add('show');
 }
 
-// ── Theme ─────────────────────────────────────────────────────
+// ── Theme ──────────────────────────────────────────────────────
 function toggleTheme(){
-  const html=document.documentElement;
-  const dark=html.getAttribute('data-theme')==='dark';
+  const html=document.documentElement;const dark=html.getAttribute('data-theme')==='dark';
   html.setAttribute('data-theme',dark?'light':'dark');
   document.getElementById('theme-btn').textContent=dark?'☀️':'🌙';
-  try{localStorage.setItem('cw_theme',dark?'light':'dark');}catch{}
+  try{localStorage.setItem('cw_theme',dark?'light':'dark')}catch{}
 }
 
-// ── Arrow Key Adjustment ──────────────────────────────────────
-// Allow ↑↓ to nudge hex values when caret is in input
-function nudgeHex(dir){
-  const input=document.getElementById('hex-input');
-  const val=input.value.trim();
-  if(val.length!==6)return;
-  const parsed=hexToRgb(val);
-  if(!parsed)return;
-  const pos=input.selectionStart;
-  // determine which component to nudge based on cursor position (0-1=R,2-3=G,4-5=B)
-  const compIdx=Math.min(Math.floor(pos/2),2);
-  const keys=['r','g','b'];
-  const key=keys[compIdx];
-  const newVal=Math.max(0,Math.min(255,parsed[key]+dir));
-  const newRgb={...parsed,[key]:newVal};
-  const hex=[newRgb.r,newRgb.g,newRgb.b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
-  input.value=hex;
-  input.setSelectionRange(pos,pos);
-  input.dispatchEvent(new Event('input'));
+// ── Mode Selection ─────────────────────────────────────────────
+function getDailyStatus(){
+  const saved=loadGame();
+  if(!saved||saved.key!==TODAY)return'notPlayed';
+  if(saved.gameOver&&saved.won)return'won';
+  if(saved.gameOver&&!saved.won)return'lost';
+  return'inProgress';
 }
 
-// ── Init ──────────────────────────────────────────────────────
-function init(){
-  // Date display
-  const{y,m,d,w}=todayJST();
+function setupModeScreen(){
+  // Coin display
+  updateCoinUI(false);
+  // Daily status badge
+  const status=getDailyStatus();
+  const badge=document.getElementById('ms-daily-status');
+  if(status==='won'){badge.textContent='✅ クリア済み';badge.className='ms-status ms-status--done';}
+  else if(status==='lost'){badge.textContent='❌ 失敗済み';badge.className='ms-status ms-status--done';}
+  else if(status==='inProgress'){badge.textContent='▶ 進行中';badge.className='ms-status ms-status--progress';}
+  else{badge.textContent='🆕 未プレイ';badge.className='ms-status ms-status--new';}
+}
+
+function showModeScreen(){
+  const ms=document.getElementById('mode-screen');
+  const app=document.getElementById('app');
+  setupModeScreen();
+  app.classList.remove('active');
+  ms.classList.remove('hidden','hiding');
+  // Reset game screen state
+  dailyAlreadyDone=false;
+  document.getElementById('daily-done-notice').style.display='none';
+  document.getElementById('result-banner').classList.remove('show');
+  document.getElementById('palette-section').style.display='none';
+  document.getElementById('hints-bar').style.display='none';
+  document.getElementById('input-section').style.cssText='';
+  if(countdownTid){clearInterval(countdownTid);countdownTid=null;}
+}
+
+function enterGame(){
+  const ms=document.getElementById('mode-screen');
+  const app=document.getElementById('app');
+  ms.classList.add('hiding');
+  setTimeout(()=>ms.classList.add('hidden'),350);
+  app.classList.add('active');
+  // Setup header
+  const{y,m,d,w}=jst();
   const days=['日','月','火','水','木','金','土'];
   document.getElementById('date-display').textContent=`${y}年${m}月${d}日（${days[w]}）`;
-
   // Theme
-  try{
-    const t=localStorage.getItem('cw_theme');
-    if(t){document.documentElement.setAttribute('data-theme',t);
-      document.getElementById('theme-btn').textContent=t==='light'?'☀️':'🌙';}
-  }catch{}
-
+  try{const t=localStorage.getItem('cw_theme');if(t){document.documentElement.setAttribute('data-theme',t);document.getElementById('theme-btn').textContent=t==='light'?'☀️':'🌙';}}catch{}
+  updateCoinUI(false);
+  renderModeBar();
   renderAll();
-  if(gameOver){setInterval(updateCountdown,1000);updateCountdown();}
+}
 
+function startDaily(){
+  currentMode='daily';
+  const status=getDailyStatus();
+  if(status==='won'||status==='lost'){
+    // Already completed — load saved state and show result
+    const saved=loadGame();
+    activeTarget=getDailyColor();
+    guesses=saved.guesses||[];gameOver=saved.gameOver;won=saved.won;
+    purchasedHints=[];dailyAlreadyDone=true;
+    enterGame();
+    // Show done notice
+    document.getElementById('daily-done-notice').style.display='flex';
+    document.getElementById('input-section').style.cssText='opacity:0.45;pointer-events:none';
+    // Show countdown
+    startCountdown();
+  }else if(status==='inProgress'){
+    const saved=loadGame();
+    activeTarget=getDailyColor();
+    guesses=saved.guesses||[];gameOver=false;won=false;purchasedHints=[];dailyAlreadyDone=false;
+    enterGame();
+    if(!gameOver)setTimeout(()=>document.getElementById('hex-input').focus(),400);
+  }else{
+    activeTarget=getDailyColor();
+    guesses=[];gameOver=false;won=false;purchasedHints=[];dailyAlreadyDone=false;
+    saveGame({key:TODAY,guesses:[],gameOver:false,won:false});
+    enterGame();
+    setTimeout(()=>document.getElementById('hex-input').focus(),400);
+  }
+}
+
+function startFreePlay(){
+  currentMode='freeplay';
+  activeTarget=getRandomColor();
+  guesses=[];gameOver=false;won=false;purchasedHints=[];dailyAlreadyDone=false;
+  enterGame();
+  setTimeout(()=>document.getElementById('hex-input').focus(),400);
+}
+
+function restartFreePlay(){
+  activeTarget=getRandomColor();
+  guesses=[];gameOver=false;won=false;purchasedHints=[];
+  document.getElementById('result-banner').classList.remove('show');
+  document.getElementById('palette-section').style.display='none';
+  document.getElementById('hints-bar').style.display='none';
+  document.getElementById('input-section').style.cssText='';
+  document.getElementById('hex-input').value='';
+  document.getElementById('hex-input').classList.remove('valid','invalid');
+  document.getElementById('submit-btn').disabled=true;
+  updatePreview('');
+  document.getElementById('target-swatch').classList.remove('revealed');
+  document.getElementById('target-mask').style.opacity='1';
+  document.getElementById('target-fill').style.opacity='0';
+  renderAll();
+  setTimeout(()=>document.getElementById('hex-input').focus(),100);
+}
+
+// ── Init ───────────────────────────────────────────────────────
+function init(){
+  // Load theme early
+  try{const t=localStorage.getItem('cw_theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch{}
+
+  // Mode screen
+  showModeScreen();
+
+  // Mode screen events
+  document.getElementById('daily-start-btn').addEventListener('click',startDaily);
+  document.getElementById('daily-card').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')startDaily()});
+  document.getElementById('fp-start-btn').addEventListener('click',startFreePlay);
+  document.getElementById('fp-card').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')startFreePlay()});
+
+  // Back button
+  document.getElementById('back-btn').addEventListener('click',()=>{
+    // Save daily progress if mid-game
+    if(currentMode==='daily'&&!gameOver){
+      saveGame({key:TODAY,guesses,gameOver,won});
+    }
+    showModeScreen();
+  });
+
+  // Go to free play from daily-done notice
+  document.getElementById('go-fp-btn').addEventListener('click',()=>{
+    document.getElementById('daily-done-notice').style.display='none';
+    startFreePlay();
+  });
+
+  // Free play again
+  document.getElementById('fp-again-btn').addEventListener('click',restartFreePlay);
+
+  // Input
   const input=document.getElementById('hex-input');
   const subBtn=document.getElementById('submit-btn');
-
   input.addEventListener('input',()=>{
-    const v=input.value.trim();
-    const p=hexToRgb(v);
+    const v=input.value.trim();const p=hexToRgb(v);
     if(p){input.classList.add('valid');input.classList.remove('invalid');subBtn.disabled=false;}
     else{
       input.classList.remove('valid','invalid');
-      // only show invalid border when input is complete-length but wrong (3 or 6 chars)
       if(v.length===3||v.length===6)input.classList.add('invalid');
       subBtn.disabled=true;
     }
     updatePreview(v||'');
   });
-
   input.addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!subBtn.disabled)submit();
     if(e.key==='Escape'){input.value='';input.classList.remove('valid','invalid');subBtn.disabled=true;updatePreview('');}
     if(e.key==='ArrowUp'){e.preventDefault();nudgeHex(1);}
     if(e.key==='ArrowDown'){e.preventDefault();nudgeHex(-1);}
   });
-
   document.getElementById('color-picker').addEventListener('input',e=>{
     const hex=e.target.value.slice(1).toUpperCase();
     input.value=hex;input.dispatchEvent(new Event('input'));
   });
-
   subBtn.addEventListener('click',submit);
 
+  // Hint button
+  document.getElementById('hint-btn').addEventListener('click',()=>{
+    if(coins<HINT_COST){toast(`コインが足りません（必要: ${HINT_COST}🪙）`);return;}
+    openHintModal();
+  });
+
+  // Hint modal channel buttons
+  document.getElementById('hint-ch-grid').addEventListener('click',e=>{
+    const btn=e.target.closest('.hint-ch-btn');
+    if(btn&&!btn.disabled)buyHint(btn.dataset.ch);
+  });
+  document.getElementById('hint-modal-close').addEventListener('click',()=>document.getElementById('hint-modal').classList.remove('show'));
+  document.getElementById('hint-modal').addEventListener('click',e=>{if(e.target.id==='hint-modal')document.getElementById('hint-modal').classList.remove('show');});
+
+  // Stats
   document.getElementById('stats-btn').addEventListener('click',showStats);
   document.getElementById('stats-close').addEventListener('click',()=>document.getElementById('stats-modal').classList.remove('show'));
   document.getElementById('stats-modal').addEventListener('click',e=>{if(e.target.id==='stats-modal')document.getElementById('stats-modal').classList.remove('show');});
 
+  // Help
   document.getElementById('help-btn').addEventListener('click',()=>document.getElementById('help-modal').classList.add('show'));
   document.getElementById('help-close').addEventListener('click',()=>document.getElementById('help-modal').classList.remove('show'));
   document.getElementById('help-modal').addEventListener('click',e=>{if(e.target.id==='help-modal')document.getElementById('help-modal').classList.remove('show');});
 
-  document.getElementById('theme-btn').addEventListener('click',toggleTheme);
+  // Share / Copy
   document.getElementById('share-btn').addEventListener('click',shareResult);
-  document.getElementById('copy-hex-btn').addEventListener('click',()=>copyHex(TARGET.hex));
+  document.getElementById('copy-hex-btn').addEventListener('click',()=>{if(activeTarget)copyHex(activeTarget.hex);});
 
-  if(!gameOver)input.focus();
+  // Theme
+  document.getElementById('theme-btn').addEventListener('click',toggleTheme);
 }
 
 init();
