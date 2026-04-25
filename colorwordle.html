@@ -203,6 +203,8 @@ header{
 }
 .extend-btn:hover{border-color:var(--accent);color:var(--text);background:var(--card-hover);box-shadow:0 0 10px var(--accent-glow)}
 .extend-btn:disabled{opacity:0.35;cursor:not-allowed}
+.extend-btn--urgent{border-color:var(--accent);border-style:solid;color:var(--text);background:var(--card-hover);animation:pulse-border 1.4s ease-in-out infinite}
+@keyframes pulse-border{0%,100%{box-shadow:0 0 0 0 var(--accent-glow)}50%{box-shadow:0 0 12px 3px var(--accent-glow)}}
 .ext-cost{font-size:0.7rem;background:rgba(255,204,92,0.15);color:var(--warning);padding:2px 8px;border-radius:8px;font-weight:600}
 .ext-limit{font-size:0.7rem;color:var(--text-dim)}
 
@@ -989,13 +991,13 @@ function updateLiveScore(){
 }
 
 function extendGuesses(){
-  if(maxGuesses>=MAX_LIMIT||gameOver)return;
+  if(maxGuesses>=MAX_LIMIT||won)return;
   maxGuesses++;extensionCount++;
   if(currentMode==='daily'){
     saveGame({key:TODAY,guesses,gameOver,won,maxGuesses,extensionCount});
   }
-  updateLiveScore();
-  renderBoard();renderDots();renderTarget();
+  renderAll();
+  setTimeout(()=>document.getElementById('hex-input').focus(),50);
 }
 
 // ── Hint System ────────────────────────────────────────────────
@@ -1112,9 +1114,11 @@ function renderBoard(){
     board.appendChild(e);
   }
   // 「+」拡張ボタン
-  if(!gameOver&&maxGuesses<MAX_LIMIT&&!dailyAlreadyDone){
+  if(!won&&!gameOver&&maxGuesses<MAX_LIMIT&&!dailyAlreadyDone){
     const extBtn=document.createElement('button');extBtn.className='extend-btn';
+    const isSoftPause=guesses.length>=maxGuesses;
     extBtn.innerHTML=`＋ 推測を1回追加 <span class="ext-cost">スコア -50pt</span><span class="ext-limit">（残り${MAX_LIMIT-maxGuesses}回追加可）</span>`;
+    if(isSoftPause)extBtn.classList.add('extend-btn--urgent');
     extBtn.addEventListener('click',extendGuesses);
     board.appendChild(extBtn);
   }
@@ -1168,13 +1172,12 @@ function renderResult(){
   // Score display (show only when won, or always?)
   const scoreBox=document.getElementById('score-result-box');
   const scoreVal=document.getElementById('score-result-val');
-  if(won){
-    const finalScore=calculateScore();
-    scoreBox.style.display='flex';scoreVal.textContent=finalScore;
-    if(finalScore>=800)scoreVal.style.color='var(--success)';
-    else if(finalScore>=400)scoreVal.style.color='var(--accent)';
-    else scoreVal.style.color='var(--warning)';
-  }else{scoreBox.style.display='none';}
+  const finalScore=calculateScore();
+  scoreBox.style.display='flex';scoreVal.textContent=finalScore;
+  if(!won){scoreVal.style.color='var(--error)';}
+  else if(finalScore>=800)scoreVal.style.color='var(--success)';
+  else if(finalScore>=400)scoreVal.style.color='var(--accent)';
+  else scoreVal.style.color='var(--warning)';
 
   // Coin reward badge
   const crb=document.getElementById('coin-reward-badge');
@@ -1209,6 +1212,13 @@ function renderAll(){
   if(!activeTarget)return;
   renderBoard();renderDots();renderTarget();renderPalette();
   renderHintsBar();updateHintBtn();updateLiveScore();
+  // soft-pause: guesses exhausted but can still extend → disable input until "+" is pressed
+  const softPause=!gameOver&&!won&&guesses.length>0&&guesses.length>=maxGuesses;
+  const inp=document.getElementById('input-section');
+  if(inp&&!dailyAlreadyDone&&!gameOver){
+    inp.style.pointerEvents=softPause?'none':'';
+    inp.style.opacity=softPause?'0.35':'';
+  }
   if(gameOver)renderResult();
 }
 
@@ -1299,7 +1309,9 @@ function submit(){
   if(parsed.r===activeTarget.r&&parsed.g===activeTarget.g&&parsed.b===activeTarget.b){
     won=true;gameOver=true;
   }else if(guesses.length>=maxGuesses){
-    gameOver=true;}
+    // 拡張可能なら soft-pause（gameOverにしない）、不可なら本当の負け
+    if(maxGuesses>=MAX_LIMIT){gameOver=true;}
+  }
 
   if(gameOver){
     // Update stats (daily only)
@@ -1309,8 +1321,8 @@ function submit(){
       st.played++;
       if(won){
         st.won++;
-        if(st.dist.length<6)st.dist=[...st.dist,...Array(6-st.dist.length).fill(0)];
-        st.dist[guesses.length-1]++;
+        while(st.dist.length<guesses.length)st.dist.push(0);
+        st.dist[guesses.length-1]=(st.dist[guesses.length-1]||0)+1;
         const{y,m,d}=jst();
         const yesterday=new Date(Date.UTC(y,m-1,d-1));
         const yk=`${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth()+1).padStart(2,'0')}-${String(yesterday.getUTCDate()).padStart(2,'0')}`;
