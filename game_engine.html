@@ -61,7 +61,7 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 .control{background:#e6a817;color:#1e1e2e!important}
 .control .bdel,.control select{color:#1e1e2e}
 .control select{background:rgba(255,255,255,.4)}
-.collision{background:#43a047}.shoot{background:#e91e8c}
+.collision{background:#43a047}.shoot{background:#e91e8c}.puzzle{background:#00897b}
 
 #pwrap{width:430px;background:#11111b;display:flex;flex-direction:column;flex-shrink:0;border-left:2px solid #313244}
 #ptoolbar{padding:7px 10px;font-size:11px;color:#6c7086;border-bottom:1px solid #313244;display:flex;justify-content:space-between;align-items:center}
@@ -158,6 +158,7 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
     <div class="mode-tabs">
       <div class="mode-tab active" id="tab-action" onclick="switchMode('action')">🏃 アクション</div>
       <div class="mode-tab" id="tab-shoot" onclick="switchMode('shoot')">🚀 シューティング</div>
+      <div class="mode-tab" id="tab-puzzle" onclick="switchMode('puzzle')">🧩 パズル</div>
     </div>
   </div>
   <div id="palette-blocks"></div>
@@ -280,6 +281,12 @@ const DEFS = {
                params:[{n:'type',t:'etype',d:'straight'},{n:'spd',t:'num',d:2}]},
   sh_wrap:   {label:'↩ はしでおりかえす', cat:'shoot', shape:'stack'},
   sh_clamp:  {label:'🛑 はしで止まる',    cat:'shoot', shape:'stack'},
+
+  pz_place:  {label:'📦 ブロックを置く',     cat:'puzzle', shape:'stack', params:[{n:'x',t:'num',d:4},{n:'y',t:'num',d:18},{n:'c',t:'color',d:'#ff6b6b'}]},
+  pz_erase:  {label:'🗑 ブロックを消す',     cat:'puzzle', shape:'stack', params:[{n:'x',t:'num',d:4},{n:'y',t:'num',d:18}]},
+  pz_check:  {label:'🔗 つながりを確認する', cat:'puzzle', shape:'stack'},
+  pz_gravon: {label:'⬇ 重力をオンにする',   cat:'puzzle', shape:'stack'},
+  pz_gravoff:{label:'⏸ 重力をオフにする',   cat:'puzzle', shape:'stack'},
 };
 
 const KEY_OPTS=[
@@ -353,21 +360,60 @@ const PALETTE_DATA = {
       {t:'co_enemy',l:'👾 てきにぶつかった'},
     ]},
   ],
+  puzzle: [
+    {cat:'event',label:'⚡ イベント',blocks:[
+      {t:'ev_start',l:'🚀 はじめに'},{t:'ev_key',l:'🔑 キーをおしたとき'},
+      {t:'ev_always',l:'🔄 ずっと'},{t:'ev_timer',l:'⏰ おきに1回'},
+    ]},
+    {cat:'puzzle',label:'🧩 パズル操作',blocks:[
+      {t:'pz_gravon',l:'⬇ 重力をオンにする'},{t:'pz_gravoff',l:'⏸ 重力をオフにする'},
+      {t:'pz_place',l:'📦 ブロックを置く'},{t:'pz_erase',l:'🗑 ブロックを消す'},
+      {t:'pz_check',l:'🔗 つながりを確認する'},
+    ]},
+    {cat:'move',label:'🕹 ピースの動き',blocks:[
+      {t:'mv_right',l:'→ みぎへ動く'},{t:'mv_left',l:'← ひだりへ動く'},{t:'mv_down',l:'↓ したへ落とす'},
+    ]},
+    {cat:'control',label:'🔀 制御',blocks:[
+      {t:'ct_if',l:'🔀 もし〜なら'},{t:'ct_repeat',l:'🔁 くりかえす'},
+    ]},
+  ],
 };
 
 // ═══════════════════════════════════════════════════════
 // EASY MODE BLOCK SET
 // ═══════════════════════════════════════════════════════
-const EASY_BLOCKS = [
-  {t:'ev_start', l:'🚀 はじめに'},
-  {t:'mv_setvx', l:'💨 よこに動く'},
-  {t:'mv_jump',  l:'↑ ジャンプ！'},
-  {t:'lk_color', l:'🎨 いろを変える'},
-  {t:'sh_shoot', l:'🔫 たまを撃つ'},
-  {t:'sh_spawn', l:'👾 てきを出す'},
-  {t:'ct_if',    l:'🔀 もし〜なら'},
-  {t:'ct_repeat',l:'🔁 くりかえす'},
-];
+const EASY_BLOCKS = {
+  action: [
+    {t:'ev_start', l:'🚀 はじめに'},
+    {t:'mv_setvx', l:'💨 よこに動く'},
+    {t:'mv_jump',  l:'↑ ジャンプ！'},
+    {t:'lk_color', l:'🎨 いろを変える'},
+    {t:'sh_shoot', l:'🔫 たまを撃つ'},
+    {t:'sh_spawn', l:'👾 てきを出す'},
+    {t:'ct_if',    l:'🔀 もし〜なら'},
+    {t:'ct_repeat',l:'🔁 くりかえす'},
+  ],
+  shoot: [
+    {t:'ev_start', l:'🚀 はじめに'},
+    {t:'mv_setvx', l:'💨 よこに動く'},
+    {t:'mv_setvy', l:'💨 たてに動く'},
+    {t:'lk_color', l:'🎨 いろを変える'},
+    {t:'sh_shoot', l:'🔫 たまを撃つ'},
+    {t:'sh_spawn', l:'👾 てきを出す'},
+    {t:'ct_if',    l:'🔀 もし〜なら'},
+    {t:'ct_repeat',l:'🔁 くりかえす'},
+  ],
+  puzzle: [
+    {t:'ev_start',  l:'🚀 はじめに'},
+    {t:'pz_gravon', l:'⬇ 重力をオンにする'},
+    {t:'pz_gravoff',l:'⏸ 重力をオフにする'},
+    {t:'pz_place',  l:'📦 ブロックを置く'},
+    {t:'pz_erase',  l:'🗑 ブロックを消す'},
+    {t:'pz_check',  l:'🔗 つながりを確認する'},
+    {t:'ct_if',     l:'🔀 もし〜なら'},
+    {t:'ct_repeat', l:'🔁 くりかえす'},
+  ],
+};
 
 // ═══════════════════════════════════════════════════════
 // MODE & EDITOR STATE
@@ -392,10 +438,12 @@ function switchMode(mode) {
   gameMode = mode;
   document.getElementById('tab-action').classList.toggle('active', mode === 'action');
   document.getElementById('tab-shoot').classList.toggle('active', mode === 'shoot');
-  const labels = {action:'横スクロールアクション', shoot:'シューティング'};
+  document.getElementById('tab-puzzle').classList.toggle('active', mode === 'puzzle');
+  const labels = {action:'横スクロールアクション', shoot:'シューティング', puzzle:'落ち物パズル'};
   document.getElementById('mode-label').textContent = labels[mode];
   document.getElementById('preview-title').textContent =
-    mode === 'action' ? '🏃 横スクロールアクション' : '🚀 シューティング';
+    mode === 'action' ? '🏃 横スクロールアクション' :
+    mode === 'shoot'  ? '🚀 シューティング' : '🧩 落ち物パズル';
   renderPalette();
   loadSample();
   draw();
@@ -430,7 +478,7 @@ function renderPalette() {
     lbl.style.cssText = 'color:#a6e3a1;margin-top:10px';
     lbl.textContent = '✨ つかえるブロック';
     container.appendChild(lbl);
-    EASY_BLOCKS.forEach(bi => {
+    (EASY_BLOCKS[gameMode] || EASY_BLOCKS.action).forEach(bi => {
       const def = DEFS[bi.t]; if (!def) return;
       container.appendChild(makePaletteBtn(bi, def.cat));
     });
@@ -602,7 +650,8 @@ function clearEditor() { scripts = []; render(); }
 function loadSample() {
   scripts = []; uid = 1;
   if (gameMode === 'action') loadSampleAction();
-  else loadSampleShoot();
+  else if (gameMode === 'shoot') loadSampleShoot();
+  else loadSamplePuzzle();
   render();
 }
 
@@ -622,6 +671,13 @@ function loadSampleAction() {
     SG(B('ev_key',{key:'ArrowLeft'}),  B('mv_left',{spd:4})),
     SG(B('ev_key',{key:' '}), B('ct_if',{cond:'onGround'}, [B('mv_jump',{pow:14})])),
     SG(B('ev_always'), B('mv_setvx',{vx:0})),
+  ];
+}
+
+function loadSamplePuzzle() {
+  scripts = [
+    SG(B('ev_start'), B('pz_gravon')),
+    SG(B('ev_timer',{n:300}), B('pz_check')),
   ];
 }
 
@@ -661,12 +717,30 @@ let platforms = [], aEnemies = [], goal = {}, coins = [];
 let ship = {}, sBullets = [], sEnemies = [], eBullets = [], particles = [], powerups = [];
 let lives = 3, wave = 0, invTimer = 0, shootCd = 0, multiShot = 1, bgY = 0;
 
+// ─── Puzzle mode constants ───
+const PCOLS = 10, PROWS = 20, PCELL = 13, PGX = 10, PGY = 27;
+const PIECES = {
+  I:{cells:[[0,0],[1,0],[2,0],[3,0]],color:'#00e5e5'},
+  O:{cells:[[0,0],[1,0],[0,1],[1,1]],color:'#e5d000'},
+  T:{cells:[[0,0],[1,0],[2,0],[1,1]],color:'#9900e5'},
+  S:{cells:[[1,0],[2,0],[0,1],[1,1]],color:'#00c800'},
+  Z:{cells:[[0,0],[1,0],[1,1],[2,1]],color:'#e50000'},
+  J:{cells:[[0,0],[0,1],[1,1],[2,1]],color:'#0050e5'},
+  L:{cells:[[2,0],[0,1],[1,1],[2,1]],color:'#e57000'},
+};
+const PKEYS = Object.keys(PIECES);
+// ─── Puzzle mode state ───
+let pGrid, pPiece, pNextType, pGravity, pGravTimer, pGameOver, pLines, pLevel, pKeyQ;
+let pPlayer = {};
+
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 function initGame() {
   gt = 0; msg = ''; msgTimer = 0; score = 0; keys = {};
-  if (gameMode === 'action') initAction(); else initShoot();
+  if (gameMode === 'action') initAction();
+  else if (gameMode === 'shoot') initShoot();
+  else initPuzzle();
 }
 
 function initAction() {
@@ -696,9 +770,116 @@ function initShoot() {
 }
 
 // ═══════════════════════════════════════════════════════
+// PUZZLE GAME ENGINE
+// ═══════════════════════════════════════════════════════
+function initPuzzle() {
+  pGrid = Array.from({length:PROWS}, () => Array(PCOLS).fill(null));
+  pGravity = false; pGravTimer = 0; pGameOver = false;
+  pLines = 0; pLevel = 1; pKeyQ = [];
+  pPlayer = { vx:0, vy:0, color:'#4c97ff', visible:true };
+  pNextType = PKEYS[Math.floor(Math.random()*PKEYS.length)];
+  pSpawnPiece();
+}
+
+function pCollides(cells, px, py) {
+  for (const [cx, cy] of cells) {
+    const col = px+cx, row = py+cy;
+    if (col < 0 || col >= PCOLS || row >= PROWS) return true;
+    if (row >= 0 && pGrid[row][col]) return true;
+  }
+  return false;
+}
+
+function pSpawnPiece() {
+  const type = pNextType;
+  pNextType = PKEYS[Math.floor(Math.random()*PKEYS.length)];
+  pPiece = { type, cells:PIECES[type].cells.map(c=>[...c]), x:3, y:-1, color:PIECES[type].color };
+  if (pCollides(pPiece.cells, pPiece.x, pPiece.y+1)) {
+    pGameOver = true; msg = '💀 ゲームオーバー！'; msgTimer = 400; stopGame();
+  }
+}
+
+function pRotate(cw) {
+  if (!pPiece) return;
+  const c = pPiece.cells;
+  let rot;
+  if (cw) { const my=Math.max(...c.map(([,y])=>y)); rot=c.map(([x,y])=>[my-y,x]); }
+  else     { const mx=Math.max(...c.map(([x])=>x));  rot=c.map(([x,y])=>[y,mx-x]); }
+  for (const [dx,dy] of [[0,0],[1,0],[-1,0],[2,0],[-2,0],[0,-1]]) {
+    if (!pCollides(rot, pPiece.x+dx, pPiece.y+dy)) {
+      pPiece.cells=rot; pPiece.x+=dx; pPiece.y+=dy; return;
+    }
+  }
+}
+
+function pLand() {
+  if (!pPiece) return;
+  pPiece.cells.forEach(([cx,cy]) => {
+    const col=pPiece.x+cx, row=pPiece.y+cy;
+    if (row>=0 && row<PROWS && col>=0 && col<PCOLS) pGrid[row][col]=pPiece.color;
+  });
+  pPiece = null; pCheckLines(); pSpawnPiece();
+}
+
+function pCheckLines() {
+  let cleared = 0;
+  for (let r=PROWS-1; r>=0; r--) {
+    if (pGrid[r].every(c=>c!==null)) {
+      pGrid.splice(r,1); pGrid.unshift(Array(PCOLS).fill(null)); r++; cleared++;
+    }
+  }
+  if (cleared > 0) {
+    const pts=[0,100,300,500,800][Math.min(cleared,4)]*pLevel;
+    score+=pts; pLines+=cleared; pLevel=Math.floor(pLines/10)+1;
+    glog(`✨ ${cleared}ライン消去！ +${pts}`);
+  }
+}
+
+function physicsPuzzle() {
+  if (pGameOver || !pPiece) return;
+  // キーキュー処理（1フレームに1アクション）
+  if (pKeyQ.length > 0) {
+    const k = pKeyQ.shift();
+    if      (k==='ArrowLeft'  && !pCollides(pPiece.cells, pPiece.x-1, pPiece.y)) pPiece.x--;
+    else if (k==='ArrowRight' && !pCollides(pPiece.cells, pPiece.x+1, pPiece.y)) pPiece.x++;
+    else if (k==='ArrowDown') {
+      if (!pCollides(pPiece.cells, pPiece.x, pPiece.y+1)) { pPiece.y++; score++; }
+      else pLand();
+    }
+    else if (k==='ArrowUp'||k==='z') pRotate(true);
+    else if (k==='x') pRotate(false);
+    else if (k===' ') {
+      while (!pCollides(pPiece.cells, pPiece.x, pPiece.y+1)) { pPiece.y++; score+=2; }
+      pLand();
+    }
+  }
+  // スクリプト制御（mv_right / mv_left / mv_down）
+  if (pPiece) {
+    if (pPlayer.vx > 0 && !pCollides(pPiece.cells, pPiece.x+1, pPiece.y)) pPiece.x++;
+    if (pPlayer.vx < 0 && !pCollides(pPiece.cells, pPiece.x-1, pPiece.y)) pPiece.x--;
+    if (pPlayer.vy > 0 && !pCollides(pPiece.cells, pPiece.x, pPiece.y+1)) pPiece.y++;
+  }
+  pPlayer.vx = 0; pPlayer.vy = 0;
+  // 重力
+  if (pGravity && pPiece) {
+    pGravTimer++;
+    const interval = Math.max(6, 50-(pLevel-1)*4);
+    if (pGravTimer >= interval) {
+      pGravTimer = 0;
+      if (!pCollides(pPiece.cells, pPiece.x, pPiece.y+1)) pPiece.y++;
+      else pLand();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 // SCRIPT EXECUTION
 // ═══════════════════════════════════════════════════════
-function getPlayer() { return gameMode === 'shoot' ? ship : player; }
+function getPlayer() {
+  if (gameMode === 'shoot') return ship;
+  if (gameMode === 'puzzle') return pPlayer;
+  return player;
+}
 
 function evalCond(cond) {
   const pl = getPlayer();
@@ -776,6 +957,19 @@ function execBlock(b) {
       if (gameMode !== 'shoot') break;
       spawnEnemy(p.type||'straight', +(p.spd||2));
       break;
+    case 'pz_place':
+      if (gameMode==='puzzle') {
+        const col=Math.round(+p.x||0), row=Math.round(+p.y||0);
+        if (row>=0&&row<PROWS&&col>=0&&col<PCOLS) pGrid[row][col]=p.c||'#ff6b6b';
+      } break;
+    case 'pz_erase':
+      if (gameMode==='puzzle') {
+        const col=Math.round(+p.x||0), row=Math.round(+p.y||0);
+        if (row>=0&&row<PROWS&&col>=0&&col<PCOLS) pGrid[row][col]=null;
+      } break;
+    case 'pz_check':  if (gameMode==='puzzle') pCheckLines(); break;
+    case 'pz_gravon': if (gameMode==='puzzle') pGravity=true;  break;
+    case 'pz_gravoff':if (gameMode==='puzzle') pGravity=false; break;
   }
 }
 
@@ -1193,6 +1387,83 @@ function drawShoot() {
   if(!running) drawStartOverlay('▶ 実行でゲーム開始','矢印で移動・Zで射撃');
 }
 
+// ═══════════════════════════════════════════════════════
+// PUZZLE DRAW
+// ═══════════════════════════════════════════════════════
+function drawCell(x, y, color) {
+  const s = PCELL-1;
+  ctx.fillStyle=color; ctx.fillRect(x,y,s,s);
+  ctx.fillStyle='rgba(255,255,255,.28)'; ctx.fillRect(x,y,s,2); ctx.fillRect(x,y,2,s);
+  ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fillRect(x,y+s-2,s,2); ctx.fillRect(x+s-2,y,2,s);
+}
+
+function drawPuzzle() {
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#070712'; ctx.fillRect(0,0,W,H);
+
+  const gx=PGX, gy=PGY;
+  // グリッド背景
+  ctx.fillStyle='#0d0d20'; ctx.fillRect(gx,gy,PCOLS*PCELL,PROWS*PCELL);
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=.5;
+  for(let r=0;r<=PROWS;r++){ctx.beginPath();ctx.moveTo(gx,gy+r*PCELL);ctx.lineTo(gx+PCOLS*PCELL,gy+r*PCELL);ctx.stroke();}
+  for(let c=0;c<=PCOLS;c++){ctx.beginPath();ctx.moveTo(gx+c*PCELL,gy);ctx.lineTo(gx+c*PCELL,gy+PROWS*PCELL);ctx.stroke();}
+
+  // 配置済みブロック
+  for(let r=0;r<PROWS;r++) for(let c=0;c<PCOLS;c++) if(pGrid[r][c]) drawCell(gx+c*PCELL, gy+r*PCELL, pGrid[r][c]);
+
+  // 現在のピース（ゴースト＋本体）
+  if(pPiece){
+    let ghostR=pPiece.y;
+    while(!pCollides(pPiece.cells, pPiece.x, ghostR+1)) ghostR++;
+    if(ghostR>pPiece.y){
+      ctx.globalAlpha=.2;
+      pPiece.cells.forEach(([cx,cy])=>{
+        const px=gx+(pPiece.x+cx)*PCELL, py=gy+(ghostR+cy)*PCELL;
+        if(py>=gy){ctx.fillStyle=pPiece.color; ctx.fillRect(px,py,PCELL-1,PCELL-1);}
+      });
+      ctx.globalAlpha=1;
+    }
+    pPiece.cells.forEach(([cx,cy])=>{
+      const px=gx+(pPiece.x+cx)*PCELL, py=gy+(pPiece.y+cy)*PCELL;
+      if(py>=gy) drawCell(px,py,pPiece.color);
+    });
+  }
+
+  // グリッド枠
+  ctx.strokeStyle='#45475a'; ctx.lineWidth=2;
+  ctx.strokeRect(gx-1,gy-1,PCOLS*PCELL+2,PROWS*PCELL+2);
+
+  // ── 右パネル ──
+  const rx=gx+PCOLS*PCELL+14;
+  const lbl=(t,y,val,col)=>{
+    ctx.fillStyle='#585b70'; ctx.font='bold 10px monospace'; ctx.fillText(t,rx,gy+y);
+    ctx.fillStyle=col; ctx.font='bold 14px monospace'; ctx.fillText(val,rx,gy+y+16);
+  };
+  lbl('SCORE',10,score,'#f9e2af');
+  lbl('LEVEL',46,pLevel,'#cba6f7');
+  lbl('LINES',82,pLines,'#a6e3a1');
+
+  // NEXT ピース
+  ctx.fillStyle='#585b70'; ctx.font='bold 10px monospace'; ctx.fillText('NEXT',rx,gy+116);
+  const nx=rx, ny=gy+120;
+  ctx.fillStyle='#0d0d20'; ctx.fillRect(nx-2,ny-2,PCELL*5,PCELL*4); ctx.strokeStyle='#45475a'; ctx.lineWidth=1; ctx.strokeRect(nx-2,ny-2,PCELL*5,PCELL*4);
+  if(pNextType) PIECES[pNextType].cells.forEach(([cx,cy])=>drawCell(nx+cx*PCELL, ny+cy*PCELL, PIECES[pNextType].color));
+
+  // 操作ヒント
+  ctx.font='9px sans-serif';
+  [['←→','移動'],['↑ Z','回転'],['↓','ソフト落下'],['スペース','一気に落とす']].forEach(([k,v],i)=>{
+    ctx.fillStyle='#74c7ec'; ctx.fillText(k,rx,gy+184+i*16);
+    ctx.fillStyle='#45475a'; ctx.fillText(v,rx+30,gy+184+i*16);
+  });
+
+  // HUD
+  ctx.fillStyle='rgba(0,0,10,.75)'; ctx.fillRect(0,0,W,26);
+  ctx.fillStyle='#cdd6f4'; ctx.font='12px monospace';
+  ctx.fillText(`🧩 パズル  ⭐${score}  Lv.${pLevel}  ${pLines}lines  ${fps}fps`,8,17);
+  drawMsgOverlay();
+  if(!running) drawStartOverlay('▶ 実行でゲーム開始','←→移動  ↑/Z回転  スペース:一気に落とす');
+}
+
 function drawMsgOverlay() {
   if(msgTimer<=0||!msg) return;
   const al=Math.min(1,msgTimer/20);
@@ -1212,7 +1483,11 @@ function drawStartOverlay(line1, line2) {
   ctx.textAlign='left';
 }
 
-function draw() { if(gameMode==='action') drawAction(); else drawShoot(); }
+function draw() {
+  if(gameMode==='action') drawAction();
+  else if(gameMode==='shoot') drawShoot();
+  else drawPuzzle();
+}
 
 // ═══════════════════════════════════════════════════════
 // GAME LOOP
@@ -1233,9 +1508,12 @@ function loop(ts) {
   if(gameMode==='action'){
     runScripts('frame');
     physicsAction();
-  } else {
+  } else if(gameMode==='shoot'){
     physicsShoot();
     runScripts('frame');
+  } else {
+    runScripts('frame');
+    physicsPuzzle();
   }
 
   draw();
@@ -1261,6 +1539,10 @@ function stopGame() {
 document.addEventListener('keydown', e => {
   keys[e.key]=true;
   if(running&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if(running && gameMode==='puzzle' && pKeyQ) {
+    if(['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' ','z','x'].includes(e.key))
+      pKeyQ.push(e.key);
+  }
 });
 document.addEventListener('keyup', e => { delete keys[e.key]; });
 
@@ -1298,6 +1580,11 @@ const BLOCK_TIPS = {
   sh_spawn:  'てきを画面に出します',
   sh_wrap:   'はしに達したらはんたい側に移動します',
   sh_clamp:  '画面のそとには出ないようにします',
+  pz_place:  'グリッドのしていした場所にブロックを置きます',
+  pz_erase:  'グリッドのしていした場所のブロックを消します',
+  pz_check:  'そろったラインを確認して消します',
+  pz_gravon: 'ピースが自動でしたに落ちるようにします',
+  pz_gravoff:'ピースが自動で落ちないようにします',
 };
 
 const _tipEl = document.getElementById('tooltip');
