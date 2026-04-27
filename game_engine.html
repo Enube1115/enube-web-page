@@ -9,7 +9,13 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 #app{display:flex;height:100vh}
 
 #palette{width:195px;background:#181825;overflow-y:auto;padding:0 6px 8px;flex-shrink:0;border-right:2px solid #313244}
-.mode-tabs{display:flex;gap:4px;padding:8px 0 6px;position:sticky;top:0;background:#181825;z-index:10}
+#palette-header{position:sticky;top:0;background:#181825;z-index:10;padding-bottom:2px}
+.diff-tabs{display:flex;gap:4px;padding:8px 0 5px}
+.diff-tab{flex:1;padding:6px 4px;text-align:center;cursor:pointer;font-size:11px;font-weight:800;border-radius:8px;border:2px solid #313244;color:#888;transition:all .15s}
+.diff-tab:hover{color:#cdd6f4;border-color:#585b70}
+#tab-easy.active{border-color:#a6e3a1;color:#a6e3a1;background:rgba(166,227,161,.13)}
+#tab-normal.active{border-color:#cba6f7;color:#cba6f7;background:rgba(203,166,247,.12)}
+.mode-tabs{display:flex;gap:4px;padding:0 0 6px}
 .mode-tab{flex:1;padding:5px 4px;text-align:center;cursor:pointer;font-size:10px;font-weight:700;border-radius:6px;border:2px solid #313244;color:#888;transition:all .15s}
 .mode-tab.active{border-color:#cba6f7;color:#cba6f7;background:rgba(203,166,247,.12)}
 .cat-label{font-size:10px;font-weight:700;padding:5px 8px;margin:8px 0 3px;border-radius:4px;text-transform:uppercase;letter-spacing:1px;opacity:.85}
@@ -30,8 +36,10 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 .sg{background:rgba(255,255,255,.04);border:1px solid #313244;border-radius:10px;padding:8px 8px 4px;display:inline-flex;flex-direction:column;gap:0;min-width:200px;position:relative;align-self:flex-start}
 .sg-del{position:absolute;top:4px;right:6px;cursor:pointer;opacity:.3;font-size:11px;color:#f38ba8}
 .sg-del:hover{opacity:1}
-.drop-zone{height:14px;border-radius:4px;transition:all .12s;flex-shrink:0}
-.drop-zone.over{height:36px;background:rgba(203,166,247,.2);border:2px dashed #cba6f7}
+.drop-zone{height:14px;border-radius:4px;transition:all .15s;flex-shrink:0}
+.drop-zone.highlight{height:20px;background:rgba(203,166,247,.1);border:2px dashed rgba(203,166,247,.35);animation:dz-pulse 1.2s ease-in-out infinite}
+.drop-zone.over{height:36px;background:rgba(203,166,247,.3);border:2px dashed #cba6f7;box-shadow:0 0 10px rgba(203,166,247,.5);animation:none}
+@keyframes dz-pulse{0%,100%{background:rgba(203,166,247,.1)}50%{background:rgba(203,166,247,.2)}}
 
 .block{border-radius:8px;padding:7px 10px;cursor:grab;font-size:12px;user-select:none;display:flex;align-items:center;flex-wrap:wrap;gap:5px;position:relative;border:2px solid transparent;margin:0}
 .block.hat{border-radius:14px 14px 6px 6px}
@@ -44,8 +52,10 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 .block input[type=text]{width:72px;padding:2px 4px;border-radius:4px;border:none;background:rgba(255,255,255,.22);color:#fff;font-size:12px}
 .block select{padding:2px 4px;border-radius:4px;border:none;background:rgba(0,0,0,.4);color:#fff;font-size:11px;cursor:pointer;max-width:92px}
 .inner-wrap{margin-top:4px;margin-left:14px;border-left:3px solid rgba(255,255,255,.2);padding-left:6px;display:flex;flex-direction:column;gap:0;min-height:28px}
-.inner-drop{min-height:28px;border-radius:6px;transition:all .12s}
-.inner-drop.over{background:rgba(255,255,255,.12);border:2px dashed rgba(255,255,255,.4)}
+.inner-drop{min-height:28px;border-radius:6px;transition:all .15s}
+.inner-drop.highlight{background:rgba(255,255,255,.07);border:2px dashed rgba(255,255,255,.28);animation:idz-pulse 1.2s ease-in-out infinite}
+.inner-drop.over{background:rgba(255,255,255,.16);border:2px dashed rgba(255,255,255,.6);box-shadow:0 0 8px rgba(255,255,255,.2);animation:none}
+@keyframes idz-pulse{0%,100%{background:rgba(255,255,255,.07)}50%{background:rgba(255,255,255,.13)}}
 
 .event{background:#e6821e}.move{background:#4c97ff}.look{background:#9966ff}
 .control{background:#e6a817;color:#1e1e2e!important}
@@ -57,15 +67,98 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 #ptoolbar{padding:7px 10px;font-size:11px;color:#6c7086;border-bottom:1px solid #313244;display:flex;justify-content:space-between;align-items:center}
 #game-canvas{background:#000;display:block}
 #clog{flex:1;overflow-y:auto;padding:8px 10px;font-size:11px;font-family:monospace;color:#a6e3a1;background:#0b0b14;border-top:1px solid #313244;min-height:60px}
+
+/* ── Tutorial overlay ── */
+#tutorial-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.78);
+  display:none;align-items:center;justify-content:center;
+  z-index:2000;backdrop-filter:blur(5px)
+}
+#tutorial-modal{
+  background:#1e1e2e;border:2px solid #cba6f7;border-radius:18px;
+  padding:30px 28px 26px;max-width:610px;width:94%;text-align:center;
+  box-shadow:0 12px 48px rgba(0,0,0,.7);animation:tut-in .25s ease
+}
+@keyframes tut-in{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+.tut-title{font-size:21px;font-weight:800;color:#cdd6f4;letter-spacing:.5px;margin-bottom:22px}
+.tut-steps{display:flex;align-items:flex-start;justify-content:center;gap:8px;margin-bottom:24px}
+.tut-step{display:flex;flex-direction:column;align-items:center;gap:9px;flex:1;min-width:130px;max-width:160px}
+.tut-arr{font-size:18px;color:#45475a;flex-shrink:0;margin-top:44px}
+/* illustration box */
+.tut-illust{
+  width:116px;height:96px;background:#11111b;border-radius:12px;
+  border:1px solid #313244;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;
+  position:relative;overflow:hidden
+}
+.tut-num{font-size:22px;font-weight:900;color:#cba6f7}
+.tut-label{font-size:12px;line-height:1.65;color:#a6adc8;text-align:center}
+/* step-1 illustration */
+.ti-mini-palette{display:flex;flex-direction:column;gap:5px;margin-bottom:4px}
+.ti-mini-block{width:62px;height:13px;border-radius:4px}
+.ti-hand{position:absolute;bottom:5px;right:9px;font-size:22px;
+  animation:hand-bob .8s ease-in-out infinite alternate}
+@keyframes hand-bob{from{transform:translate(0,0)}to{transform:translate(-3px,-4px)}}
+/* step-2 illustration */
+.ti-falling-block{
+  width:62px;height:13px;border-radius:4px;background:#4c97ff;
+  animation:fall-blk .9s ease-in-out infinite alternate}
+@keyframes fall-blk{from{transform:translateY(-8px);opacity:.6}to{transform:translateY(0);opacity:1}}
+.ti-dz{
+  width:70px;height:16px;border-radius:5px;
+  border:2px dashed rgba(203,166,247,.5);
+  animation:dz-glow2 .9s ease-in-out infinite alternate}
+@keyframes dz-glow2{
+  from{border-color:rgba(203,166,247,.3);background:rgba(203,166,247,.05)}
+  to  {border-color:#cba6f7;background:rgba(203,166,247,.22)}}
+/* step-3 illustration */
+.ti-run-btn{
+  background:#a6e3a1;color:#1e1e2e;padding:9px 16px;
+  border-radius:7px;font-weight:800;font-size:13px;letter-spacing:.3px;
+  box-shadow:0 0 0 4px rgba(166,227,161,.2);
+  animation:run-pulse .9s ease-in-out infinite alternate}
+@keyframes run-pulse{
+  from{box-shadow:0 0 0 4px rgba(166,227,161,.15)}
+  to  {box-shadow:0 0 0 8px rgba(166,227,161,.35)}}
+/* start button */
+#tut-start{
+  background:linear-gradient(135deg,#a6e3a1 0%,#6ec96b 100%);
+  color:#1a2e1a;border:none;padding:13px 44px;border-radius:50px;
+  font-size:16px;font-weight:800;cursor:pointer;letter-spacing:.5px;
+  transition:all .15s;box-shadow:0 4px 18px rgba(166,227,161,.35)
+}
+#tut-start:hover{transform:scale(1.06);box-shadow:0 6px 26px rgba(166,227,161,.55)}
+#tut-start:active{transform:scale(.98)}
+/* re-open button */
+#btn-help{
+  background:#45475a;color:#cdd6f4;border:none;border-radius:6px;
+  padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;
+  transition:all .15s
+}
+#btn-help:hover{background:#585b70}
+
+/* ── Tooltip ── */
+#tooltip{
+  position:fixed;z-index:1999;pointer-events:none;display:none;
+  background:rgba(17,17,27,.97);border:1px solid #45475a;border-radius:8px;
+  padding:7px 11px;font-size:11px;color:#cdd6f4;max-width:190px;
+  line-height:1.6;box-shadow:0 4px 18px rgba(0,0,0,.55)
+}
 </style>
 </head>
 <body>
 <div id="app">
 
 <div id="palette">
-  <div class="mode-tabs">
-    <div class="mode-tab active" id="tab-action" onclick="switchMode('action')">🏃 アクション</div>
-    <div class="mode-tab" id="tab-shoot" onclick="switchMode('shoot')">🚀 シューティング</div>
+  <div id="palette-header">
+    <div class="diff-tabs">
+      <div class="diff-tab active" id="tab-easy"   onclick="switchDifficulty('easy')">⭐ かんたん</div>
+      <div class="diff-tab"        id="tab-normal" onclick="switchDifficulty('normal')">🔧 ふつう</div>
+    </div>
+    <div class="mode-tabs">
+      <div class="mode-tab active" id="tab-action" onclick="switchMode('action')">🏃 アクション</div>
+      <div class="mode-tab" id="tab-shoot" onclick="switchMode('shoot')">🚀 シューティング</div>
+    </div>
   </div>
   <div id="palette-blocks"></div>
 </div>
@@ -76,6 +169,7 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
     <button id="btn-stop" onclick="stopGame()">■ 停止</button>
     <button id="btn-clr" onclick="clearEditor()">🗑 クリア</button>
     <button id="btn-sample" onclick="loadSample()">📋 サンプル</button>
+    <button id="btn-help"   onclick="showTutorial()">？ あそびかた</button>
     <span id="mode-label" style="color:#cba6f7;font-size:11px;font-weight:700;margin-left:4px">横スクロールアクション</span>
   </div>
   <div id="editor" ondragover="event.preventDefault()" ondrop="onEditorDrop(event)">
@@ -93,48 +187,99 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 </div>
 </div>
 
+<!-- ═══ Tutorial overlay ═══ -->
+<div id="tutorial-overlay">
+  <div id="tutorial-modal">
+    <div class="tut-title">🎮 あそびかた</div>
+    <div class="tut-steps">
+
+      <!-- Step 1 -->
+      <div class="tut-step">
+        <div class="tut-illust">
+          <div class="ti-mini-palette">
+            <div class="ti-mini-block" style="background:#e6821e"></div>
+            <div class="ti-mini-block" style="background:#4c97ff"></div>
+            <div class="ti-mini-block" style="background:#9966ff"></div>
+          </div>
+          <div class="ti-hand">👆</div>
+        </div>
+        <div class="tut-num">①</div>
+        <div class="tut-label">左のパネルから<br>ブロックを<br>つかむ</div>
+      </div>
+
+      <div class="tut-arr">▶</div>
+
+      <!-- Step 2 -->
+      <div class="tut-step">
+        <div class="tut-illust">
+          <div class="ti-falling-block"></div>
+          <div class="ti-dz"></div>
+        </div>
+        <div class="tut-num">②</div>
+        <div class="tut-label">まん中のエリアへ<br>ドロップする</div>
+      </div>
+
+      <div class="tut-arr">▶</div>
+
+      <!-- Step 3 -->
+      <div class="tut-step">
+        <div class="tut-illust">
+          <div class="ti-run-btn">▶ 実行</div>
+        </div>
+        <div class="tut-num">③</div>
+        <div class="tut-label">▶ 実行ボタンを<br>おす</div>
+      </div>
+
+    </div>
+    <button id="tut-start" onclick="closeTutorial()">はじめる！</button>
+  </div>
+</div>
+
+<!-- ═══ Tooltip ═══ -->
+<div id="tooltip"></div>
+
 <script>
 // ═══════════════════════════════════════════════════════
 // CONSTANTS & DEFINITIONS
 // ═══════════════════════════════════════════════════════
 const DEFS = {
-  ev_start:  {label:'🚀 ゲーム開始時',    cat:'event',   shape:'hat'},
-  ev_key:    {label:'🔑 キー',            cat:'event',   shape:'hat', params:[{n:'key',t:'key',d:'ArrowRight'}]},
-  ev_always: {label:'🔄 毎フレーム',      cat:'event',   shape:'hat'},
-  ev_timer:  {label:'⏰ Nフレームごと',   cat:'event',   shape:'hat', params:[{n:'n',t:'num',d:60}]},
+  ev_start:  {label:'🚀 はじめに',             cat:'event',   shape:'hat'},
+  ev_key:    {label:'🔑 キーをおしたとき',     cat:'event',   shape:'hat', params:[{n:'key',t:'key',d:'ArrowRight'}]},
+  ev_always: {label:'🔄 ずっと',               cat:'event',   shape:'hat'},
+  ev_timer:  {label:'⏰ おきに1回',            cat:'event',   shape:'hat', params:[{n:'n',t:'num',d:60}]},
 
-  mv_right:  {label:'→ 右に移動 速度',   cat:'move', shape:'stack', params:[{n:'spd',t:'num',d:4}]},
-  mv_left:   {label:'← 左に移動 速度',   cat:'move', shape:'stack', params:[{n:'spd',t:'num',d:4}]},
-  mv_up:     {label:'↑ 上に移動 速度',   cat:'move', shape:'stack', params:[{n:'spd',t:'num',d:4}]},
-  mv_down:   {label:'↓ 下に移動 速度',   cat:'move', shape:'stack', params:[{n:'spd',t:'num',d:4}]},
-  mv_jump:   {label:'↑ ジャンプ 力',     cat:'move', shape:'stack', params:[{n:'pow',t:'num',d:13}]},
-  mv_setx:   {label:'📍 X =',            cat:'move', shape:'stack', params:[{n:'x',t:'num',d:60}]},
-  mv_sety:   {label:'📍 Y =',            cat:'move', shape:'stack', params:[{n:'y',t:'num',d:220}]},
-  mv_setvx:  {label:'💨 X速度 =',        cat:'move', shape:'stack', params:[{n:'vx',t:'num',d:0}]},
-  mv_setvy:  {label:'💨 Y速度 =',        cat:'move', shape:'stack', params:[{n:'vy',t:'num',d:0}]},
-  mv_stop:   {label:'⏹ 移動を止める',    cat:'move', shape:'stack'},
+  mv_right:  {label:'→ みぎへ動く',            cat:'move', shape:'stack', params:[{n:'spd',t:'num',d:4}]},
+  mv_left:   {label:'← ひだりへ動く',          cat:'move', shape:'stack', params:[{n:'spd',t:'num',d:4}]},
+  mv_up:     {label:'↑ うえへ動く',            cat:'move', shape:'stack', params:[{n:'spd',t:'num',d:4}]},
+  mv_down:   {label:'↓ したへ動く',            cat:'move', shape:'stack', params:[{n:'spd',t:'num',d:4}]},
+  mv_jump:   {label:'↑ ジャンプ！',            cat:'move', shape:'stack', params:[{n:'pow',t:'num',d:13}]},
+  mv_setx:   {label:'📍 よこの場所',           cat:'move', shape:'stack', params:[{n:'x',t:'num',d:60}]},
+  mv_sety:   {label:'📍 たての場所',           cat:'move', shape:'stack', params:[{n:'y',t:'num',d:220}]},
+  mv_setvx:  {label:'💨 よこに動く',           cat:'move', shape:'stack', params:[{n:'vx',t:'num',d:0}]},
+  mv_setvy:  {label:'💨 たてに動く',           cat:'move', shape:'stack', params:[{n:'vy',t:'num',d:0}]},
+  mv_stop:   {label:'⏹ 止まる',               cat:'move', shape:'stack'},
 
-  lk_color:  {label:'🎨 色',             cat:'look', shape:'stack', params:[{n:'c',t:'color',d:'#4c97ff'}]},
-  lk_say:    {label:'💬',               cat:'look', shape:'stack', params:[{n:'msg',t:'text',d:'Hello!'}]},
-  lk_hide:   {label:'👻 非表示',         cat:'look', shape:'stack'},
-  lk_show:   {label:'👁 表示',           cat:'look', shape:'stack'},
+  lk_color:  {label:'🎨 いろを変える',         cat:'look', shape:'stack', params:[{n:'c',t:'color',d:'#4c97ff'}]},
+  lk_say:    {label:'💬 しゃべる',             cat:'look', shape:'stack', params:[{n:'msg',t:'text',d:'Hello!'}]},
+  lk_hide:   {label:'👻 かくれる',             cat:'look', shape:'stack'},
+  lk_show:   {label:'👁 あらわれる',           cat:'look', shape:'stack'},
 
-  ct_if:     {label:'🔀 もし',           cat:'control', shape:'cframe',  params:[{n:'cond',t:'cond',d:'onGround'}]},
-  ct_ifelse: {label:'↕ もし/でなければ', cat:'control', shape:'cframe2', params:[{n:'cond',t:'cond',d:'onGround'}]},
-  ct_repeat: {label:'🔁 繰り返す',       cat:'control', shape:'cframe',  params:[{n:'n',t:'num',d:3}]},
-  ct_wait:   {label:'⏱ 待つ(秒)',        cat:'control', shape:'stack',   params:[{n:'s',t:'num',d:0.5}]},
+  ct_if:     {label:'🔀 もし〜なら',           cat:'control', shape:'cframe',  params:[{n:'cond',t:'cond',d:'onGround'}]},
+  ct_ifelse: {label:'↕ もし/そうでなければ',   cat:'control', shape:'cframe2', params:[{n:'cond',t:'cond',d:'onGround'}]},
+  ct_repeat: {label:'🔁 くりかえす',           cat:'control', shape:'cframe',  params:[{n:'n',t:'num',d:3}]},
+  ct_wait:   {label:'⏱ まつ(秒)',              cat:'control', shape:'stack',   params:[{n:'s',t:'num',d:0.5}]},
 
-  co_ground: {label:'🏔 地面触れてる',   cat:'collision', shape:'bool'},
-  co_enemy:  {label:'👾 敵に当たった',   cat:'collision', shape:'bool'},
-  co_goal:   {label:'🏆 ゴール触れた',   cat:'collision', shape:'bool'},
-  co_wall:   {label:'🧱 壁に触れた',    cat:'collision', shape:'bool'},
+  co_ground: {label:'🏔 地面にいる',           cat:'collision', shape:'bool'},
+  co_enemy:  {label:'👾 てきにぶつかった',     cat:'collision', shape:'bool'},
+  co_goal:   {label:'🏆 ゴールにとどいた',     cat:'collision', shape:'bool'},
+  co_wall:   {label:'🧱 かべにぶつかった',     cat:'collision', shape:'bool'},
 
-  sh_shoot:  {label:'🔫 弾を撃つ', cat:'shoot', shape:'stack',
+  sh_shoot:  {label:'🔫 たまを撃つ', cat:'shoot', shape:'stack',
                params:[{n:'dir',t:'sdir',d:'up'},{n:'spd',t:'num',d:10},{n:'c',t:'color',d:'#00ffff'}]},
-  sh_spawn:  {label:'👾 敵を生成', cat:'shoot', shape:'stack',
+  sh_spawn:  {label:'👾 てきを出す', cat:'shoot', shape:'stack',
                params:[{n:'type',t:'etype',d:'straight'},{n:'spd',t:'num',d:2}]},
-  sh_wrap:   {label:'↩ 画面端で折り返す', cat:'shoot', shape:'stack'},
-  sh_clamp:  {label:'🛑 画面端で止まる',  cat:'shoot', shape:'stack'},
+  sh_wrap:   {label:'↩ はしでおりかえす', cat:'shoot', shape:'stack'},
+  sh_clamp:  {label:'🛑 はしで止まる',    cat:'shoot', shape:'stack'},
 };
 
 const KEY_OPTS=[
@@ -167,58 +312,80 @@ const ETYPE_OPTS=[
 const PALETTE_DATA = {
   action: [
     {cat:'event',label:'⚡ イベント',blocks:[
-      {t:'ev_start',l:'🚀 ゲーム開始時'},{t:'ev_key',l:'🔑 キー押されたとき'},{t:'ev_always',l:'🔄 毎フレーム'},
+      {t:'ev_start',l:'🚀 はじめに'},{t:'ev_key',l:'🔑 キーをおしたとき'},{t:'ev_always',l:'🔄 ずっと'},
     ]},
     {cat:'move',label:'🏃 動き',blocks:[
-      {t:'mv_right',l:'→ 右に移動'},{t:'mv_left',l:'← 左に移動'},{t:'mv_jump',l:'↑ ジャンプ'},
-      {t:'mv_setx',l:'📍 X位置を設定'},{t:'mv_sety',l:'📍 Y位置を設定'},
-      {t:'mv_setvx',l:'💨 X速度 ='},{t:'mv_stop',l:'⏹ 移動を止める'},
+      {t:'mv_right',l:'→ みぎへ動く'},{t:'mv_left',l:'← ひだりへ動く'},{t:'mv_jump',l:'↑ ジャンプ！'},
+      {t:'mv_setx',l:'📍 よこの場所'},{t:'mv_sety',l:'📍 たての場所'},
+      {t:'mv_setvx',l:'💨 よこに動く'},{t:'mv_stop',l:'⏹ 止まる'},
     ]},
     {cat:'look',label:'✨ 見た目',blocks:[
-      {t:'lk_color',l:'🎨 色を変える'},{t:'lk_say',l:'💬 メッセージ'},{t:'lk_hide',l:'👻 非表示'},{t:'lk_show',l:'👁 表示'},
+      {t:'lk_color',l:'🎨 いろを変える'},{t:'lk_say',l:'💬 しゃべる'},{t:'lk_hide',l:'👻 かくれる'},{t:'lk_show',l:'👁 あらわれる'},
     ]},
     {cat:'control',label:'🔀 制御',blocks:[
-      {t:'ct_if',l:'🔀 もし〜なら'},{t:'ct_ifelse',l:'↕ もし/でなければ'},{t:'ct_repeat',l:'🔁 N回繰り返す'},{t:'ct_wait',l:'⏱ 待つ'},
+      {t:'ct_if',l:'🔀 もし〜なら'},{t:'ct_ifelse',l:'↕ もし/そうでなければ'},{t:'ct_repeat',l:'🔁 くりかえす'},{t:'ct_wait',l:'⏱ まつ'},
     ]},
     {cat:'collision',label:'💥 当たり判定',blocks:[
-      {t:'co_ground',l:'🏔 地面触れてる'},{t:'co_enemy',l:'👾 敵に当たった'},{t:'co_goal',l:'🏆 ゴール触れた'},{t:'co_wall',l:'🧱 壁に触れた'},
+      {t:'co_ground',l:'🏔 地面にいる'},{t:'co_enemy',l:'👾 てきにぶつかった'},{t:'co_goal',l:'🏆 ゴールにとどいた'},{t:'co_wall',l:'🧱 かべにぶつかった'},
     ]},
   ],
   shoot: [
     {cat:'event',label:'⚡ イベント',blocks:[
-      {t:'ev_start',l:'🚀 ゲーム開始時'},{t:'ev_key',l:'🔑 キー押されたとき'},
-      {t:'ev_always',l:'🔄 毎フレーム'},{t:'ev_timer',l:'⏰ Nフレームごと'},
+      {t:'ev_start',l:'🚀 はじめに'},{t:'ev_key',l:'🔑 キーをおしたとき'},
+      {t:'ev_always',l:'🔄 ずっと'},{t:'ev_timer',l:'⏰ おきに1回'},
     ]},
     {cat:'move',label:'🚀 自機の動き',blocks:[
-      {t:'mv_right',l:'→ 右に移動'},{t:'mv_left',l:'← 左に移動'},
-      {t:'mv_up',l:'↑ 上に移動'},{t:'mv_down',l:'↓ 下に移動'},
-      {t:'mv_setvx',l:'💨 X速度 ='},{t:'mv_setvy',l:'💨 Y速度 ='},
-      {t:'sh_clamp',l:'🛑 画面端で止まる'},{t:'sh_wrap',l:'↩ 画面端で折り返す'},
+      {t:'mv_right',l:'→ みぎへ動く'},{t:'mv_left',l:'← ひだりへ動く'},
+      {t:'mv_up',l:'↑ うえへ動く'},{t:'mv_down',l:'↓ したへ動く'},
+      {t:'mv_setvx',l:'💨 よこに動く'},{t:'mv_setvy',l:'💨 たてに動く'},
+      {t:'sh_clamp',l:'🛑 はしで止まる'},{t:'sh_wrap',l:'↩ はしでおりかえす'},
     ]},
     {cat:'shoot',label:'🔫 シューティング',blocks:[
-      {t:'sh_shoot',l:'🔫 弾を撃つ'},{t:'sh_spawn',l:'👾 敵を生成'},
+      {t:'sh_shoot',l:'🔫 たまを撃つ'},{t:'sh_spawn',l:'👾 てきを出す'},
     ]},
     {cat:'look',label:'✨ 見た目',blocks:[
-      {t:'lk_color',l:'🎨 色を変える'},{t:'lk_say',l:'💬 メッセージ'},{t:'lk_hide',l:'👻 非表示'},{t:'lk_show',l:'👁 表示'},
+      {t:'lk_color',l:'🎨 いろを変える'},{t:'lk_say',l:'💬 しゃべる'},{t:'lk_hide',l:'👻 かくれる'},{t:'lk_show',l:'👁 あらわれる'},
     ]},
     {cat:'control',label:'🔀 制御',blocks:[
-      {t:'ct_if',l:'🔀 もし〜なら'},{t:'ct_repeat',l:'🔁 N回繰り返す'},{t:'ct_wait',l:'⏱ 待つ'},
+      {t:'ct_if',l:'🔀 もし〜なら'},{t:'ct_repeat',l:'🔁 くりかえす'},{t:'ct_wait',l:'⏱ まつ'},
     ]},
     {cat:'collision',label:'💥 当たり判定',blocks:[
-      {t:'co_enemy',l:'👾 敵に当たった'},
+      {t:'co_enemy',l:'👾 てきにぶつかった'},
     ]},
   ],
 };
 
 // ═══════════════════════════════════════════════════════
+// EASY MODE BLOCK SET
+// ═══════════════════════════════════════════════════════
+const EASY_BLOCKS = [
+  {t:'ev_start', l:'🚀 はじめに'},
+  {t:'mv_setvx', l:'💨 よこに動く'},
+  {t:'mv_jump',  l:'↑ ジャンプ！'},
+  {t:'lk_color', l:'🎨 いろを変える'},
+  {t:'sh_shoot', l:'🔫 たまを撃つ'},
+  {t:'sh_spawn', l:'👾 てきを出す'},
+  {t:'ct_if',    l:'🔀 もし〜なら'},
+  {t:'ct_repeat',l:'🔁 くりかえす'},
+];
+
+// ═══════════════════════════════════════════════════════
 // MODE & EDITOR STATE
 // ═══════════════════════════════════════════════════════
 let gameMode = 'action';
+let difficultyMode = 'easy';
 let scripts = [];
 let uid = 1;
 const gid = () => uid++;
 let dragPaletteType = null;
 let dragBlockInfo = null;
+
+function switchDifficulty(mode) {
+  difficultyMode = mode;
+  document.getElementById('tab-easy').classList.toggle('active', mode === 'easy');
+  document.getElementById('tab-normal').classList.toggle('active', mode === 'normal');
+  renderPalette();
+}
 
 function switchMode(mode) {
   if (running) stopGame();
@@ -237,23 +404,45 @@ function switchMode(mode) {
 // ═══════════════════════════════════════════════════════
 // PALETTE RENDER
 // ═══════════════════════════════════════════════════════
+function makePaletteBtn(bi, cat) {
+  const btn = document.createElement('button');
+  btn.className = `pb ${cat}`;
+  btn.dataset.t = bi.t;
+  btn.textContent = bi.l;
+  btn.draggable = true;
+  btn.ondragstart = e => { hideTip(); dragPaletteType = bi.t; dragBlockInfo = null; e.dataTransfer.effectAllowed = 'copy'; };
+  const tip = BLOCK_TIPS[bi.t];
+  if (tip) {
+    btn.addEventListener('mouseenter', e => showTip(e, tip));
+    btn.addEventListener('mousemove',  e => _posTip(e));
+    btn.addEventListener('mouseleave', hideTip);
+  }
+  return btn;
+}
+
 function renderPalette() {
   const container = document.getElementById('palette-blocks');
   container.innerHTML = '';
+
+  if (difficultyMode === 'easy') {
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label';
+    lbl.style.cssText = 'color:#a6e3a1;margin-top:10px';
+    lbl.textContent = '✨ つかえるブロック';
+    container.appendChild(lbl);
+    EASY_BLOCKS.forEach(bi => {
+      const def = DEFS[bi.t]; if (!def) return;
+      container.appendChild(makePaletteBtn(bi, def.cat));
+    });
+    return;
+  }
+
   PALETTE_DATA[gameMode].forEach(section => {
     const lbl = document.createElement('div');
     lbl.className = `cat-label ${section.cat}`;
     lbl.textContent = section.label;
     container.appendChild(lbl);
-    section.blocks.forEach(bi => {
-      const btn = document.createElement('button');
-      btn.className = `pb ${section.cat}`;
-      btn.dataset.t = bi.t;
-      btn.textContent = bi.l;
-      btn.draggable = true;
-      btn.ondragstart = e => { dragPaletteType = bi.t; dragBlockInfo = null; e.dataTransfer.effectAllowed = 'copy'; };
-      container.appendChild(btn);
-    });
+    section.blocks.forEach(bi => container.appendChild(makePaletteBtn(bi, section.cat)));
   });
 }
 
@@ -368,7 +557,7 @@ function makeBlockEl(b, sgId, idx) {
     div.appendChild(makeInnerArea(b, 'inner', sgId));
     if (def.shape === 'cframe2') {
       const el = document.createElement('div');
-      el.style.cssText = 'font-size:11px;padding:4px 6px;opacity:.7;margin-top:4px'; el.textContent = '↕ でなければ';
+      el.style.cssText = 'font-size:11px;padding:4px 6px;opacity:.7;margin-top:4px'; el.textContent = '↕ そうでなければ';
       div.appendChild(el);
       div.appendChild(makeInnerArea(b, 'inner2', sgId));
     }
@@ -567,6 +756,7 @@ function execBlock(b) {
       if (evalCond(p.cond)) execList(b.inner||[]); else execList(b.inner2||[]); break;
     case 'ct_repeat':
       for (let i=0; i<(parseInt(p.n)||3); i++) execList(b.inner||[]); break;
+    case 'ct_wait': break; // frame-based wait requires a coroutine system; treated as no-op
     case 'sh_clamp':
       if (gameMode === 'shoot') {
         ship.x = Math.max(0, Math.min(W-ship.w, ship.x));
@@ -1075,11 +1265,87 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { delete keys[e.key]; });
 
 // ═══════════════════════════════════════════════════════
+// BLOCK TOOLTIPS
+// ═══════════════════════════════════════════════════════
+const BLOCK_TIPS = {
+  ev_start:  'ゲームがはじまったときに動きます',
+  ev_key:    'えらんだキーをおしたときに動きます',
+  ev_always: '毎フレームずっとくりかえします',
+  ev_timer:  '一定のかんかくで動きます',
+  mv_right:  'キャラクターをみぎへ動かします',
+  mv_left:   'キャラクターをひだりへ動かします',
+  mv_up:     'キャラクターをうえへ動かします',
+  mv_down:   'キャラクターをしたへ動かします',
+  mv_jump:   'キャラクターをジャンプさせます',
+  mv_setx:   'キャラクターのよこの場所を決めます',
+  mv_sety:   'キャラクターのたての場所を決めます',
+  mv_setvx:  'キャラクターを左右に動かします',
+  mv_setvy:  'キャラクターを上下に動かします',
+  mv_stop:   'キャラクターをぴたっと止めます',
+  lk_color:  'キャラクターのいろを変えます',
+  lk_say:    'キャラクターにセリフをしゃべらせます',
+  lk_hide:   'キャラクターをかくします',
+  lk_show:   'かくれているキャラクターをあらわします',
+  ct_if:     'じょうけんが合うときだけブロックを動かします',
+  ct_ifelse: 'じょうけんで2つに分けて動かします',
+  ct_repeat: '同じブロックをくりかえし動かします',
+  ct_wait:   'しばらく待ってから次に進みます',
+  co_ground: '地面にいるかどうかを調べます',
+  co_enemy:  'てきにぶつかったかどうかを調べます',
+  co_goal:   'ゴールにとどいたかどうかを調べます',
+  co_wall:   'かべにぶつかったかどうかを調べます',
+  sh_shoot:  'たまを発射します',
+  sh_spawn:  'てきを画面に出します',
+  sh_wrap:   'はしに達したらはんたい側に移動します',
+  sh_clamp:  '画面のそとには出ないようにします',
+};
+
+const _tipEl = document.getElementById('tooltip');
+function showTip(e, text) {
+  _tipEl.textContent = text; _tipEl.style.display = 'block'; _posTip(e);
+}
+function _posTip(e) {
+  const x = e.clientX + 14, y = e.clientY + 14;
+  const w = _tipEl.offsetWidth, h = _tipEl.offsetHeight;
+  _tipEl.style.left = (x + w > window.innerWidth  ? e.clientX - w - 8 : x) + 'px';
+  _tipEl.style.top  = (y + h > window.innerHeight ? e.clientY - h - 8 : y) + 'px';
+}
+function hideTip() { _tipEl.style.display = 'none'; }
+
+// ═══════════════════════════════════════════════════════
+// TUTORIAL
+// ═══════════════════════════════════════════════════════
+function showTutorial() {
+  const modal = document.getElementById('tutorial-modal');
+  modal.style.animation = 'none';
+  modal.offsetWidth; // force reflow so animation restarts
+  modal.style.animation = '';
+  document.getElementById('tutorial-overlay').style.display = 'flex';
+}
+function closeTutorial() {
+  document.getElementById('tutorial-overlay').style.display = 'none';
+  localStorage.setItem('ge_tut_done', '1');
+}
+
+// ═══════════════════════════════════════════════════════
+// DROP-ZONE HIGHLIGHT
+// ═══════════════════════════════════════════════════════
+function highlightDropZones(on) {
+  document.querySelectorAll('.drop-zone, .inner-drop').forEach(el => {
+    el.classList.toggle('highlight', on);
+  });
+}
+document.addEventListener('dragstart', () => { setTimeout(() => highlightDropZones(true), 0); });
+document.addEventListener('dragend',   () => highlightDropZones(false));
+document.addEventListener('drop',      () => highlightDropZones(false));
+
+// ═══════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════
 renderPalette();
 loadSample();
 draw();
+if (!localStorage.getItem('ge_tut_done')) showTutorial();
 </script>
 </body>
 </html>
