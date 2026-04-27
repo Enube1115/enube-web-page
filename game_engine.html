@@ -21,6 +21,7 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 #tab-action.active{border-color:#4c97ff;color:#4c97ff;background:rgba(76,151,255,.13)}
 #tab-shoot.active{border-color:#f07cc0;color:#f07cc0;background:rgba(240,124,192,.12)}
 #tab-puzzle.active{border-color:#26c6a6;color:#26c6a6;background:rgba(38,198,166,.12)}
+#tab-quiz.active{border-color:#ce93d8;color:#ce93d8;background:rgba(206,147,216,.12)}
 .cat-label{font-size:10px;font-weight:700;padding:5px 8px;margin:8px 0 3px;border-radius:4px;text-transform:uppercase;letter-spacing:1px;opacity:.85}
 .pb{padding:7px 9px;margin:2px 0;border-radius:6px;cursor:grab;font-size:12px;user-select:none;border:none;display:block;width:100%;text-align:left;color:#fff}
 .pb:active{cursor:grabbing;opacity:.6}
@@ -64,7 +65,7 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 .control{background:#e6a817;color:#1e1e2e!important}
 .control .bdel,.control select{color:#1e1e2e}
 .control select{background:rgba(255,255,255,.4)}
-.collision{background:#43a047}.shoot{background:#e91e8c}.puzzle{background:#00897b}
+.collision{background:#43a047}.shoot{background:#e91e8c}.puzzle{background:#00897b}.quiz{background:#7b1fa2}
 
 #pwrap{width:430px;background:#11111b;display:flex;flex-direction:column;flex-shrink:0;border-left:2px solid #313244}
 #ptoolbar{padding:7px 10px;font-size:11px;color:#6c7086;border-bottom:1px solid #313244;display:flex;justify-content:space-between;align-items:center}
@@ -162,6 +163,7 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
       <div class="mode-tab active" id="tab-action" onclick="switchMode('action')"><span>🏃</span><span>アクション</span></div>
       <div class="mode-tab" id="tab-shoot" onclick="switchMode('shoot')"><span>🚀</span><span>シューティング</span></div>
       <div class="mode-tab" id="tab-puzzle" onclick="switchMode('puzzle')"><span>🧩</span><span>パズル</span></div>
+      <div class="mode-tab" id="tab-quiz"   onclick="switchMode('quiz')"><span>❓</span><span>クイズ</span></div>
     </div>
   </div>
   <div id="palette-blocks"></div>
@@ -290,6 +292,22 @@ const DEFS = {
   pz_check:  {label:'🔗 つながりを確認する', cat:'puzzle', shape:'stack'},
   pz_gravon: {label:'⬇ 重力をオンにする',   cat:'puzzle', shape:'stack'},
   pz_gravoff:{label:'⏸ 重力をオフにする',   cat:'puzzle', shape:'stack'},
+
+  qz_ev_correct:{label:'⭕ 正解のとき',   cat:'quiz', shape:'hat'},
+  qz_ev_wrong:  {label:'❌ 不正解のとき', cat:'quiz', shape:'hat'},
+  qz_question:  {label:'❓ 問題を出す',   cat:'quiz', shape:'stack', params:[
+    {n:'q', t:'qtext', d:'日本の首都は？'},
+    {n:'_br',t:'br'},
+    {n:'a', t:'text', d:'大阪', l:'A:'},
+    {n:'b', t:'text', d:'東京', l:'B:'},
+    {n:'c', t:'text', d:'京都', l:'C:'},
+    {n:'d', t:'text', d:'福岡', l:'D:'},
+  ]},
+  qz_setans: {label:'✅ 正解を設定する', cat:'quiz', shape:'stack', params:[
+    {n:'ans', t:'choice', d:'b'},
+  ]},
+  qz_score:  {label:'⭐ スコアを加算する', cat:'quiz', shape:'stack', params:[{n:'pts',t:'num',d:100}]},
+  qz_next:   {label:'▶ 次の問題へ',      cat:'quiz', shape:'stack'},
 };
 
 const KEY_OPTS=[
@@ -380,6 +398,22 @@ const PALETTE_DATA = {
       {t:'ct_if',l:'🔀 もし〜なら'},{t:'ct_repeat',l:'🔁 くりかえす'},
     ]},
   ],
+  quiz: [
+    {cat:'quiz',label:'⚡ クイズイベント',blocks:[
+      {t:'ev_start',       l:'🚀 はじめに'},
+      {t:'qz_ev_correct',  l:'⭕ 正解のとき'},
+      {t:'qz_ev_wrong',    l:'❌ 不正解のとき'},
+    ]},
+    {cat:'quiz',label:'❓ クイズ操作',blocks:[
+      {t:'qz_question',    l:'❓ 問題を出す'},
+      {t:'qz_setans',      l:'✅ 正解を設定する'},
+      {t:'qz_score',       l:'⭐ スコアを加算する'},
+      {t:'qz_next',        l:'▶ 次の問題へ'},
+    ]},
+    {cat:'look',label:'✨ 見た目',blocks:[
+      {t:'lk_say',         l:'💬 しゃべる'},
+    ]},
+  ],
 };
 
 // ═══════════════════════════════════════════════════════
@@ -416,6 +450,15 @@ const EASY_BLOCKS = {
     {t:'ct_if',     l:'🔀 もし〜なら'},
     {t:'ct_repeat', l:'🔁 くりかえす'},
   ],
+  quiz: [
+    {t:'ev_start',      l:'🚀 はじめに'},
+    {t:'qz_question',   l:'❓ 問題を出す'},
+    {t:'qz_setans',     l:'✅ 正解を設定する'},
+    {t:'qz_ev_correct', l:'⭕ 正解のとき'},
+    {t:'qz_ev_wrong',   l:'❌ 不正解のとき'},
+    {t:'qz_score',      l:'⭐ スコアを加算する'},
+    {t:'qz_next',       l:'▶ 次の問題へ'},
+  ],
 };
 
 // ═══════════════════════════════════════════════════════
@@ -442,14 +485,17 @@ function switchMode(mode) {
   document.getElementById('tab-action').classList.toggle('active', mode === 'action');
   document.getElementById('tab-shoot').classList.toggle('active', mode === 'shoot');
   document.getElementById('tab-puzzle').classList.toggle('active', mode === 'puzzle');
-  const labels = {action:'横スクロールアクション', shoot:'シューティング', puzzle:'落ち物パズル'};
-  document.getElementById('mode-label').textContent = labels[mode];
+  document.getElementById('tab-quiz').classList.toggle('active', mode === 'quiz');
+  const labels = {action:'横スクロールアクション', shoot:'シューティング', puzzle:'落ち物パズル', quiz:'クイズゲーム'};
+  document.getElementById('mode-label').textContent = labels[mode] || mode;
   document.getElementById('preview-title').textContent =
     mode === 'action' ? '🏃 横スクロールアクション' :
-    mode === 'shoot'  ? '🚀 シューティング' : '🧩 落ち物パズル';
+    mode === 'shoot'  ? '🚀 シューティング' :
+    mode === 'puzzle' ? '🧩 落ち物パズル' : '❓ クイズゲーム';
   renderPalette();
   loadSample();
   if (mode === 'puzzle') initPuzzle();
+  if (mode === 'quiz') initQuiz();
   draw();
 }
 
@@ -556,7 +602,7 @@ function addBlockAt(sgId, idx) {
 function makeBlock(type) {
   const def = DEFS[type];
   const b = { id: gid(), type, params: {}, inner: [], inner2: [] };
-  if (def.params) def.params.forEach(p => { b.params[p.n] = p.d; });
+  if (def.params) def.params.forEach(p => { if (p.t !== 'br') b.params[p.n] = p.d; });
   return b;
 }
 
@@ -578,6 +624,12 @@ function makeBlockEl(b, sgId, idx) {
 
   (def.params || []).forEach(p => {
     const stop = e => e.stopPropagation();
+    if (p.l) {
+      const lbl = document.createElement('span');
+      lbl.textContent = p.l;
+      lbl.style.cssText = 'font-size:10px;opacity:.65;padding:0 1px';
+      div.appendChild(lbl);
+    }
     if (p.t === 'num') {
       const inp = document.createElement('input'); inp.type = 'number'; inp.value = b.params[p.n];
       inp.onclick = stop; inp.oninput = () => { b.params[p.n] = parseFloat(inp.value) || 0; };
@@ -598,6 +650,16 @@ function makeBlockEl(b, sgId, idx) {
       const sel = mkSel(SDIR_OPTS, b.params[p.n], v => { b.params[p.n] = v; }); div.appendChild(sel);
     } else if (p.t === 'etype') {
       const sel = mkSel(ETYPE_OPTS, b.params[p.n], v => { b.params[p.n] = v; }); div.appendChild(sel);
+    } else if (p.t === 'qtext') {
+      const inp = document.createElement('input'); inp.type='text'; inp.value=b.params[p.n]||''; inp.style.width='118px';
+      inp.onclick=stop; inp.oninput=()=>{ b.params[p.n]=inp.value; };
+      div.appendChild(inp);
+    } else if (p.t === 'choice') {
+      const sel = mkSel([{v:'a',l:'A'},{v:'b',l:'B'},{v:'c',l:'C'},{v:'d',l:'D'}], b.params[p.n], v=>{ b.params[p.n]=v; });
+      div.appendChild(sel);
+    } else if (p.t === 'br') {
+      const br = document.createElement('div'); br.style.cssText='width:100%;height:0;flex-basis:100%';
+      div.appendChild(br);
     }
   });
 
@@ -653,16 +715,17 @@ function clearEditor() { scripts = []; render(); }
 // ═══════════════════════════════════════════════════════
 function loadSample() {
   scripts = []; uid = 1;
-  if (gameMode === 'action') loadSampleAction();
-  else if (gameMode === 'shoot') loadSampleShoot();
-  else loadSamplePuzzle();
+  if      (gameMode === 'action') loadSampleAction();
+  else if (gameMode === 'shoot')  loadSampleShoot();
+  else if (gameMode === 'puzzle') loadSamplePuzzle();
+  else if (gameMode === 'quiz')   loadSampleQuiz();
   render();
 }
 
 function B(type, params, inner, inner2) {
   const def = DEFS[type];
   const b = { id: gid(), type, params: {}, inner: inner || [], inner2: inner2 || [] };
-  if (def.params) def.params.forEach(p => { b.params[p.n] = p.d; });
+  if (def.params) def.params.forEach(p => { if (p.t !== 'br') b.params[p.n] = p.d; });
   Object.assign(b.params, params || {});
   return b;
 }
@@ -682,6 +745,16 @@ function loadSamplePuzzle() {
   scripts = [
     SG(B('ev_start'), B('pz_gravon')),
     SG(B('ev_timer',{n:300}), B('pz_check')),
+  ];
+}
+
+function loadSampleQuiz() {
+  scripts = [
+    SG(B('ev_start'),      B('qz_question',{q:'日本の首都は？',a:'大阪',b:'東京',c:'京都',d:'福岡'}), B('qz_setans',{ans:'b'})),
+    SG(B('ev_start'),      B('qz_question',{q:'1＋1の答えは？',a:'1',b:'3',c:'2',d:'4'}),         B('qz_setans',{ans:'c'})),
+    SG(B('ev_start'),      B('qz_question',{q:'ねこの鳴き声は？',a:'ワン',b:'ニャー',c:'モー',d:'コケコッコー'}), B('qz_setans',{ans:'b'})),
+    SG(B('qz_ev_correct'), B('qz_score',{pts:100}), B('qz_next')),
+    SG(B('qz_ev_wrong'),   B('qz_next')),
   ];
 }
 
@@ -721,6 +794,12 @@ let platforms = [], aEnemies = [], goal = {}, coins = [];
 let ship = {}, sBullets = [], sEnemies = [], eBullets = [], particles = [], powerups = [];
 let lives = 3, wave = 0, invTimer = 0, shootCd = 0, multiShot = 1, bgY = 0;
 
+// ─── Quiz mode state ───
+let qzQuestions = [], qzQIdx = 0;
+let qzState = 'idle'; // 'idle'|'showing'|'result_correct'|'result_wrong'|'done'
+let qzResultTimer = 0, qzSelected = null;
+let qzPlayer = {};
+
 // ─── Puzzle mode constants ───
 const PCOLS = 10, PROWS = 20, PCELL = 13, PGX = 10, PGY = 27;
 const PIECES = {
@@ -742,9 +821,10 @@ let pPlayer = {};
 // ═══════════════════════════════════════════════════════
 function initGame() {
   gt = 0; msg = ''; msgTimer = 0; score = 0; keys = {};
-  if (gameMode === 'action') initAction();
-  else if (gameMode === 'shoot') initShoot();
-  else initPuzzle();
+  if      (gameMode === 'action') initAction();
+  else if (gameMode === 'shoot')  initShoot();
+  else if (gameMode === 'puzzle') initPuzzle();
+  else if (gameMode === 'quiz')   initQuiz();
 }
 
 function initAction() {
@@ -771,6 +851,30 @@ function initShoot() {
   ship = { x:W/2-14, y:H-70, w:28, h:30, vx:0, vy:0, color:'#4c97ff', visible:true };
   sBullets = []; sEnemies = []; eBullets = []; particles = []; powerups = [];
   lives = 3; wave = 1; invTimer = 0; shootCd = 0; multiShot = 1; bgY = 0;
+}
+
+// ═══════════════════════════════════════════════════════
+// QUIZ GAME ENGINE
+// ═══════════════════════════════════════════════════════
+function initQuiz() {
+  qzQuestions = []; qzQIdx = 0;
+  qzState = 'idle'; qzResultTimer = 0; qzSelected = null;
+  qzPlayer = {};
+}
+
+function physicsQuiz() {
+  if (qzResultTimer <= 0) return;
+  qzResultTimer--;
+  if (qzResultTimer === 0) {
+    const evType = qzState === 'result_correct' ? 'quiz_correct' : 'quiz_wrong';
+    const prevState = qzState;
+    runScripts(evType);
+    // フォールバック：qz_next ブロックがなくても自動で次へ
+    if (qzState === prevState) {
+      qzQIdx++;
+      qzState = qzQIdx < qzQuestions.length ? 'showing' : 'done';
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -881,8 +985,9 @@ function physicsPuzzle() {
 // SCRIPT EXECUTION
 // ═══════════════════════════════════════════════════════
 function getPlayer() {
-  if (gameMode === 'shoot') return ship;
+  if (gameMode === 'shoot')  return ship;
   if (gameMode === 'puzzle') return pPlayer;
+  if (gameMode === 'quiz')   return qzPlayer;
   return player;
 }
 
@@ -975,6 +1080,26 @@ function execBlock(b) {
     case 'pz_check':  if (gameMode==='puzzle') pCheckLines(); break;
     case 'pz_gravon': if (gameMode==='puzzle') pGravity=true;  break;
     case 'pz_gravoff':if (gameMode==='puzzle') pGravity=false; break;
+
+    case 'qz_question':
+      if (gameMode==='quiz')
+        qzQuestions.push({q:p.q||'問題', a:p.a||'A', b:p.b||'B', c:p.c||'C', d:p.d||'D', ans:null});
+      break;
+    case 'qz_setans':
+      if (gameMode==='quiz' && qzQuestions.length>0)
+        qzQuestions[qzQuestions.length-1].ans = p.ans||'a';
+      break;
+    case 'qz_score':
+      score += parseInt(p.pts)||100;
+      glog(`⭐ +${parseInt(p.pts)||100}点！`);
+      break;
+    case 'qz_next':
+      if (gameMode==='quiz') {
+        qzQIdx++;
+        if (qzQIdx < qzQuestions.length) { qzState='showing'; qzSelected=null; }
+        else { qzState='done'; glog(`🎊 全問クリア！スコア:${score}`); stopGame(); }
+      }
+      break;
   }
 }
 
@@ -1017,10 +1142,12 @@ function runScripts(evType) {
     const hat = sg.blocks[0]; const def = DEFS[hat.type];
     if (!def || def.shape !== 'hat') return;
     let ok = false;
-    if (hat.type==='ev_start'  && evType==='start') ok=true;
-    if (hat.type==='ev_always' && evType==='frame')  ok=true;
-    if (hat.type==='ev_key'    && evType==='frame')  ok=!!keys[hat.params.key||'ArrowRight'];
-    if (hat.type==='ev_timer'  && evType==='frame')  { const n=parseInt(hat.params.n)||60; ok=(gt%n===0 && gt>0); }
+    if (hat.type==='ev_start'      && evType==='start')        ok=true;
+    if (hat.type==='ev_always'     && evType==='frame')        ok=true;
+    if (hat.type==='ev_key'        && evType==='frame')        ok=!!keys[hat.params.key||'ArrowRight'];
+    if (hat.type==='ev_timer'      && evType==='frame')        { const n=parseInt(hat.params.n)||60; ok=(gt%n===0 && gt>0); }
+    if (hat.type==='qz_ev_correct' && evType==='quiz_correct') ok=true;
+    if (hat.type==='qz_ev_wrong'   && evType==='quiz_wrong')   ok=true;
     if (ok) execList(sg.blocks.slice(1));
   });
 }
@@ -1470,6 +1597,121 @@ function drawPuzzle() {
   if(!running) drawStartOverlay('▶ 実行でゲーム開始','←→移動  ↑/Z回転  スペース:一気に落とす');
 }
 
+// ═══════════════════════════════════════════════════════
+// QUIZ DRAW
+// ═══════════════════════════════════════════════════════
+function rrect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);     ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function wrapTextCtx(text,x,y,maxW,lh){
+  let line='';
+  for(const ch of text){
+    const t=line+ch;
+    if(ctx.measureText(t).width>maxW&&line.length>0){ ctx.fillText(line,x,y); y+=lh; line=ch; }
+    else line=t;
+  }
+  if(line) ctx.fillText(line,x,y);
+}
+
+function drawQuiz() {
+  ctx.clearRect(0,0,W,H);
+  // Background
+  const bg=ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#12002a'); bg.addColorStop(1,'#06001a');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  // Stars
+  ctx.fillStyle='rgba(255,255,255,.35)';
+  for(let i=0;i<28;i++){
+    const sx=(i*173+17)%W, sy=(i*97+7)%(H*.85);
+    ctx.fillRect(sx,sy,i%4===0?1.5:1,i%4===0?1.5:1);
+  }
+
+  if(!running){
+    drawStartOverlay('▶ 実行でクイズ開始','ブロックで問題を組み合わせよう！');
+    return;
+  }
+
+  const q=qzQuestions[qzQIdx];
+
+  if(qzState==='done'||!q){
+    ctx.textAlign='center';
+    ctx.font='bold 28px sans-serif'; ctx.fillStyle='#ffd700';
+    ctx.fillText('🎊 全問クリア！',W/2,H/2-22);
+    ctx.font='20px sans-serif'; ctx.fillStyle='#cdd6f4';
+    ctx.fillText(`スコア: ${score} 点`,W/2,H/2+18);
+    ctx.textAlign='left'; drawMsgOverlay(); return;
+  }
+
+  // HUD
+  ctx.fillStyle='rgba(0,0,0,.72)'; ctx.fillRect(0,0,W,28);
+  ctx.fillStyle='#cdd6f4'; ctx.font='12px monospace';
+  ctx.fillText(`Q${qzQIdx+1}/${qzQuestions.length}  ⭐${score}点  ${fps}fps`,8,19);
+
+  // Question box
+  ctx.fillStyle='rgba(255,255,255,.07)';
+  rrect(10,33,W-20,80,10); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1.5;
+  rrect(10,33,W-20,80,10); ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center';
+  wrapTextCtx(q.q||'',W/2,62,W-44,18);
+  ctx.textAlign='left';
+
+  // Buttons
+  const BTN=[
+    {k:'a',x:10, y:122,w:200,h:72,base:'#1565c0'},
+    {k:'b',x:222,y:122,w:198,h:72,base:'#4527a0'},
+    {k:'c',x:10, y:202,w:200,h:72,base:'#880e4f'},
+    {k:'d',x:222,y:202,w:198,h:72,base:'#1b5e20'},
+  ];
+  const LETTERS=['A','B','C','D'];
+  BTN.forEach((btn,i)=>{
+    let col=btn.base;
+    if(qzState==='result_correct'||qzState==='result_wrong'){
+      if(btn.k===q.ans)          col='#2e7d32';
+      else if(btn.k===qzSelected) col='#b71c1c';
+      else                        col='#222';
+    }
+    ctx.fillStyle=col; rrect(btn.x,btn.y,btn.w,btn.h,10); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.lineWidth=1.5;
+    rrect(btn.x,btn.y,btn.w,btn.h,10); ctx.stroke();
+
+    // Letter badge
+    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.beginPath();
+    ctx.arc(btn.x+22,btn.y+btn.h/2,14,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold 13px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(LETTERS[i],btn.x+22,btn.y+btn.h/2+5);
+
+    // Answer text (single line with ellipsis)
+    ctx.font='13px sans-serif'; ctx.textAlign='left';
+    let txt=q[btn.k]||'';
+    while(ctx.measureText(txt).width>btn.w-54&&txt.length>0) txt=txt.slice(0,-1);
+    if(txt.length<(q[btn.k]||'').length) txt+='…';
+    ctx.fillStyle='#fff';
+    ctx.fillText(txt,btn.x+44,btn.y+btn.h/2+5);
+  });
+
+  // Result overlay
+  if(qzState==='result_correct'){
+    ctx.fillStyle='rgba(0,180,0,.22)'; ctx.fillRect(0,28,W,H-28);
+    ctx.font='bold 52px sans-serif'; ctx.textAlign='center';
+    ctx.fillStyle='#00e676';
+    ctx.fillText('⭕ 正解！',W/2,H/2+10);
+    ctx.textAlign='left';
+  } else if(qzState==='result_wrong'){
+    ctx.fillStyle='rgba(180,0,0,.22)'; ctx.fillRect(0,28,W,H-28);
+    ctx.font='bold 52px sans-serif'; ctx.textAlign='center';
+    ctx.fillStyle='#ff5252';
+    ctx.fillText('❌ 不正解',W/2,H/2+10);
+    ctx.textAlign='left';
+  }
+
+  drawMsgOverlay();
+}
+
 function drawMsgOverlay() {
   if(msgTimer<=0||!msg) return;
   const al=Math.min(1,msgTimer/20);
@@ -1490,9 +1732,10 @@ function drawStartOverlay(line1, line2) {
 }
 
 function draw() {
-  if(gameMode==='action') drawAction();
-  else if(gameMode==='shoot') drawShoot();
-  else drawPuzzle();
+  if     (gameMode==='action') drawAction();
+  else if(gameMode==='shoot')  drawShoot();
+  else if(gameMode==='puzzle') drawPuzzle();
+  else if(gameMode==='quiz')   drawQuiz();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1512,14 +1755,13 @@ function loop(ts) {
   if(ts-lastFpsTime>=1000){ fps=fpsCount; fpsCount=0; lastFpsTime=ts; document.getElementById('fps-counter').textContent=fps+'fps'; }
 
   if(gameMode==='action'){
-    runScripts('frame');
-    physicsAction();
+    runScripts('frame'); physicsAction();
   } else if(gameMode==='shoot'){
-    physicsShoot();
-    runScripts('frame');
-  } else {
-    runScripts('frame');
-    physicsPuzzle();
+    physicsShoot(); runScripts('frame');
+  } else if(gameMode==='puzzle'){
+    runScripts('frame'); physicsPuzzle();
+  } else if(gameMode==='quiz'){
+    physicsQuiz();
   }
 
   draw();
@@ -1532,6 +1774,7 @@ function runGame() {
   running=true; logLines=[];
   initGame();
   runScripts('start');
+  if(gameMode==='quiz' && qzQuestions.length>0){ qzQIdx=0; qzState='showing'; qzSelected=null; }
   glog('▶ 開始！');
   raf=requestAnimationFrame(loop);
 }
@@ -1541,6 +1784,32 @@ function stopGame() {
   if(raf){ cancelAnimationFrame(raf); raf=null; }
   draw(); glog('■ 停止');
 }
+
+canvas.addEventListener('click', e => {
+  if(gameMode!=='quiz'||!running||qzState!=='showing') return;
+  const rect=canvas.getBoundingClientRect();
+  const cx=(e.clientX-rect.left)*(W/rect.width);
+  const cy=(e.clientY-rect.top)*(H/rect.height);
+  const q=qzQuestions[qzQIdx]; if(!q) return;
+  const BTN=[
+    {k:'a',x:10, y:122,w:200,h:72},
+    {k:'b',x:222,y:122,w:198,h:72},
+    {k:'c',x:10, y:202,w:200,h:72},
+    {k:'d',x:222,y:202,w:198,h:72},
+  ];
+  for(const btn of BTN){
+    if(cx>=btn.x&&cx<=btn.x+btn.w&&cy>=btn.y&&cy<=btn.y+btn.h){
+      qzSelected=btn.k;
+      if(btn.k===q.ans){
+        qzState='result_correct'; glog('⭕ 正解！');
+      } else {
+        qzState='result_wrong'; glog(`❌ 不正解… 正解は ${q.ans.toUpperCase()}: ${q[q.ans]}`);
+      }
+      qzResultTimer=90;
+      break;
+    }
+  }
+});
 
 document.addEventListener('keydown', e => {
   keys[e.key]=true;
@@ -1591,6 +1860,12 @@ const BLOCK_TIPS = {
   pz_check:  'そろったラインを確認して消します',
   pz_gravon: 'ピースが自動でしたに落ちるようにします',
   pz_gravoff:'ピースが自動で落ちないようにします',
+  qz_ev_correct:'正解を選んだときに動きます',
+  qz_ev_wrong:  '間違いを選んだときに動きます',
+  qz_question:  '問題文と4つの選択肢（A〜D）を設定します',
+  qz_setans:    'どの選択肢が正解かをA〜Dで設定します',
+  qz_score:     '正解したときなどにスコアを加算します',
+  qz_next:      '次の問題に進みます',
 };
 
 const _tipEl = document.getElementById('tooltip');
