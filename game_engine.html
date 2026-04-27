@@ -15,9 +15,12 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 .diff-tab:hover{color:#cdd6f4;border-color:#585b70}
 #tab-easy.active{border-color:#a6e3a1;color:#a6e3a1;background:rgba(166,227,161,.13)}
 #tab-normal.active{border-color:#cba6f7;color:#cba6f7;background:rgba(203,166,247,.12)}
-.mode-tabs{display:flex;gap:4px;padding:0 0 6px}
-.mode-tab{flex:1;min-width:0;overflow:hidden;white-space:nowrap;padding:5px 4px;text-align:center;cursor:pointer;font-size:10px;font-weight:700;border-radius:6px;border:2px solid #313244;color:#888;transition:all .15s}
-.mode-tab.active{border-color:#cba6f7;color:#cba6f7;background:rgba(203,166,247,.12)}
+.mode-tabs{display:flex;flex-direction:column;gap:4px;padding:0 0 8px}
+.mode-tab{width:100%;padding:8px 11px;text-align:left;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:8px;border:2px solid #313244;color:#6c7086;transition:all .15s;display:flex;align-items:center;gap:7px;letter-spacing:.2px}
+.mode-tab:hover{color:#cdd6f4;border-color:#585b70;background:rgba(255,255,255,.05)}
+#tab-action.active{border-color:#4c97ff;color:#4c97ff;background:rgba(76,151,255,.13)}
+#tab-shoot.active{border-color:#f07cc0;color:#f07cc0;background:rgba(240,124,192,.12)}
+#tab-puzzle.active{border-color:#26c6a6;color:#26c6a6;background:rgba(38,198,166,.12)}
 .cat-label{font-size:10px;font-weight:700;padding:5px 8px;margin:8px 0 3px;border-radius:4px;text-transform:uppercase;letter-spacing:1px;opacity:.85}
 .pb{padding:7px 9px;margin:2px 0;border-radius:6px;cursor:grab;font-size:12px;user-select:none;border:none;display:block;width:100%;text-align:left;color:#fff}
 .pb:active{cursor:grabbing;opacity:.6}
@@ -156,9 +159,9 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
       <div class="diff-tab"        id="tab-normal" onclick="switchDifficulty('normal')">🔧 ふつう</div>
     </div>
     <div class="mode-tabs">
-      <div class="mode-tab active" id="tab-action" onclick="switchMode('action')">🏃 アクション</div>
-      <div class="mode-tab" id="tab-shoot" onclick="switchMode('shoot')">🚀 シューティング</div>
-      <div class="mode-tab" id="tab-puzzle" onclick="switchMode('puzzle')">🧩 パズル</div>
+      <div class="mode-tab active" id="tab-action" onclick="switchMode('action')"><span>🏃</span><span>アクション</span></div>
+      <div class="mode-tab" id="tab-shoot" onclick="switchMode('shoot')"><span>🚀</span><span>シューティング</span></div>
+      <div class="mode-tab" id="tab-puzzle" onclick="switchMode('puzzle')"><span>🧩</span><span>パズル</span></div>
     </div>
   </div>
   <div id="palette-blocks"></div>
