@@ -34,6 +34,8 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 #btn-stop{background:#f38ba8;color:#1e1e2e}
 #btn-clr{background:#fab387;color:#1e1e2e}
 #btn-sample{background:#89dceb;color:#1e1e2e}
+#btn-save{background:#74c7ec;color:#1e1e2e}
+#btn-load{background:#cba6f7;color:#1e1e2e}
 #editor{flex:1;overflow:auto;background:#1e1e2e;padding:14px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:10px}
 .drop-hint{border:2px dashed #45475a;border-radius:10px;padding:20px;color:#585b70;font-size:13px;text-align:center;width:100%;margin:8px 0}
 
@@ -176,6 +178,10 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
     <button id="btn-clr" onclick="clearEditor()">🗑 クリア</button>
     <button id="btn-sample" onclick="loadSample()">📋 サンプル</button>
     <button id="btn-help"   onclick="showTutorial()">？ あそびかた</button>
+    <span style="border-left:1px solid #313244;align-self:stretch;margin:0 2px"></span>
+    <button id="btn-save" onclick="saveGame()">💾 保存</button>
+    <button id="btn-load" onclick="loadGame()">📂 読み込み</button>
+    <input type="file" id="file-input" accept=".json" style="display:none">
     <span id="mode-label" style="color:#cba6f7;font-size:11px;font-weight:700;margin-left:4px">横スクロールアクション</span>
   </div>
   <div id="editor" ondragover="event.preventDefault()" ondrop="onEditorDrop(event)">
@@ -535,7 +541,7 @@ function renderPalette() {
     return;
   }
 
-  PALETTE_DATA[gameMode].forEach(section => {
+  (PALETTE_DATA[gameMode] || []).forEach(section => {
     const lbl = document.createElement('div');
     lbl.className = `cat-label ${section.cat}`;
     lbl.textContent = section.label;
@@ -872,7 +878,11 @@ function physicsQuiz() {
     // フォールバック：qz_next ブロックがなくても自動で次へ
     if (qzState === prevState) {
       qzQIdx++;
-      qzState = qzQIdx < qzQuestions.length ? 'showing' : 'done';
+      if (qzQIdx < qzQuestions.length) {
+        qzState = 'showing'; qzSelected = null;
+      } else {
+        qzState = 'done'; glog('🎊 全問クリア！スコア:' + score); stopGame();
+      }
     }
   }
 }
@@ -1083,7 +1093,7 @@ function execBlock(b) {
 
     case 'qz_question':
       if (gameMode==='quiz')
-        qzQuestions.push({q:p.q||'問題', a:p.a||'A', b:p.b||'B', c:p.c||'C', d:p.d||'D', ans:null});
+        qzQuestions.push({q:p.q||'問題', a:p.a||'A', b:p.b||'B', c:p.c||'C', d:p.d||'D', ans:'a'});
       break;
     case 'qz_setans':
       if (gameMode==='quiz' && qzQuestions.length>0)
@@ -1630,7 +1640,7 @@ function drawQuiz() {
     ctx.fillRect(sx,sy,i%4===0?1.5:1,i%4===0?1.5:1);
   }
 
-  if(!running){
+  if(!running && qzState !== 'done'){
     drawStartOverlay('▶ 実行でクイズ開始','ブロックで問題を組み合わせよう！');
     return;
   }
@@ -1761,7 +1771,7 @@ function loop(ts) {
   } else if(gameMode==='puzzle'){
     runScripts('frame'); physicsPuzzle();
   } else if(gameMode==='quiz'){
-    physicsQuiz();
+    physicsQuiz(); runScripts('frame');
   }
 
   draw();
@@ -1879,6 +1889,95 @@ function _posTip(e) {
   _tipEl.style.top  = (y + h > window.innerHeight ? e.clientY - h - 8 : y) + 'px';
 }
 function hideTip() { _tipEl.style.display = 'none'; }
+
+// ═══════════════════════════════════════════════════════
+// SAVE / LOAD
+// ═══════════════════════════════════════════════════════
+function saveGame() {
+  if (running) stopGame();
+  function strip(blocks) {
+    return (blocks||[]).map(b => ({
+      type:   b.type,
+      params: {...b.params},
+      inner:  strip(b.inner),
+      inner2: strip(b.inner2),
+    }));
+  }
+  const data = {
+    version:    1,
+    mode:       gameMode,
+    difficulty: difficultyMode,
+    scripts:    scripts.map(sg => ({blocks: strip(sg.blocks)})),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `game_${gameMode}_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  glog('💾 保存しました！');
+}
+
+function loadGame() {
+  document.getElementById('file-input').click();
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.version || !Array.isArray(data.scripts))
+        throw new Error('不正なファイル形式です');
+
+      if (running) stopGame();
+
+      // ── モード・難易度を復元 ──
+      gameMode       = data.mode       || 'action';
+      difficultyMode = data.difficulty || 'easy';
+      ['action','shoot','puzzle','quiz'].forEach(m => {
+        document.getElementById('tab-'+m)?.classList.toggle('active', m === gameMode);
+      });
+      ['easy','normal'].forEach(d => {
+        document.getElementById('tab-'+d)?.classList.toggle('active', d === difficultyMode);
+      });
+      const LABELS = {action:'横スクロールアクション', shoot:'シューティング',
+                      puzzle:'落ち物パズル', quiz:'クイズゲーム'};
+      const ICONS  = {action:'🏃 横スクロールアクション', shoot:'🚀 シューティング',
+                      puzzle:'🧩 落ち物パズル',           quiz:'❓ クイズゲーム'};
+      document.getElementById('mode-label').textContent    = LABELS[gameMode] || gameMode;
+      document.getElementById('preview-title').textContent = ICONS[gameMode]  || gameMode;
+      renderPalette();
+
+      // ── ブロックを再構築 ──
+      function restoreBlocks(arr) {
+        return (arr||[]).flatMap(b => {
+          if (!DEFS[b.type]) return [];
+          const block = makeBlock(b.type);
+          if (b.params) Object.assign(block.params, b.params);
+          block.inner  = restoreBlocks(b.inner);
+          block.inner2 = restoreBlocks(b.inner2);
+          return [block];
+        });
+      }
+      scripts = (data.scripts||[])
+        .map(sg => ({id: gid(), blocks: restoreBlocks(sg.blocks)}))
+        .filter(sg => sg.blocks.length > 0);
+
+      render();
+      if (gameMode==='puzzle') initPuzzle();
+      if (gameMode==='quiz')   initQuiz();
+      draw();
+      glog(`📂 読み込み完了！ (${scripts.length}スクリプト)`);
+    } catch(err) {
+      alert('読み込みエラー: ' + err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
 
 // ═══════════════════════════════════════════════════════
 // TUTORIAL
