@@ -36,6 +36,16 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 #btn-sample{background:#89dceb;color:#1e1e2e}
 #btn-save{background:#74c7ec;color:#1e1e2e}
 #btn-load{background:#cba6f7;color:#1e1e2e}
+#btn-share{background:#89b4fa;color:#1e1e2e}
+#share-toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:#313244;border:1px solid #45475a;
+  color:#cdd6f4;padding:10px 24px;border-radius:50px;
+  font-size:13px;font-weight:700;pointer-events:none;
+  opacity:0;transition:opacity .2s,transform .2s;z-index:3000;white-space:nowrap
+}
+#share-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #editor{flex:1;overflow:auto;background:#1e1e2e;padding:14px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:10px}
 .drop-hint{border:2px dashed #45475a;border-radius:10px;padding:20px;color:#585b70;font-size:13px;text-align:center;width:100%;margin:8px 0}
 
@@ -180,7 +190,8 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
     <button id="btn-help"   onclick="showTutorial()">？ あそびかた</button>
     <span style="border-left:1px solid #313244;align-self:stretch;margin:0 2px"></span>
     <button id="btn-save" onclick="saveGame()">💾 保存</button>
-    <button id="btn-load" onclick="loadGame()">📂 読み込み</button>
+    <button id="btn-load"  onclick="loadGame()">📂 読み込み</button>
+    <button id="btn-share" onclick="shareGame()">🔗 シェア</button>
     <input type="file" id="file-input" accept=".json" style="display:none">
     <span id="mode-label" style="color:#cba6f7;font-size:11px;font-weight:700;margin-left:4px">横スクロールアクション</span>
   </div>
@@ -249,6 +260,8 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 
 <!-- ═══ Tooltip ═══ -->
 <div id="tooltip"></div>
+<!-- ═══ Share toast ═══ -->
+<div id="share-toast"></div>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -1891,25 +1904,77 @@ function _posTip(e) {
 function hideTip() { _tipEl.style.display = 'none'; }
 
 // ═══════════════════════════════════════════════════════
-// SAVE / LOAD
+// SAVE / LOAD / SHARE
 // ═══════════════════════════════════════════════════════
-function saveGame() {
+
+// ── 共通：ブロックツリーからIDを除いたシリアライズ ──
+function stripBlocks(blocks) {
+  return (blocks||[]).map(b => ({
+    type:   b.type,
+    params: {...b.params},
+    inner:  stripBlocks(b.inner),
+    inner2: stripBlocks(b.inner2),
+  }));
+}
+
+// ── 共通：data オブジェクトからエディタ状態を復元 ──
+function applyGameData(data) {
+  if (!data.version || !Array.isArray(data.scripts))
+    throw new Error('不正なファイル形式です');
+
   if (running) stopGame();
-  function strip(blocks) {
-    return (blocks||[]).map(b => ({
-      type:   b.type,
-      params: {...b.params},
-      inner:  strip(b.inner),
-      inner2: strip(b.inner2),
-    }));
+
+  gameMode       = data.mode       || 'action';
+  difficultyMode = data.difficulty || 'easy';
+
+  ['action','shoot','puzzle','quiz'].forEach(m => {
+    document.getElementById('tab-'+m)?.classList.toggle('active', m === gameMode);
+  });
+  ['easy','normal'].forEach(d => {
+    document.getElementById('tab-'+d)?.classList.toggle('active', d === difficultyMode);
+  });
+  const LABELS = {action:'横スクロールアクション', shoot:'シューティング',
+                  puzzle:'落ち物パズル',           quiz:'クイズゲーム'};
+  const ICONS  = {action:'🏃 横スクロールアクション', shoot:'🚀 シューティング',
+                  puzzle:'🧩 落ち物パズル',           quiz:'❓ クイズゲーム'};
+  document.getElementById('mode-label').textContent    = LABELS[gameMode] || gameMode;
+  document.getElementById('preview-title').textContent = ICONS[gameMode]  || gameMode;
+  renderPalette();
+
+  function restoreBlocks(arr) {
+    return (arr||[]).flatMap(b => {
+      if (!DEFS[b.type]) return [];
+      const block = makeBlock(b.type);
+      if (b.params) Object.assign(block.params, b.params);
+      block.inner  = restoreBlocks(b.inner);
+      block.inner2 = restoreBlocks(b.inner2);
+      return [block];
+    });
   }
-  const data = {
+  scripts = (data.scripts||[])
+    .map(sg => ({id: gid(), blocks: restoreBlocks(sg.blocks)}))
+    .filter(sg => sg.blocks.length > 0);
+
+  render();
+  if (gameMode==='puzzle') initPuzzle();
+  if (gameMode==='quiz')   initQuiz();
+  draw();
+}
+
+// ── 共通：現在の状態を data オブジェクト化 ──
+function buildGameData() {
+  return {
     version:    1,
     mode:       gameMode,
     difficulty: difficultyMode,
-    scripts:    scripts.map(sg => ({blocks: strip(sg.blocks)})),
+    scripts:    scripts.map(sg => ({blocks: stripBlocks(sg.blocks)})),
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+}
+
+// ── 💾 保存 ──
+function saveGame() {
+  if (running) stopGame();
+  const blob = new Blob([JSON.stringify(buildGameData(), null, 2)], {type:'application/json'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
@@ -1919,6 +1984,7 @@ function saveGame() {
   glog('💾 保存しました！');
 }
 
+// ── 📂 読み込み ──
 function loadGame() {
   document.getElementById('file-input').click();
 }
@@ -1928,48 +1994,8 @@ document.getElementById('file-input').addEventListener('change', e => {
   const reader = new FileReader();
   reader.onload = ev => {
     try {
-      const data = JSON.parse(ev.target.result);
-      if (!data.version || !Array.isArray(data.scripts))
-        throw new Error('不正なファイル形式です');
-
-      if (running) stopGame();
-
-      // ── モード・難易度を復元 ──
-      gameMode       = data.mode       || 'action';
-      difficultyMode = data.difficulty || 'easy';
-      ['action','shoot','puzzle','quiz'].forEach(m => {
-        document.getElementById('tab-'+m)?.classList.toggle('active', m === gameMode);
-      });
-      ['easy','normal'].forEach(d => {
-        document.getElementById('tab-'+d)?.classList.toggle('active', d === difficultyMode);
-      });
-      const LABELS = {action:'横スクロールアクション', shoot:'シューティング',
-                      puzzle:'落ち物パズル', quiz:'クイズゲーム'};
-      const ICONS  = {action:'🏃 横スクロールアクション', shoot:'🚀 シューティング',
-                      puzzle:'🧩 落ち物パズル',           quiz:'❓ クイズゲーム'};
-      document.getElementById('mode-label').textContent    = LABELS[gameMode] || gameMode;
-      document.getElementById('preview-title').textContent = ICONS[gameMode]  || gameMode;
-      renderPalette();
-
-      // ── ブロックを再構築 ──
-      function restoreBlocks(arr) {
-        return (arr||[]).flatMap(b => {
-          if (!DEFS[b.type]) return [];
-          const block = makeBlock(b.type);
-          if (b.params) Object.assign(block.params, b.params);
-          block.inner  = restoreBlocks(b.inner);
-          block.inner2 = restoreBlocks(b.inner2);
-          return [block];
-        });
-      }
-      scripts = (data.scripts||[])
-        .map(sg => ({id: gid(), blocks: restoreBlocks(sg.blocks)}))
-        .filter(sg => sg.blocks.length > 0);
-
-      render();
-      if (gameMode==='puzzle') initPuzzle();
-      if (gameMode==='quiz')   initQuiz();
-      draw();
+      applyGameData(JSON.parse(ev.target.result));
+      history.replaceState(null, '', location.pathname + location.search);
       glog(`📂 読み込み完了！ (${scripts.length}スクリプト)`);
     } catch(err) {
       alert('読み込みエラー: ' + err.message);
@@ -1978,6 +2004,53 @@ document.getElementById('file-input').addEventListener('change', e => {
   };
   reader.readAsText(file);
 });
+
+// ── 🔗 シェア ──
+function encodeGameData(data) {
+  const json  = JSON.stringify(data);
+  const bytes = new TextEncoder().encode(json);
+  return btoa(Array.from(bytes, b => String.fromCharCode(b)).join(''));
+}
+
+function decodeGameData(b64) {
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function shareGame() {
+  if (running) stopGame();
+  const b64 = encodeGameData(buildGameData());
+  history.replaceState(null, '', '#' + b64);
+  const url = location.href;
+
+  navigator.clipboard.writeText(url).then(() => {
+    showShareToast('🔗 URLをクリップボードにコピーしました！');
+  }).catch(() => {
+    prompt('このURLをコピーしてシェアしてください:', url);
+  });
+  glog('🔗 シェアURL生成（' + url.length + '文字）');
+}
+
+function showShareToast(msg) {
+  const el = document.getElementById('share-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ── URLハッシュからの自動復元 ──
+function loadFromHash() {
+  const hash = location.hash.slice(1);
+  if (!hash) return false;
+  try {
+    applyGameData(decodeGameData(hash));
+    glog(`🔗 シェアURLから復元しました！(${scripts.length}スクリプト)`);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
 
 // ═══════════════════════════════════════════════════════
 // TUTORIAL
@@ -2012,7 +2085,8 @@ document.addEventListener('drop',      () => highlightDropZones(false));
 renderPalette();
 loadSample();
 draw();
-if (!localStorage.getItem('ge_tut_done')) showTutorial();
+const _hashLoaded = loadFromHash();
+if (!_hashLoaded && !localStorage.getItem('ge_tut_done')) showTutorial();
 </script>
 </body>
 </html>
