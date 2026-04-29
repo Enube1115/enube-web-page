@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>ビジュアルゲームエンジン</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -153,6 +154,44 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 }
 #btn-help:hover{background:#585b70}
 
+/* ── Virtual Gamepad ── */
+canvas{touch-action:none}
+#gamepad{
+  background:#0c0c1a;border-top:2px solid #313244;
+  padding:10px 16px;display:none;
+  justify-content:space-between;align-items:center;
+  flex-shrink:0;gap:8px;min-height:100px;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none
+}
+.gp-layout{display:flex;justify-content:space-between;align-items:center;width:100%}
+.gp-side{display:flex;align-items:center;gap:8px}
+.gp-cross{
+  display:grid;grid-template-columns:repeat(3,48px);
+  grid-template-rows:repeat(3,48px);gap:3px
+}
+.gp-cross-c{background:rgba(255,255,255,.04);border-radius:6px}
+.gp-btn{
+  background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.22);
+  border-radius:12px;color:rgba(255,255,255,.82);
+  font-size:20px;width:52px;height:52px;
+  cursor:pointer;touch-action:manipulation;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:1px;padding:0;
+  transition:background .07s,border-color .07s;
+  -webkit-tap-highlight-color:transparent;outline:none
+}
+.gp-btn small{font-size:9px;opacity:.65;font-weight:700;line-height:1}
+.gp-btn.active{background:rgba(255,255,255,.3);border-color:rgba(255,255,255,.6)}
+.gp-lg{width:68px;height:68px;border-radius:50%;font-size:22px}
+.gp-jump{border-color:#a6e3a1;color:#a6e3a1}
+.gp-jump.active{background:rgba(166,227,161,.24)}
+.gp-fire{border-color:#f38ba8;color:#f38ba8}
+.gp-fire.active{background:rgba(243,139,168,.24)}
+.gp-rot{border-color:#cba6f7;color:#cba6f7}
+.gp-rot.active{background:rgba(203,166,247,.24)}
+.gp-drp{border-color:#f9e2af;color:#f9e2af}
+.gp-drp.active{background:rgba(249,226,175,.24)}
+
 /* ── Tooltip ── */
 #tooltip{
   position:fixed;z-index:1999;pointer-events:none;display:none;
@@ -206,6 +245,46 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
     <span id="fps-counter">--fps</span>
   </div>
   <canvas id="game-canvas" width="430" height="290"></canvas>
+  <!-- ── Virtual Gamepad ── -->
+  <div id="gamepad">
+    <!-- 🏃 アクション -->
+    <div id="gp-action" class="gp-layout">
+      <div class="gp-side">
+        <button class="gp-btn" data-key="ArrowLeft">◀</button>
+        <button class="gp-btn" data-key="ArrowRight">▶</button>
+      </div>
+      <div class="gp-side">
+        <button class="gp-btn gp-lg gp-jump" data-key=" "><span>↑</span><small>ジャンプ</small></button>
+      </div>
+    </div>
+    <!-- 🚀 シューティング -->
+    <div id="gp-shoot" class="gp-layout" style="display:none">
+      <div class="gp-side">
+        <div class="gp-cross">
+          <div></div><button class="gp-btn" data-key="ArrowUp">▲</button><div></div>
+          <button class="gp-btn" data-key="ArrowLeft">◀</button>
+          <div class="gp-cross-c"></div>
+          <button class="gp-btn" data-key="ArrowRight">▶</button>
+          <div></div><button class="gp-btn" data-key="ArrowDown">▼</button><div></div>
+        </div>
+      </div>
+      <div class="gp-side">
+        <button class="gp-btn gp-lg gp-fire" data-key="z"><span>🔫</span><small>ショット</small></button>
+      </div>
+    </div>
+    <!-- 🧩 パズル -->
+    <div id="gp-puzzle" class="gp-layout" style="display:none">
+      <div class="gp-side">
+        <button class="gp-btn" data-pkey="ArrowLeft">◀</button>
+        <button class="gp-btn" data-pkey="ArrowDown">↓</button>
+        <button class="gp-btn" data-pkey="ArrowRight">▶</button>
+      </div>
+      <div class="gp-side">
+        <button class="gp-btn gp-rot" data-pkey="ArrowUp"><span>↻</span><small>回転</small></button>
+        <button class="gp-btn gp-drp" data-pkey=" "><span>⬇</span><small>一気に</small></button>
+      </div>
+    </div>
+  </div>
   <div id="clog"></div>
 </div>
 </div>
@@ -516,6 +595,7 @@ function switchMode(mode) {
   if (mode === 'puzzle') initPuzzle();
   if (mode === 'quiz') initQuiz();
   draw();
+  updateGamepadVisibility();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1805,14 +1885,13 @@ function runGame() {
 function stopGame() {
   running=false;
   if(raf){ cancelAnimationFrame(raf); raf=null; }
+  keys = {};
+  document.querySelectorAll('#gamepad .active').forEach(b => b.classList.remove('active'));
   draw(); glog('■ 停止');
 }
 
-canvas.addEventListener('click', e => {
-  if(gameMode!=='quiz'||!running||qzState!=='showing') return;
-  const rect=canvas.getBoundingClientRect();
-  const cx=(e.clientX-rect.left)*(W/rect.width);
-  const cy=(e.clientY-rect.top)*(H/rect.height);
+function handleQuizTap(cx, cy) {
+  if(!running||qzState!=='showing') return;
   const q=qzQuestions[qzQIdx]; if(!q) return;
   const BTN=[
     {k:'a',x:10, y:122,w:200,h:72},
@@ -1832,7 +1911,82 @@ canvas.addEventListener('click', e => {
       break;
     }
   }
+}
+function _canvasXY(clientX, clientY) {
+  const r=canvas.getBoundingClientRect();
+  return [(clientX-r.left)*(W/r.width), (clientY-r.top)*(H/r.height)];
+}
+canvas.addEventListener('click', e => {
+  if(gameMode!=='quiz') return;
+  handleQuizTap(..._canvasXY(e.clientX, e.clientY));
 });
+canvas.addEventListener('touchend', e => {
+  if(gameMode!=='quiz') return;
+  e.preventDefault();
+  const t=e.changedTouches[0];
+  handleQuizTap(..._canvasXY(t.clientX, t.clientY));
+}, {passive:false});
+
+// ═══════════════════════════════════════════════════════
+// VIRTUAL GAMEPAD
+// ═══════════════════════════════════════════════════════
+function initGamepad() {
+  // ── ホールドボタン（アクション・シューティング）──
+  // touchstart でキーを立て、touchend/cancel で解放
+  document.querySelectorAll('#gamepad [data-key]').forEach(btn => {
+    const key = btn.dataset.key;
+    const press = e => {
+      e.preventDefault();
+      keys[key] = true;
+      btn.classList.add('active');
+    };
+    const release = () => {
+      delete keys[key];
+      btn.classList.remove('active');
+    };
+    btn.addEventListener('touchstart',  press,   {passive:false});
+    btn.addEventListener('touchend',    release);
+    btn.addEventListener('touchcancel', release);
+    btn.addEventListener('mousedown',   press);
+    btn.addEventListener('mouseup',     release);
+    btn.addEventListener('mouseleave',  release);
+  });
+
+  // ── タップボタン（パズル）──
+  // 左右は長押しで自動リピート
+  document.querySelectorAll('#gamepad [data-pkey]').forEach(btn => {
+    const key = btn.dataset.pkey;
+    let rpt = null;
+    const tap = () => { if(running && gameMode==='puzzle' && pKeyQ) pKeyQ.push(key); };
+    const start = e => {
+      e.preventDefault();
+      btn.classList.add('active');
+      tap();
+      if(key==='ArrowLeft'||key==='ArrowRight'){
+        clearInterval(rpt);
+        rpt = setInterval(tap, 160);
+      }
+    };
+    const end = () => {
+      btn.classList.remove('active');
+      clearInterval(rpt); rpt = null;
+    };
+    btn.addEventListener('touchstart',  start, {passive:false});
+    btn.addEventListener('touchend',    end);
+    btn.addEventListener('touchcancel', end);
+    btn.addEventListener('mousedown',   start);
+    btn.addEventListener('mouseup',     end);
+    btn.addEventListener('mouseleave',  end);
+  });
+}
+
+function updateGamepadVisibility() {
+  const show = ['action','shoot','puzzle'].includes(gameMode);
+  document.getElementById('gamepad').style.display      = show ? 'flex' : 'none';
+  document.getElementById('gp-action').style.display    = gameMode==='action'  ? 'flex' : 'none';
+  document.getElementById('gp-shoot').style.display     = gameMode==='shoot'   ? 'flex' : 'none';
+  document.getElementById('gp-puzzle').style.display    = gameMode==='puzzle'  ? 'flex' : 'none';
+}
 
 document.addEventListener('keydown', e => {
   keys[e.key]=true;
@@ -2085,6 +2239,8 @@ document.addEventListener('drop',      () => highlightDropZones(false));
 renderPalette();
 loadSample();
 draw();
+initGamepad();
+updateGamepadVisibility();
 const _hashLoaded = loadFromHash();
 if (!_hashLoaded && !localStorage.getItem('ge_tut_done')) showTutorial();
 </script>
