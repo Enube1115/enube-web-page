@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>ビジュアルゲームエンジン</title>
+<title>🎮 GameBlock Engine</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:100vh;overflow:hidden}
@@ -29,8 +29,13 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 .pb:hover{filter:brightness(1.18)}
 
 #ewrap{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-#etoolbar{background:#181825;padding:8px 10px;display:flex;gap:8px;align-items:center;border-bottom:2px solid #313244;flex-shrink:0}
-#etoolbar button{padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:700}
+#etoolbar{background:#181825;padding:7px 10px;display:flex;gap:6px;align-items:center;border-bottom:2px solid #313244;flex-shrink:0;flex-wrap:wrap}
+#logo{display:flex;align-items:center;gap:7px;margin-right:6px;padding-right:10px;border-right:2px solid #313244;flex-shrink:0}
+#logo-icon{font-size:20px;line-height:1}
+#logo-text{font-size:13px;font-weight:900;letter-spacing:.4px;white-space:nowrap;background:linear-gradient(135deg,#cba6f7 0%,#89b4fa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+#etoolbar button{padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.08);cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.2px;transition:filter .12s,transform .1s,box-shadow .12s}
+#etoolbar button:hover{filter:brightness(1.18);transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.4)}
+#etoolbar button:active{transform:translateY(0);filter:brightness(.92)}
 #btn-run{background:#a6e3a1;color:#1e1e2e}
 #btn-stop{background:#f38ba8;color:#1e1e2e}
 #btn-clr{background:#fab387;color:#1e1e2e}
@@ -38,6 +43,7 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 #btn-save{background:#74c7ec;color:#1e1e2e}
 #btn-load{background:#cba6f7;color:#1e1e2e}
 #btn-share{background:#89b4fa;color:#1e1e2e}
+#btn-mute{background:#45475a;color:#cdd6f4;font-size:13px;padding:6px 10px}
 #share-toast{
   position:fixed;bottom:28px;left:50%;
   transform:translateX(-50%) translateY(16px);
@@ -79,6 +85,9 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 .control .bdel,.control select{color:#1e1e2e}
 .control select{background:rgba(255,255,255,.4)}
 .collision{background:#43a047}.shoot{background:#e91e8c}.puzzle{background:#00897b}.quiz{background:#7b1fa2}
+.item{background:#f59e0b;color:#1e1e2e!important}
+.item .bdel,.item select{color:#1e1e2e}
+.item select{background:rgba(255,255,255,.4)}
 
 #pwrap{width:430px;background:#11111b;display:flex;flex-direction:column;flex-shrink:0;border-left:2px solid #313244}
 #ptoolbar{padding:7px 10px;font-size:11px;color:#6c7086;border-bottom:1px solid #313244;display:flex;justify-content:space-between;align-items:center}
@@ -148,11 +157,11 @@ body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:1
 #tut-start:active{transform:scale(.98)}
 /* re-open button */
 #btn-help{
-  background:#45475a;color:#cdd6f4;border:none;border-radius:6px;
+  background:#45475a;color:#cdd6f4;border:1px solid rgba(255,255,255,.08);border-radius:8px;
   padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;
-  transition:all .15s
+  transition:filter .12s,transform .1s,box-shadow .12s
 }
-#btn-help:hover{background:#585b70}
+#btn-help:hover{filter:brightness(1.18);transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.4)}
 
 /* ── Virtual Gamepad ── */
 canvas{touch-action:none}
@@ -222,6 +231,7 @@ canvas{touch-action:none}
 
 <div id="ewrap">
   <div id="etoolbar">
+    <div id="logo"><span id="logo-icon">🎮</span><span id="logo-text">GameBlock Engine</span></div>
     <button id="btn-run" onclick="runGame()">▶ 実行</button>
     <button id="btn-stop" onclick="stopGame()">■ 停止</button>
     <button id="btn-clr" onclick="clearEditor()">🗑 クリア</button>
@@ -231,6 +241,7 @@ canvas{touch-action:none}
     <button id="btn-save" onclick="saveGame()">💾 保存</button>
     <button id="btn-load"  onclick="loadGame()">📂 読み込み</button>
     <button id="btn-share" onclick="shareGame()">🔗 シェア</button>
+    <button id="btn-mute" onclick="toggleMute()" title="サウンドのオン/オフ">🔊</button>
     <input type="file" id="file-input" accept=".json" style="display:none">
     <span id="mode-label" style="color:#cba6f7;font-size:11px;font-weight:700;margin-left:4px">横スクロールアクション</span>
   </div>
@@ -406,6 +417,13 @@ const DEFS = {
   ]},
   qz_score:  {label:'⭐ スコアを加算する', cat:'quiz', shape:'stack', params:[{n:'pts',t:'num',d:100}]},
   qz_next:   {label:'▶ 次の問題へ',      cat:'quiz', shape:'stack'},
+
+  it_spawn:  {label:'🎁 アイテムを出す',   cat:'item', shape:'stack',
+    params:[{n:'type',t:'itype',d:'coin'},{n:'x',t:'num',d:200},{n:'y',t:'num',d:200}]},
+  sc_show:   {label:'📊 スコアを表示する', cat:'item', shape:'stack',
+    params:[{n:'x',t:'num',d:10},{n:'y',t:'num',d:50},{n:'c',t:'color',d:'#ffffff'}]},
+  tm_set:    {label:'⏱ タイマーを設定する', cat:'item', shape:'stack',
+    params:[{n:'sec',t:'num',d:30}]},
 };
 
 const KEY_OPTS=[
@@ -434,6 +452,9 @@ const ETYPE_OPTS=[
   {v:'straight',l:'まっすぐ'},{v:'zigzag',l:'ジグザグ'},
   {v:'chase',l:'追いかける'},{v:'boss',l:'ボス'},
 ];
+const ITYPE_OPTS=[
+  {v:'coin',l:'🪙 コイン'},{v:'star',l:'⭐ スター'},{v:'heart',l:'❤ ハート'},
+];
 
 const PALETTE_DATA = {
   action: [
@@ -453,6 +474,11 @@ const PALETTE_DATA = {
     ]},
     {cat:'collision',label:'💥 当たり判定',blocks:[
       {t:'co_ground',l:'🏔 地面にいる'},{t:'co_enemy',l:'👾 てきにぶつかった'},{t:'co_goal',l:'🏆 ゴールにとどいた'},{t:'co_wall',l:'🧱 かべにぶつかった'},
+    ]},
+    {cat:'item',label:'🎁 アイテム・UI',blocks:[
+      {t:'it_spawn',l:'🎁 アイテムを出す'},
+      {t:'sc_show', l:'📊 スコアを表示する'},
+      {t:'tm_set',  l:'⏱ タイマーを設定する'},
     ]},
   ],
   shoot: [
@@ -590,10 +616,16 @@ function switchMode(mode) {
     mode === 'action' ? '🏃 横スクロールアクション' :
     mode === 'shoot'  ? '🚀 シューティング' :
     mode === 'puzzle' ? '🧩 落ち物パズル' : '❓ クイズゲーム';
+  // 共有状態を完全リセット
+  gt = 0; score = 0; msg = ''; msgTimer = 0; keys = {};
+  logLines = []; document.getElementById('clog').textContent = '';
   renderPalette();
   loadSample();
-  if (mode === 'puzzle') initPuzzle();
-  if (mode === 'quiz') initQuiz();
+  // 全モードで対応する init を呼ぶ
+  if      (mode === 'action') initAction();
+  else if (mode === 'shoot')  initShoot();
+  else if (mode === 'puzzle') initPuzzle();
+  else if (mode === 'quiz')   initQuiz();
   draw();
   updateGamepadVisibility();
 }
@@ -701,7 +733,7 @@ function addBlockAt(sgId, idx) {
 function makeBlock(type) {
   const def = DEFS[type];
   const b = { id: gid(), type, params: {}, inner: [], inner2: [] };
-  if (def.params) def.params.forEach(p => { if (p.t !== 'br') b.params[p.n] = p.d; });
+  if (def && def.params) def.params.forEach(p => { if (p.t !== 'br') b.params[p.n] = p.d; });
   return b;
 }
 
@@ -709,6 +741,18 @@ function getCondOpts() { return gameMode === 'shoot' ? COND_SHOOT : COND_ACTION;
 
 function makeBlockEl(b, sgId, idx) {
   const def = DEFS[b.type];
+  if (!def) {
+    const ph = document.createElement('div');
+    ph.className = 'block look'; ph.style.cssText = 'opacity:.45;font-style:italic';
+    ph.textContent = `⚠ 不明: ${b.type}`;
+    const bd = document.createElement('span'); bd.className = 'bdel'; bd.textContent = '✕';
+    bd.onclick = e => {
+      e.stopPropagation();
+      const sg = scripts.find(s => s.id === sgId);
+      if (sg) { sg.blocks.splice(idx, 1); render(); }
+    };
+    ph.appendChild(bd); return ph;
+  }
   const div = document.createElement('div');
   div.className = `block ${def.cat}${def.shape === 'hat' ? ' hat' : ''}`;
   div.draggable = true;
@@ -749,6 +793,8 @@ function makeBlockEl(b, sgId, idx) {
       const sel = mkSel(SDIR_OPTS, b.params[p.n], v => { b.params[p.n] = v; }); div.appendChild(sel);
     } else if (p.t === 'etype') {
       const sel = mkSel(ETYPE_OPTS, b.params[p.n], v => { b.params[p.n] = v; }); div.appendChild(sel);
+    } else if (p.t === 'itype') {
+      const sel = mkSel(ITYPE_OPTS, b.params[p.n], v => { b.params[p.n] = v; }); div.appendChild(sel);
     } else if (p.t === 'qtext') {
       const inp = document.createElement('input'); inp.type='text'; inp.value=b.params[p.n]||''; inp.style.width='118px';
       inp.onclick=stop; inp.oninput=()=>{ b.params[p.n]=inp.value; };
@@ -888,6 +934,7 @@ let score = 0;
 // ─── Action mode state ───
 let player = {}, camera = {x:0};
 let platforms = [], aEnemies = [], goal = {}, coins = [];
+let customItems = [], scoreDisplayCfg = null, gameTimer = {active:false, remaining:0};
 
 // ─── Shoot mode state ───
 let ship = {}, sBullets = [], sEnemies = [], eBullets = [], particles = [], powerups = [];
@@ -944,6 +991,7 @@ function initAction() {
   ];
   goal = { x:1700, y:220, w:30, h:40 };
   camera = { x:0 };
+  customItems = []; scoreDisplayCfg = null; gameTimer = {active:false, remaining:0};
 }
 
 function initShoot() {
@@ -1006,7 +1054,7 @@ function pSpawnPiece() {
   pNextType = PKEYS[Math.floor(Math.random()*PKEYS.length)];
   pPiece = { type, cells:PIECES[type].cells.map(c=>[...c]), x:3, y:-1, color:PIECES[type].color };
   if (pCollides(pPiece.cells, pPiece.x, pPiece.y+1)) {
-    pGameOver = true; msg = '💀 ゲームオーバー！'; msgTimer = 400; stopGame();
+    pGameOver = true; msg = '💀 ゲームオーバー！'; msgTimer = 400; playGameOver(); stopGame();
   }
 }
 
@@ -1133,7 +1181,7 @@ function execBlock(b) {
     case 'mv_up':     pl.vy = -(+p.spd||4); break;
     case 'mv_down':   pl.vy = +(+p.spd||4); break;
     case 'mv_jump':
-      if (gameMode === 'action' && player.onGround) { player.vy = -(+p.pow||13); player.onGround = false; }
+      if (gameMode === 'action' && player.onGround) { player.vy = -(+p.pow||13); player.onGround = false; playJump(); }
       break;
     case 'mv_setx':  pl.x = +p.x||0; break;
     case 'mv_sety':  pl.y = +p.y||0; break;
@@ -1141,15 +1189,18 @@ function execBlock(b) {
     case 'mv_setvy': pl.vy = +p.vy||0; break;
     case 'mv_stop':  pl.vx = 0; break;
     case 'lk_color': pl.color = p.c||'#4c97ff'; break;
-    case 'lk_say':   msg = p.msg||''; msgTimer = 120; break;
+    case 'lk_say':   msg = String(p.msg||'').slice(0,60); msgTimer = 120; break;
     case 'lk_hide':  pl.visible = false; break;
     case 'lk_show':  pl.visible = true; break;
     case 'ct_if':
       if (evalCond(p.cond)) execList(b.inner||[]); break;
     case 'ct_ifelse':
       if (evalCond(p.cond)) execList(b.inner||[]); else execList(b.inner2||[]); break;
-    case 'ct_repeat':
-      for (let i=0; i<(parseInt(p.n)||3); i++) execList(b.inner||[]); break;
+    case 'ct_repeat': {
+      const rn = Math.min(Math.max(parseInt(p.n)||3, 0), 500);
+      for (let i=0; i<rn; i++) execList(b.inner||[]);
+      break;
+    }
     case 'ct_wait': break; // frame-based wait requires a coroutine system; treated as no-op
     case 'sh_clamp':
       if (gameMode === 'shoot') {
@@ -1203,6 +1254,20 @@ function execBlock(b) {
         else { qzState='done'; glog(`🎊 全問クリア！スコア:${score}`); stopGame(); }
       }
       break;
+    case 'it_spawn':
+      if (gameMode==='action') {
+        const ix=+p.x||200, iy=+p.y||200;
+        if (!customItems.some(i=>i.x===ix&&i.y===iy))
+          customItems.push({x:ix, y:iy, type:p.type||'coin', alive:true});
+      }
+      break;
+    case 'sc_show':
+      if (gameMode==='action') scoreDisplayCfg = {x:+p.x||10, y:+p.y||50, color:p.c||'#fff'};
+      break;
+    case 'tm_set':
+      if (gameMode==='action' && !gameTimer.active)
+        gameTimer = {active:true, remaining:(+p.sec||30)*60};
+      break;
   }
 }
 
@@ -1221,6 +1286,7 @@ function fireShot(dir, spd, color) {
 }
 
 function spawnEnemy(type, spd) {
+  if (sEnemies.length >= 50) return;
   const waveBonus = (wave - 1) * 0.4;
   const speed = spd + waveBonus;
   if (type === 'boss') {
@@ -1233,7 +1299,9 @@ function spawnEnemy(type, spd) {
 }
 
 function spawnParticles(x, y, color, n) {
-  for (let i=0;i<n;i++) {
+  const room = Math.max(0, 300 - particles.length);
+  const count = Math.min(n, room);
+  for (let i=0;i<count;i++) {
     const a=Math.random()*Math.PI*2, s=Math.random()*3+1, life=Math.floor(Math.random()*18+8);
     particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:Math.random()*3+1,color,life,maxLife:life});
   }
@@ -1248,7 +1316,7 @@ function runScripts(evType) {
     if (hat.type==='ev_start'      && evType==='start')        ok=true;
     if (hat.type==='ev_always'     && evType==='frame')        ok=true;
     if (hat.type==='ev_key'        && evType==='frame')        ok=!!keys[hat.params.key||'ArrowRight'];
-    if (hat.type==='ev_timer'      && evType==='frame')        { const n=parseInt(hat.params.n)||60; ok=(gt%n===0 && gt>0); }
+    if (hat.type==='ev_timer'      && evType==='frame')        { const n=Math.max(1,parseInt(hat.params.n)||60); ok=(gt%n===0 && gt>0); }
     if (hat.type==='qz_ev_correct' && evType==='quiz_correct') ok=true;
     if (hat.type==='qz_ev_wrong'   && evType==='quiz_wrong')   ok=true;
     if (ok) execList(sg.blocks.slice(1));
@@ -1285,22 +1353,42 @@ function physicsAction() {
     if (!onPl||en.x<0) en.dir*=-1;
     if (overlap(player,en)) {
       if (player.vy>0 && player.y+player.h < en.y+en.h*0.6) {
-        en.alive=false; player.vy=-9; score+=100; glog('💀 踏んだ！+100');
+        en.alive=false; player.vy=-9; score+=100; glog('💀 踏んだ！+100'); playEnemyDefeat();
       } else { player.x=60; player.y=220; player.vx=0; player.vy=0; glog('😵 ダメージ！'); }
     }
   });
 
   coins.forEach(c => {
     if (!c.alive) return;
-    if (overlap(player,{x:c.x-8,y:c.y-8,w:16,h:16})) { c.alive=false; score+=50; glog('⭐ コイン！+50'); }
+    if (overlap(player,{x:c.x-8,y:c.y-8,w:16,h:16})) { c.alive=false; score+=50; glog('⭐ コイン！+50'); playCoin(); }
   });
+
+  customItems.forEach(item => {
+    if (!item.alive) return;
+    if (overlap(player,{x:item.x-11,y:item.y-11,w:22,h:22})) {
+      item.alive=false;
+      if (item.type==='coin')  { score+=50;  glog('🪙 カスタムコイン！+50');  playCoin(); }
+      else if (item.type==='star')  { score+=200; glog('⭐ スター！+200'); playCoin(); }
+      else if (item.type==='heart') { score+=100; glog('❤ ハート！+100');  playCoin(); }
+    }
+  });
+
+  if (gameTimer.active && gameTimer.remaining > 0) {
+    gameTimer.remaining--;
+    if (gameTimer.remaining <= 0) {
+      msg='⏰ タイムアップ！'; msgTimer=300; glog('⏰ タイムアップ！ゲームオーバー'); playGameOver(); stopGame();
+    }
+  }
 
   if (player.y>H+100) { player.x=60; player.y=220; player.vx=0; player.vy=0; glog('💦 落下！'); }
   if (player.x<0) { player.x=0; player.vx=0; }
   if (overlap(player,goal)) {
     msg=`🏆 クリア！スコア:${score}`; msgTimer=300;
     player.x=60; player.y=220; player.vx=0; player.vy=0;
-    coins.forEach(c=>c.alive=true); aEnemies.forEach(e=>e.alive=true); score=0; glog('🏆 ゴール！');
+    coins.forEach(c=>c.alive=true); aEnemies.forEach(e=>e.alive=true);
+    customItems.forEach(i=>i.alive=true);
+    gameTimer={active:false,remaining:0}; scoreDisplayCfg=null;
+    score=0; glog('🏆 ゴール！');
   }
   camera.x = Math.max(0, player.x - W*0.35);
 }
@@ -1375,7 +1463,7 @@ function physicsShoot() {
         e.alive=false;
         const pts=e.type==='boss'?1000:e.type==='zigzag'?200:100;
         score+=pts; spawnParticles(e.x+e.w/2,e.y+e.h/2,'#ff6b6b',14);
-        glog(`💥 撃墜！+${pts}`);
+        glog(`💥 撃墜！+${pts}`); playEnemyDefeat();
         if (Math.random()<0.18) powerups.push({x:e.x+e.w/2,y:e.y,alive:true});
       }
     });
@@ -1389,7 +1477,7 @@ function physicsShoot() {
     if (hitE||hitB) {
       lives--; invTimer=130; spawnParticles(ship.x+ship.w/2,ship.y+ship.h/2,'#ff6b6b',20);
       glog(`😵 被弾！残機:${lives}`);
-      if (lives<=0) { msg='💀 GAME OVER'; msgTimer=400; stopGame(); }
+      if (lives<=0) { msg='💀 GAME OVER'; msgTimer=400; playGameOver(); stopGame(); }
     }
   } else { invTimer--; }
 }
@@ -1434,6 +1522,15 @@ function drawAction() {
     ctx.restore();
   });
 
+  customItems.forEach(item=>{
+    if(!item.alive) return;
+    const pulse=0.88+0.12*Math.sin(gt*.12+item.x*.01);
+    ctx.save(); ctx.translate(item.x,item.y); ctx.scale(pulse,pulse);
+    ctx.font='20px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(item.type==='coin'?'🪙':item.type==='star'?'⭐':'❤️',0,7);
+    ctx.textAlign='left'; ctx.restore();
+  });
+
   aEnemies.forEach(en=>{
     if(!en.alive) return;
     ctx.save();
@@ -1466,6 +1563,17 @@ function drawAction() {
   ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,W,26);
   ctx.fillStyle='#cdd6f4'; ctx.font='12px monospace';
   ctx.fillText(`⭐${score}  X:${Math.round(player.x)} Y:${Math.round(player.y)}  ${player.onGround?'⬇地面':'🌊空中'}  ${fps}fps`,8,17);
+  if (gameTimer.active) {
+    const secs = Math.max(0, Math.ceil(gameTimer.remaining/60));
+    const mm = String(Math.floor(secs/60)).padStart(2,'0');
+    const ss = String(secs%60).padStart(2,'0');
+    ctx.fillStyle = secs<=10?'#f38ba8':secs<=20?'#fab387':'#a6e3a1';
+    ctx.textAlign='right'; ctx.fillText(`⏱${mm}:${ss}`,W-8,17); ctx.textAlign='left';
+  }
+  if (scoreDisplayCfg) {
+    ctx.font='bold 15px monospace'; ctx.fillStyle=scoreDisplayCfg.color||'#fff';
+    ctx.fillText(`SCORE: ${score}`, scoreDisplayCfg.x, scoreDisplayCfg.y);
+  }
   drawMsgOverlay();
   if(!running) drawStartOverlay('▶ 実行でゲーム開始','矢印で移動・スペースでジャンプ');
 }
@@ -1903,9 +2011,9 @@ function handleQuizTap(cx, cy) {
     if(cx>=btn.x&&cx<=btn.x+btn.w&&cy>=btn.y&&cy<=btn.y+btn.h){
       qzSelected=btn.k;
       if(btn.k===q.ans){
-        qzState='result_correct'; glog('⭕ 正解！');
+        qzState='result_correct'; glog('⭕ 正解！'); playQuizCorrect();
       } else {
-        qzState='result_wrong'; glog(`❌ 不正解… 正解は ${q.ans.toUpperCase()}: ${q[q.ans]}`);
+        qzState='result_wrong'; glog(`❌ 不正解… 正解は ${q.ans.toUpperCase()}: ${q[q.ans]}`); playQuizWrong();
       }
       qzResultTimer=90;
       break;
@@ -2110,8 +2218,10 @@ function applyGameData(data) {
     .filter(sg => sg.blocks.length > 0);
 
   render();
-  if (gameMode==='puzzle') initPuzzle();
-  if (gameMode==='quiz')   initQuiz();
+  if      (gameMode==='action') initAction();
+  else if (gameMode==='shoot')  initShoot();
+  else if (gameMode==='puzzle') initPuzzle();
+  else if (gameMode==='quiz')   initQuiz();
   draw();
 }
 
@@ -2234,10 +2344,72 @@ document.addEventListener('dragend',   () => highlightDropZones(false));
 document.addEventListener('drop',      () => highlightDropZones(false));
 
 // ═══════════════════════════════════════════════════════
+// WEB AUDIO API — SOUND EFFECTS
+// ═══════════════════════════════════════════════════════
+let audioCtx = null;
+let soundEnabled = true;
+
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function _tone(type, freq, freqEnd, dur, vol, startDelay) {
+  if (!soundEnabled) return;
+  const ac = ensureAudio();
+  const t0 = ac.currentTime + (startDelay || 0);
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain); gain.connect(ac.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (freqEnd && freqEnd !== freq) osc.frequency.exponentialRampToValueAtTime(freqEnd, t0 + dur);
+  gain.gain.setValueAtTime(vol, t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  osc.start(t0); osc.stop(t0 + dur + 0.01);
+}
+
+function playJump() {
+  _tone('sine', 220, 500, 0.13, 0.28);
+}
+
+function playCoin() {
+  _tone('sine', 700, 700, 0.07, 0.22, 0);
+  _tone('sine', 1100, 1100, 0.1, 0.22, 0.07);
+}
+
+function playEnemyDefeat() {
+  _tone('sawtooth', 380, 70, 0.2, 0.3);
+  _tone('square',   300, 60, 0.15, 0.12, 0.04);
+}
+
+function playGameOver() {
+  [440, 370, 294, 220].forEach((f, i) => _tone('triangle', f, f * 0.92, 0.22, 0.3, i * 0.22));
+}
+
+function playQuizCorrect() {
+  [523, 659, 784, 1047].forEach((f, i) => _tone('sine', f, f, 0.12, 0.22, i * 0.1));
+}
+
+function playQuizWrong() {
+  _tone('square', 200, 140, 0.18, 0.2, 0);
+  _tone('square', 150, 100, 0.18, 0.2, 0.18);
+}
+
+function toggleMute() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('btn-mute');
+  btn.textContent = soundEnabled ? '🔊' : '🔇';
+  btn.style.opacity = soundEnabled ? '1' : '0.55';
+}
+
+// ═══════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════
 renderPalette();
 loadSample();
+initAction(); // 初回 draw() の前にゲーム状態を確実に初期化
 draw();
 initGamepad();
 updateGamepadVisibility();
