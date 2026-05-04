@@ -78,6 +78,7 @@
     border-radius: 4px;
     padding: 6px 8px;
     transition: background 0.15s;
+    touch-action: manipulation;
   }
   .ship-item:last-child { border-bottom: none; }
   .ship-item:hover { background: #1e3a5f; }
@@ -149,6 +150,7 @@
     border: 1px solid #1e3a5f;
     background: #0d1f35;
     cursor: default;
+    touch-action: manipulation;
   }
 
   /* Setup grid cells */
@@ -268,6 +270,7 @@
     cursor: pointer;
     letter-spacing: 1px;
     transition: all 0.15s;
+    touch-action: manipulation;
   }
 
   .btn-primary {
@@ -344,6 +347,7 @@
     border-radius: 6px;
     background: #0f2133;
     transition: all 0.15s;
+    touch-action: manipulation;
   }
   .orient-toggle:hover { border-color: #3b82f6; color: #7dd3fc; }
   .orient-toggle .arrow { font-size: 1.2rem; }
@@ -501,6 +505,7 @@
     transition: all 0.15s;
     position: relative;
     overflow: hidden;
+    touch-action: manipulation;
   }
 
   .diff-btn::before {
@@ -1297,6 +1302,19 @@ function buildGameGrid(id, grid, isEnemy) {
       cell.id = `${id}-${r}-${c}`;
       cell.className = 'cell';
       if (isEnemy) {
+        let touchStartX = 0, touchStartY = 0;
+        cell.addEventListener('touchstart', e => {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        cell.addEventListener('touchend', e => {
+          const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
+          const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+          if (dx < 10 && dy < 10) {
+            e.preventDefault();
+            playerAttack(r, c);
+          }
+        });
         cell.addEventListener('click', () => playerAttack(r, c));
       }
       el.appendChild(cell);
