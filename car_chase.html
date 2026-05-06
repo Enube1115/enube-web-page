@@ -475,7 +475,7 @@ function drawOver(){
   glow('#fd0',14); ctx.fillStyle='#fd0'; ctx.font='21px "Courier New"';
   ctx.fillText('SCORE '+String(score).padStart(6,'0'), W/2, H*0.48);
   ctx.fillText('TIME  '+Math.floor(timer)+'s',         W/2, H*0.55);
-  if(score>=highScore&&score>0){
+  if(score>highScore&&score>0){
     glow('#0f8',12); ctx.fillStyle='#0f8';
     ctx.font='14px "Courier New"'; ctx.fillText('★ NEW HIGH SCORE! ★', W/2, H*0.63);
   } else if(highScore>0){
@@ -527,41 +527,44 @@ function update(dt){
   const rspd=3+timer*0.012;
   roadY+=rspd;
 
-  // Construction zone cycle
-  constrTimer-=dt;
+  // Construction zone cycle (not during rain, grace period 15s)
+  if(timer>15 && wx!=='rain') constrTimer-=dt;
   if(constrTimer<=0){
     constrActive=!constrActive;
-    constrTimer=constrActive ? 8+Math.random()*7 : 12+Math.random()*8;
+    constrTimer=constrActive ? 8+Math.random()*7 : 14+Math.random()*10;
     if(constrActive){
-      // Spread cones across all 3 lanes
-      for(let i=0;i<6;i++){
-        const lane=i%3;
-        obs.push({x: RL+(lane+0.3+Math.random()*0.4)*LW, y:-50-i*55});
+      // Only 2 of 3 lanes blocked, 130px gap between cones → always one escape lane
+      const blocked=[0,1,2].sort(()=>Math.random()-0.5).slice(0,2);
+      for(let i=0;i<4;i++){
+        const lane=blocked[i%2];
+        obs.push({x: RL+(lane+0.3+Math.random()*0.4)*LW, y:-50-i*130});
       }
     }
   }
 
-  // Spawn cops
+  // Spawn cops (cap at 5 on screen)
   spawnT-=dt;
-  if(spawnT<=0){
-    spawnT=Math.max(0.4, D().spawnBase-timer*0.007);
+  if(spawnT<=0 && cops.length<5){
+    spawnT=Math.max(0.5, D().spawnBase-timer*0.007);
     const lane=Math.floor(Math.random()*3);
     cops.push({
       x: RL+(lane+0.5)*LW, y:-65,
-      vx:0,  // velocity for smooth lateral movement
+      vx:0,
       spd:(2+Math.random()*2+timer*0.02)*D().spdMult,
       siren:Math.random()*10,
     });
+  } else if(cops.length>=5){
+    spawnT=Math.max(spawnT,0.5); // hold timer while at cap
   }
 
-  // Move cops (smooth lateral chase via velocity)
+  // Move cops — proportional lateral chase, capped below player max speed
   for(let i=cops.length-1;i>=0;i--){
     const c=cops[i];
     c.siren+=dt;
     const dx=P.x-c.x;
-    // Velocity-based lateral movement (smooth, no teleporting)
-    c.vx=c.vx*0.80 + (dx/Math.max(Math.abs(dx),1))*1.8*D().spdMult;
-    c.vx=Math.max(-4*D().spdMult, Math.min(4*D().spdMult, c.vx));
+    // Spring-like chase: proportional to distance → cops lag behind on sharp moves
+    c.vx=c.vx*0.85 + dx*0.055*D().spdMult;
+    c.vx=Math.max(-3.2, Math.min(3.2, c.vx)); // always < player max (5.5) → escapable
     c.x+=c.vx;
     c.y+=c.spd+rspd*0.2;
     if(c.y>H+80){ cops.splice(i,1); continue; }
@@ -570,11 +573,12 @@ function update(dt){
     }
   }
 
-  // Civilian cars
+  // Civilian cars (cap at 3 on screen)
   civT-=dt;
   if(civT<=0){
-    civT=3+Math.random()*4;
-    civs.push({x:RL+(Math.floor(Math.random()*3)+0.5)*LW, y:-55, spd:1.5+Math.random()*0.8});
+    civT=4+Math.random()*4;
+    if(civs.length<3)
+      civs.push({x:RL+(Math.floor(Math.random()*3)+0.5)*LW, y:-55, spd:1.5+Math.random()*0.8});
   }
   for(let i=civs.length-1;i>=0;i--){
     const v=civs[i];
@@ -593,11 +597,12 @@ function update(dt){
     if(removed) continue;
   }
 
-  // Obstacles (cones)
+  // Obstacles (cones, cap at 6 on screen)
   obsT-=dt;
   if(obsT<=0){
-    obsT=2.5+Math.random()*3;
-    obs.push({x:RL+(Math.floor(Math.random()*3)+0.5)*LW, y:-50});
+    obsT=3+Math.random()*3;
+    if(obs.length<6)
+      obs.push({x:RL+(Math.floor(Math.random()*3)+0.5)*LW, y:-50});
   }
   for(let i=obs.length-1;i>=0;i--){
     const o=obs[i];
@@ -643,7 +648,7 @@ function update(dt){
 let last=0;
 function loop(ts){
   const dt=Math.min((ts-last)/1000, 0.05); last=ts;
-  if(state!=='play') roadY+=3;
+  if(state==='menu'||state==='over') roadY+=3;
   update(dt);
 
   ctx.clearRect(0,0,W,H);
