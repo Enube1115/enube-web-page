@@ -29,28 +29,33 @@ window.addEventListener('resize', resize);
 
 const RL=52, RR=W-52, RW=RR-RL, LW=RW/3;
 
-// ── Difficulty ────────────────────────────────────────────────
-const DIFFS={
-  easy:  {lives:5, spdMult:0.75, spawnBase:3.2, scoreMult:0.8,  ammo:10, label:'EASY',   col:'#00ff88'},
-  normal:{lives:3, spdMult:1.0,  spawnBase:2.2, scoreMult:1.0,  ammo:6,  label:'NORMAL', col:'#ffdd00'},
-  hard:  {lives:2, spdMult:1.4,  spawnBase:1.5, scoreMult:1.5,  ammo:3,  label:'HARD',   col:'#ff2244'},
-};
-let diff='normal';
-const D=()=>DIFFS[diff];
+// ── Progressive difficulty ────────────────────────────────────
+// All values derived from timer — no manual difficulty selection
+function spdMult()      { return Math.min(2.0, 0.72 + timer*0.008); }
+function scoreMult()    { return 1.0 + timer*0.005; }
+function spawnInterval(){ return Math.max(0.5, 3.2 - timer*0.015); }
+
+const PHASES=[
+  {t:0,   label:'ROOKIE',    col:'#00ff88'},
+  {t:30,  label:'WANTED',    col:'#ffdd00'},
+  {t:60,  label:'DANGEROUS', col:'#ff8800'},
+  {t:100, label:'OUTLAW',    col:'#ff4400'},
+  {t:150, label:'FUGITIVE',  col:'#ff0044'},
+];
+function phase(){ return [...PHASES].reverse().find(p=>timer>=p.t)||PHASES[0]; }
 
 // ── State ─────────────────────────────────────────────────────
-// menu | play | pause | over
 let state='menu', roadY=0;
 let score=0, bonus=0, timer=0, lives=3, spawnT=0;
 let highScore=+localStorage.getItem('cc_hs4')||0;
 const P={x:W/2, y:H-100, vx:0, vy:0, inv:0};
 let cops=[], sparks=[], missiles=[], civs=[], obs=[];
-let ammo=6, mCool=0, civT=3, obsT=2;
+let ammo=8, mCool=0, civT=3, obsT=2;
 let constrActive=false, constrTimer=14;
 
 // ── Weather ───────────────────────────────────────────────────
 let wx='clear', wxTimer=20;
-let wxAlert='', wxAlertT=0;          // banner shown on weather change
+let wxAlert='', wxAlertT=0;
 const WXPOOL=['clear','clear','rain','fog'];
 const rainDrops=Array.from({length:90},()=>({
   x:Math.random()*W, y:Math.random()*H,
@@ -85,12 +90,11 @@ function cxy(t){
   const r=C.getBoundingClientRect();
   return {x:(t.clientX-r.left)*(W/r.width), y:(t.clientY-r.top)*(H/r.height)};
 }
-// Returns 'left'|'right'|'up'|'down'|'fire'|'none'
 function getZone(x,y){
   if(y<H*0.28) return 'up';
   if(y>H*0.72){
-    if(x<W*0.35)  return 'down';   // bottom-left → slow/down
-    if(x>W*0.65)  return 'fire';   // bottom-right → fire
+    if(x<W*0.35) return 'down';
+    if(x>W*0.65) return 'fire';
     return 'down';
   }
   if(x<W*0.30) return 'left';
@@ -111,20 +115,7 @@ C.addEventListener('touchstart',e=>{
   e.preventDefault();
   if(state==='pause'){ state='play'; return; }
   if(state==='over'){  state='menu'; return; }
-  if(state==='menu'){
-    // Check difficulty button taps first
-    for(const t of e.changedTouches){
-      const p=cxy(t);
-      for(const b of DBTNS){
-        if(p.x>=b.cx-DBW/2&&p.x<=b.cx+DBW/2&&p.y>=DBY-DBH/2&&p.y<=DBY+DBH/2){
-          diff=b.k; start(); return;
-        }
-      }
-    }
-    // Tap anywhere else → start with current difficulty
-    start(); return;
-  }
-  // Playing
+  if(state==='menu'){  start(); return; }
   for(const t of e.changedTouches){
     const p=cxy(t);
     const z=getZone(p.x,p.y);
@@ -149,28 +140,16 @@ C.addEventListener('touchend',e=>{
   syncT();
 },{passive:false});
 
-// ── Menu difficulty buttons ───────────────────────────────────
-const DBTNS=[{k:'easy',cx:W/2-110},{k:'normal',cx:W/2},{k:'hard',cx:W/2+110}];
-const DBY=H*0.63, DBW=78, DBH=32;
-
 C.addEventListener('click',e=>{
-  const r=C.getBoundingClientRect();
-  const mx=(e.clientX-r.left)*(W/r.width), my=(e.clientY-r.top)*(H/r.height);
-  if(state==='menu'){
-    for(const b of DBTNS)
-      if(mx>=b.cx-DBW/2&&mx<=b.cx+DBW/2&&my>=DBY-DBH/2&&my<=DBY+DBH/2){
-        diff=b.k; start(); return;
-      }
-  }
-  if(state==='over') state='menu';
+  if(state==='menu')  start();
+  if(state==='over')  state='menu';
   if(state==='pause') state='play';
 });
 
 // ── Game control ──────────────────────────────────────────────
 function start(){
-  const d=D();
-  score=0; bonus=0; timer=0; lives=d.lives; spawnT=0;
-  ammo=d.ammo; mCool=0; civT=3; obsT=2; constrTimer=14; constrActive=false;
+  score=0; bonus=0; timer=0; lives=3; spawnT=0;
+  ammo=8; mCool=0; civT=3; obsT=2; constrTimer=14; constrActive=false;
   cops=[]; sparks=[]; missiles=[]; civs=[]; obs=[];
   wx='clear'; wxTimer=20; wxAlert=''; wxAlertT=0;
   Object.assign(P,{x:W/2,y:H-100,vx:0,vy:0,inv:0});
@@ -185,7 +164,7 @@ function fire(){
 }
 
 function loseLife(){
-  if(state!=='play') return;   // guard: don't double-penalise
+  if(state!=='play') return;
   lives--;
   burst(P.x,P.y,'#ff6600',18);
   P.inv=2.5;
@@ -212,7 +191,6 @@ function drawRoad(){
   ctx.fillStyle='#0b0b1e'; ctx.fillRect(RL,0,RW,H);
 
   if(constrActive){
-    // diagonal orange stripes across full road width
     ctx.save();
     ctx.fillStyle='rgba(255,140,0,0.06)'; ctx.fillRect(RL,0,RW,H);
     ctx.strokeStyle='rgba(255,130,0,0.16)'; ctx.lineWidth=10;
@@ -321,7 +299,6 @@ function drawSparks(){
 
 // ── HUD ───────────────────────────────────────────────────────
 function drawHUD(){
-  // top bar
   ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,38);
   ctx.textBaseline='middle';
 
@@ -332,24 +309,22 @@ function drawHUD(){
   ctx.textAlign='right';
   ctx.fillText(Math.floor(timer)+'s', W-8, 19);
 
-  // lives – centered, spread by 18px each
   ctx.font='17px serif';
   for(let i=0;i<lives;i++){
     glow('#f24',6); ctx.fillStyle='#f24';
     ctx.fillText('♥', W/2-((lives-1)*9)+i*18, 19);
   }
 
-  // second row: ammo (left) | difficulty (right) | construction (center)
   ctx.font='11px "Courier New"';
-  const d=D();
   glow(ammo>0?'#0ff':'#335',ammo>0?6:3);
   ctx.fillStyle=ammo>0?'#00ffff':'#336677';
   ctx.textAlign='left';
   ctx.fillText('🚀 ×'+Math.max(0,ammo), 8, 52);
 
-  glow(d.col,4); ctx.fillStyle=d.col;
+  const ph=phase();
+  glow(ph.col,4); ctx.fillStyle=ph.col;
   ctx.textAlign='right';
-  ctx.fillText(d.label, W-8, 52);
+  ctx.fillText(ph.label, W-8, 52);
 
   if(constrActive){
     glow('#f80',6); ctx.fillStyle='#ffaa00';
@@ -357,7 +332,6 @@ function drawHUD(){
     ctx.fillText('🚧 CONSTRUCTION', W/2, 52);
   }
 
-  // bottom row: weather status
   if(wx!=='clear'){
     const wc=wx==='rain'?'#aaccff':'#99aacc';
     const wt=wx==='rain'?'☔ RAIN — SLIP!':'🌫 FOG — LOW VIS';
@@ -366,7 +340,6 @@ function drawHUD(){
     ctx.fillText(wt, W/2, H-14);
   }
 
-  // Weather change alert banner
   if(wxAlertT>0){
     ctx.save();
     ctx.globalAlpha=Math.min(1, wxAlertT*2);
@@ -387,15 +360,13 @@ function drawHUD(){
 function drawTouchHints(){
   if(kbUsed) return;
   ctx.save();
-  // very subtle zone tinting
   ctx.globalAlpha=0.07;
   ctx.fillStyle='#00ffff';
-  ctx.fillRect(0,0,W,H*0.28);              // up
-  ctx.fillRect(0,H*0.28,W*0.30,H*0.44);   // left
-  ctx.fillRect(W*0.70,H*0.28,W*0.30,H*0.44); // right
-  ctx.fillRect(0,H*0.72,W*0.35,H*0.28);   // down
-  ctx.fillRect(W*0.65,H*0.72,W*0.35,H*0.28); // fire
-  // labels
+  ctx.fillRect(0,0,W,H*0.28);
+  ctx.fillRect(0,H*0.28,W*0.30,H*0.44);
+  ctx.fillRect(W*0.70,H*0.28,W*0.30,H*0.44);
+  ctx.fillRect(0,H*0.72,W*0.35,H*0.28);
+  ctx.fillRect(W*0.65,H*0.72,W*0.35,H*0.28);
   ctx.globalAlpha=0.30;
   ctx.fillStyle='#00ffff'; ctx.font='10px "Courier New"';
   ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -426,32 +397,37 @@ function drawMenu(){
   ctx.fillStyle='#aab0cc'; ctx.font='13px "Courier New"';
   ctx.fillText('パトカーから逃げろ！', W/2, H*0.21+106);
 
-  ctx.fillStyle='#556'; ctx.font='12px "Courier New"';
-  ctx.fillText('── 難易度を選択してスタート ──', W/2, H*0.54);
-
-  for(const b of DBTNS){
-    const d=DIFFS[b.k], sel=diff===b.k;
-    glow(d.col, sel?20:6); ctx.strokeStyle=d.col; ctx.lineWidth=sel?2:1;
-    rr(b.cx-DBW/2, DBY-DBH/2, DBW, DBH, 7);
-    ctx.fillStyle=sel?d.col+'44':'rgba(0,0,0,0.3)'; ctx.fill(); ctx.stroke();
-    ctx.fillStyle=d.col; ctx.font='bold 13px "Courier New"';
-    ctx.fillText(d.label, b.cx, DBY);
+  // Phase progression preview
+  ctx.fillStyle='#445566'; ctx.font='11px "Courier New"';
+  ctx.fillText('── 時間とともに難しくなる ──', W/2, H*0.54);
+  for(let i=0;i<PHASES.length;i++){
+    const ph=PHASES[i];
+    const nx=W/2+(i-2)*68;
+    glow(ph.col,5); ctx.fillStyle=ph.col;
+    ctx.font='bold 10px "Courier New"';
+    ctx.fillText(ph.label, nx, H*0.60);
+    if(ph.t>0){
+      ctx.fillStyle='#445'; ctx.font='9px "Courier New"';
+      ctx.fillText(ph.t+'s~', nx, H*0.60+13);
+    }
   }
 
-  const dInfo={easy:'5♥  弾×10', normal:'3♥  弾×6', hard:'2♥  弾×3'};
-  glow(D().col,5); ctx.fillStyle=D().col+'aa';
-  ctx.font='11px "Courier New"';
-  ctx.fillText(dInfo[diff], W/2, DBY+DBH/2+14);
+  // Blink start prompt
+  if(Math.floor(Date.now()/500)%2){
+    glow('#fff',10); ctx.fillStyle='#fff';
+    ctx.font='bold 15px "Courier New"';
+    ctx.fillText('ENTER / タップでスタート', W/2, H*0.72);
+  }
 
   if(highScore>0){
     glow('#fd0',8); ctx.fillStyle='#fd0';
     ctx.font='14px "Courier New"';
-    ctx.fillText('BEST  '+highScore, W/2, H*0.77);
+    ctx.fillText('BEST  '+highScore, W/2, H*0.80);
   }
 
   ctx.fillStyle='#334455'; ctx.font='11px "Courier New"';
-  ctx.fillText('← → ↑ ↓ 移動   SPACE: ミサイル   ESC: 一時停止', W/2, H*0.85);
-  ctx.fillText('タッチ操作対応（難易度ボタンをタップ）', W/2, H*0.9);
+  ctx.fillText('← → ↑ ↓ 移動   SPACE: ミサイル   ESC: 一時停止', W/2, H*0.88);
+  ctx.fillText('タッチ操作対応', W/2, H*0.93);
   noG();
 }
 
@@ -493,7 +469,7 @@ function drawOver(){
 function update(dt){
   if(state!=='play') return;
   timer+=dt;
-  score=Math.floor(timer*10*D().scoreMult)+bonus;
+  score=Math.floor(timer*10*scoreMult())+bonus;
 
   // Weather cycle
   wxTimer-=dt;
@@ -533,7 +509,6 @@ function update(dt){
     constrActive=!constrActive;
     constrTimer=constrActive ? 8+Math.random()*7 : 14+Math.random()*10;
     if(constrActive){
-      // Only 2 of 3 lanes blocked, 130px gap between cones → always one escape lane
       const blocked=[0,1,2].sort(()=>Math.random()-0.5).slice(0,2);
       for(let i=0;i<4;i++){
         const lane=blocked[i%2];
@@ -545,26 +520,33 @@ function update(dt){
   // Spawn cops (cap at 5 on screen)
   spawnT-=dt;
   if(spawnT<=0 && cops.length<5){
-    spawnT=Math.max(0.5, D().spawnBase-timer*0.007);
+    spawnT=spawnInterval();
     const lane=Math.floor(Math.random()*3);
     cops.push({
       x: RL+(lane+0.5)*LW, y:-65,
       vx:0,
-      spd:(2+Math.random()*2+timer*0.02)*D().spdMult,
+      spd:(2+Math.random()*2+timer*0.02)*spdMult(),
       siren:Math.random()*10,
     });
   } else if(cops.length>=5){
-    spawnT=Math.max(spawnT,0.5); // hold timer while at cap
+    spawnT=Math.max(spawnT,0.5);
   }
 
-  // Move cops — proportional lateral chase, capped below player max speed
+  // Move cops — phase-based AI: track from far, commit when close
   for(let i=cops.length-1;i>=0;i--){
     const c=cops[i];
     c.siren+=dt;
     const dx=P.x-c.x;
-    // Spring-like chase: proportional to distance → cops lag behind on sharp moves
-    c.vx=c.vx*0.85 + dx*0.055*D().spdMult;
-    c.vx=Math.max(-3.2, Math.min(3.2, c.vx)); // always < player max (5.5) → escapable
+    const dy=P.y-c.y; // positive = player is below cop
+
+    if(dy>150){
+      // Tracking phase: weak spring; player (max 5.5) outruns cop (max 2.4)
+      c.vx=c.vx*0.88 + dx*0.030*spdMult();
+      c.vx=Math.max(-2.4, Math.min(2.4, c.vx));
+    } else {
+      // Commit phase: cop locks heading — dodge now to survive
+      c.vx*=0.96;
+    }
     c.x+=c.vx;
     c.y+=c.spd+rspd*0.2;
     if(c.y>H+80){ cops.splice(i,1); continue; }
@@ -587,7 +569,6 @@ function update(dt){
     if(P.inv<=0&&Math.abs(P.x-v.x)<16&&Math.abs(P.y-v.y)<25){
       burst(v.x,v.y,'#aaceff',8); civs.splice(i,1); loseLife(); continue;
     }
-    // Cop rams civilian
     let removed=false;
     for(let j=cops.length-1;j>=0;j--){
       if(Math.abs(cops[j].x-v.x)<15&&Math.abs(cops[j].y-v.y)<24){
@@ -656,16 +637,16 @@ function loop(ts){
     drawMenu();
   } else {
     drawRoad();
-    drawFog();          // fog early → obscures all game objects
+    drawFog();
     obs.forEach(drawObs);
     civs.forEach(drawCiv);
     cops.forEach(drawCop);
     missiles.forEach(drawMissile);
     drawPlayerCar();
-    drawSparks();       // sparks on top of everything in-world
-    drawRain();         // rain last in-world → overlays everything
-    drawTouchHints();   // hints under HUD so HUD is always readable
-    drawHUD();          // HUD always on top
+    drawSparks();
+    drawRain();
+    drawTouchHints();
+    drawHUD();
     if(state==='pause') drawPause();
     if(state==='over')  drawOver();
   }
