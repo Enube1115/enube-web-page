@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthTracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f0f4ff;
+    --card: #ffffff;
+    --primary: #6c63ff;
+    --primary-light: #a89cff;
+    --accent: #ff6584;
+    --green: #43c09f;
+    --yellow: #ffc947;
+    --blue: #4fc3f7;
+    --text: #2d2d3a;
+    --muted: #8889a0;
+    --border: #e8eaf0;
+    --shadow: 0 4px 24px rgba(108,99,255,0.10);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #6c63ff 0%, #a89cff 100%);
+    color: white;
+    padding: 28px 24px 20px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 16px rgba(108,99,255,0.25);
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { opacity: 0.75; font-weight: 400; font-size: 13px; display: block; margin-top: 1px; }
+  .btn-settings {
+    background: rgba(255,255,255,0.2); border: none; color: white;
+    border-radius: 12px; padding: 8px 16px; cursor: pointer; font-size: 14px;
+    transition: background 0.2s;
+  }
+  .btn-settings:hover { background: rgba(255,255,255,0.35); }
+
+  /* Tabs */
+  .tabs {
+    display: flex; gap: 4px; padding: 12px 24px 0;
+    overflow-x: auto;
+  }
+  .tab {
+    background: rgba(255,255,255,0.18); border: none; color: rgba(255,255,255,0.8);
+    border-radius: 20px; padding: 7px 18px; cursor: pointer; font-size: 14px;
+    font-weight: 600; white-space: nowrap; transition: all 0.2s;
+  }
+  .tab.active {
+    background: white; color: var(--primary);
+  }
+  .tab:not(.active):hover { background: rgba(255,255,255,0.3); }
+
+  /* Main */
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* Views */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── SUMMARY VIEW ── */
+  .greeting { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .greeting-sub { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  @media(min-width:600px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+
+  .stat-card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 18px 16px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 6px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  }
+  .stat-card.weight::before { background: var(--primary); }
+  .stat-card.fat::before { background: var(--accent); }
+  .stat-card.water::before { background: var(--blue); }
+  .stat-card.sleep::before { background: var(--green); }
+
+  .stat-label { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; }
+  .stat-value { font-size: 28px; font-weight: 800; line-height: 1; }
+  .stat-unit { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .stat-change {
+    font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 2px;
+  }
+  .stat-change.up { color: var(--accent); }
+  .stat-change.down { color: var(--green); }
+  .stat-change.neutral { color: var(--muted); }
+
+  /* Target progress */
+  .target-card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px;
+  }
+  .target-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .target-title { font-size: 15px; font-weight: 700; }
+  .target-info { font-size: 13px; color: var(--muted); }
+  .progress-bar {
+    height: 12px; background: var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 6px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  .progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+  /* Streak & BMI row */
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .mini-card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 18px 16px; box-shadow: var(--shadow); text-align: center;
+  }
+  .mini-card .big { font-size: 36px; font-weight: 800; }
+  .mini-card .label { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+  .bmi-badge {
+    display: inline-block; border-radius: 20px; padding: 3px 12px;
+    font-size: 12px; font-weight: 700; margin-top: 6px;
+  }
+  .bmi-under { background: #e3f2fd; color: #1565c0; }
+  .bmi-normal { background: #e8f5e9; color: #2e7d32; }
+  .bmi-over { background: #fff3e0; color: #e65100; }
+  .bmi-obese { background: #fce4ec; color: #c62828; }
+
+  /* ── RECORD VIEW ── */
+  .form-card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 24px; box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .form-title { font-size: 17px; font-weight: 800; margin-bottom: 18px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media(max-width:480px) { .form-row { grid-template-columns: 1fr; } }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.3px; }
+  input[type=number], input[type=date] {
+    border: 2px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; font-size: 16px; font-family: inherit;
+    color: var(--text); background: var(--bg);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none; width: 100%;
+  }
+  input[type=number]:focus, input[type=date]:focus {
+    border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108,99,255,0.12);
+  }
+  .input-hint { font-size: 11px; color: var(--muted); }
+
+  .water-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .water-btn {
+    background: #e8f4ff; border: none; color: var(--blue); border-radius: 20px;
+    padding: 7px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .water-btn:hover { background: var(--blue); color: white; }
+
+  .btn-submit {
+    width: 100%; padding: 16px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white; font-size: 16px; font-weight: 800; cursor: pointer;
+    margin-top: 6px; letter-spacing: 0.5px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 14px rgba(108,99,255,0.35);
+  }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(108,99,255,0.4); }
+  .btn-submit:active { transform: translateY(0); }
+
+  /* History list */
+  .history-list { display: flex; flex-direction: column; gap: 10px; }
+  .history-item {
+    background: var(--card); border-radius: var(--radius);
+    padding: 16px 18px; box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .history-date {
+    min-width: 60px; text-align: center;
+    background: var(--bg); border-radius: 10px; padding: 8px 6px;
+  }
+  .history-date .month { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+  .history-date .day { font-size: 22px; font-weight: 800; line-height: 1; }
+  .history-metrics { display: flex; gap: 16px; flex-wrap: wrap; flex: 1; }
+  .hm { display: flex; flex-direction: column; }
+  .hm-val { font-size: 16px; font-weight: 800; }
+  .hm-lbl { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .btn-del {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 18px; padding: 4px; border-radius: 8px; transition: color 0.15s;
+  }
+  .btn-del:hover { color: var(--accent); }
+
+  /* ── GRAPH VIEW ── */
+  .chart-card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .chart-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  .chart-wrap { position: relative; height: 200px; }
+
+  /* ── SETTINGS VIEW ── */
+  .settings-card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 24px; box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .settings-title { font-size: 17px; font-weight: 800; margin-bottom: 20px; }
+  .settings-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .btn-save-settings {
+    padding: 13px 28px; border: none; border-radius: 12px;
+    background: var(--primary); color: white; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn-save-settings:hover { opacity: 0.85; }
+  .btn-danger {
+    padding: 11px 24px; border: 2px solid var(--accent); border-radius: 12px;
+    background: none; color: var(--accent); font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; margin-top: 12px;
+  }
+  .btn-danger:hover { background: var(--accent); color: white; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px);
+    background: #2d2d3a; color: white; padding: 12px 24px; border-radius: 30px;
+    font-size: 14px; font-weight: 600; pointer-events: none; z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
+    opacity: 0;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Empty state */
+  .empty {
+    text-align: center; padding: 40px 20px; color: var(--muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; }
+
+  /* Section heading */
+  .section-heading {
+    font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 1px;
+    text-transform: uppercase; margin: 20px 0 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">
+      💪 HealthTracker
+      <span id="headerDate"></span>
+    </div>
+    <button class="btn-settings" onclick="switchTab('settings')">⚙ 設定</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="summary" onclick="switchTab('summary')">サマリー</button>
+    <button class="tab" data-tab="record" onclick="switchTab('record')">記録する</button>
+    <button class="tab" data-tab="graphs" onclick="switchTab('graphs')">グラフ</button>
+    <button class="tab" data-tab="history" onclick="switchTab('history')">履歴</button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')">設定</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- SUMMARY -->
+  <div class="view active" id="view-summary">
+    <div class="greeting" id="greeting">おはようございます！</div>
+    <div class="greeting-sub" id="greetingSub">今日も健康的な一日を 🌟</div>
+
+    <div class="stats-grid">
+      <div class="stat-card weight">
+        <div class="stat-label">体重</div>
+        <div class="stat-value" id="sumWeight">--</div>
+        <div class="stat-unit">kg <span class="stat-change neutral" id="sumWeightChange"></span></div>
+      </div>
+      <div class="stat-card fat">
+        <div class="stat-label">体脂肪率</div>
+        <div class="stat-value" id="sumFat">--</div>
+        <div class="stat-unit">% <span class="stat-change neutral" id="sumFatChange"></span></div>
+      </div>
+      <div class="stat-card water">
+        <div class="stat-label">水分摂取</div>
+        <div class="stat-value" id="sumWater">--</div>
+        <div class="stat-unit">ml <span class="stat-change neutral" id="sumWaterChange"></span></div>
+      </div>
+      <div class="stat-card sleep">
+        <div class="stat-label">睡眠時間</div>
+        <div class="stat-value" id="sumSleep">--</div>
+        <div class="stat-unit">h <span class="stat-change neutral" id="sumSleepChange"></span></div>
+      </div>
+    </div>
+
+    <div class="target-card" id="targetCard">
+      <div class="target-header">
+        <div class="target-title">🎯 目標体重まであと</div>
+        <div class="target-info" id="targetRemaining">設定してください</div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="progress-labels">
+        <span id="progressStart">開始</span>
+        <span id="progressPct">0%</span>
+        <span id="progressGoal">目標</span>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="mini-card">
+        <div class="big" id="sumStreak">0</div>
+        <div class="label">🔥 連続記録日数</div>
+      </div>
+      <div class="mini-card">
+        <div class="big" id="sumBMI">--</div>
+        <div class="label">BMI</div>
+        <div class="bmi-badge bmi-normal" id="bmiLabel">--</div>
+      </div>
+    </div>
+
+    <div id="noDataHint" style="display:none">
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">まだデータがありません。<br>「記録する」タブからデータを入力しましょう！</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECORD -->
+  <div class="view" id="view-record">
+    <div class="form-card">
+      <div class="form-title">📝 今日の記録</div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>日付</label>
+        <input type="date" id="recDate">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>体重 (kg)</label>
+          <input type="number" id="recWeight" placeholder="65.0" step="0.1" min="20" max="300">
+        </div>
+        <div class="form-group">
+          <label>体脂肪率 (%)</label>
+          <input type="number" id="recFat" placeholder="20.0" step="0.1" min="1" max="60">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>水分摂取量 (ml)</label>
+          <input type="number" id="recWater" placeholder="2000" step="50" min="0" max="6000">
+          <div class="water-row" style="margin-top:6px">
+            <button class="water-btn" onclick="addWater(200)">+200</button>
+            <button class="water-btn" onclick="addWater(350)">+350</button>
+            <button class="water-btn" onclick="addWater(500)">+500</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>睡眠時間 (時間)</label>
+          <input type="number" id="recSleep" placeholder="7.5" step="0.5" min="0" max="24">
+          <div class="input-hint" id="bmiPreview" style="margin-top:6px"></div>
+        </div>
+      </div>
+      <button class="btn-submit" onclick="saveRecord()">記録を保存する ✓</button>
+    </div>
+  </div>
+
+  <!-- GRAPHS -->
+  <div class="view" id="view-graphs">
+    <div class="chart-card">
+      <div class="chart-title">📉 体重の推移</div>
+      <div class="chart-wrap"><canvas id="chartWeight"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">💧 体脂肪率の推移</div>
+      <div class="chart-wrap"><canvas id="chartFat"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">💧 水分摂取量の推移</div>
+      <div class="chart-wrap"><canvas id="chartWater"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">😴 睡眠時間の推移</div>
+      <div class="chart-wrap"><canvas id="chartSleep"></canvas></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="view" id="view-history">
+    <div id="historyList" class="history-list"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="view-settings">
+    <div class="settings-card">
+      <div class="settings-title">⚙ プロフィール設定</div>
+      <div class="settings-group">
+        <label>名前</label>
+        <input type="text" id="setName" placeholder="例: さくら" style="border:2px solid var(--border);border-radius:12px;padding:12px 14px;font-size:16px;font-family:inherit;outline:none;background:var(--bg);color:var(--text);">
+      </div>
+      <div class="settings-group">
+        <label>身長 (cm) ※BMI計算に使用</label>
+        <input type="number" id="setHeight" placeholder="170" step="0.1" min="100" max="250">
+      </div>
+      <div class="settings-group">
+        <label>目標体重 (kg)</label>
+        <input type="number" id="setTarget" placeholder="60.0" step="0.1" min="20" max="200">
+      </div>
+      <div class="settings-group">
+        <label>記録開始時の体重 (kg) ※進捗計算に使用</label>
+        <input type="number" id="setStartWeight" placeholder="70.0" step="0.1" min="20" max="300">
+      </div>
+      <button class="btn-save-settings" onclick="saveSettings()">設定を保存する</button>
+      <br>
+      <button class="btn-danger" onclick="clearAllData()">全データを削除する</button>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Data ──────────────────────────────────────────────
+const STORAGE_KEY = 'healthtracker_v1';
+
+function loadData() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { entries: [], profile: {} };
+  } catch { return { entries: [], profile: {} }; }
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ── Tabs ─────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.dataset.tab === tab) t.classList.add('active');
+  });
+  if (tab === 'summary') renderSummary();
+  if (tab === 'graphs') renderGraphs();
+  if (tab === 'history') renderHistory();
+  if (tab === 'settings') loadSettingsForm();
+}
+
+// ── Toast ─────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Greeting ──────────────────────────────────────────
+function greeting() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 10) return 'おはようございます！';
+  if (h >= 10 && h < 18) return 'こんにちは！';
+  return 'こんばんは！';
+}
+
+// ── BMI ───────────────────────────────────────────────
+function calcBMI(weight, heightCm) {
+  if (!weight || !heightCm) return null;
+  const h = heightCm / 100;
+  return Math.round((weight / (h * h)) * 10) / 10;
+}
+
+function bmiLabel(bmi) {
+  if (bmi === null) return { text: '--', cls: 'bmi-normal' };
+  if (bmi < 18.5) return { text: '低体重', cls: 'bmi-under' };
+  if (bmi < 25)   return { text: '標準', cls: 'bmi-normal' };
+  if (bmi < 30)   return { text: '過体重', cls: 'bmi-over' };
+  return { text: '肥満', cls: 'bmi-obese' };
+}
+
+// ── Streak ────────────────────────────────────────────
+function calcStreak(entries) {
+  if (!entries.length) return 0;
+  const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+  let streak = 1;
+  let prev = new Date(sorted[0].date);
+  for (let i = 1; i < sorted.length; i++) {
+    const cur = new Date(sorted[i].date);
+    const diff = (prev - cur) / 86400000;
+    if (diff === 1) { streak++; prev = cur; }
+    else break;
+  }
+  return streak;
+}
+
+// ── Change arrow ──────────────────────────────────────
+function changeDisplay(cur, prev, lower = true) {
+  if (prev === undefined || cur === undefined) return { text: '', cls: 'neutral' };
+  const diff = Math.round((cur - prev) * 10) / 10;
+  if (diff === 0) return { text: '±0', cls: 'neutral' };
+  const better = lower ? diff < 0 : diff > 0;
+  const arrow = diff > 0 ? '▲' : '▼';
+  return { text: `${arrow}${Math.abs(diff)}`, cls: better ? 'down' : 'up' };
+}
+
+// ── Summary ───────────────────────────────────────────
+function renderSummary() {
+  const data = loadData();
+  const { entries, profile } = data;
+  const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+  const latest = sorted[0];
+  const prev   = sorted[1];
+
+  document.getElementById('greeting').textContent =
+    greeting() + (profile.name ? ` ${profile.name}さん` : '');
+
+  const msgs = [
+    '今日も健康的な一日を 🌟',
+    '継続は力なり！頑張ろう 💪',
+    '小さな積み重ねが大きな変化を生む ✨',
+    '理想の自分に近づいています 🏃',
+  ];
+  document.getElementById('greetingSub').textContent =
+    msgs[Math.floor(Math.random() * msgs.length)];
+
+  document.getElementById('noDataHint').style.display = !latest ? 'block' : 'none';
+
+  if (latest) {
+    const bmi = calcBMI(latest.weight, profile.height);
+    const bl  = bmiLabel(bmi);
+
+    document.getElementById('sumWeight').textContent = latest.weight ?? '--';
+    document.getElementById('sumFat').textContent    = latest.fat    ?? '--';
+    document.getElementById('sumWater').textContent  = latest.water  ?? '--';
+    document.getElementById('sumSleep').textContent  = latest.sleep  ?? '--';
+    document.getElementById('sumBMI').textContent    = bmi ?? '--';
+    const bl2 = document.getElementById('bmiLabel');
+    bl2.textContent = bl.text;
+    bl2.className   = 'bmi-badge ' + bl.cls;
+
+    const setChange = (id, cur, p, lower) => {
+      const c = changeDisplay(cur, p, lower);
+      const el = document.getElementById(id);
+      el.textContent = c.text;
+      el.className = 'stat-change ' + c.cls;
+    };
+    setChange('sumWeightChange', latest.weight, prev?.weight, true);
+    setChange('sumFatChange',    latest.fat,    prev?.fat,    true);
+    setChange('sumWaterChange',  latest.water,  prev?.water,  false);
+    setChange('sumSleepChange',  latest.sleep,  prev?.sleep,  false);
+  }
+
+  // Streak
+  document.getElementById('sumStreak').textContent = calcStreak(entries);
+
+  // Target
+  const targetW = parseFloat(profile.targetWeight);
+  const startW  = parseFloat(profile.startWeight);
+  const curW    = latest ? parseFloat(latest.weight) : null;
+
+  if (targetW && startW && curW !== null) {
+    const total  = startW - targetW;
+    const done   = startW - curW;
+    const pct    = total <= 0 ? 100 : Math.max(0, Math.min(100, Math.round((done / total) * 100)));
+    const remain = Math.max(0, Math.round((curW - targetW) * 10) / 10);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressPct').textContent  = pct + '%';
+    document.getElementById('progressStart').textContent = startW + 'kg';
+    document.getElementById('progressGoal').textContent  = targetW + 'kg';
+    document.getElementById('targetRemaining').textContent =
+      remain === 0 ? '🎉 目標達成！' : `あと ${remain} kg`;
+  } else {
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('targetRemaining').textContent = '設定してください';
+  }
+}
+
+// ── Header date ───────────────────────────────────────
+function updateHeaderDate() {
+  const d = new Date();
+  const days = ['日', '月', '火', '水', '木', '金', '土'];
+  document.getElementById('headerDate').textContent =
+    `${d.getMonth()+1}/${d.getDate()}（${days[d.getDay()]}）`;
+}
+
+// ── Record ────────────────────────────────────────────
+function initRecordForm() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('recDate').value = today;
+}
+
+function addWater(ml) {
+  const el = document.getElementById('recWater');
+  el.value = (parseInt(el.value) || 0) + ml;
+}
+
+document.getElementById('recWeight').addEventListener('input', updateBMIPreview);
+
+function updateBMIPreview() {
+  const w = parseFloat(document.getElementById('recWeight').value);
+  const h = parseFloat(loadData().profile.height);
+  const bmi = calcBMI(w, h);
+  const el = document.getElementById('bmiPreview');
+  if (bmi) {
+    const bl = bmiLabel(bmi);
+    el.textContent = `BMI: ${bmi}（${bl.text}）`;
+    el.style.color = bl.cls === 'bmi-normal' ? '#2e7d32' : '#e65100';
+  } else {
+    el.textContent = h ? '' : '身長を設定するとBMIが計算されます';
+    el.style.color = 'var(--muted)';
+  }
+}
+
+function saveRecord() {
+  const date   = document.getElementById('recDate').value;
+  const weight = parseFloat(document.getElementById('recWeight').value);
+  const fat    = parseFloat(document.getElementById('recFat').value);
+  const water  = parseInt(document.getElementById('recWater').value);
+  const sleep  = parseFloat(document.getElementById('recSleep').value);
+
+  if (!date) { showToast('⚠ 日付を選択してください'); return; }
+  if (!weight && !fat && !water && !sleep) {
+    showToast('⚠ 少なくとも1つ入力してください'); return;
+  }
+
+  const data = loadData();
+  const profile = data.profile;
+  const bmi = calcBMI(weight, profile.height);
+
+  const entry = { date };
+  if (!isNaN(weight)) entry.weight = weight;
+  if (!isNaN(fat))    entry.fat    = fat;
+  if (!isNaN(water))  entry.water  = water;
+  if (!isNaN(sleep))  entry.sleep  = sleep;
+  if (bmi !== null)   entry.bmi    = bmi;
+
+  // Replace existing entry for same date
+  const idx = data.entries.findIndex(e => e.date === date);
+  if (idx >= 0) data.entries[idx] = entry;
+  else data.entries.push(entry);
+
+  saveData(data);
+  showToast('✓ 記録しました！');
+  clearRecordForm();
+  switchTab('summary');
+}
+
+function clearRecordForm() {
+  ['recWeight', 'recFat', 'recWater', 'recSleep'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('bmiPreview').textContent = '';
+}
+
+// ── History ───────────────────────────────────────────
+function renderHistory() {
+  const data = loadData();
+  const sorted = [...data.entries].sort((a, b) => b.date.localeCompare(a.date));
+  const el = document.getElementById('historyList');
+
+  if (!sorted.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">記録がありません</div></div>`;
+    return;
+  }
+
+  el.innerHTML = sorted.map(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `
+    <div class="history-item">
+      <div class="history-date">
+        <div class="month">${months[d.getMonth()]}</div>
+        <div class="day">${d.getDate()}</div>
+      </div>
+      <div class="history-metrics">
+        ${e.weight !== undefined ? `<div class="hm"><div class="hm-val">${e.weight}<small style="font-size:11px">kg</small></div><div class="hm-lbl">体重</div></div>` : ''}
+        ${e.fat    !== undefined ? `<div class="hm"><div class="hm-val">${e.fat}<small style="font-size:11px">%</small></div><div class="hm-lbl">体脂肪</div></div>` : ''}
+        ${e.bmi    !== undefined ? `<div class="hm"><div class="hm-val">${e.bmi}</div><div class="hm-lbl">BMI</div></div>` : ''}
+        ${e.water  !== undefined ? `<div class="hm"><div class="hm-val">${e.water}<small style="font-size:11px">ml</small></div><div class="hm-lbl">水分</div></div>` : ''}
+        ${e.sleep  !== undefined ? `<div class="hm"><div class="hm-val">${e.sleep}<small style="font-size:11px">h</small></div><div class="hm-lbl">睡眠</div></div>` : ''}
+      </div>
+      <button class="btn-del" onclick="deleteEntry('${e.date}')" title="削除">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteEntry(date) {
+  if (!confirm(`${date} のデータを削除しますか？`)) return;
+  const data = loadData();
+  data.entries = data.entries.filter(e => e.date !== date);
+  saveData(data);
+  renderHistory();
+  showToast('削除しました');
+}
+
+// ── Graphs ────────────────────────────────────────────
+let charts = {};
+
+function renderGraphs() {
+  const data   = loadData();
+  const sorted = [...data.entries].sort((a, b) => a.date.localeCompare(b.date));
+  const last30 = sorted.slice(-30);
+  const labels = last30.map(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  });
+
+  const cfg = (field, color, label, targetLine) => ({
+    labels,
+    datasets: [{
+      label,
+      data: last30.map(e => e[field] ?? null),
+      borderColor: color,
+      backgroundColor: color + '18',
+      borderWidth: 2.5,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      pointBackgroundColor: color,
+      fill: true,
+      tension: 0.4,
+      spanGaps: true,
+    },
+    ...(targetLine ? [{
+      label: '目標',
+      data: last30.map(() => targetLine),
+      borderColor: '#ff6584',
+      borderWidth: 1.5,
+      borderDash: [6, 4],
+      pointRadius: 0,
+      fill: false,
+      tension: 0,
+    }] : [])
+    ],
+  });
+
+  const opts = (unit) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#f0f0f8' }, ticks: { font: { size: 11 }, maxTicksLimit: 10 } },
+      y: { grid: { color: '#f0f0f8' }, ticks: { font: { size: 11 },
+        callback: v => v + unit } },
+    },
+  });
+
+  const target = parseFloat(data.profile.targetWeight);
+
+  const makeChart = (id, field, color, label, unit, tgt) => {
+    if (charts[id]) charts[id].destroy();
+    const ctx = document.getElementById(id).getContext('2d');
+    charts[id] = new Chart(ctx, {
+      type: 'line',
+      data: cfg(field, color, label, tgt || null),
+      options: opts(unit),
+    });
+  };
+
+  makeChart('chartWeight', 'weight', '#6c63ff', '体重', 'kg', target);
+  makeChart('chartFat',    'fat',    '#ff6584', '体脂肪率', '%');
+  makeChart('chartWater',  'water',  '#4fc3f7', '水分摂取量', 'ml');
+  makeChart('chartSleep',  'sleep',  '#43c09f', '睡眠時間', 'h');
+}
+
+// ── Settings ──────────────────────────────────────────
+function loadSettingsForm() {
+  const { profile } = loadData();
+  document.getElementById('setName').value         = profile.name         || '';
+  document.getElementById('setHeight').value       = profile.height       || '';
+  document.getElementById('setTarget').value       = profile.targetWeight || '';
+  document.getElementById('setStartWeight').value  = profile.startWeight  || '';
+}
+
+function saveSettings() {
+  const data = loadData();
+  data.profile.name         = document.getElementById('setName').value.trim();
+  data.profile.height       = parseFloat(document.getElementById('setHeight').value)      || null;
+  data.profile.targetWeight = parseFloat(document.getElementById('setTarget').value)      || null;
+  data.profile.startWeight  = parseFloat(document.getElementById('setStartWeight').value) || null;
+  saveData(data);
+  showToast('✓ 設定を保存しました');
+}
+
+function clearAllData() {
+  if (!confirm('全データを削除します。この操作は取り消せません。よろしいですか？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  showToast('データを削除しました');
+  renderSummary();
+}
+
+// ── Init ──────────────────────────────────────────────
+updateHeaderDate();
+initRecordForm();
+renderSummary();
+</script>
+</body>
+</html>
