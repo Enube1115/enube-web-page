@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ PK SHOOTOUT</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:radial-gradient(ellipse at 50% 0%,#0a1528 0%,#050810 100%);
+  color:#fff;
+  font-family:'Arial Black',Impact,sans-serif;
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100vh;padding:14px 8px;gap:10px;
+  user-select:none;
+}
+h1{
+  font-size:clamp(1.4rem,5vw,2.4rem);
+  letter-spacing:5px;
+  background:linear-gradient(120deg,#fff 0%,#7fff90 45%,#00ff88 70%,#fff 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 18px rgba(0,255,120,.45));
+}
+/* ── SCOREBOARD ── */
+#sb{
+  background:rgba(0,0,0,.6);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;padding:12px 22px;
+  display:flex;align-items:center;gap:22px;
+  backdrop-filter:blur(20px);
+  box-shadow:0 4px 28px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.tb{display:flex;flex-direction:column;align-items:center;gap:5px}
+.tn{font-size:.72rem;letter-spacing:3px;color:rgba(255,255,255,.45);font-weight:normal}
+.sn{font-size:2.6rem;font-weight:900;line-height:1;text-shadow:0 0 18px rgba(255,255,255,.35)}
+.sn.p{color:#4af}.sn.c{color:#f55}
+.dr{display:flex;gap:5px}
+.dot{
+  width:10px;height:10px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.22);
+  transition:all .3s ease;background:rgba(255,255,255,.08);
+}
+.dot.w{background:#00ff88;border-color:#00ff88;box-shadow:0 0 6px #00ff88}
+.dot.l{background:#ff3333;border-color:#ff3333}
+.vs{font-size:1.1rem;color:rgba(255,255,255,.28);letter-spacing:2px}
+/* ── CANVAS ── */
+#cw{
+  border-radius:14px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.07);
+  box-shadow:0 0 50px rgba(0,180,60,.12),0 18px 45px rgba(0,0,0,.6);
+}
+canvas{display:block;max-width:100%}
+/* ── INSTRUCTION ── */
+#ins{
+  font-size:clamp(.85rem,3vw,1.15rem);
+  letter-spacing:1px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  text-align:center;transition:color .3s;
+}
+#ins.k{color:#f0c030;text-shadow:0 0 16px rgba(240,192,48,.5)}
+#ins.g{color:#3a9fff;text-shadow:0 0 16px rgba(58,159,255,.5)}
+/* ── BUTTONS ── */
+#ba{display:flex;gap:10px}
+.db{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;
+  width:98px;height:68px;
+  background:rgba(255,255,255,.06);
+  border:1.5px solid rgba(255,255,255,.18);
+  border-radius:13px;color:#fff;
+  font-family:'Arial Black',sans-serif;
+  font-size:.72rem;letter-spacing:1.5px;
+  cursor:pointer;transition:all .12s ease;outline:none;
+}
+.db .ar{font-size:1.3rem;line-height:1}
+.db:hover:not([disabled]){
+  background:rgba(255,255,255,.18);
+  border-color:rgba(255,255,255,.6);
+  transform:translateY(-4px) scale(1.05);
+  box-shadow:0 10px 28px rgba(255,255,255,.1);
+}
+.db:active:not([disabled]){transform:translateY(0) scale(.97)}
+.db[disabled]{opacity:.3;cursor:default}
+/* ── RESULT ── */
+#ra{height:52px;display:flex;align-items:center;justify-content:center}
+.rt{
+  font-size:clamp(1.3rem,5vw,2rem);
+  font-weight:900;letter-spacing:3px;
+  animation:pop .4s cubic-bezier(.175,.885,.32,1.275) forwards;
+}
+.rt.g{color:#00ff88;text-shadow:0 0 28px rgba(0,255,136,.8),0 0 55px rgba(0,255,136,.35)}
+.rt.m{color:#ff3333;text-shadow:0 0 28px rgba(255,51,51,.8)}
+.rt.s{color:#3a9fff;text-shadow:0 0 28px rgba(58,159,255,.8)}
+@keyframes pop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+/* ── NEXT BTN ── */
+#nb{
+  padding:10px 34px;
+  background:linear-gradient(135deg,#00aa55,#00ff88);
+  border:none;border-radius:28px;color:#fff;
+  font-family:'Arial Black',sans-serif;
+  font-size:1rem;letter-spacing:2px;cursor:pointer;
+  box-shadow:0 4px 18px rgba(0,200,100,.4);
+  transition:all .15s ease;
+}
+#nb:hover{transform:scale(1.06);box-shadow:0 6px 28px rgba(0,200,100,.6)}
+/* ── GAME OVER ── */
+#go{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.82);
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(12px);z-index:100;
+}
+.gc{
+  background:linear-gradient(135deg,rgba(15,15,40,.97),rgba(8,25,12,.97));
+  border:2px solid rgba(255,255,255,.13);
+  border-radius:22px;padding:36px 52px;
+  text-align:center;
+  box-shadow:0 20px 70px rgba(0,0,0,.8);
+  max-width:360px;width:92%;
+  animation:fadeUp .5s ease forwards;
+}
+@keyframes fadeUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.gt{font-size:2.6rem;letter-spacing:4px;margin-bottom:6px}
+.gs{font-size:4.8rem;font-weight:900;margin:14px 0;color:#f0c030;text-shadow:0 0 28px rgba(240,192,48,.6)}
+.gm{font-size:.95rem;color:rgba(255,255,255,.55);font-weight:normal;margin-bottom:24px;letter-spacing:1px}
+.rb{
+  padding:13px 44px;
+  background:linear-gradient(135deg,#ff6600,#ff9900);
+  border:none;border-radius:28px;color:#fff;
+  font-family:'Arial Black',sans-serif;
+  font-size:1.05rem;letter-spacing:2px;cursor:pointer;
+  box-shadow:0 4px 18px rgba(255,100,0,.5);
+  transition:all .15s ease;
+}
+.rb:hover{transform:scale(1.06);box-shadow:0 6px 28px rgba(255,100,0,.7)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<h1>⚽ PK SHOOTOUT</h1>
+
+<div id="sb">
+  <div class="tb">
+    <div class="tn">YOU</div>
+    <div class="sn p" id="ps">0</div>
+    <div class="dr" id="pd"></div>
+  </div>
+  <div class="vs">VS</div>
+  <div class="tb">
+    <div class="tn">CPU</div>
+    <div class="sn c" id="cs">0</div>
+    <div class="dr" id="cd"></div>
+  </div>
+</div>
+
+<div id="cw"><canvas id="gc" width="520" height="320"></canvas></div>
+
+<div id="ins" class="k"> </div>
+
+<div id="ba">
+  <button class="db" onclick="choose('left')"><span class="ar">◀</span><span>LEFT</span></button>
+  <button class="db" onclick="choose('center')"><span class="ar">▲</span><span>CENTER</span></button>
+  <button class="db" onclick="choose('right')"><span class="ar">▶</span><span>RIGHT</span></button>
+</div>
+
+<div id="ra"></div>
+<button id="nb" class="hidden" onclick="nextTurn()">NEXT KICK ▶</button>
+
+<div id="go" class="hidden">
+  <div class="gc">
+    <div class="gt" id="gt"></div>
+    <div class="gs" id="gsc"></div>
+    <div class="gm" id="gm"></div>
+    <button class="rb" onclick="restart()">もう一度プレイ ↺</button>
+  </div>
+</div>
+
+<script>
+const CV = document.getElementById('gc');
+const cx = CV.getContext('2d');
+const W = CV.width, H = CV.height;
+
+// Goal geometry
+const GL = { x: W*.215, y:6, w: W*.57, h: H*.33 };
+
+// Game state
+let G, A;
+
+function initG() {
+  G = { turn:0, pG:0, cG:0, pR:[], cR:[], phase:'choose', pC:null, cC:null };
+}
+
+function initA() {
+  A = {
+    t:0, bx:W/2, by:H-52, btx:W/2, bty:80,
+    kx:W/2, ktx:W/2, spin:0,
+    startTs:0, dur:880,
+    goal:false, pts:[],
+  };
+}
+
+// Helpers
+const pk = () => G.turn % 2 === 0;
+const dx = d => d==='left'?W*.23:d==='center'?W*.5:W*.77;
+const lerp = (a,b,t) => a+(b-a)*t;
+const ease = t => t<.5?2*t*t:-1+(4-2*t)*t;
+function cpuPick() {
+  const r = Math.random();
+  return r<.33?'left':r<.67?'center':'right';
+}
+
+// ── DRAW FIELD ──
+function drawField() {
+  const g = cx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#0b3318'); g.addColorStop(.5,'#175526'); g.addColorStop(1,'#0e3b1c');
+  cx.fillStyle=g; cx.fillRect(0,0,W,H);
+
+  // stripes
+  cx.globalAlpha=.07; cx.fillStyle='#fff';
+  for(let i=0;i<7;i+=2) cx.fillRect(i*(W/7),0,W/7,H);
+  cx.globalAlpha=1;
+
+  // penalty box
+  cx.strokeStyle='rgba(255,255,255,.2)'; cx.lineWidth=1.5;
+  const bw=W*.62,bh=H*.52,bx=(W-bw)/2;
+  cx.strokeRect(bx,4,bw,bh);
+
+  // penalty spot
+  cx.fillStyle='rgba(255,255,255,.35)';
+  cx.beginPath(); cx.arc(W/2,H*.74,3,0,Math.PI*2); cx.fill();
+
+  // bottom line
+  cx.strokeStyle='rgba(255,255,255,.22)'; cx.lineWidth=2;
+  cx.beginPath(); cx.moveTo(0,H-1); cx.lineTo(W,H-1); cx.stroke();
+}
+
+// ── DRAW GOAL ──
+function drawGoal() {
+  const {x,y,w,h} = GL;
+
+  // net
+  cx.strokeStyle='rgba(180,210,185,.22)'; cx.lineWidth=1;
+  for(let ly=y+14;ly<y+h;ly+=15){
+    cx.beginPath(); cx.moveTo(x+5,ly); cx.lineTo(x+w-5,ly); cx.stroke();
+  }
+  for(let lx=x+17;lx<x+w;lx+=17){
+    cx.beginPath(); cx.moveTo(lx,y+2); cx.lineTo(lx,y+h); cx.stroke();
+  }
+
+  // posts
+  cx.strokeStyle='#fff'; cx.lineWidth=5;
+  cx.shadowColor='rgba(255,255,255,.7)'; cx.shadowBlur=12;
+  cx.lineCap='round'; cx.lineJoin='round';
+  cx.beginPath();
+  cx.moveTo(x,y+h); cx.lineTo(x,y); cx.lineTo(x+w,y); cx.lineTo(x+w,y+h);
+  cx.stroke();
+  cx.shadowBlur=0;
+}
+
+// ── DRAW KEEPER ──
+function drawKeeper(x, isPlayer, pose) {
+  const ky = GL.y + GL.h - 8;
+  const col = isPlayer ? '#1a7fff' : '#ff2828';
+  const glv = isPlayer ? '#88ccff' : '#ffaa00';
+  const lbl = isPlayer ? 'YOU' : 'CPU';
+
+  cx.save();
+  cx.translate(x, ky);
+  if(pose==='left') cx.rotate(-.3);
+  else if(pose==='right') cx.rotate(.3);
+
+  cx.fillStyle = col;
+  cx.shadowColor = col; cx.shadowBlur = 16;
+
+  // torso
+  cx.fillRect(-11,-44,22,26);
+  // head
+  cx.beginPath(); cx.arc(0,-54,10,0,Math.PI*2); cx.fill();
+  // arms spread
+  cx.fillRect(-24,-44,13,8);
+  cx.fillRect(11,-44,13,8);
+  // legs
+  cx.fillRect(-10,-18,8,18); cx.fillRect(2,-18,8,18);
+
+  cx.shadowBlur=0;
+
+  // gloves
+  cx.fillStyle=glv;
+  cx.beginPath(); cx.arc(-26,-40,7,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.arc(26,-40,7,0,Math.PI*2); cx.fill();
+
+  cx.restore();
+
+  // label
+  cx.fillStyle='rgba(255,255,255,.75)'; cx.font='bold 10px Arial';
+  cx.textAlign='center'; cx.fillText(lbl, x, ky-68);
+}
+
+// ── DRAW CPU KICKER ──
+function drawKicker() {
+  const x=W/2+5, y=H-72;
+  cx.fillStyle='#ff2828'; cx.shadowColor='#ff2828'; cx.shadowBlur=14;
+  cx.fillRect(x-10,y,20,24);
+  cx.beginPath(); cx.arc(x,y-10,10,0,Math.PI*2); cx.fill();
+  cx.fillRect(x-18,y+2,8,7); cx.fillRect(x+10,y+2,8,7);
+  cx.fillRect(x-9,y+24,7,16); cx.fillRect(x+2,y+24,7,16);
+  cx.fillRect(x+8,y+26,20,7); // kicking leg
+  cx.shadowBlur=0;
+  cx.fillStyle='rgba(255,255,255,.7)'; cx.font='bold 10px Arial';
+  cx.textAlign='center'; cx.fillText('CPU', x+5, y-22);
+}
+
+// ── DRAW BALL ──
+function drawBall(x,y,spin,sc=1) {
+  const r=13*sc;
+  // shadow
+  cx.fillStyle='rgba(0,0,0,.32)';
+  cx.beginPath(); cx.ellipse(x+2,y+r*.85,r*.65,r*.22,0,0,Math.PI*2); cx.fill();
+
+  cx.save(); cx.translate(x,y); cx.rotate(spin);
+  // ball
+  cx.fillStyle='#f5f5f5'; cx.shadowColor='rgba(255,255,255,.4)'; cx.shadowBlur=6;
+  cx.beginPath(); cx.arc(0,0,r,0,Math.PI*2); cx.fill(); cx.shadowBlur=0;
+  // patches
+  cx.fillStyle='#1a1a1a';
+  [[0,-r*.45],[r*.38,-r*.24],[-r*.38,-r*.24],[r*.24,r*.33],[-r*.24,r*.33]].forEach(([px,py])=>{
+    cx.beginPath(); cx.arc(px,py,r*.27,0,Math.PI*2); cx.fill();
+  });
+  cx.restore();
+}
+
+// ── PARTICLES ──
+function spawnGoalFX(bx,by) {
+  const cols=['#f0c030','#00ff88','#fff','#ff8800','#ffff44'];
+  for(let i=0;i<55;i++){
+    const a=Math.random()*Math.PI*2, spd=2+Math.random()*8;
+    A.pts.push({
+      x:bx,y:by,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-2.5,
+      r:2+Math.random()*5,
+      col:cols[Math.floor(Math.random()*cols.length)],
+      life:.9+Math.random()*.1
+    });
+  }
+}
+
+function drawParticles() {
+  A.pts = A.pts.filter(p=>p.life>0);
+  for(const p of A.pts){
+    cx.globalAlpha=p.life;
+    cx.fillStyle=p.col;
+    cx.beginPath(); cx.arc(p.x,p.y,p.r,0,Math.PI*2); cx.fill();
+    p.x+=p.vx; p.y+=p.vy; p.vy+=.28; p.life-=.024;
+  }
+  cx.globalAlpha=1;
+}
+
+// ── RENDER LOOP ──
+function render(ts) {
+  cx.clearRect(0,0,W,H);
+  drawField(); drawGoal();
+
+  const kicking = pk();
+
+  if(G.phase==='choose'||G.phase==='result') {
+    if(kicking) {
+      drawKeeper(W/2,false,null);
+      drawBall(W/2,H-52,0);
+    } else {
+      drawKeeper(W/2,true,null);
+      drawKicker();
+      drawBall(W/2,H-52,0);
+    }
+    drawParticles();
+  } else if(G.phase==='anim') {
+    const elapsed = ts - A.startTs;
+    const raw = Math.min(elapsed/A.dur,1);
+    const t = ease(raw);
+    const kt = ease(Math.min(raw*1.7,1));
+
+    const bx = lerp(A.bx,A.btx,t);
+    const by = lerp(A.by,A.bty,t);
+    const kx = lerp(A.kx,A.ktx,kt);
+
+    A.spin += .14;
+
+    let pose = null;
+    if(A.ktx<W*.38) pose='left';
+    else if(A.ktx>W*.62) pose='right';
+
+    if(kicking) {
+      drawKeeper(kx,false,pose);
+    } else {
+      drawKeeper(kx,true,pose);
+      if(raw<.28) drawKicker();
+    }
+    drawBall(bx,by,A.spin);
+    drawParticles();
+
+    if(raw>=1) { G.phase='result'; onAnimDone(); }
+  }
+
+  requestAnimationFrame(render);
+}
+
+// ── GAME LOGIC ──
+function startTurn() {
+  G.phase='choose'; G.pC=null; G.cC=null;
+  setBtns(true);
+  setResult('');
+  document.getElementById('nb').classList.add('hidden');
+
+  const kicking = pk();
+  const num = Math.floor(G.turn/2)+1;
+  const ins = document.getElementById('ins');
+  if(kicking) {
+    ins.textContent=`第${num}球 ─ あなたはキッカー！どこに蹴る？`;
+    ins.className='k';
+  } else {
+    ins.textContent=`第${num}球 ─ あなたはキーパー！どこに飛ぶ？`;
+    ins.className='g';
+  }
+  updateUI();
+}
+
+function choose(dir) {
+  if(G.phase!=='choose') return;
+  G.pC=dir; G.cC=cpuPick();
+  G.phase='anim';
+  setBtns(false);
+
+  const kicking = pk();
+  const shoot = kicking ? G.pC : G.cC;
+  const dive  = kicking ? G.cC : G.pC;
+
+  A.bx=W/2; A.by=H-52; A.btx=dx(shoot); A.bty=GL.y+GL.h*.38;
+  A.kx=W/2; A.ktx=dx(dive);
+  A.startTs=performance.now(); A.spin=0;
+  A.goal = shoot!==dive;
+}
+
+function onAnimDone() {
+  const kicking = pk();
+  let txt, cls;
+
+  if(kicking) {
+    if(A.goal) {
+      G.pG++; G.pR.push('w');
+      txt='⚽ GOAL!!'; cls='g';
+      spawnGoalFX(A.btx, A.bty);
+    } else {
+      G.pR.push('l');
+      txt='🧤 SAVED!'; cls='m';
+    }
+  } else {
+    if(A.goal) {
+      G.cG++; G.cR.push('l');
+      txt='😱 CONCEDED!'; cls='m';
+    } else {
+      G.cR.push('w');
+      txt='✋ GREAT SAVE!'; cls='s';
+    }
+  }
+
+  setResult(txt,cls);
+  updateUI();
+  G.turn++;
+
+  if(G.turn>=10) setTimeout(showGameOver,1800);
+  else document.getElementById('nb').classList.remove('hidden');
+}
+
+function nextTurn() {
+  document.getElementById('nb').classList.add('hidden');
+  startTurn();
+}
+
+function showGameOver() {
+  document.getElementById('go').classList.remove('hidden');
+  document.getElementById('gsc').textContent=`${G.pG} - ${G.cG}`;
+  const t=document.getElementById('gt');
+  const m=document.getElementById('gm');
+  if(G.pG>G.cG){
+    t.textContent='🏆 YOU WIN!'; t.style.color='#f0c030';
+    m.textContent='見事！PKを制しました！おめでとう！';
+  } else if(G.pG<G.cG){
+    t.textContent='😢 YOU LOSE...'; t.style.color='#ff3333';
+    m.textContent='惜しかった！また挑戦しよう！';
+  } else {
+    t.textContent='🤝 DRAW!'; t.style.color='#3a9fff';
+    m.textContent='互角の戦い！もう一度挑もう！';
+  }
+}
+
+function restart() {
+  document.getElementById('go').classList.add('hidden');
+  initG(); initA(); startTurn();
+}
+
+// ── UI HELPERS ──
+function setBtns(on) {
+  document.querySelectorAll('.db').forEach(b=>b.disabled=!on);
+}
+
+function setResult(txt,cls='') {
+  document.getElementById('ra').innerHTML=
+    txt?`<div class="rt ${cls}">${txt}</div>`:'';
+}
+
+function updateUI() {
+  document.getElementById('ps').textContent=G.pG;
+  document.getElementById('cs').textContent=G.cG;
+  renderDots('pd',G.pR,5);
+  renderDots('cd',G.cR,5);
+}
+
+function renderDots(id,res,tot) {
+  const el=document.getElementById(id);
+  el.innerHTML='';
+  for(let i=0;i<tot;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i<res.length?' '+res[i]:'');
+    el.appendChild(d);
+  }
+}
+
+// ── START ──
+initG(); initA();
+requestAnimationFrame(render);
+startTurn();
+</script>
+</body>
+</html>
