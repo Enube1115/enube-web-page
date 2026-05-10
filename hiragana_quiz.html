@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>50音クイズ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: linear-gradient(135deg, #ffeef8 0%, #fff0f5 50%, #f0f8ff 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 8px 32px rgba(255, 100, 150, 0.15);
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.8rem;
+      color: #ff6b9d;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #bbb;
+      margin-bottom: 24px;
+    }
+
+    /* --- 設定画面 --- */
+    #setup-screen { display: block; }
+    #quiz-screen  { display: none; }
+    #result-screen { display: none; }
+
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #ff6b9d;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .btn-toggle {
+      flex: 1;
+      min-width: 80px;
+      padding: 10px 8px;
+      border: 2px solid #ffd6e8;
+      border-radius: 50px;
+      background: white;
+      color: #ff6b9d;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .btn-toggle.active {
+      background: #ff6b9d;
+      border-color: #ff6b9d;
+      color: white;
+    }
+
+    .btn-toggle:hover:not(.active) {
+      background: #fff0f7;
+    }
+
+    .start-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #ff6b9d, #ff8fb1);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 16px rgba(255, 107, 157, 0.35);
+      margin-top: 8px;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 107, 157, 0.45);
+    }
+
+    .start-btn:active { transform: translateY(0); }
+
+    /* --- クイズ画面 --- */
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+      color: #aaa;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #ff6b9d;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: #fde8f3;
+      border-radius: 99px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6b9d, #ff8fb1);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+
+    .mode-badge {
+      display: inline-block;
+      background: #fde8f3;
+      color: #ff6b9d;
+      border-radius: 50px;
+      padding: 4px 14px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: 0.05em;
+    }
+
+    .question-card {
+      background: linear-gradient(135deg, #fff5fa, #fff0f7);
+      border-radius: 20px;
+      padding: 28px 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      border: 1.5px solid #ffd6e8;
+    }
+
+    .question-label {
+      font-size: 0.8rem;
+      color: #ccc;
+      margin-bottom: 8px;
+    }
+
+    .question-char {
+      font-size: 4rem;
+      color: #ff6b9d;
+      line-height: 1.1;
+    }
+
+    .question-hint {
+      font-size: 0.8rem;
+      color: #ccc;
+      margin-top: 6px;
+    }
+
+    .choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .choice-btn {
+      padding: 16px 8px;
+      border: 2px solid #ffd6e8;
+      border-radius: 16px;
+      background: white;
+      color: #555;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .choice-btn:hover:not(:disabled) {
+      border-color: #ff6b9d;
+      background: #fff5fa;
+      color: #ff6b9d;
+      transform: translateY(-2px);
+    }
+
+    .choice-btn.correct {
+      background: #d4f7e8;
+      border-color: #4caf82;
+      color: #2e7d55;
+    }
+
+    .choice-btn.wrong {
+      background: #fde8e8;
+      border-color: #e57373;
+      color: #c62828;
+    }
+
+    .choice-btn:disabled { cursor: default; transform: none; }
+
+    .feedback {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      min-height: 28px;
+      transition: opacity 0.3s;
+    }
+
+    .feedback.correct { color: #4caf82; }
+    .feedback.wrong   { color: #e57373; }
+
+    .next-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #ff6b9d, #ff8fb1);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 14px rgba(255,107,157,0.3);
+      display: none;
+    }
+
+    .next-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(255,107,157,0.4);
+    }
+
+    /* --- 結果画面 --- */
+    .result-icon {
+      text-align: center;
+      font-size: 3.5rem;
+      margin-bottom: 8px;
+    }
+
+    .result-title {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ff6b9d;
+      margin-bottom: 20px;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .result-card {
+      background: #fff5fa;
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      border: 1.5px solid #ffd6e8;
+    }
+
+    .result-card .label {
+      font-size: 0.78rem;
+      color: #ccc;
+      margin-bottom: 4px;
+    }
+
+    .result-card .value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #ff6b9d;
+    }
+
+    .result-card .unit {
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+
+    .result-message {
+      text-align: center;
+      font-size: 0.95rem;
+      color: #888;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-retry, .btn-home {
+      flex: 1;
+      padding: 14px;
+      border-radius: 50px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-retry {
+      background: linear-gradient(135deg, #ff6b9d, #ff8fb1);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 14px rgba(255,107,157,0.3);
+    }
+
+    .btn-retry:hover { transform: translateY(-2px); }
+
+    .btn-home {
+      background: white;
+      color: #ff6b9d;
+      border: 2px solid #ffd6e8;
+    }
+
+    .btn-home:hover { background: #fff5fa; }
+
+    .streak-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #fff3cd;
+      color: #d4a017;
+      border-radius: 50px;
+      padding: 4px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 設定画面 -->
+  <div id="setup-screen">
+    <h1>50音クイズ</h1>
+    <p class="subtitle">ひらがな・カタカナ・ローマ字を練習しよう！</p>
+
+    <div class="section-label">モード</div>
+    <div class="btn-group" id="mode-group">
+      <button class="btn-toggle active" data-val="hiragana">ひらがな</button>
+      <button class="btn-toggle" data-val="katakana">カタカナ</button>
+      <button class="btn-toggle" data-val="romaji">ローマ字</button>
+    </div>
+
+    <div class="section-label">難易度</div>
+    <div class="btn-group" id="diff-group">
+      <button class="btn-toggle active" data-val="easy">かんたん</button>
+      <button class="btn-toggle" data-val="normal">ふつう</button>
+      <button class="btn-toggle" data-val="hard">むずかしい</button>
+    </div>
+
+    <div class="section-label">問題数</div>
+    <div class="btn-group" id="count-group">
+      <button class="btn-toggle" data-val="10">10問</button>
+      <button class="btn-toggle active" data-val="20">20問</button>
+      <button class="btn-toggle" data-val="46">全部</button>
+    </div>
+
+    <button class="start-btn" onclick="startQuiz()">スタート！</button>
+  </div>
+
+  <!-- クイズ画面 -->
+  <div id="quiz-screen">
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value" id="stat-correct">0</div>
+        <div>正解</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-streak">0</div>
+        <div>連続</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-accuracy">-</div>
+        <div>正答率</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-num">1 / 20</div>
+        <div>問目</div>
+      </div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+
+    <div class="mode-badge" id="mode-badge">ひらがな → ローマ字</div>
+
+    <div class="question-card">
+      <div class="question-label">これは何と読む？</div>
+      <div class="question-char" id="question-char">あ</div>
+      <div class="question-hint" id="question-hint"></div>
+    </div>
+
+    <div class="choices" id="choices"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQuestion()">つぎへ →</button>
+  </div>
+
+  <!-- 結果画面 -->
+  <div id="result-screen">
+    <div class="result-icon" id="result-icon">🌸</div>
+    <div class="result-title" id="result-title">クイズ終了！</div>
+    <div class="result-grid">
+      <div class="result-card">
+        <div class="label">正解数</div>
+        <div class="value" id="r-correct">0</div>
+        <div class="unit" id="r-total">/ 20問</div>
+      </div>
+      <div class="result-card">
+        <div class="label">正答率</div>
+        <div class="value" id="r-accuracy">0%</div>
+      </div>
+      <div class="result-card">
+        <div class="label">最大連続正解</div>
+        <div class="value" id="r-streak">0</div>
+        <div class="unit">連続</div>
+      </div>
+      <div class="result-card">
+        <div class="label">難易度</div>
+        <div class="value" id="r-diff" style="font-size:1rem;margin-top:4px;">ふつう</div>
+      </div>
+    </div>
+    <div class="result-message" id="result-message"></div>
+    <div class="result-actions">
+      <button class="btn-retry" onclick="retryQuiz()">もう一度</button>
+      <button class="btn-home" onclick="goHome()">設定に戻る</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const GOZYUON = [
+    { h:'あ', k:'ア', r:'a'  }, { h:'い', k:'イ', r:'i'  }, { h:'う', k:'ウ', r:'u'  }, { h:'え', k:'エ', r:'e'  }, { h:'お', k:'オ', r:'o'  },
+    { h:'か', k:'カ', r:'ka' }, { h:'き', k:'キ', r:'ki' }, { h:'く', k:'ク', r:'ku' }, { h:'け', k:'ケ', r:'ke' }, { h:'こ', k:'コ', r:'ko' },
+    { h:'さ', k:'サ', r:'sa' }, { h:'し', k:'シ', r:'shi'}, { h:'す', k:'ス', r:'su' }, { h:'せ', k:'セ', r:'se' }, { h:'そ', k:'ソ', r:'so' },
+    { h:'た', k:'タ', r:'ta' }, { h:'ち', k:'チ', r:'chi'}, { h:'つ', k:'ツ', r:'tsu'}, { h:'て', k:'テ', r:'te' }, { h:'と', k:'ト', r:'to' },
+    { h:'な', k:'ナ', r:'na' }, { h:'に', k:'ニ', r:'ni' }, { h:'ぬ', k:'ヌ', r:'nu' }, { h:'ね', k:'ネ', r:'ne' }, { h:'の', k:'ノ', r:'no' },
+    { h:'は', k:'ハ', r:'ha' }, { h:'ひ', k:'ヒ', r:'hi' }, { h:'ふ', k:'フ', r:'fu' }, { h:'へ', k:'ヘ', r:'he' }, { h:'ほ', k:'ホ', r:'ho' },
+    { h:'ま', k:'マ', r:'ma' }, { h:'み', k:'ミ', r:'mi' }, { h:'む', k:'ム', r:'mu' }, { h:'め', k:'メ', r:'me' }, { h:'も', k:'モ', r:'mo' },
+    { h:'や', k:'ヤ', r:'ya' }, { h:'ゆ', k:'ユ', r:'yu' }, { h:'よ', k:'ヨ', r:'yo' },
+    { h:'ら', k:'ラ', r:'ra' }, { h:'り', k:'リ', r:'ri' }, { h:'る', k:'ル', r:'ru' }, { h:'れ', k:'レ', r:'re' }, { h:'ろ', k:'ロ', r:'ro' },
+    { h:'わ', k:'ワ', r:'wa' }, { h:'を', k:'ヲ', r:'wo' }, { h:'ん', k:'ン', r:'n'  },
+  ];
+
+  // 難易度ごとのダミー選択肢の作り方 (行が近いほど難しい)
+  const DIFF_CONFUSION = {
+    easy:   { sameRow: false, sameCol: false },
+    normal: { sameRow: true,  sameCol: false },
+    hard:   { sameRow: true,  sameCol: true  },
+  };
+
+  let mode = 'hiragana';
+  let difficulty = 'easy';
+  let totalCount = 20;
+
+  let questions = [];
+  let currentIndex = 0;
+  let correctCount = 0;
+  let streak = 0;
+  let maxStreak = 0;
+  let answered = false;
+
+  // トグルボタン
+  function initToggles() {
+    ['mode-group','diff-group','count-group'].forEach(id => {
+      document.getElementById(id).querySelectorAll('.btn-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.closest('.btn-group').querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (id === 'mode-group') mode = btn.dataset.val;
+          if (id === 'diff-group') difficulty = btn.dataset.val;
+          if (id === 'count-group') totalCount = parseInt(btn.dataset.val);
+        });
+      });
+    });
+  }
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function getQuestionChar(entry) {
+    if (mode === 'hiragana') return entry.h;
+    if (mode === 'katakana') return entry.k;
+    return entry.r; // ローマ字モード: ローマ字を見てひらがなを答える
+  }
+
+  function getAnswerChar(entry) {
+    if (mode === 'hiragana') return entry.r;
+    if (mode === 'katakana') return entry.r;
+    return entry.h; // ローマ字モード: ひらがなで答える
+  }
+
+  function getHint(entry) {
+    if (mode === 'hiragana') return `カタカナ: ${entry.k}`;
+    if (mode === 'katakana') return `ひらがな: ${entry.h}`;
+    return `カタカナ: ${entry.k}`;
+  }
+
+  function getModeBadge() {
+    if (mode === 'hiragana') return 'ひらがな → ローマ字';
+    if (mode === 'katakana') return 'カタカナ → ローマ字';
+    return 'ローマ字 → ひらがな';
+  }
+
+  function buildQuestion(entry) {
+    const correctAnswer = getAnswerChar(entry);
+    const pool = GOZYUON.filter(e => getAnswerChar(e) !== correctAnswer);
+    let distractors;
+
+    if (difficulty === 'hard') {
+      // 同じ行 or 同じ列の文字を優先
+      const idx = GOZYUON.indexOf(entry);
+      const rowStart = Math.floor(idx / 5) * 5;
+      const sameRow = GOZYUON.slice(rowStart, rowStart + 5).filter(e => e !== entry);
+      const sameCol = GOZYUON.filter((e, i) => i % 5 === idx % 5 && e !== entry);
+      const closePool = shuffle([...new Set([...sameRow, ...sameCol])]).slice(0, 3);
+      const remaining = shuffle(pool.filter(e => !closePool.includes(e)));
+      distractors = [...closePool, ...remaining].slice(0, 3);
+    } else if (difficulty === 'normal') {
+      const idx = GOZYUON.indexOf(entry);
+      const rowStart = Math.floor(idx / 5) * 5;
+      const sameRow = GOZYUON.slice(rowStart, rowStart + 5).filter(e => e !== entry);
+      const close = shuffle(sameRow).slice(0, 2);
+      const far = shuffle(pool.filter(e => !close.includes(e))).slice(0, 1);
+      distractors = shuffle([...close, ...far]);
+    } else {
+      distractors = shuffle(pool).slice(0, 3);
+    }
+
+    const choices = shuffle([correctAnswer, ...distractors.map(e => getAnswerChar(e))]);
+    return { entry, correctAnswer, choices };
+  }
+
+  function startQuiz() {
+    const pool = shuffle(GOZYUON).slice(0, Math.min(totalCount, GOZYUON.length));
+    questions = pool.map(entry => buildQuestion(entry));
+    currentIndex = 0;
+    correctCount = 0;
+    streak = 0;
+    maxStreak = 0;
+    answered = false;
+
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('quiz-screen').style.display = 'block';
+    document.getElementById('result-screen').style.display = 'none';
+    document.getElementById('mode-badge').textContent = getModeBadge();
+
+    renderQuestion();
+  }
+
+  function renderQuestion() {
+    if (currentIndex >= questions.length) { showResult(); return; }
+    answered = false;
+    const q = questions[currentIndex];
+
+    document.getElementById('question-char').textContent = getQuestionChar(q.entry);
+    document.getElementById('question-hint').textContent = '';
+    document.getElementById('feedback').textContent = '';
+    document.getElementById('feedback').className = 'feedback';
+    document.getElementById('next-btn').style.display = 'none';
+
+    // stats
+    document.getElementById('stat-correct').textContent = correctCount;
+    document.getElementById('stat-streak').textContent = streak;
+    const answered_count = currentIndex;
+    document.getElementById('stat-accuracy').textContent =
+      answered_count === 0 ? '-' : Math.round(correctCount / answered_count * 100) + '%';
+    document.getElementById('stat-num').textContent = `${currentIndex + 1} / ${questions.length}`;
+
+    // progress
+    document.getElementById('progress-fill').style.width = (currentIndex / questions.length * 100) + '%';
+
+    // choices
+    const choicesEl = document.getElementById('choices');
+    choicesEl.innerHTML = '';
+    q.choices.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.textContent = c;
+      btn.onclick = () => selectAnswer(c, q.correctAnswer, btn);
+      choicesEl.appendChild(btn);
+    });
+  }
+
+  function selectAnswer(selected, correct, clickedBtn) {
+    if (answered) return;
+    answered = true;
+
+    const choicesEl = document.getElementById('choices');
+    const allBtns = choicesEl.querySelectorAll('.choice-btn');
+    allBtns.forEach(btn => {
+      btn.disabled = true;
+      if (btn.textContent === correct) btn.classList.add('correct');
+    });
+
+    const feedback = document.getElementById('feedback');
+
+    if (selected === correct) {
+      correctCount++;
+      streak++;
+      maxStreak = Math.max(maxStreak, streak);
+      feedback.textContent = streak >= 3 ? `正解！🔥 ${streak}連続！` : '正解！✨';
+      feedback.className = 'feedback correct';
+    } else {
+      clickedBtn.classList.add('wrong');
+      streak = 0;
+      feedback.textContent = `残念… 正解は「${correct}」`;
+      feedback.className = 'feedback wrong';
+    }
+
+    // 難易度ヒント表示
+    document.getElementById('question-hint').textContent =
+      difficulty !== 'easy' ? getHint(questions[currentIndex].entry) : '';
+
+    // stats 更新
+    document.getElementById('stat-correct').textContent = correctCount;
+    document.getElementById('stat-streak').textContent = streak;
+    const done = currentIndex + 1;
+    document.getElementById('stat-accuracy').textContent =
+      Math.round(correctCount / done * 100) + '%';
+
+    document.getElementById('next-btn').style.display = 'block';
+  }
+
+  function nextQuestion() {
+    currentIndex++;
+    renderQuestion();
+  }
+
+  function showResult() {
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+
+    const total = questions.length;
+    const pct = Math.round(correctCount / total * 100);
+
+    document.getElementById('r-correct').textContent = correctCount;
+    document.getElementById('r-total').textContent = `/ ${total}問`;
+    document.getElementById('r-accuracy').textContent = pct + '%';
+    document.getElementById('r-streak').textContent = maxStreak;
+    document.getElementById('r-diff').textContent =
+      difficulty === 'easy' ? 'かんたん' : difficulty === 'normal' ? 'ふつう' : 'むずかしい';
+
+    let icon, msg;
+    if (pct === 100) { icon = '🏆'; msg = '満点！完璧です！すごい！'; }
+    else if (pct >= 80) { icon = '🌸'; msg = 'よくできました！あと少しで満点！'; }
+    else if (pct >= 60) { icon = '😊'; msg = 'まあまあ！もう一度チャレンジしてみよう！'; }
+    else if (pct >= 40) { icon = '📖'; msg = 'もっと練習が必要かも。一緒にがんばろう！'; }
+    else { icon = '🌱'; msg = 'まだまだこれから！繰り返し練習しよう！'; }
+
+    document.getElementById('result-icon').textContent = icon;
+    document.getElementById('result-title').textContent = `${icon} クイズ終了！`;
+    document.getElementById('result-message').textContent = msg +
+      (maxStreak >= 5 ? `\n最大${maxStreak}連続正解もすごい！🔥` : '');
+  }
+
+  function retryQuiz() {
+    document.getElementById('result-screen').style.display = 'none';
+    startQuiz();
+  }
+
+  function goHome() {
+    document.getElementById('result-screen').style.display = 'none';
+    document.getElementById('setup-screen').style.display = 'block';
+  }
+
+  initToggles();
+</script>
+</body>
+</html>
