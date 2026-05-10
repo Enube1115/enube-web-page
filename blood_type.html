@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>血液型診断</title>
+<style>
+  :root {
+    --bg: #0c0c14;
+    --bg2: #13131e;
+    --surface: rgba(255,255,255,0.05);
+    --surface2: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.1);
+    --text: #eeeef8;
+    --text-sub: #8888b0;
+    --radius: 18px;
+    --tr: 0.3s cubic-bezier(.4,0,.2,1);
+
+    --a-col: #4a8fe8;
+    --a-bg: rgba(74,143,232,0.12);
+    --a-glow: rgba(74,143,232,0.35);
+    --b-col: #e85c5c;
+    --b-bg: rgba(232,92,92,0.12);
+    --b-glow: rgba(232,92,92,0.35);
+    --o-col: #3ecf90;
+    --o-bg: rgba(62,207,144,0.12);
+    --o-glow: rgba(62,207,144,0.35);
+    --ab-col: #a05ce8;
+    --ab-bg: rgba(160,92,232,0.12);
+    --ab-glow: rgba(160,92,232,0.35);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG blobs */
+  .blobs {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  }
+  .blob {
+    position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.12;
+    animation: drift 14s ease-in-out infinite;
+  }
+  .blob1 { width:500px;height:500px;background:var(--a-col);top:-150px;left:-150px;animation-delay:0s; }
+  .blob2 { width:400px;height:400px;background:var(--ab-col);bottom:-100px;right:-100px;animation-delay:-5s; }
+  .blob3 { width:350px;height:350px;background:var(--o-col);top:50%;left:60%;animation-delay:-9s; }
+  @keyframes drift {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(40px,-30px) scale(1.06); }
+    66% { transform: translate(-25px,25px) scale(0.94); }
+  }
+
+  /* Layout */
+  .wrap {
+    position: relative; z-index: 1;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+
+  /* Header */
+  .site-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .site-header .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-sub);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 5px 16px;
+    margin-bottom: 18px;
+    background: var(--surface);
+    backdrop-filter: blur(10px);
+  }
+  .site-header h1 {
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 20%, #a05ce8 60%, #4a8fe8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+  .site-header p {
+    color: var(--text-sub);
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+
+  /* Section titles */
+  .section-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-sub);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── BLOOD TYPE PICKER ── */
+  .type-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 36px;
+  }
+
+  .type-card {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 12px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    transition: transform var(--tr), border-color var(--tr), box-shadow var(--tr), background var(--tr);
+    user-select: none;
+  }
+  .type-card:hover { transform: translateY(-4px); }
+
+  .type-card[data-type="A"]  { --col: var(--a-col); --bg-c: var(--a-bg); --glow: var(--a-glow); }
+  .type-card[data-type="B"]  { --col: var(--b-col); --bg-c: var(--b-bg); --glow: var(--b-glow); }
+  .type-card[data-type="O"]  { --col: var(--o-col); --bg-c: var(--o-bg); --glow: var(--o-glow); }
+  .type-card[data-type="AB"] { --col: var(--ab-col); --bg-c: var(--ab-bg); --glow: var(--ab-glow); }
+
+  .type-card.active {
+    border-color: var(--col);
+    background: var(--bg-c);
+    box-shadow: 0 0 32px var(--glow), 0 12px 40px rgba(0,0,0,0.4);
+    transform: translateY(-6px) scale(1.03);
+  }
+
+  .type-letter {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--col);
+    line-height: 1;
+    margin-bottom: 6px;
+    transition: color var(--tr);
+    text-shadow: 0 0 20px var(--glow);
+  }
+  .type-name {
+    font-size: 0.72rem;
+    color: var(--text-sub);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── DETAIL PANEL ── */
+  #detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+    margin-bottom: 48px;
+    display: none;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(20px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  .detail-hero {
+    padding: 32px 32px 0;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .detail-type-badge {
+    width: 72px; height: 72px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    font-weight: 900;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .detail-type-badge::after {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.08);
+  }
+  .detail-type-name {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .detail-type-copy {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    line-height: 1.5;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 20px 32px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    padding: 10px 18px;
+    border: none;
+    background: none;
+    color: var(--text-sub);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 10px 10px 0 0;
+    transition: color var(--tr), background var(--tr);
+    position: relative;
+  }
+  .tab-btn:hover { color: var(--text); background: var(--surface2); }
+  .tab-btn.active {
+    color: var(--active-col, #fff);
+    background: var(--surface2);
+  }
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0; right: 0;
+    height: 2px;
+    background: var(--active-col, #fff);
+    border-radius: 2px 2px 0 0;
+  }
+
+  .tab-content {
+    padding: 28px 32px 32px;
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .tab-content.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity:0; }
+    to   { opacity:1; }
+  }
+
+  /* Trait chips */
+  .traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .trait-chip {
+    padding: 5px 14px;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--chip-bg, rgba(255,255,255,0.08));
+    color: var(--chip-col, var(--text));
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* Text blocks */
+  .text-block {
+    font-size: 0.9rem;
+    color: var(--text-sub);
+    line-height: 1.8;
+    margin-bottom: 16px;
+  }
+
+  .highlight-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .highlight-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+  }
+  .highlight-box .hb-icon { font-size: 1.4rem; margin-bottom: 6px; }
+  .highlight-box .hb-label { font-size: 0.7rem; color: var(--text-sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+  .highlight-box .hb-val { font-size: 0.85rem; font-weight: 700; }
+
+  /* ── COMPATIBILITY SECTION ── */
+  .compat-section {
+    margin-bottom: 48px;
+  }
+
+  .compat-selectors {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .compat-pick {
+    flex: 1;
+  }
+  .compat-pick label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-sub);
+    margin-bottom: 8px;
+  }
+
+  .blood-select {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238888b0' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    transition: border-color var(--tr), box-shadow var(--tr);
+  }
+  .blood-select:focus { border-color: var(--ab-col); box-shadow: 0 0 0 3px var(--ab-glow); }
+  .blood-select option { background: #13131e; }
+
+  .compat-heart {
+    font-size: 1.8rem;
+    flex-shrink: 0;
+    margin-top: 22px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+
+  .compat-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--ab-col), var(--a-col));
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity var(--tr), transform var(--tr), box-shadow var(--tr);
+    margin-bottom: 20px;
+    letter-spacing: 0.04em;
+  }
+  .compat-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(160,92,232,0.4);
+  }
+  .compat-btn:active { transform: translateY(0); }
+
+  #compat-result {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    text-align: center;
+    animation: fadeUp 0.4s ease;
+    backdrop-filter: blur(12px);
+  }
+
+  .compat-score-ring {
+    width: 120px; height: 120px;
+    margin: 0 auto 20px;
+    position: relative;
+  }
+  .compat-score-ring svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--surface2); stroke-width: 10; }
+  .ring-fill {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s cubic-bezier(.4,0,.2,1);
+  }
+  .ring-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .ring-pct {
+    font-size: 1.6rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .ring-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--text-sub);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .compat-stars {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+    letter-spacing: 4px;
+  }
+  .compat-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 10px; }
+  .compat-desc { font-size: 0.88rem; color: var(--text-sub); line-height: 1.8; }
+
+  .compat-tags {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+  .compat-tag {
+    font-size: 0.75rem;
+    padding: 4px 12px;
+    border-radius: 100px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-sub);
+  }
+
+  /* ── MATRIX ── */
+  .matrix-section { margin-bottom: 48px; }
+
+  .matrix-wrap { overflow-x: auto; }
+  .matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    min-width: 360px;
+  }
+  .matrix-table th, .matrix-table td {
+    padding: 12px 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .matrix-table th {
+    background: var(--surface2);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+  }
+  .matrix-table td {
+    background: var(--surface);
+    cursor: pointer;
+    transition: background var(--tr);
+  }
+  .matrix-table td:hover { background: var(--surface2); }
+
+  .cell-stars { font-size: 0.9rem; }
+  .cell-sub { font-size: 0.65rem; color: var(--text-sub); margin-top: 2px; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .type-grid { grid-template-columns: repeat(2, 1fr); }
+    .highlight-row { grid-template-columns: repeat(3, 1fr); }
+    .compat-selectors { flex-direction: column; }
+    .compat-heart { margin-top: 0; }
+    .detail-hero { flex-direction: column; text-align: center; }
+    .tabs { padding: 16px 16px 0; }
+    .tab-content { padding: 20px 16px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="blobs">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="site-header">
+    <div class="badge">🩸 Blood Type Diagnosis</div>
+    <h1>血液型診断</h1>
+    <p>A・B・O・AB型それぞれの性格・恋愛・仕事の特徴と<br>タイプ間の相性を分析します。</p>
+  </div>
+
+  <!-- Type picker -->
+  <div class="section-title">あなたの血液型を選んでください</div>
+  <div class="type-grid">
+    <div class="type-card" data-type="A" onclick="selectType('A')">
+      <div class="type-letter">A</div>
+      <div class="type-name">几帳面・誠実</div>
+    </div>
+    <div class="type-card" data-type="B" onclick="selectType('B')">
+      <div class="type-letter">B</div>
+      <div class="type-name">自由・個性派</div>
+    </div>
+    <div class="type-card" data-type="O" onclick="selectType('O')">
+      <div class="type-letter">O</div>
+      <div class="type-name">大らか・情熱的</div>
+    </div>
+    <div class="type-card" data-type="AB" onclick="selectType('AB')">
+      <div class="type-letter">AB</div>
+      <div class="type-name">天才・二面性</div>
+    </div>
+  </div>
+
+  <!-- Detail panel -->
+  <div id="detail-panel">
+    <div class="detail-hero">
+      <div class="detail-type-badge" id="detail-badge"></div>
+      <div>
+        <div class="detail-type-name" id="detail-name"></div>
+        <div class="detail-type-copy" id="detail-copy"></div>
+      </div>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="personality">😊 性格</button>
+      <button class="tab-btn" data-tab="love">💕 恋愛</button>
+      <button class="tab-btn" data-tab="work">💼 仕事</button>
+    </div>
+    <div class="tab-content active" id="tab-personality"></div>
+    <div class="tab-content" id="tab-love"></div>
+    <div class="tab-content" id="tab-work"></div>
+  </div>
+
+  <!-- Compatibility -->
+  <div class="compat-section">
+    <div class="section-title">相性診断</div>
+    <div class="compat-selectors">
+      <div class="compat-pick">
+        <label>あなたの血液型</label>
+        <select class="blood-select" id="compat-a">
+          <option value="">選択してください</option>
+          <option value="A">A型</option>
+          <option value="B">B型</option>
+          <option value="O">O型</option>
+          <option value="AB">AB型</option>
+        </select>
+      </div>
+      <div class="compat-heart">💞</div>
+      <div class="compat-pick">
+        <label>相手の血液型</label>
+        <select class="blood-select" id="compat-b">
+          <option value="">選択してください</option>
+          <option value="A">A型</option>
+          <option value="B">B型</option>
+          <option value="O">O型</option>
+          <option value="AB">AB型</option>
+        </select>
+      </div>
+    </div>
+    <button class="compat-btn" onclick="checkCompat()">相性を診断する</button>
+    <div id="compat-result">
+      <div class="compat-score-ring">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="50"/>
+          <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="50"
+            stroke-dasharray="314"
+            stroke-dashoffset="314"/>
+        </svg>
+        <div class="ring-text">
+          <span class="ring-pct" id="ring-pct">0%</span>
+          <span class="ring-label">相性</span>
+        </div>
+      </div>
+      <div class="compat-stars" id="compat-stars"></div>
+      <div class="compat-title" id="compat-title"></div>
+      <div class="compat-desc" id="compat-desc"></div>
+      <div class="compat-tags" id="compat-tags"></div>
+    </div>
+  </div>
+
+  <!-- Matrix -->
+  <div class="matrix-section">
+    <div class="section-title">相性マトリックス</div>
+    <div class="matrix-wrap">
+      <table class="matrix-table" id="matrix"></table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────
+const TYPES = {
+  A: {
+    color: '#4a8fe8',
+    bg:    'rgba(74,143,232,0.14)',
+    glow:  'rgba(74,143,232,0.4)',
+    copy:  '几帳面で誠実なムードメーカー。責任感の塊。',
+    personality: {
+      traits: ['几帳面','真面目','完璧主義','協調性◎','慎重派','計画的','几帳面','心配性'],
+      text: 'A型は几帳面で真面目、そして責任感の強さが際立つタイプです。細かい部分にまで気を配り、約束を守ることを大切にします。一方、完璧主義が高じてストレスを溜め込みやすい面も。感情を表に出すのが苦手で、内に秘めた思いやりが深い人が多いです。',
+      highlights: [
+        { icon:'🌡️', label:'感情表現', val:'控えめ' },
+        { icon:'📋', label:'計画性', val:'★★★★★' },
+        { icon:'🤝', label:'協調性', val:'★★★★☆' },
+      ]
+    },
+    love: {
+      traits: ['一途','慎重アプローチ','嫉妬心強め','誠実な愛情','束縛しがち','献身的'],
+      text: '恋愛では慎重にゆっくりと距離を縮めていきます。一度好きになると一途で、相手のことを深く思いやります。ただし嫉妬心が強く、自分の気持ちを言葉で伝えるのが苦手。相手から誤解されることも。安定した関係を求めるため、長続きするカップルが多いです。',
+      highlights: [
+        { icon:'💘', label:'告白スタイル', val:'慎重に' },
+        { icon:'🔒', label:'束縛度', val:'やや強め' },
+        { icon:'💍', label:'結婚志向', val:'高い' },
+      ]
+    },
+    work: {
+      traits: ['緻密','責任感◎','縁の下の力持ち','計画立案が得意','完成度重視','チームワーク◎'],
+      text: '職場では計画的に物事を進め、細かい作業を正確にこなす能力が光ります。チームの中では縁の下の力持ちとして活躍することが多く、約束を守る信頼性の高さで評価されます。完璧主義が強いため、仕事が遅くなることも。',
+      highlights: [
+        { icon:'🎯', label:'得意分野', val:'事務・管理' },
+        { icon:'📈', label:'出世欲', val:'中程度' },
+        { icon:'⏰', label:'残業', val:'多めになりがち' },
+      ]
+    }
+  },
+
+  B: {
+    color: '#e85c5c',
+    bg:    'rgba(232,92,92,0.14)',
+    glow:  'rgba(232,92,92,0.4)',
+    copy:  'マイペースで好奇心旺盛な自由人。',
+    personality: {
+      traits: ['マイペース','自由奔放','好奇心旺盛','切り替え早い','正直','飽きっぽい','行動力◎','個性派'],
+      text: 'B型は自分のペースを大切にする自由人。好奇心旺盛で新しいことに飛び込む行動力があります。気分が変わりやすく、周囲から「自己中心的」に見られることもありますが、本人に悪意は全くなく、ただ正直なだけ。切り替えの早さはB型の強みです。',
+      highlights: [
+        { icon:'🌟', label:'自己主張', val:'強い' },
+        { icon:'💭', label:'気分の波', val:'大きい' },
+        { icon:'🎲', label:'行動力', val:'★★★★★' },
+      ]
+    },
+    love: {
+      traits: ['恋に落ちやすい','正直な感情','束縛嫌い','情熱的','飽きを感じやすい','ストレート'],
+      text: '恋愛は直感重視。気になった相手にはストレートにアプローチします。感情表現が豊かで、付き合いたては情熱的。しかし束縛されることを嫌い、相手に干渉されすぎると窮屈に感じてしまいます。自由を尊重し合えるパートナーとの相性が良いです。',
+      highlights: [
+        { icon:'💘', label:'告白スタイル', val:'直球勝負' },
+        { icon:'🔒', label:'束縛度', val:'低い' },
+        { icon:'🎡', label:'恋愛の回転', val:'やや早め' },
+      ]
+    },
+    work: {
+      traits: ['集中力◎','スペシャリスト向き','個人プレー得意','瞬発力','好きな仕事に全力','独創的'],
+      text: '好きな分野では圧倒的な集中力を発揮し、専門家として頭角を現します。チームワークより個人で動くことを好む傾向があり、ルールに縛られるのが苦手。自分のリズムで仕事できる環境が最も力を発揮できます。',
+      highlights: [
+        { icon:'🎯', label:'得意分野', val:'クリエイティブ' },
+        { icon:'🚀', label:'専門性', val:'高くなりやすい' },
+        { icon:'📊', label:'管理業務', val:'苦手寄り' },
+      ]
+    }
+  },
+
+  O: {
+    color: '#3ecf90',
+    bg:    'rgba(62,207,144,0.14)',
+    glow:  'rgba(62,207,144,0.4)',
+    copy:  '大らかで情熱的なリーダー気質。',
+    personality: {
+      traits: ['おおらか','社交的','リーダー気質','行動力◎','大雑把','情熱的','裏表なし','楽観的'],
+      text: 'O型は大らかで社交的、自然とリーダーポジションに収まることが多いタイプです。物事をポジティブにとらえる楽観性と行動力が武器。細かいことは気にしない大雑把な一面も持ちますが、それが周囲を和ませます。裏表のない正直さで多くの人に慕われます。',
+      highlights: [
+        { icon:'🌟', label:'社交性', val:'非常に高い' },
+        { icon:'🎯', label:'目標達成力', val:'★★★★★' },
+        { icon:'😄', label:'楽観度', val:'トップクラス' },
+      ]
+    },
+    love: {
+      traits: ['積極的アプローチ','情熱的','ヤキモチ焼き','長続き志向','尽くすタイプ','感情豊か'],
+      text: '恋愛は積極的で情熱的。好きになったら真っ直ぐに向かっていきます。嫉妬心が強く、相手への独占欲が高め。ただその分、パートナーへの愛情と献身は本物。長期的な関係を大切にする傾向があり、愛情表現も豊かです。',
+      highlights: [
+        { icon:'💘', label:'告白スタイル', val:'グイグイ積極的' },
+        { icon:'🔒', label:'独占欲', val:'かなり強め' },
+        { icon:'💍', label:'結婚志向', val:'高い' },
+      ]
+    },
+    work: {
+      traits: ['リーダー向き','目標志向','大局を見る','推進力◎','細かい作業が苦手','チームを鼓舞'],
+      text: '職場では自然とリーダーシップを発揮し、チームを引っ張っていきます。大きな目標を設定してそれに向かって突進する推進力が持ち味。細かい書類作業や事務処理は苦手な傾向があるので、サポートしてくれる人材との組み合わせが最強。',
+      highlights: [
+        { icon:'🎯', label:'得意分野', val:'マネジメント' },
+        { icon:'📈', label:'出世欲', val:'高い' },
+        { icon:'🤝', label:'チームワーク', val:'◎（自分が中心）' },
+      ]
+    }
+  },
+
+  AB: {
+    color: '#a05ce8',
+    bg:    'rgba(160,92,232,0.14)',
+    glow:  'rgba(160,92,232,0.4)',
+    copy:  '合理的で独自の世界観を持つ天才肌。',
+    personality: {
+      traits: ['二面性','合理的','天才肌','独自の価値観','気分屋','分析力◎','孤独を好む','ミステリアス'],
+      text: 'AB型はA型の几帳面さとB型の自由さを併せ持つ複雑な個性の持ち主。論理的で冷静な分析力を持ちながら、突然独特なひらめきを見せる天才肌の一面も。ミステリアスな雰囲気があり、一筋縄ではいかないと言われがちですが、深く付き合うと誰より誠実です。',
+      highlights: [
+        { icon:'🧠', label:'論理性', val:'トップクラス' },
+        { icon:'✨', label:'独創性', val:'★★★★★' },
+        { icon:'😶', label:'感情表現', val:'控えめ〜多様' },
+      ]
+    },
+    love: {
+      traits: ['理想が高い','深い絆を重視','感情表現は少なめ','独立心が強い','分析的に恋愛','裏表あり'],
+      text: '恋愛に対して理想が高く、完璧なパートナーを求めます。感情をすぐには表に出さないため、相手に「冷たい」と思われることも。しかし一度深い信頼関係が築けると、誰よりも献身的なパートナーになります。独立心が強く、恋愛でもお互いの空間を大切にします。',
+      highlights: [
+        { icon:'💘', label:'告白スタイル', val:'分析してから慎重に' },
+        { icon:'🔒', label:'束縛度', val:'低い〜中程度' },
+        { icon:'⭐', label:'理想の高さ', val:'とても高い' },
+      ]
+    },
+    work: {
+      traits: ['独創的','分析力◎','クリエイティブ','孤独でも力を発揮','完成度へのこだわり','マルチタスク◎'],
+      text: '独創的な発想と高い分析力を武器に、他の人が気づかない視点からアプローチします。クリエイティブな仕事や研究・企画立案で本領発揮。一人で集中できる環境が最も力を発揮しやすく、複数のプロジェクトを同時並行でこなすマルチタスク能力にも優れています。',
+      highlights: [
+        { icon:'🎯', label:'得意分野', val:'企画・研究開発' },
+        { icon:'🚀', label:'独創性', val:'最高クラス' },
+        { icon:'🤝', label:'チームプレー', val:'選り好みあり' },
+      ]
+    }
+  }
+};
+
+// Compatibility data: [score, title, desc, tags[]]
+const COMPAT = {
+  'A-A': [82, '安定の完璧コンビ', '共に几帳面で真面目な二人。価値観が近く、安定したパートナーシップを築けます。お互いの気持ちを察し合える関係ですが、どちらも言いたいことを言えない状況になりがちなのが注意点。', ['価値観一致', '安定志向', '衝突少なめ', '感情表現を意識して']],
+  'A-B': [58, '正反対で刺激的', 'A型の几帳面さとB型の自由さは対極にあります。最初は惹かれ合いますが、生活リズムや価値観の違いが摩擦を生みやすい。お互いを尊重し合えれば、刺激的な関係に。', ['正反対の引力', 'ぶつかりやすい', '刺激的な関係', '歩み寄りが必要']],
+  'A-O': [88, '理想的な補完関係', 'A型の緻密さとO型の大らかさが絶妙にかみ合います。互いの弱点を補い合い、2人でいると自然とバランスが取れた生活ができます。安心感と刺激が共存する理想的なペアです。', ['最高の補完関係', '安心感◎', 'お互いを高め合える', '長続きしやすい']],
+  'A-AB': [72, 'ミステリアスな引力', 'ABの独特な雰囲気にAが惹かれる関係。ABはAの誠実さを評価します。ABの気分の波をAが受け止めきれないことも。でも深く理解し合えれば長続きするペアに。', ['知的な引力', 'ABのペースに合わせて', '誠実さが信頼に', '理解し合えれば◎']],
+  'B-A': [58, '正反対で刺激的', 'A型の几帳面さとB型の自由さは対極にあります。最初は惹かれ合いますが、生活リズムや価値観の違いが摩擦を生みやすい。お互いを尊重し合えれば、刺激的な関係に。', ['正反対の引力', 'ぶつかりやすい', '刺激的な関係', '歩み寄りが必要']],
+  'B-B': [75, '自由を尊重し合うペア', 'お互いの自由を尊重し、干渉しすぎない心地よい関係。マイペース同士なので、一緒にいても窮屈さを感じません。ただし誰かが関係を引っ張らないとダラダラしてしまうことも。', ['自由な関係', '束縛なし', '居心地◎', 'リードする人が必要']],
+  'B-O': [80, '明るく活発なコンビ', 'BのユニークさとOの社交性が組み合わさって、どこに行っても楽しい二人組に。お互いに気分の切り替えが早く、ケンカをしてもすぐ仲直りできます。', ['明るさ無限大', 'ケンカしても即仲直り', 'フラットな関係', 'エネルギッシュ']],
+  'B-AB': [85, '波長ぴったりの自由人同士', 'どちらも自分のペースを大切にするため、お互いを縛らない心地よい距離感が自然と生まれます。ABのミステリアスな面をBが面白いと感じ、良い刺激を与え合えます。', ['自然な距離感', '刺激し合える', '個性を認め合う', '居心地◎']],
+  'O-A': [88, '理想的な補完関係', 'O型の大らかさとA型の緻密さが絶妙にかみ合います。互いの弱点を補い合い、2人でいると自然とバランスが取れた生活ができます。安心感と刺激が共存する理想的なペアです。', ['最高の補完関係', '安心感◎', 'お互いを高め合える', '長続きしやすい']],
+  'O-B': [80, '明るく活発なコンビ', 'OのリーダーシップとBの個性が合わさって、どこに行っても楽しい二人に。お互い気分の切り替えが早く、ケンカしてもすぐ仲直りできます。', ['明るさ無限大', 'ケンカしても即仲直り', 'フラットな関係', 'エネルギッシュ']],
+  'O-O': [70, '情熱的にぶつかり合うペア', '二人ともリーダー気質なので、どちらが主導権を持つかで衝突することも。でもお互いの情熱と正直さを理解できれば、熱くて強い絆が生まれます。', ['情熱的◎', 'ぶつかることも', '正直な関係', 'リーダー争いに注意']],
+  'O-AB': [62, '価値観の違いを越えて', 'OのシンプルさとABの複雑さは時に衝突の原因に。ただ、OがABの独特な世界を受け入れる度量を持てれば、ABが安心して本音を見せてくれます。', ['価値観の差あり', 'ABの世界を受け入れて', '理解できれば深い絆', '時間が必要']],
+  'AB-A': [72, 'ミステリアスな引力', 'Aの誠実さと安定感をABが高く評価します。ABの変化にAが戸惑うことも。でも深く関わるほど互いの良さが見えてくる、スルメのような関係です。', ['知的な引力', 'ABのペースに合わせて', '誠実さが信頼に', '理解し合えれば◎']],
+  'AB-B': [85, '波長ぴったりの自由人同士', 'どちらも自分のペースを大切にし、自然と心地よい距離感が生まれます。BのエネルギーがABに良い刺激を与え、ABのミステリアスさにBが惹かれる関係です。', ['自然な距離感', '刺激し合える', '個性を認め合う', '居心地◎']],
+  'AB-O': [62, '価値観の違いを越えて', 'ABの複雑さとOのシンプルさは時に衝突の原因に。OがABの独特な世界を受け入れる度量を持てれば、ABが安心して本音を見せてくれます。', ['価値観の差あり', 'ABの世界を受け入れて', '理解できれば深い絆', '時間が必要']],
+  'AB-AB': [78, '独自の世界を共有する二人', '同じように複雑な内面を持つ者同士、なんとなく分かり合えます。深く語り合えるのに、お互いのプライバシーも尊重。知的で静かな関係が続きます。', ['深い相互理解', '個性を尊重', '知的な会話◎', '感情表現は意識して']],
+};
+
+// ── STATE & HELPERS ─────────────────────────────────────────────
+let currentType = null;
+let currentTab = 'personality';
+
+function typeColor(t) { return TYPES[t].color; }
+function typeBg(t) { return TYPES[t].bg; }
+
+function starsHtml(score) {
+  const full = Math.round(score / 20);
+  return '★'.repeat(full) + '☆'.repeat(5 - full);
+}
+
+// ── SELECT TYPE ─────────────────────────────────────────────────
+function selectType(type) {
+  currentType = type;
+  const d = TYPES[type];
+
+  document.querySelectorAll('.type-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.type === type);
+  });
+
+  // badge
+  const badge = document.getElementById('detail-badge');
+  badge.textContent = type;
+  badge.style.background = d.bg;
+  badge.style.color = d.color;
+  badge.style.boxShadow = `0 0 24px ${d.glow}`;
+
+  document.getElementById('detail-name').textContent = type + '型';
+  document.getElementById('detail-name').style.color = d.color;
+  document.getElementById('detail-copy').textContent = d.copy;
+
+  // Tab color
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.style.setProperty('--active-col', d.color);
+  });
+
+  // Fill tabs
+  renderTabContent('personality', d.personality, d);
+  renderTabContent('love', d.love, d);
+  renderTabContent('work', d.work, d);
+
+  // Reset to first tab
+  switchTab('personality');
+
+  const panel = document.getElementById('detail-panel');
+  panel.style.display = 'none';
+  panel.style.borderColor = `rgba(${hexToRgb(d.color)},0.3)`;
+  void panel.offsetHeight;
+  panel.style.display = 'block';
+
+  // Sync compat selector
+  document.getElementById('compat-a').value = type;
+}
+
+function renderTabContent(tabId, data, d) {
+  const el = document.getElementById('tab-' + tabId);
+  const chipsHtml = data.traits.map(t =>
+    `<span class="trait-chip" style="background:${d.bg};color:${d.color};border-color:rgba(${hexToRgb(d.color)},0.2)">${t}</span>`
+  ).join('');
+
+  const hlHtml = data.highlights.map(h =>
+    `<div class="highlight-box">
+      <div class="hb-icon">${h.icon}</div>
+      <div class="hb-label">${h.label}</div>
+      <div class="hb-val" style="color:${d.color}">${h.val}</div>
+    </div>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="traits">${chipsHtml}</div>
+    <div class="text-block">${data.text}</div>
+    <div class="highlight-row">${hlHtml}</div>
+  `;
+}
+
+function switchTab(tabId) {
+  currentTab = tabId;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.toggle('active', c.id === 'tab-' + tabId);
+  });
+}
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (btn) switchTab(btn.dataset.tab);
+});
+
+// ── COMPAT CHECK ─────────────────────────────────────────────────
+function checkCompat() {
+  const a = document.getElementById('compat-a').value;
+  const b = document.getElementById('compat-b').value;
+  if (!a || !b) { alert('血液型を2つ選んでください'); return; }
+
+  const key = `${a}-${b}`;
+  const [score, title, desc, tags] = COMPAT[key];
+
+  const circumference = 314;
+  const offset = circumference - (score / 100) * circumference;
+  const colA = TYPES[a].color;
+  const colB = TYPES[b].color;
+
+  const ringFill = document.getElementById('ring-fill');
+  ringFill.style.stroke = colA;
+  ringFill.style.strokeDashoffset = circumference;
+
+  const result = document.getElementById('compat-result');
+  result.style.display = 'none';
+  result.style.borderColor = `rgba(${hexToRgb(colA)},0.3)`;
+  void result.offsetHeight;
+  result.style.display = 'block';
+
+  setTimeout(() => {
+    ringFill.style.strokeDashoffset = offset;
+    animNum(document.getElementById('ring-pct'), score, '%');
+  }, 50);
+
+  document.getElementById('compat-stars').textContent = starsHtml(score);
+  document.getElementById('compat-stars').style.color = colA;
+  document.getElementById('compat-title').textContent = `${a}型 × ${b}型：${title}`;
+  document.getElementById('compat-title').style.color = colA;
+  document.getElementById('compat-desc').textContent = desc;
+  document.getElementById('compat-tags').innerHTML = tags.map(t =>
+    `<span class="compat-tag">${t}</span>`
+  ).join('');
+}
+
+function animNum(el, target, suffix) {
+  let start = null;
+  const step = ts => {
+    if (!start) start = ts;
+    const p = Math.min((ts - start) / 800, 1);
+    el.textContent = Math.floor(p * target) + suffix;
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = target + suffix;
+  };
+  requestAnimationFrame(step);
+}
+
+// ── MATRIX ───────────────────────────────────────────────────────
+function buildMatrix() {
+  const types = ['A','B','O','AB'];
+  const table = document.getElementById('matrix');
+
+  let html = '<thead><tr><th>あなた \\ 相手</th>';
+  types.forEach(t => {
+    html += `<th style="color:${typeColor(t)}">${t}型</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  types.forEach(a => {
+    html += `<tr><th style="color:${typeColor(a)}">${a}型</th>`;
+    types.forEach(b => {
+      const key = `${a}-${b}`;
+      const [score, title] = COMPAT[key];
+      const stars = '★'.repeat(Math.round(score/20)) + '☆'.repeat(5-Math.round(score/20));
+      html += `<td onclick="quickCompat('${a}','${b}')" title="${title}" style="cursor:pointer">
+        <div class="cell-stars" style="color:${typeColor(a)}">${stars}</div>
+        <div class="cell-sub">${score}%</div>
+      </td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function quickCompat(a, b) {
+  document.getElementById('compat-a').value = a;
+  document.getElementById('compat-b').value = b;
+  checkCompat();
+  document.querySelector('.compat-section').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ── UTILS ────────────────────────────────────────────────────────
+function hexToRgb(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : '255,255,255';
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+buildMatrix();
+</script>
+</body>
+</html>
