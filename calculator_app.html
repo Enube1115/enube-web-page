@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>電卓</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1c1c1e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    }
+
+    .calculator {
+      width: 320px;
+      background: #1c1c1e;
+      border-radius: 48px;
+      padding: 24px 16px 20px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.8);
+    }
+
+    .display {
+      padding: 8px 12px 16px;
+      text-align: right;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .expression {
+      color: #8e8e93;
+      font-size: 20px;
+      min-height: 28px;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .result {
+      color: #ffffff;
+      font-size: 72px;
+      font-weight: 300;
+      line-height: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .result.small { font-size: 48px; }
+    .result.smaller { font-size: 36px; }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    button {
+      height: 76px;
+      border: none;
+      border-radius: 50%;
+      font-size: 28px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: opacity 0.1s, filter 0.1s;
+      font-family: inherit;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:active { filter: brightness(1.3); }
+
+    .btn-func {
+      background: #a5a5a5;
+      color: #1c1c1e;
+    }
+
+    .btn-op {
+      background: #ff9f0a;
+      color: #ffffff;
+    }
+
+    .btn-op.active {
+      background: #ffffff;
+      color: #ff9f0a;
+    }
+
+    .btn-num {
+      background: #333336;
+      color: #ffffff;
+    }
+
+    .btn-zero {
+      border-radius: 38px;
+      grid-column: span 2;
+      text-align: left;
+      padding-left: 28px;
+    }
+
+    .hint {
+      text-align: center;
+      color: #48484a;
+      font-size: 11px;
+      margin-top: 14px;
+      letter-spacing: 0.3px;
+    }
+  </style>
+</head>
+<body>
+<div class="calculator">
+  <div class="display">
+    <div class="expression" id="expression"></div>
+    <div class="result" id="result">0</div>
+  </div>
+
+  <div class="buttons">
+    <!-- Row 1 -->
+    <button class="btn-func" id="btn-ac">AC</button>
+    <button class="btn-func" id="btn-sign">+/−</button>
+    <button class="btn-func" id="btn-percent">%</button>
+    <button class="btn-op"   id="btn-div">÷</button>
+
+    <!-- Row 2 -->
+    <button class="btn-num" data-num="7">7</button>
+    <button class="btn-num" data-num="8">8</button>
+    <button class="btn-num" data-num="9">9</button>
+    <button class="btn-op"  id="btn-mul">×</button>
+
+    <!-- Row 3 -->
+    <button class="btn-num" data-num="4">4</button>
+    <button class="btn-num" data-num="5">5</button>
+    <button class="btn-num" data-num="6">6</button>
+    <button class="btn-op"  id="btn-sub">−</button>
+
+    <!-- Row 4 -->
+    <button class="btn-num" data-num="1">1</button>
+    <button class="btn-num" data-num="2">2</button>
+    <button class="btn-num" data-num="3">3</button>
+    <button class="btn-op"  id="btn-add">+</button>
+
+    <!-- Row 5 -->
+    <button class="btn-num btn-zero" data-num="0">0</button>
+    <button class="btn-num" id="btn-dot">.</button>
+    <button class="btn-op"  id="btn-eq">=</button>
+  </div>
+
+  <div class="hint">キーボード: 数字 · +-×÷ · Enter= · Esc=AC · Backspace</div>
+</div>
+
+<script>
+  const resultEl = document.getElementById('result');
+  const exprEl   = document.getElementById('expression');
+
+  let current   = '0';
+  let prev      = null;
+  let operator  = null;
+  let justCalc  = false;
+
+  function updateDisplay() {
+    resultEl.textContent = current;
+    const len = current.length;
+    resultEl.className = 'result' + (len > 9 ? ' smaller' : len > 7 ? ' small' : '');
+  }
+
+  function setExpression(text) {
+    exprEl.textContent = text;
+  }
+
+  function clearAll() {
+    current  = '0';
+    prev     = null;
+    operator = null;
+    justCalc = false;
+    setExpression('');
+    highlightOp(null);
+    updateDisplay();
+  }
+
+  function inputDigit(d) {
+    if (justCalc) { current = d; justCalc = false; setExpression(''); }
+    else current = current === '0' ? d : current + d;
+    updateDisplay();
+  }
+
+  function inputDot() {
+    if (justCalc) { current = '0.'; justCalc = false; setExpression(''); }
+    else if (!current.includes('.')) current += '.';
+    updateDisplay();
+  }
+
+  function toggleSign() {
+    if (current !== '0') current = current.startsWith('-') ? current.slice(1) : '-' + current;
+    updateDisplay();
+  }
+
+  function applyPercent() {
+    current = String(parseFloat(current) / 100);
+    updateDisplay();
+  }
+
+  const opSymbol = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+
+  function setOperator(op) {
+    if (operator && !justCalc) calculate();
+    prev     = parseFloat(current);
+    operator = op;
+    justCalc = true;
+    setExpression(prev + ' ' + opSymbol[op]);
+    highlightOp(op);
+  }
+
+  function calculate() {
+    if (operator === null || prev === null) return;
+    const cur = parseFloat(current);
+    let res;
+    switch (operator) {
+      case '+': res = prev + cur; break;
+      case '-': res = prev - cur; break;
+      case '*': res = prev * cur; break;
+      case '/': res = cur === 0 ? 'エラー' : prev / cur; break;
+    }
+    setExpression(prev + ' ' + opSymbol[operator] + ' ' + cur + ' =');
+    current  = res === 'エラー' ? 'エラー' : String(parseFloat(res.toFixed(10)));
+    operator = null;
+    prev     = null;
+    justCalc = true;
+    highlightOp(null);
+    updateDisplay();
+  }
+
+  function highlightOp(op) {
+    ['btn-add','btn-sub','btn-mul','btn-div'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+    });
+    const map = { '+':'btn-add', '-':'btn-sub', '*':'btn-mul', '/':'btn-div' };
+    if (op && map[op]) document.getElementById(map[op]).classList.add('active');
+  }
+
+  // Button wiring
+  document.querySelectorAll('[data-num]').forEach(btn =>
+    btn.addEventListener('click', () => inputDigit(btn.dataset.num)));
+
+  document.getElementById('btn-ac').addEventListener('click', clearAll);
+  document.getElementById('btn-sign').addEventListener('click', toggleSign);
+  document.getElementById('btn-percent').addEventListener('click', applyPercent);
+  document.getElementById('btn-dot').addEventListener('click', inputDot);
+  document.getElementById('btn-eq').addEventListener('click', calculate);
+  document.getElementById('btn-add').addEventListener('click', () => setOperator('+'));
+  document.getElementById('btn-sub').addEventListener('click', () => setOperator('-'));
+  document.getElementById('btn-mul').addEventListener('click', () => setOperator('*'));
+  document.getElementById('btn-div').addEventListener('click', () => setOperator('/'));
+
+  // AC ↔ C toggle
+  document.addEventListener('keydown', () => {
+    const acBtn = document.getElementById('btn-ac');
+    acBtn.textContent = (current !== '0' || justCalc) ? 'C' : 'AC';
+  });
+  document.getElementById('btn-ac').addEventListener('click', () => {
+    document.getElementById('btn-ac').textContent = 'AC';
+  });
+
+  // Keyboard support
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9') inputDigit(e.key);
+    else if (e.key === '.') inputDot();
+    else if (e.key === '+') setOperator('+');
+    else if (e.key === '-') setOperator('-');
+    else if (e.key === '*' || e.key === 'x' || e.key === 'X') setOperator('*');
+    else if (e.key === '/' || e.key === '÷') { e.preventDefault(); setOperator('/'); }
+    else if (e.key === '%') applyPercent();
+    else if (e.key === 'Enter' || e.key === '=') calculate();
+    else if (e.key === 'Escape') clearAll();
+    else if (e.key === 'Backspace') {
+      if (!justCalc && current.length > 1) current = current.slice(0, -1);
+      else current = '0';
+      updateDisplay();
+    }
+  });
+
+  updateDisplay();
+</script>
+</body>
+</html>
