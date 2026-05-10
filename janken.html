@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>じゃんけん</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0f0f13;
+      color: #e8e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Mode selector */
+    #mode-screen, #game-screen {
+      width: 100%;
+      max-width: 480px;
+      padding: 1.5rem;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 1.2rem;
+      border: 2px solid #2d2d3a;
+      border-radius: 14px;
+      background: #1a1a24;
+      color: #e8e8f0;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: border-color 0.2s, background 0.2s, transform 0.1s;
+    }
+
+    .mode-btn:hover {
+      border-color: #a78bfa;
+      background: #22223a;
+      transform: translateY(-2px);
+    }
+
+    .mode-btn .mode-icon { font-size: 2rem; display: block; margin-bottom: 0.4rem; }
+    .mode-btn .mode-label { display: block; }
+    .mode-btn .mode-sub { font-size: 0.75rem; color: #888; margin-top: 0.2rem; display: block; }
+
+    /* Score area */
+    .scoreboard {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.2rem;
+      text-align: center;
+    }
+
+    .score-box {
+      flex: 1;
+      background: #1a1a24;
+      border: 1px solid #2d2d3a;
+      border-radius: 12px;
+      padding: 0.7rem 0.5rem;
+    }
+
+    .score-box .label { font-size: 0.7rem; color: #888; letter-spacing: 0.08em; text-transform: uppercase; }
+    .score-box .value { font-size: 1.6rem; font-weight: 700; margin-top: 0.2rem; }
+    .score-box.wins .value { color: #4ade80; }
+    .score-box.losses .value { color: #f87171; }
+    .score-box.draws .value { color: #94a3b8; }
+    .score-box.streak .value { color: #fbbf24; }
+
+    /* Round indicator (3本勝負) */
+    #round-info {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 1rem;
+      min-height: 1.2em;
+    }
+
+    .round-pips {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+
+    .pip {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #2d2d3a;
+      border: 1px solid #3d3d4a;
+      transition: background 0.3s;
+    }
+
+    .pip.player { background: #60a5fa; }
+    .pip.cpu { background: #f87171; }
+
+    /* Arena */
+    .arena {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a1a24;
+      border: 1px solid #2d2d3a;
+      border-radius: 18px;
+      padding: 1.5rem 1rem;
+      margin-bottom: 1.2rem;
+      gap: 1rem;
+    }
+
+    .hand-display {
+      flex: 1;
+      text-align: center;
+    }
+
+    .hand-display .who { font-size: 0.7rem; color: #888; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+
+    .hand-emoji {
+      font-size: 4rem;
+      display: block;
+      transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+      user-select: none;
+      line-height: 1.2;
+    }
+
+    .hand-emoji.shake {
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%   { transform: translateY(0); }
+      20%  { transform: translateY(-10px) rotate(-5deg); }
+      40%  { transform: translateY(4px) rotate(3deg); }
+      60%  { transform: translateY(-6px) rotate(-3deg); }
+      80%  { transform: translateY(2px) rotate(2deg); }
+      100% { transform: translateY(0) rotate(0); }
+    }
+
+    .vs-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #4b4b60;
+      flex-shrink: 0;
+    }
+
+    /* Result */
+    #result-text {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      min-height: 2rem;
+      letter-spacing: 0.05em;
+      transition: color 0.3s;
+    }
+
+    #result-text.win  { color: #4ade80; }
+    #result-text.lose { color: #f87171; }
+    #result-text.draw { color: #94a3b8; }
+
+    /* Choice buttons */
+    .choices {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .choice-btn {
+      flex: 1;
+      aspect-ratio: 1;
+      max-width: 110px;
+      font-size: 2.4rem;
+      background: #1a1a24;
+      border: 2px solid #2d2d3a;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.2rem;
+    }
+
+    .choice-btn:hover:not(:disabled) {
+      border-color: #a78bfa;
+      background: #22223a;
+      transform: scale(1.06);
+    }
+
+    .choice-btn:active:not(:disabled) { transform: scale(0.97); }
+
+    .choice-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .choice-btn .choice-label {
+      font-size: 0.65rem;
+      color: #888;
+      letter-spacing: 0.05em;
+    }
+
+    /* Action buttons */
+    .action-row {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .action-btn {
+      padding: 0.65rem 1.4rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .action-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .action-btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: #fff;
+    }
+
+    .btn-ghost {
+      background: #1a1a24;
+      color: #a0a0b8;
+      border: 1px solid #2d2d3a;
+    }
+
+    #finish-banner {
+      display: none;
+      text-align: center;
+      background: #1a1a24;
+      border: 1px solid #2d2d3a;
+      border-radius: 14px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+    }
+
+    #finish-banner .banner-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+
+    #finish-banner .banner-sub {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- Mode selection -->
+<div id="mode-screen">
+  <h1>じゃんけん</h1>
+  <div class="mode-buttons">
+    <button class="mode-btn" onclick="startGame('best3')">
+      <span class="mode-icon">🏆</span>
+      <span class="mode-label">3本勝負</span>
+      <span class="mode-sub">先に2勝した方が優勝</span>
+    </button>
+    <button class="mode-btn" onclick="startGame('infinite')">
+      <span class="mode-icon">♾️</span>
+      <span class="mode-label">無限対戦</span>
+      <span class="mode-sub">連勝記録に挑戦</span>
+    </button>
+  </div>
+</div>
+
+<!-- Game screen -->
+<div id="game-screen" class="hidden">
+  <h1>じゃんけん</h1>
+
+  <!-- Scoreboard -->
+  <div class="scoreboard">
+    <div class="score-box wins">
+      <div class="label">勝ち</div>
+      <div class="value" id="score-win">0</div>
+    </div>
+    <div class="score-box losses">
+      <div class="label">負け</div>
+      <div class="value" id="score-lose">0</div>
+    </div>
+    <div class="score-box draws">
+      <div class="label">あいこ</div>
+      <div class="value" id="score-draw">0</div>
+    </div>
+    <div class="score-box streak">
+      <div class="label">連勝</div>
+      <div class="value" id="score-streak">0</div>
+    </div>
+  </div>
+
+  <!-- Round info -->
+  <div id="round-info"></div>
+
+  <!-- Arena -->
+  <div class="arena">
+    <div class="hand-display">
+      <div class="who">あなた</div>
+      <span class="hand-emoji" id="player-hand">🤜</span>
+    </div>
+    <span class="vs-label">VS</span>
+    <div class="hand-display">
+      <div class="who">CPU</div>
+      <span class="hand-emoji" id="cpu-hand">🤛</span>
+    </div>
+  </div>
+
+  <!-- Result text -->
+  <div id="result-text"></div>
+
+  <!-- Finish banner (3本勝負) -->
+  <div id="finish-banner">
+    <div class="banner-title" id="banner-title"></div>
+    <div class="banner-sub" id="banner-sub"></div>
+  </div>
+
+  <!-- Choices -->
+  <div class="choices" id="choice-buttons">
+    <button class="choice-btn" onclick="play('rock')" title="グー">
+      ✊
+      <span class="choice-label">グー</span>
+    </button>
+    <button class="choice-btn" onclick="play('scissors')" title="チョキ">
+      ✌️
+      <span class="choice-label">チョキ</span>
+    </button>
+    <button class="choice-btn" onclick="play('paper')" title="パー">
+      ✋
+      <span class="choice-label">パー</span>
+    </button>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-row">
+    <button class="action-btn btn-primary hidden" id="next-round-btn" onclick="nextRound()">次のラウンド</button>
+    <button class="action-btn btn-primary hidden" id="restart-btn" onclick="restartSameMode()">もう一度</button>
+    <button class="action-btn btn-ghost" onclick="goHome()">モード選択へ</button>
+  </div>
+</div>
+
+<script>
+  const HANDS = {
+    rock:     { emoji: '✊', label: 'グー' },
+    scissors: { emoji: '✌️', label: 'チョキ' },
+    paper:    { emoji: '✋', label: 'パー' },
+  };
+
+  const BEATS = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
+  const CPU_CHOICES = ['rock', 'scissors', 'paper'];
+
+  let mode = 'infinite';
+  let wins = 0, losses = 0, draws = 0;
+  let streak = 0, bestStreak = 0;
+  let playerRoundWins = 0, cpuRoundWins = 0;
+  let roundOver = false;
+  let matchOver = false;
+
+  function startGame(selectedMode) {
+    mode = selectedMode;
+    wins = 0; losses = 0; draws = 0;
+    streak = 0; bestStreak = 0;
+    playerRoundWins = 0; cpuRoundWins = 0;
+    roundOver = false;
+    matchOver = false;
+
+    document.getElementById('mode-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
+
+    resetHandDisplay();
+    updateScoreboard();
+    updateRoundInfo();
+    document.getElementById('result-text').textContent = '';
+    document.getElementById('result-text').className = '';
+    document.getElementById('finish-banner').style.display = 'none';
+    setChoicesEnabled(true);
+    document.getElementById('next-round-btn').classList.add('hidden');
+    document.getElementById('restart-btn').classList.add('hidden');
+  }
+
+  function play(playerChoice) {
+    if (matchOver) return;
+    setChoicesEnabled(false);
+
+    const cpuChoice = CPU_CHOICES[Math.floor(Math.random() * 3)];
+    animateHands(playerChoice, cpuChoice);
+
+    setTimeout(() => {
+      const result = judge(playerChoice, cpuChoice);
+      showResult(result, playerChoice, cpuChoice);
+      updateAfterPlay(result);
+    }, 420);
+  }
+
+  function judge(p, c) {
+    if (p === c) return 'draw';
+    return BEATS[p] === c ? 'win' : 'lose';
+  }
+
+  function animateHands(playerChoice, cpuChoice) {
+    const ph = document.getElementById('player-hand');
+    const ch = document.getElementById('cpu-hand');
+
+    ph.textContent = '🤜';
+    ch.textContent = '🤛';
+    ph.classList.remove('shake');
+    ch.classList.remove('shake');
+    void ph.offsetWidth;
+    ph.classList.add('shake');
+    ch.classList.add('shake');
+
+    setTimeout(() => {
+      ph.textContent = HANDS[playerChoice].emoji;
+      ch.textContent = HANDS[cpuChoice].emoji;
+    }, 350);
+  }
+
+  function showResult(result, playerChoice, cpuChoice) {
+    const el = document.getElementById('result-text');
+    if (result === 'win') {
+      el.textContent = '🎉 あなたの勝ち！';
+      el.className = 'win';
+    } else if (result === 'lose') {
+      el.textContent = '😞 CPUの勝ち…';
+      el.className = 'lose';
+    } else {
+      el.textContent = '🤝 あいこ！';
+      el.className = 'draw';
+    }
+  }
+
+  function updateAfterPlay(result) {
+    if (result === 'win') {
+      wins++;
+      streak++;
+      if (streak > bestStreak) bestStreak = streak;
+      if (mode === 'best3') playerRoundWins++;
+    } else if (result === 'lose') {
+      losses++;
+      streak = 0;
+      if (mode === 'best3') cpuRoundWins++;
+    } else {
+      draws++;
+    }
+
+    updateScoreboard();
+    updateRoundInfo();
+
+    if (mode === 'best3' && (playerRoundWins >= 2 || cpuRoundWins >= 2)) {
+      matchOver = true;
+      showFinishBanner();
+      document.getElementById('restart-btn').classList.remove('hidden');
+    } else if (result !== 'draw') {
+      if (mode === 'infinite') {
+        setTimeout(() => {
+          setChoicesEnabled(true);
+          document.getElementById('result-text').textContent = '';
+          document.getElementById('result-text').className = '';
+          resetHandDisplay();
+        }, 900);
+      } else {
+        document.getElementById('next-round-btn').classList.remove('hidden');
+      }
+    } else {
+      // draw: re-enable immediately (あいこ)
+      setTimeout(() => {
+        setChoicesEnabled(true);
+      }, 800);
+    }
+  }
+
+  function showFinishBanner() {
+    const banner = document.getElementById('finish-banner');
+    const title = document.getElementById('banner-title');
+    const sub = document.getElementById('banner-sub');
+    banner.style.display = 'block';
+
+    if (playerRoundWins >= 2) {
+      title.textContent = '🏆 あなたの優勝！';
+      title.style.color = '#4ade80';
+    } else {
+      title.textContent = '💀 CPUの優勝…';
+      title.style.color = '#f87171';
+    }
+    sub.textContent = `スコア: あなた ${playerRoundWins} – CPU ${cpuRoundWins}`;
+  }
+
+  function nextRound() {
+    roundOver = false;
+    document.getElementById('next-round-btn').classList.add('hidden');
+    document.getElementById('result-text').textContent = '';
+    document.getElementById('result-text').className = '';
+    resetHandDisplay();
+    setChoicesEnabled(true);
+  }
+
+  function restartSameMode() {
+    startGame(mode);
+  }
+
+  function goHome() {
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('mode-screen').classList.remove('hidden');
+  }
+
+  function updateScoreboard() {
+    document.getElementById('score-win').textContent = wins;
+    document.getElementById('score-lose').textContent = losses;
+    document.getElementById('score-draw').textContent = draws;
+    document.getElementById('score-streak').textContent = streak;
+  }
+
+  function updateRoundInfo() {
+    const el = document.getElementById('round-info');
+    if (mode === 'best3') {
+      el.innerHTML = `3本勝負 &nbsp;`;
+      const pips = document.createElement('div');
+      pips.className = 'round-pips';
+      for (let i = 0; i < 2; i++) {
+        const pip = document.createElement('div');
+        pip.className = 'pip' + (i < playerRoundWins ? ' player' : '');
+        pips.appendChild(pip);
+      }
+      const vsSpan = document.createElement('span');
+      vsSpan.style.cssText = 'font-size:0.7rem;color:#555;margin:0 4px;';
+      vsSpan.textContent = 'vs';
+      pips.appendChild(vsSpan);
+      for (let i = 0; i < 2; i++) {
+        const pip = document.createElement('div');
+        pip.className = 'pip' + (i < cpuRoundWins ? ' cpu' : '');
+        pips.appendChild(pip);
+      }
+      el.appendChild(pips);
+    } else {
+      el.innerHTML = mode === 'infinite'
+        ? `無限対戦 &nbsp;<span style="color:#fbbf24">最高連勝: ${bestStreak}</span>`
+        : '';
+    }
+  }
+
+  function setChoicesEnabled(enabled) {
+    document.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.disabled = !enabled;
+    });
+  }
+
+  function resetHandDisplay() {
+    document.getElementById('player-hand').textContent = '🤜';
+    document.getElementById('cpu-hand').textContent = '🤛';
+  }
+</script>
+</body>
+</html>
