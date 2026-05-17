@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>心理テスト</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:#9B7BC7;--accent-light:#F0EBF8;--text:#4A4560;--sub:#8B85A8;--shadow:0 4px 20px rgba(100,80,150,.1)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Hiragino Sans',Arial,sans-serif;background:linear-gradient(160deg,#F0EBF8 0%,#FFF5F8 45%,#EFF7F2 100%);min-height:100vh;color:var(--text)}
+.screen{display:none;animation:fi .35s ease}
+.screen.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* HOME */
+.home-wrap{max-width:720px;margin:0 auto;padding:44px 20px 60px}
+.home-hero{text-align:center;margin-bottom:40px}
+.home-hero .big{font-size:3rem;display:block;margin-bottom:12px}
+.home-hero h1{font-size:1.85rem;font-weight:700;color:#6B5B95;margin-bottom:8px}
+.home-hero p{color:var(--sub);font-size:.95rem;line-height:1.75}
+.test-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:500px){.test-grid{grid-template-columns:1fr}}
+.test-card{background:#fff;border-radius:20px;padding:24px;cursor:pointer;transition:transform .2s,box-shadow .2s;box-shadow:var(--shadow);text-align:center}
+.test-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(100,80,150,.18)}
+.test-card .ci{font-size:2.2rem;display:block;margin-bottom:10px}
+.test-card h2{font-size:1rem;font-weight:700;margin-bottom:6px}
+.test-card p{font-size:.8rem;color:var(--sub);line-height:1.5;margin-bottom:12px}
+.q-badge{display:inline-block;padding:3px 14px;border-radius:20px;font-size:.75rem;font-weight:700;color:#fff}
+
+/* TEST */
+.test-wrap{max-width:660px;margin:0 auto;padding:24px 20px 60px}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.back-btn{background:#fff;border:none;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);font-size:1.1rem;color:var(--sub);transition:color .2s;flex-shrink:0}
+.back-btn:hover{color:var(--text)}
+.title-bar{flex:1}
+.title-bar h2{font-size:1rem;font-weight:700}
+.title-bar p{font-size:.8rem;color:var(--sub)}
+.prog-wrap{margin-bottom:28px}
+.prog-track{background:#E8E0F5;border-radius:10px;height:6px;margin-bottom:6px}
+.prog-fill{height:100%;border-radius:10px;background:var(--accent);transition:width .4s ease}
+.prog-lbl{font-size:.78rem;color:var(--sub);text-align:right}
+.q-block{background:#fff;border-radius:18px;padding:24px;box-shadow:var(--shadow);margin-bottom:14px}
+.q-num{font-size:.72rem;font-weight:700;color:var(--accent);margin-bottom:8px;letter-spacing:.5px}
+.q-text{font-size:.95rem;line-height:1.75;margin-bottom:16px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt-lbl{display:flex;align-items:center;gap:12px;padding:11px 16px;border:2px solid #EDE8F5;border-radius:12px;cursor:pointer;transition:all .18s;font-size:.88rem;color:var(--text)}
+.opt-lbl:hover{border-color:var(--accent);background:var(--accent-light)}
+.opt-lbl input{display:none}
+.dot{width:18px;height:18px;border:2px solid #C8C0DC;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .18s}
+.opt-lbl.on{border-color:var(--accent);background:var(--accent-light)}
+.opt-lbl.on .dot{border-color:var(--accent);background:var(--accent)}
+.opt-lbl.on .dot::after{content:'';width:7px;height:7px;background:#fff;border-radius:50%;display:block}
+.sub-area{text-align:center;margin-top:30px}
+.sub-msg{font-size:.85rem;color:#E07090;margin-bottom:12px;display:none}
+.sub-msg.show{display:block}
+.btn-sub{display:inline-block;padding:14px 50px;background:var(--accent);color:#fff;border:none;border-radius:50px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 6px 20px rgba(100,80,150,.35)}
+.btn-sub:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(100,80,150,.45)}
+
+/* RESULT */
+.result-wrap{max-width:620px;margin:0 auto;padding:30px 20px 60px}
+.result-card{background:#fff;border-radius:24px;padding:36px;box-shadow:var(--shadow)}
+.r-header{text-align:center;margin-bottom:26px}
+.r-icon{font-size:2.8rem;display:block;margin-bottom:12px}
+.lv-badge{display:inline-block;padding:5px 18px;border-radius:20px;font-size:.82rem;font-weight:700;background:var(--accent-light);color:var(--accent);margin-bottom:14px}
+.r-title{font-size:1.3rem;font-weight:700;margin-bottom:8px}
+.r-score{font-size:.85rem;color:var(--sub);margin-bottom:16px}
+.meter-track{background:#EDE8F5;border-radius:10px;height:10px;overflow:hidden;margin-bottom:26px}
+.meter-fill{height:100%;border-radius:10px;background:var(--accent);width:0;transition:width 1.2s cubic-bezier(.2,.8,.3,1)}
+.desc-box{background:var(--accent-light);border-radius:16px;padding:18px 20px;font-size:.9rem;line-height:1.8;color:#5A5480;margin-bottom:20px}
+.adv-box{background:#FFF8F0;border-radius:16px;padding:18px 20px;margin-bottom:26px}
+.adv-head{font-size:.82rem;font-weight:700;color:#C07050;margin-bottom:12px}
+.adv-ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+.adv-ul li{font-size:.88rem;color:#5A5480;line-height:1.65;padding-left:22px;position:relative}
+.adv-ul li::before{content:'✦';position:absolute;left:0;color:#D09060;font-size:.68rem;top:5px}
+.r-btns{display:flex;flex-direction:column;gap:12px}
+.btn-p{padding:13px;background:var(--accent);color:#fff;border:none;border-radius:14px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 4px 14px rgba(100,80,150,.3)}
+.btn-p:hover{transform:translateY(-2px)}
+.btn-o{padding:13px;background:#fff;color:var(--sub);border:2px solid #EDE8F5;border-radius:14px;font-size:.95rem;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-o:hover{border-color:var(--accent);color:var(--accent)}
+@media(max-width:480px){.home-wrap,.test-wrap,.result-wrap{padding-left:14px;padding-right:14px}.result-card,.q-block{padding:18px}}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="s-home" class="screen active">
+  <div class="home-wrap">
+    <div class="home-hero">
+      <span class="big">🌸</span>
+      <h1>心理テスト</h1>
+      <p>気になるテストを選んで<br>あなたの心の状態をやさしく見つめてみましょう</p>
+    </div>
+    <div class="test-grid" id="test-grid"></div>
+  </div>
+</div>
+
+<!-- TEST -->
+<div id="s-test" class="screen">
+  <div class="test-wrap">
+    <div class="topbar">
+      <button class="back-btn" onclick="showHome()">←</button>
+      <div class="title-bar">
+        <h2 id="t-heading"></h2>
+        <p id="t-sub"></p>
+      </div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="prog-lbl" id="prog-lbl">0 / 0 問回答済み</div>
+    </div>
+    <div id="q-container"></div>
+    <div class="sub-area">
+      <p class="sub-msg" id="sub-msg">⚠️ すべての質問に回答してください</p>
+      <button class="btn-sub" onclick="submitTest()">結果を見る ✨</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="s-result" class="screen">
+  <div class="result-wrap">
+    <div class="result-card">
+      <div class="r-header">
+        <span class="r-icon" id="r-icon"></span>
+        <div class="lv-badge" id="r-lv"></div>
+        <h2 class="r-title" id="r-title"></h2>
+        <p class="r-score" id="r-score"></p>
+      </div>
+      <div class="meter-track"><div class="meter-fill" id="r-meter"></div></div>
+      <div class="desc-box" id="r-desc"></div>
+      <div class="adv-box">
+        <div class="adv-head">💡 アドバイス</div>
+        <ul class="adv-ul" id="r-adv"></ul>
+      </div>
+      <div class="r-btns">
+        <button class="btn-p" onclick="showHome()">他のテストを受ける</button>
+        <button class="btn-o" onclick="showHome()">ホームへ戻る</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TESTS = [
+  {
+    id:'stress', title:'ストレスチェック', sub:'今のストレス状態を確認',
+    icon:'🌊', color:'#5B9BD5', colorL:'#EBF3FB',
+    qs:[
+      {t:'最近、眠りにつくのに時間がかかる',r:false},
+      {t:'朝起きたときに疲れが残っている',r:false},
+      {t:'食欲が落ちていると感じる',r:false},
+      {t:'些細なことが気になり、気分が落ち込む',r:false},
+      {t:'集中力が続かないと感じることが多い',r:false},
+      {t:'楽しいことへの興味や意欲が薄れている',r:false},
+      {t:'体がだるく、疲れやすいと感じる',r:false},
+      {t:'将来のことが不安になる',r:false},
+      {t:'以前よりイライラしやすくなっている',r:false},
+      {t:'やる気が起きない日が続いている',r:false},
+      {t:'頭痛・肩こりなど体の不調がある',r:false},
+      {t:'「もう限界」と感じることがある',r:false},
+    ],
+    opts:['全くない','ほとんどない','時々ある','よくある','いつもある'],
+    results:[
+      {min:12,max:24,lv:'低ストレス',icon:'😊',title:'心のバランスが良好です',
+       desc:'現在のストレスレベルは低く、心身ともに安定した状態にあります。日々の生活リズムがうまく保たれているようです。',
+       adv:['今の生活リズムや習慣を大切に続けてください','定期的な運動や趣味の時間を楽しみましょう','人との繋がりを大切にすることで、さらに充実した毎日に','たまには自分へのご褒美も忘れずに']},
+      {min:25,max:36,lv:'やや高め',icon:'🌤',title:'ストレスがやや蓄積しています',
+       desc:'日常的なストレスが少し積み重なっています。今すぐ深刻ではありませんが、意識的に休息を取ることが大切です。',
+       adv:['毎日少しでもリラックスできる時間を作りましょう','深呼吸やストレッチを習慣づけてみてください','睡眠時間をしっかり確保することが重要です','悩みを誰かに話すことで気持ちが楽になることも']},
+      {min:37,max:48,lv:'高ストレス',icon:'🌧',title:'ストレスが高まっています',
+       desc:'ストレスレベルが高くなっています。心身のサインを大切にして、意識的に休息とリフレッシュの時間を確保することが必要です。',
+       adv:['一人で抱え込まず、信頼できる人に話してみましょう','完璧主義を手放し「まあいっか」の精神を取り入れて','自然の中での散歩など、気分転換を積極的に','専門家（カウンセラーなど）への相談も選択肢の一つです']},
+      {min:49,max:60,lv:'要注意',icon:'⛈',title:'ストレスが非常に高い状態です',
+       desc:'心身にとって非常に負荷がかかっている状態です。一人で無理をせず、周囲のサポートや専門家を積極的に活用してください。',
+       adv:['まずは「休む」ことを最優先にしてください','心療内科やカウンセラーへの相談を強くおすすめします','日常の「しなければならないこと」を最小限に減らして','自分を責めず、今の状態を受け入れることが回復の第一歩']},
+    ]
+  },
+  {
+    id:'selfesteem', title:'自尊心テスト', sub:'自己肯定感をチェック',
+    icon:'🌹', color:'#D4849C', colorL:'#FBF0F4',
+    qs:[
+      {t:'自分のことが好きだと思える',r:false},
+      {t:'自分には良いところがあると思う',r:false},
+      {t:'自分の判断や決断を信じられる',r:false},
+      {t:'失敗しても、またやり直せると思える',r:false},
+      {t:'他の人と同じくらい価値ある存在だと思う',r:false},
+      {t:'自分はダメな人間だと思うことがある',r:true},
+      {t:'自分に自信が持てないと感じる',r:true},
+      {t:'自分の意見を素直に言えないことが多い',r:true},
+      {t:'他人と比べて、自分が劣っていると感じる',r:true},
+      {t:'自分のことを誇りに思えない',r:true},
+    ],
+    opts:['全くそう思わない','あまりそう思わない','どちらでもない','そう思う','非常にそう思う'],
+    results:[
+      {min:10,max:24,lv:'低め',icon:'🌱',title:'自己肯定感を育てていきましょう',
+       desc:'現在、自分自身への評価がやや低めになっています。でも大丈夫。自己肯定感は育てることができます。小さなことから自分を認める練習を始めてみましょう。',
+       adv:['毎日「今日できたこと」を3つ書き出してみましょう','「自分を好きになる必要はない、ただ尊重する」から始めて','過去の失敗より、今の自分の努力に目を向けて','比較するなら、昨日の自分との比較を']},
+      {min:25,max:34,lv:'普通',icon:'🌸',title:'自己肯定感は平均的な状態です',
+       desc:'自己肯定感は標準的な範囲にあります。場面によって自信があったりなかったりすることがありますが、それは自然なことです。',
+       adv:['得意なことや好きなことに積極的に取り組みましょう','自分への言葉かけを「批判」から「励まし」に変えてみて','成功体験を意識して積み重ねることが大切です','自分の良いところを紙に書いて見返す習慣を']},
+      {min:35,max:44,lv:'高め',icon:'🌻',title:'自己肯定感がしっかりあります',
+       desc:'自分自身をポジティブに捉えられており、健全な自己肯定感を持っています。この状態を大切に、周りにも良い影響を与えられるでしょう。',
+       adv:['今の自分を大切にしながら、さらなる成長を楽しんで','自信をベースに、新しいことへのチャレンジを','周囲の人の自己肯定感も高められる関わり方を意識して','たまに振り返り、自分の価値観を確認する時間を']},
+      {min:45,max:50,lv:'非常に高い',icon:'✨',title:'自己肯定感が非常に高い状態です',
+       desc:'自分自身をとても肯定的に捉えられています。強い自己基盤を持っており、困難な状況でも自分を信じて行動できるでしょう。',
+       adv:['この自己肯定感を活かして、大きな目標に挑戦してみて','周囲の人を引き上げるリーダーシップを発揮できるかも','自分を大切にしながら、他者への思いやりも忘れずに','定期的に自己振り返りを行い、さらなる成長を']},
+    ]
+  },
+  {
+    id:'empathy', title:'共感力テスト', sub:'他者への共感力を測定',
+    icon:'🌿', color:'#5BA88C', colorL:'#EBF7F2',
+    qs:[
+      {t:'友人が落ち込んでいると、自分も気持ちが重くなる',r:false},
+      {t:'映画や本の登場人物の感情に入り込める',r:false},
+      {t:'相手の表情や雰囲気から気持ちを読み取れる',r:false},
+      {t:'困っている人を見ると、自然と手助けしたくなる',r:false},
+      {t:'自分と違う意見や価値観も受け入れられる',r:false},
+      {t:'人の話を最後まで丁寧に聞ける',r:false},
+      {t:'悲しいニュースを見ると、心が痛む',r:false},
+      {t:'友人の成功を心から喜べる',r:false},
+      {t:'初対面の人でも、リラックスできるよう配慮できる',r:false},
+      {t:'相手の言葉の裏にある気持ちを感じ取れる',r:false},
+      {t:'怒っている人に対しても、冷静に接することができる',r:false},
+      {t:'自分が経験していないことでも、相手の気持ちを想像できる',r:false},
+    ],
+    opts:['全くそう思わない','あまりそう思わない','どちらでもない','そう思う','非常にそう思う'],
+    results:[
+      {min:12,max:28,lv:'低め',icon:'🌱',title:'共感力を少しずつ育てましょう',
+       desc:'現在、他者の気持ちへの共感がやや難しいかもしれません。共感力は練習で伸ばせるスキルです。相手の立場に立って考える習慣から始めてみましょう。',
+       adv:['会話中は相手の話を遮らず、最後まで聞く練習を','「もし自分がこの人の立場だったら？」と意識的に考えてみて','小説や映画を通じて様々な人の感情を体験してみましょう','相手の感情を否定せず「そう感じるんだね」と受け止める練習を']},
+      {min:29,max:40,lv:'普通',icon:'🌿',title:'標準的な共感力があります',
+       desc:'人の気持ちを理解しようとする力が備わっています。状況によって共感できるときとそうでないときがありますが、それはごく自然なことです。',
+       adv:['共感を示す言葉（「それは大変だったね」など）を積極的に使って','相手の非言語サイン（表情・声のトーン）にも注目してみて','異なる背景を持つ人と積極的に交流することで共感力が広がります','自分自身の感情にも敏感になることで、他者への共感も深まります']},
+      {min:41,max:52,lv:'高い',icon:'🌸',title:'共感力が豊かです',
+       desc:'人の気持ちを感じ取り、理解する力が高い状態です。この共感力は人間関係を豊かにし、周囲の人に安心感を与えているでしょう。',
+       adv:['共感力を活かして、周囲の人の支えになっていきましょう','他者の感情を受け取りすぎて疲弊しないよう注意も','自分の感情と他者の感情を切り分ける意識も大切です','カウンセラーや支援職など、共感力を活かせる分野も考えてみて']},
+      {min:53,max:60,lv:'非常に高い',icon:'💚',title:'共感力が非常に豊かです',
+       desc:'他者の気持ちへの感受性がとても高い状態です。周囲の人の気持ちを敏感に感じ取れる反面、感情的に疲れやすいこともあるかもしれません。',
+       adv:['自分自身を守るための境界線（バウンダリー）を大切に','他者の感情に飲み込まれないよう、自分時間も意識して確保して','深い共感力はあなたの大きな強み。その力を大切に','感情の疲れを感じたら、自然の中でのリフレッシュを']},
+    ]
+  },
+  {
+    id:'mental', title:'メンタル強度テスト', sub:'心の強さと回復力を測定',
+    icon:'🏔', color:'#9B7BC7', colorL:'#F0EBF8',
+    qs:[
+      {t:'失敗してもすぐに気持ちを切り替えられる',r:false},
+      {t:'批判や否定的な意見を受けても冷静でいられる',r:false},
+      {t:'困難な状況でも、解決策を探し続けられる',r:false},
+      {t:'感情に流されず、冷静に行動できる',r:false},
+      {t:'プレッシャーがある状況でも実力を発揮できる',r:false},
+      {t:'他人の評価を必要以上に気にしない',r:false},
+      {t:'長期的な目標に向けて、コツコツ努力を続けられる',r:false},
+      {t:'先の見えない状況でも、過度に不安にならない',r:false},
+      {t:'嫌なことがあっても、翌日には引きずらない',r:false},
+      {t:'自分の感情を適切にコントロールできる',r:false},
+      {t:'困難を乗り越えたとき、自分の成長を感じられる',r:false},
+      {t:'どんな状況でも、自分らしくいられる',r:false},
+    ],
+    opts:['全くそう思わない','あまりそう思わない','どちらでもない','そう思う','非常にそう思う'],
+    results:[
+      {min:12,max:28,lv:'発展途上',icon:'🌱',title:'心の強さを少しずつ育てましょう',
+       desc:'困難な状況でメンタルが揺れやすいかもしれません。でも、メンタルの強さは鍛えることができます。小さな成功体験を積み重ねていきましょう。',
+       adv:['毎日「今日乗り越えたこと」を振り返る習慣をつけましょう','失敗を「終わり」ではなく「学び」として捉え直す練習を','瞑想やマインドフルネスを取り入れてみてください','信頼できる人に気持ちを話すことで心が軽くなります','小さな目標を立てて達成感を積み重ねることが大切']},
+      {min:29,max:40,lv:'標準的',icon:'🌤',title:'平均的なメンタルの強さがあります',
+       desc:'状況によって心が揺れることもありますが、基本的な立ち直り力は持っています。意識的なトレーニングでさらに強くなれるでしょう。',
+       adv:['ストレスを感じたとき、その感情に名前をつける練習を','定期的な運動でメンタルの土台を強化しましょう','「うまくいかなかった→次はこうしよう」のサイクルを意識して','自分の強みを把握し、それを活かせる場を増やしていきましょう']},
+      {min:41,max:52,lv:'強い',icon:'⛰',title:'メンタルが強い状態です',
+       desc:'困難な状況でも比較的安定して対処できる力があります。高いレジリエンス（回復力）を持っており、周囲からも頼られる存在かもしれません。',
+       adv:['この強さを活かして、より大きな目標に挑戦してみましょう','自分だけでなく、周囲の人のサポートにも力を','定期的に自己振り返りを行い、さらなる成長を目指して','強さに驕らず、自分の限界も認識することも大切です']},
+      {min:53,max:60,lv:'非常に強い',icon:'🏔',title:'メンタルが非常に強い状態です',
+       desc:'高いメンタルの強さとレジリエンスを持っています。どんな逆境にも立ち向かえる力があり、困難を成長の機会として活かせるでしょう。',
+       adv:['この強さをさらに磨いて、困難な状況での挑戦を楽しんで','周囲の人のロールモデルとして、メンタルの大切さを伝えて','強いメンタルを持ちつつ、自分の感情も大切にすることも忘れずに','定期的な自己点検で、バランスを保ちながら前進していきましょう']},
+    ]
+  },
+];
+
+let current = null, answers = {};
+
+function setAccent(t) {
+  document.documentElement.style.setProperty('--accent', t.color);
+  document.documentElement.style.setProperty('--accent-light', t.colorL);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showHome() {
+  current = null; answers = {};
+  document.documentElement.style.setProperty('--accent','#9B7BC7');
+  document.documentElement.style.setProperty('--accent-light','#F0EBF8');
+  showScreen('s-home');
+}
+
+function startTest(t) {
+  current = t; answers = {};
+  setAccent(t);
+  document.getElementById('t-heading').textContent = t.title;
+  document.getElementById('t-sub').textContent = t.sub;
+
+  const c = document.getElementById('q-container');
+  c.innerHTML = '';
+  t.qs.forEach((q, i) => {
+    const b = document.createElement('div');
+    b.className = 'q-block';
+    b.innerHTML = `<div class="q-num">Q${i+1}</div><div class="q-text">${q.t}</div>
+      <div class="opts" id="opts-${i}">${t.opts.map((o,j)=>`
+        <label class="opt-lbl" id="ol-${i}-${j}" onclick="pick(${i},${j})">
+          <input type="radio" name="q${i}" value="${j}">
+          <span class="dot"></span><span>${o}</span>
+        </label>`).join('')}</div>`;
+    c.appendChild(b);
+  });
+
+  updateProg();
+  document.getElementById('sub-msg').classList.remove('show');
+  showScreen('s-test');
+}
+
+function pick(qi, oi) {
+  current.opts.forEach((_,j) => document.getElementById(`ol-${qi}-${j}`)?.classList.remove('on'));
+  document.getElementById(`ol-${qi}-${oi}`)?.classList.add('on');
+  answers[qi] = oi;
+  updateProg();
+  document.getElementById('sub-msg').classList.remove('show');
+}
+
+function updateProg() {
+  const total = current.qs.length, done = Object.keys(answers).length;
+  document.getElementById('prog-fill').style.width = Math.round(done/total*100)+'%';
+  document.getElementById('prog-lbl').textContent = `${done} / ${total} 問回答済み`;
+}
+
+function submitTest() {
+  const total = current.qs.length;
+  if (Object.keys(answers).length < total) {
+    document.getElementById('sub-msg').classList.add('show');
+    for (let i = 0; i < total; i++) {
+      if (answers[i] === undefined) {
+        document.getElementById(`opts-${i}`).scrollIntoView({behavior:'smooth',block:'center'});
+        break;
+      }
+    }
+    return;
+  }
+  let score = 0;
+  current.qs.forEach((q,i) => {
+    const raw = answers[i] + 1;
+    score += q.r ? (6 - raw) : raw;
+  });
+  showResult(score);
+}
+
+function showResult(score) {
+  const t = current;
+  setAccent(t);
+  const max = t.qs.length * 5, min = t.qs.length;
+  const res = t.results.find(r => score >= r.min && score <= r.max) || t.results[t.results.length-1];
+
+  document.getElementById('r-icon').textContent = res.icon;
+  document.getElementById('r-lv').textContent = res.lv;
+  document.getElementById('r-title').textContent = res.title;
+  document.getElementById('r-score').textContent = `スコア: ${score} / ${max}`;
+  document.getElementById('r-desc').textContent = res.desc;
+  document.getElementById('r-adv').innerHTML = res.adv.map(a=>`<li>${a}</li>`).join('');
+  document.getElementById('r-meter').style.width = '0%';
+
+  showScreen('s-result');
+  const pct = Math.round((score - min) / (max - min) * 100);
+  requestAnimationFrame(() => setTimeout(() => {
+    document.getElementById('r-meter').style.width = pct + '%';
+  }, 120));
+}
+
+// Build home cards
+(function init() {
+  const g = document.getElementById('test-grid');
+  TESTS.forEach(t => {
+    const d = document.createElement('div');
+    d.className = 'test-card';
+    d.innerHTML = `<span class="ci">${t.icon}</span><h2>${t.title}</h2><p>${t.sub}</p>
+      <span class="q-badge" style="background:${t.color}">${t.qs.length}問</span>`;
+    d.addEventListener('click', () => startTest(t));
+    g.appendChild(d);
+  });
+})();
+</script>
+</body>
+</html>
