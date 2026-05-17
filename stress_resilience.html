@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ストレス耐性診断</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0D0F1A;
+  --card: #141627;
+  --card2: #1C2038;
+  --border: rgba(255,255,255,0.07);
+  --accent: #2DD4BF;
+  --accent2: #818CF8;
+  --text: #F1F5F9;
+  --muted: #94A3B8;
+  --work: #FBBF24;
+  --rel: #F472B6;
+  --chg: #38BDF8;
+}
+
+body {
+  font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.screen {
+  display: none;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  animation: fadeIn .4s ease;
+}
+.screen.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Intro ── */
+.intro-hero {
+  text-align: center;
+  padding: 52px 20px 32px;
+}
+.intro-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #0D0F1A;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  padding: 5px 16px;
+  border-radius: 999px;
+  margin-bottom: 22px;
+  text-transform: uppercase;
+}
+.intro-icon {
+  font-size: 72px;
+  line-height: 1;
+  margin-bottom: 18px;
+  display: block;
+  filter: drop-shadow(0 4px 20px rgba(45,212,191,.25));
+}
+.intro-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #F1F5F9 30%, #2DD4BF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.intro-desc {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+  margin-bottom: 32px;
+}
+
+.cats-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+.cat-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.btn-start {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto 24px;
+  padding: 17px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), #14B8A6);
+  color: #0D0F1A;
+  letter-spacing: .03em;
+  transition: transform .15s, box-shadow .15s;
+}
+.btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(45,212,191,.35);
+}
+.btn-start:active { transform: none; }
+
+.info-row {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+}
+.info-item {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.info-item strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+/* ── Quiz ── */
+.progress-wrap { margin-bottom: 22px; }
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.progress-cat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.progress-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--card2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+
+.q-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 24px;
+  margin-bottom: 20px;
+  min-height: 140px;
+}
+.q-num {
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.q-text {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.65;
+  letter-spacing: -.01em;
+}
+
+.scale-wrap { margin-top: 4px; }
+.scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+.scale-btns {
+  display: flex;
+  gap: 8px;
+}
+.scale-btn {
+  flex: 1;
+  aspect-ratio: 1;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--card2);
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scale-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+}
+.scale-btn.sel {
+  color: #0D0F1A;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
+
+.nav-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.btn-ghost {
+  flex: 1;
+  padding: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-ghost:hover { border-color: var(--accent2); color: var(--text); }
+.btn-next {
+  flex: 2;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #0D0F1A;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  opacity: .35;
+  pointer-events: none;
+}
+.btn-next.enabled { opacity: 1; pointer-events: auto; }
+.btn-next.enabled:hover { filter: brightness(1.06); }
+
+/* ── Result ── */
+.result-header {
+  text-align: center;
+  padding: 36px 16px 20px;
+}
+.result-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: rgba(45,212,191,.12);
+  color: var(--accent);
+  border: 1px solid rgba(45,212,191,.2);
+  margin-bottom: 20px;
+}
+
+.ring-wrap {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  margin: 0 auto 18px;
+}
+.ring-svg { transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: var(--card2); stroke-width: 10; }
+.ring-fg {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1);
+}
+.ring-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+.ring-score {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+.ring-unit { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.result-level {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  margin-bottom: 6px;
+}
+.result-sub {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 22px 20px;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+/* Category bars */
+.cat-bar-item { margin-bottom: 18px; }
+.cat-bar-item:last-child { margin-bottom: 0; }
+.cat-bar-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cat-bar-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cat-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cat-level-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.cat-score-num {
+  font-size: 13px;
+  font-weight: 800;
+  min-width: 36px;
+  text-align: right;
+}
+.cat-bar-track {
+  height: 8px;
+  background: var(--card2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.cat-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  width: 0;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+
+/* Tips */
+.tip-list { list-style: none; }
+.tip-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.tip-item:first-child { padding-top: 0; }
+.tip-item:last-child { border-bottom: none; padding-bottom: 0; }
+.tip-icon {
+  font-size: 16px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.retry-btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  margin-top: 4px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  text-align: center;
+}
+.retry-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+@media (max-width: 480px) {
+  .intro-title { font-size: 26px; }
+  .q-text { font-size: 16px; }
+  .ring-wrap { width: 150px; height: 150px; }
+  .ring-score { font-size: 32px; }
+  .q-card { padding: 22px 18px; min-height: 120px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Intro -->
+<div class="screen active" id="s-intro">
+  <div class="intro-hero">
+    <div class="intro-badge">Stress Resilience Test</div>
+    <span class="intro-icon">🧘</span>
+    <h1 class="intro-title">ストレス耐性診断</h1>
+    <p class="intro-desc">
+      15問の質問に答えるだけ。<br>
+      仕事・人間関係・変化への適応力を分析し、<br>
+      あなただけの改善アドバイスをお届けします。
+    </p>
+    <div class="cats-row">
+      <div class="cat-chip">
+        <div class="cat-dot" style="background:var(--work)"></div>仕事
+      </div>
+      <div class="cat-chip">
+        <div class="cat-dot" style="background:var(--rel)"></div>人間関係
+      </div>
+      <div class="cat-chip">
+        <div class="cat-dot" style="background:var(--chg)"></div>変化への適応
+      </div>
+    </div>
+    <button class="btn-start" onclick="startQuiz()">診断スタート →</button>
+    <div class="info-row">
+      <div class="info-item"><strong>15</strong>問</div>
+      <div class="info-item"><strong>3〜5</strong>分</div>
+      <div class="info-item"><strong>3</strong>カテゴリ</div>
+    </div>
+  </div>
+</div>
+
+<!-- Quiz -->
+<div class="screen" id="s-quiz">
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span class="progress-cat">
+        <span class="progress-dot" id="prog-dot"></span>
+        <span id="prog-cat-name"></span>
+      </span>
+      <span id="prog-counter"></span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="prog-fill"></div>
+    </div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-num" id="q-num"></div>
+    <div class="q-text" id="q-text"></div>
+  </div>
+
+  <div class="scale-wrap">
+    <div class="scale-labels">
+      <span>全くそうでない</span>
+      <span>とてもそうだ</span>
+    </div>
+    <div class="scale-btns" id="scale-btns">
+      <button class="scale-btn" onclick="selectAnswer(1)">1</button>
+      <button class="scale-btn" onclick="selectAnswer(2)">2</button>
+      <button class="scale-btn" onclick="selectAnswer(3)">3</button>
+      <button class="scale-btn" onclick="selectAnswer(4)">4</button>
+      <button class="scale-btn" onclick="selectAnswer(5)">5</button>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn-ghost" id="btn-prev" onclick="prevQ()">← 戻る</button>
+    <button class="btn-next" id="btn-next" onclick="nextQ()">次へ →</button>
+  </div>
+</div>
+
+<!-- Result -->
+<div class="screen" id="s-result">
+  <div class="result-header">
+    <div class="result-badge">Your Result</div>
+    <div class="ring-wrap">
+      <svg class="ring-svg" width="170" height="170" viewBox="0 0 170 170">
+        <circle class="ring-bg" cx="85" cy="85" r="68"/>
+        <circle class="ring-fg" id="ring-fg" cx="85" cy="85" r="68"/>
+      </svg>
+      <div class="ring-text">
+        <div class="ring-score" id="ring-score">0</div>
+        <div class="ring-unit">/ 100</div>
+      </div>
+    </div>
+    <div class="result-level" id="result-level"></div>
+    <div class="result-sub" id="result-sub"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">カテゴリ別スコア</div>
+    <div id="cat-bars"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">あなたの強み</div>
+    <ul class="tip-list" id="strengths-list"></ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title">改善のヒント</div>
+    <ul class="tip-list" id="improve-list"></ul>
+  </div>
+
+  <button class="retry-btn" onclick="retryQuiz()">もう一度診断する</button>
+</div>
+
+<script>
+const CATS = [
+  { id:'work', name:'仕事',        icon:'💼', color:'#FBBF24' },
+  { id:'rel',  name:'人間関係',    icon:'🤝', color:'#F472B6' },
+  { id:'chg',  name:'変化への適応', icon:'🌊', color:'#38BDF8' },
+];
+
+const QS = [
+  // 仕事 (5問)
+  { text:'仕事でプレッシャーを感じても、冷静に対処できる',             cat:'work', r:false },
+  { text:'業務の締め切りが迫ってもパニックにならない',                 cat:'work', r:false },
+  { text:'仕事でミスをしても気持ちを切り替えて前に進める',             cat:'work', r:false },
+  { text:'仕事量が急に増えると圧倒されてしまう',                       cat:'work', r:true  },
+  { text:'業務上の失敗をいつまでも引きずってしまう',                   cat:'work', r:true  },
+  // 人間関係 (5問)
+  { text:'人から批判を受けても比較的早く立ち直れる',                   cat:'rel',  r:false },
+  { text:'人間関係でトラブルがあっても気持ちを切り替えられる',         cat:'rel',  r:false },
+  { text:'他人の意見に左右されず、自分の考えを持てる',                 cat:'rel',  r:false },
+  { text:'対立を避けるために自分の気持ちを伝えられないことがある',     cat:'rel',  r:true  },
+  { text:'他人の言動が気になり、長い間悩んでしまう',                   cat:'rel',  r:true  },
+  // 変化への適応 (5問)
+  { text:'予期しない変化にも柔軟に対応できる',                         cat:'chg',  r:false },
+  { text:'慣れない環境でも比較的すぐに適応できる',                     cat:'chg',  r:false },
+  { text:'計画が崩れても、すぐに新しいプランを立てられる',             cat:'chg',  r:false },
+  { text:'急な予定変更があると強い不安やストレスを感じる',             cat:'chg',  r:true  },
+  { text:'未知の状況に直面すると動揺してしまう',                       cat:'chg',  r:true  },
+];
+
+const LEVELS = [
+  { min:85, name:'非常に高い', sub:'ストレスへの対処力が非常に優れています',       color:'#2DD4BF' },
+  { min:70, name:'高い',       sub:'安定したストレス耐性を持っています',            color:'#4ADE80' },
+  { min:55, name:'普通',       sub:'平均的なストレス対処力があります',              color:'#FBBF24' },
+  { min:40, name:'やや低い',   sub:'ストレス対処力を伸ばす余地があります',          color:'#FB923C' },
+  { min:0,  name:'低い',       sub:'ストレス耐性を意識的に高めていきましょう',      color:'#F87171' },
+];
+
+const CAT_LEVELS = [
+  { min:80, label:'非常に得意', bg:'rgba(45,212,191,.15)',  fg:'#2DD4BF' },
+  { min:65, label:'得意',       bg:'rgba(74,222,128,.15)',  fg:'#4ADE80' },
+  { min:50, label:'普通',       bg:'rgba(251,191,36,.15)',  fg:'#FBBF24' },
+  { min:35, label:'やや苦手',   bg:'rgba(251,146,60,.15)',  fg:'#FB923C' },
+  { min:0,  label:'苦手',       bg:'rgba(248,113,113,.15)', fg:'#F87171' },
+];
+
+const STRENGTHS = {
+  work: [
+    { icon:'⚡', text:'プレッシャー下でも冷静さを保てる安定したメンタルがあります' },
+    { icon:'🔄', text:'失敗を引きずらず素早く回復できるレジリエンスが強みです' },
+  ],
+  rel: [
+    { icon:'🛡️', text:'批判や否定的な意見を受け流すメンタルの強さがあります' },
+    { icon:'🌿', text:'人間関係のトラブルをあと引かずに消化できる力があります' },
+  ],
+  chg: [
+    { icon:'🚀', text:'変化を柔軟に受け入れ、新しい環境でも素早く軌道に乗れます' },
+    { icon:'🧭', text:'不確実な状況でも方向性を見失わず行動できる適応力があります' },
+  ],
+};
+
+const IMPROVEMENTS = {
+  work: [
+    { icon:'📋', text:'タスクを「今日やること」3つに絞り込み、小さな達成感を積み重ねましょう' },
+    { icon:'⏸️', text:'作業の合間に意識的な休憩を入れ、集中と回復のリズムを作りましょう' },
+  ],
+  rel: [
+    { icon:'💬', text:'「私は〜と感じた」というIメッセージで、小さなことから気持ちを伝える練習を' },
+    { icon:'🔍', text:'批判を「情報」として切り離し、感情的な反応と論理的な分析を分けて考えましょう' },
+  ],
+  chg: [
+    { icon:'🪜', text:'大きな変化を小さなステップに分解し、一つずつ確実にこなしていきましょう' },
+    { icon:'✨', text:'過去に困難を乗り越えた経験を書き出し、自分の適応力の証拠として活用しましょう' },
+  ],
+};
+
+let cur = 0;
+let answers = new Array(15).fill(null);
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function startQuiz() {
+  cur = 0;
+  answers.fill(null);
+  renderQ();
+  showScreen('s-quiz');
+}
+
+function retryQuiz() {
+  showScreen('s-intro');
+}
+
+function renderQ() {
+  const q = QS[cur];
+  const cat = CATS.find(c => c.id === q.cat);
+
+  document.getElementById('prog-dot').style.background = cat.color;
+  document.getElementById('prog-cat-name').textContent = cat.name;
+  document.getElementById('prog-counter').textContent = `${cur + 1} / ${QS.length}`;
+  document.getElementById('prog-fill').style.width = `${(cur / QS.length) * 100}%`;
+  document.getElementById('q-num').textContent = `Q${cur + 1}`;
+  document.getElementById('q-text').textContent = q.text;
+
+  const btns = document.querySelectorAll('.scale-btn');
+  btns.forEach((b, i) => {
+    const sel = answers[cur] === i + 1;
+    b.classList.toggle('sel', sel);
+    b.style.background    = sel ? cat.color : '';
+    b.style.borderColor   = sel ? cat.color : '';
+    b.style.color         = sel ? '#0D0F1A' : '';
+    b.style.boxShadow     = sel ? `0 4px 14px ${cat.color}55` : '';
+  });
+
+  const prevBtn = document.getElementById('btn-prev');
+  prevBtn.style.visibility = cur === 0 ? 'hidden' : 'visible';
+
+  const nextBtn = document.getElementById('btn-next');
+  nextBtn.textContent = cur === QS.length - 1 ? '結果を見る ✓' : '次へ →';
+  nextBtn.classList.toggle('enabled', answers[cur] !== null);
+}
+
+function selectAnswer(val) {
+  answers[cur] = val;
+  const q = QS[cur];
+  const cat = CATS.find(c => c.id === q.cat);
+
+  document.querySelectorAll('.scale-btn').forEach((b, i) => {
+    const sel = i + 1 === val;
+    b.classList.toggle('sel', sel);
+    b.style.background  = sel ? cat.color : '';
+    b.style.borderColor = sel ? cat.color : '';
+    b.style.color       = sel ? '#0D0F1A' : '';
+    b.style.boxShadow   = sel ? `0 4px 14px ${cat.color}55` : '';
+  });
+  document.getElementById('btn-next').classList.add('enabled');
+}
+
+function nextQ() {
+  if (answers[cur] === null) return;
+  if (cur < QS.length - 1) {
+    cur++;
+    renderQ();
+  } else {
+    showResult();
+  }
+}
+
+function prevQ() {
+  if (cur > 0) { cur--; renderQ(); }
+}
+
+function calcScores() {
+  const raw = { work: 0, rel: 0, chg: 0 };
+  QS.forEach((q, i) => {
+    const v = answers[i] ?? 3;
+    raw[q.cat] += q.r ? (6 - v) : v;
+  });
+  const pct = {};
+  CATS.forEach(c => { pct[c.id] = Math.round(raw[c.id] / 25 * 100); });
+  const overall = Math.round((pct.work + pct.rel + pct.chg) / 3);
+  return { pct, overall };
+}
+
+function getCatLevel(score) {
+  return CAT_LEVELS.find(l => score >= l.min);
+}
+
+function showResult() {
+  const { pct, overall } = calcScores();
+  showScreen('s-result');
+
+  // Overall level & ring
+  const lv = LEVELS.find(l => overall >= l.min);
+  document.getElementById('result-level').textContent = `ストレス耐性：${lv.name}`;
+  document.getElementById('result-level').style.color = lv.color;
+  document.getElementById('result-sub').textContent = lv.sub;
+
+  const CIRC = 2 * Math.PI * 68; // ≈ 427.3
+  const ringEl = document.getElementById('ring-fg');
+  ringEl.style.stroke = lv.color;
+  ringEl.style.strokeDasharray = CIRC;
+  ringEl.style.strokeDashoffset = CIRC;
+
+  const scoreEl = document.getElementById('ring-score');
+  scoreEl.style.color = lv.color;
+  scoreEl.textContent = '0';
+
+  setTimeout(() => {
+    ringEl.style.strokeDashoffset = CIRC * (1 - overall / 100);
+    let n = 0;
+    const step = Math.max(1, Math.ceil(overall / 60));
+    const iv = setInterval(() => {
+      n = Math.min(n + step, overall);
+      scoreEl.textContent = n;
+      if (n >= overall) clearInterval(iv);
+    }, 1000 / (overall / step));
+  }, 250);
+
+  // Category bars
+  const catBarsEl = document.getElementById('cat-bars');
+  catBarsEl.innerHTML = CATS.map(c => {
+    const score = pct[c.id];
+    const cl = getCatLevel(score);
+    return `
+    <div class="cat-bar-item">
+      <div class="cat-bar-meta">
+        <span class="cat-bar-name">
+          <span>${c.icon}</span>
+          <span>${c.name}</span>
+        </span>
+        <span class="cat-bar-right">
+          <span class="cat-level-badge" style="background:${cl.bg};color:${cl.fg}">${cl.label}</span>
+          <span class="cat-score-num" style="color:${c.color}">${score}%</span>
+        </span>
+      </div>
+      <div class="cat-bar-track">
+        <div class="cat-bar-fill" data-w="${score}" style="background:${c.color}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  setTimeout(() => {
+    document.querySelectorAll('.cat-bar-fill').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 350);
+
+  // Strengths: top scoring category's 2 tips
+  const sorted = CATS.slice().sort((a, b) => pct[b.id] - pct[a.id]);
+  const topCat  = sorted[0];
+  const midCat  = sorted[1];
+  const strengths = [
+    STRENGTHS[topCat.id][0],
+    pct[midCat.id] >= 65 ? STRENGTHS[midCat.id][0] : STRENGTHS[topCat.id][1],
+  ];
+  document.getElementById('strengths-list').innerHTML = strengths.map(s => `
+    <li class="tip-item">
+      <span class="tip-icon">${s.icon}</span>
+      <span>${s.text}</span>
+    </li>
+  `).join('');
+
+  // Improvements: bottom 2 categories, 1 tip each
+  const bottom2 = sorted.slice().reverse().slice(0, 2);
+  const improvements = bottom2.map(c => IMPROVEMENTS[c.id][0]);
+  // If lowest score is very low, add a second tip for it
+  if (pct[bottom2[0].id] < 40) {
+    improvements.push(IMPROVEMENTS[bottom2[0].id][1]);
+  }
+  document.getElementById('improve-list').innerHTML = improvements.map(s => `
+    <li class="tip-item">
+      <span class="tip-icon">${s.icon}</span>
+      <span>${s.text}</span>
+    </li>
+  `).join('');
+}
+</script>
+</body>
+</html>
