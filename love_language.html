@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>恋愛スタイル診断</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FFF5F7;--card:#fff;--text:#2D1B2E;--sub:#8B6080;--border:#F0E0E8}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Hiragino Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.screen{display:none;animation:fi .4s ease}
+.screen.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── INTRO ── */
+#s-intro{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:linear-gradient(155deg,#2D1B2E 0%,#5C2D4A 45%,#2D1B2E 100%);text-align:center;position:relative;overflow:hidden}
+#s-intro.active{display:flex}
+#s-intro::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,rgba(236,72,153,.18) 0%,transparent 55%),radial-gradient(ellipse at 70% 60%,rgba(167,139,250,.14) 0%,transparent 50%)}
+.intro-inner{position:relative;z-index:1;max-width:500px;width:100%}
+.heart-icon{font-size:3rem;margin-bottom:20px;display:block;filter:drop-shadow(0 0 20px rgba(236,72,153,.6))}
+.intro-title{font-size:2.2rem;font-weight:800;color:#fff;line-height:1.2;margin-bottom:10px;letter-spacing:-.02em}
+.intro-title .accent{background:linear-gradient(135deg,#F9A8D4,#C084FC);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.intro-desc{font-size:.88rem;color:rgba(255,255,255,.55);line-height:1.8;margin-bottom:36px}
+.lang-pills{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:36px}
+.lang-pill{padding:5px 14px;border-radius:20px;font-size:.72rem;font-weight:600;border:1px solid;opacity:.75}
+.mode-btns{display:flex;flex-direction:column;gap:12px;width:100%}
+.mode-btn{padding:16px 24px;border-radius:14px;border:none;font-family:inherit;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:.02em}
+.btn-solo{background:#fff;color:#2D1B2E;box-shadow:0 4px 24px rgba(0,0,0,.2)}
+.btn-solo:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.btn-couple{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25);color:#fff}
+.btn-couple:hover{background:rgba(255,255,255,.18);transform:translateY(-2px)}
+.mode-icon{font-size:1.2rem}
+.intro-note{margin-top:20px;font-size:.7rem;color:rgba(255,255,255,.28);letter-spacing:.1rem}
+
+/* ── QUIZ ── */
+#s-quiz{min-height:100vh;display:none;flex-direction:column;background:var(--bg)}
+#s-quiz.active{display:flex}
+.prog-bar-wrap{height:3px;background:var(--border);position:fixed;top:0;left:0;right:0;z-index:10}
+.prog-bar{height:100%;background:linear-gradient(90deg,#EC4899,#8B5CF6);transition:width .5s ease}
+.quiz-hdr{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center;max-width:600px;margin:0 auto;width:100%;padding-top:24px}
+.quiz-hdr-left{display:flex;flex-direction:column;gap:2px}
+.who-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.65rem;font-weight:700;letter-spacing:.1rem;margin-bottom:2px}
+.q-counter{font-size:.72rem;color:var(--sub);font-weight:600;letter-spacing:.1rem}
+.q-pct{font-size:.72rem;color:var(--sub)}
+.quiz-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 20px 40px;max-width:600px;margin:0 auto;width:100%}
+.q-lang-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:.7rem;font-weight:600;margin-bottom:14px;border:1px solid}
+.q-text{font-size:1.08rem;line-height:1.8;color:var(--text);margin-bottom:30px;font-weight:500;text-align:center;min-height:72px}
+.opts{display:flex;flex-direction:column;gap:9px;width:100%}
+.opt{padding:14px 18px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;cursor:pointer;font-family:inherit;font-size:.88rem;color:var(--sub);text-align:left;transition:all .17s;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
+.opt::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .17s}
+.opt:hover{border-color:#F9A8D4;color:var(--text);background:#FFF8FB}
+.opt:hover::before{background:#EC4899}
+.opt.sel{border-color:#EC4899;background:#FFF0F7;color:var(--text);font-weight:600}
+.opt.sel::before{background:#EC4899}
+.opt-num{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--sub);flex-shrink:0;transition:all .17s}
+.opt.sel .opt-num{background:#EC4899;border-color:#EC4899;color:#fff}
+.opt:hover .opt-num{border-color:#EC4899;color:#EC4899}
+.q-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px;width:100%}
+.nav-back{padding:10px 22px;border:1.5px solid var(--border);background:none;border-radius:8px;font-family:inherit;font-size:.82rem;color:var(--sub);cursor:pointer;transition:all .17s}
+.nav-back:hover:not(:disabled){border-color:#EC4899;color:#EC4899}
+.nav-back:disabled{opacity:.3;cursor:not-allowed}
+.nav-next{padding:12px 30px;background:linear-gradient(135deg,#EC4899,#8B5CF6);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(236,72,153,.3)}
+.nav-next:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 22px rgba(236,72,153,.4)}
+.nav-next:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── HANDOFF ── */
+#s-handoff{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:var(--bg);text-align:center}
+#s-handoff.active{display:flex}
+.handoff-card{background:var(--card);border-radius:24px;padding:40px 32px;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.08)}
+.handoff-icon{font-size:3rem;margin-bottom:16px;display:block}
+.handoff-title{font-size:1.4rem;font-weight:800;margin-bottom:8px;color:var(--text)}
+.handoff-desc{font-size:.88rem;color:var(--sub);line-height:1.7;margin-bottom:28px}
+.partner-a-result{background:var(--bg);border-radius:12px;padding:16px;margin-bottom:24px;display:flex;align-items:center;gap:14px;text-align:left}
+.pa-lang-icon{font-size:1.8rem}
+.pa-info{flex:1}
+.pa-label{font-size:.65rem;color:var(--sub);letter-spacing:.15rem;text-transform:uppercase;margin-bottom:2px}
+.pa-name{font-size:1rem;font-weight:700;margin-bottom:2px}
+.pa-sub{font-size:.72rem;color:var(--sub)}
+.btn-handoff{width:100%;padding:15px;background:linear-gradient(135deg,#EC4899,#8B5CF6);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(236,72,153,.3);letter-spacing:.05em}
+.btn-handoff:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(236,72,153,.4)}
+
+/* ── RESULT (single) ── */
+#s-result{min-height:100vh;display:none;background:var(--bg)}
+#s-result.active{display:block}
+.result-hero{padding:52px 24px 40px;text-align:center;position:relative;overflow:hidden}
+.rh-num{font-size:7rem;font-weight:900;opacity:.09;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;letter-spacing:-.05em}
+.rh-icon{font-size:2.8rem;margin-bottom:10px;display:block;position:relative;filter:drop-shadow(0 4px 12px rgba(0,0,0,.2))}
+.rh-label{display:inline-block;padding:4px 14px;border:1px solid rgba(255,255,255,.35);border-radius:20px;font-size:.7rem;color:rgba(255,255,255,.8);letter-spacing:.18rem;text-transform:uppercase;margin-bottom:12px;position:relative}
+.rh-title{font-size:2rem;font-weight:800;color:#fff;position:relative;margin-bottom:6px;letter-spacing:-.02em}
+.rh-sub{font-size:.88rem;color:rgba(255,255,255,.65);position:relative}
+.result-body{max-width:640px;margin:0 auto;padding:0 18px 60px}
+.chart-card{background:var(--card);border-radius:18px;padding:24px;margin:-22px 0 16px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.chart-title{font-size:.68rem;font-weight:700;letter-spacing:.2rem;text-transform:uppercase;color:var(--sub);margin-bottom:16px}
+.lang-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.lb-icon{font-size:1.1rem;width:24px;text-align:center;flex-shrink:0}
+.lb-name{font-size:.75rem;color:var(--sub);width:80px;flex-shrink:0;white-space:nowrap}
+.lb-track{flex:1;height:9px;background:var(--border);border-radius:5px;overflow:hidden}
+.lb-fill{height:100%;border-radius:5px;transition:width 1s ease;width:0%}
+.lb-pct{font-size:.72rem;color:var(--sub);width:32px;text-align:right;flex-shrink:0}
+.lb-row-top .lb-name{color:var(--text);font-weight:700}
+.sec-card{background:var(--card);border-radius:18px;padding:22px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.sec-card h3{font-size:.68rem;font-weight:700;letter-spacing:.2rem;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.sec-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.desc-p{font-size:.9rem;line-height:1.85;color:#3D2040}
+.tip-list{display:flex;flex-direction:column;gap:10px}
+.tip-row{display:flex;align-items:flex-start;gap:10px;font-size:.86rem;line-height:1.65;color:#3D2040}
+.tip-bullet{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px}
+.btn-retry{display:block;margin:24px auto 0;padding:13px 40px;background:var(--text);color:#fff;border:none;border-radius:50px;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.05em}
+.btn-retry:hover{opacity:.85;transform:translateY(-1px)}
+.btn-couple-next{display:block;margin:12px auto 0;padding:13px 40px;background:linear-gradient(135deg,#EC4899,#8B5CF6);color:#fff;border:none;border-radius:50px;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(236,72,153,.3);letter-spacing:.03em}
+.btn-couple-next:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(236,72,153,.4)}
+
+/* ── COUPLE RESULT ── */
+#s-couple{min-height:100vh;display:none;background:var(--bg)}
+#s-couple.active{display:block}
+.couple-hero{padding:44px 24px 32px;text-align:center;background:linear-gradient(155deg,#2D1B2E,#5C2D4A);position:relative;overflow:hidden}
+.couple-hero::before{content:'❤️';position:absolute;font-size:12rem;opacity:.04;top:50%;left:50%;transform:translate(-50%,-50%)}
+.ch-title{font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:6px;position:relative}
+.ch-sub{font-size:.82rem;color:rgba(255,255,255,.5);position:relative}
+.couple-body{max-width:640px;margin:0 auto;padding:0 18px 60px}
+.profiles-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:-20px 0 16px}
+.profile-mini{background:var(--card);border-radius:16px;padding:18px;box-shadow:0 4px 24px rgba(0,0,0,.08);text-align:center}
+.pm-who{font-size:.62rem;font-weight:700;letter-spacing:.18rem;text-transform:uppercase;color:var(--sub);margin-bottom:10px}
+.pm-icon{font-size:2rem;display:block;margin-bottom:6px}
+.pm-name{font-size:.9rem;font-weight:700;margin-bottom:4px}
+.pm-bars{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.pm-bar-row{display:flex;align-items:center;gap:5px}
+.pm-bar-ico{font-size:.7rem;width:16px;text-align:center;flex-shrink:0}
+.pm-bar-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.pm-bar-fill{height:100%;border-radius:3px}
+.compat-card{background:var(--card);border-radius:18px;padding:28px 24px;margin-bottom:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);text-align:center}
+.compat-label{font-size:.68rem;font-weight:700;letter-spacing:.2rem;text-transform:uppercase;color:var(--sub);margin-bottom:16px}
+.compat-ring-wrap{position:relative;width:140px;height:140px;margin:0 auto 16px}
+.compat-ring-svg{width:100%;height:100%}
+.compat-ring-track{fill:none;stroke:var(--border);stroke-width:10}
+.compat-ring-fill{fill:none;stroke-width:10;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;stroke-dasharray:339;stroke-dashoffset:339;transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.3,1)}
+.compat-pct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2rem;font-weight:900;color:var(--text);line-height:1}
+.compat-pct-sub{font-size:.55rem;color:var(--sub);display:block;margin-top:3px;letter-spacing:.1rem}
+.compat-title{font-size:1.1rem;font-weight:700;margin-bottom:6px}
+.compat-desc{font-size:.85rem;color:var(--sub);line-height:1.7}
+.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.match-cell{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.05);text-align:center}
+.match-cell .mc-ico{font-size:1.4rem;display:block;margin-bottom:8px}
+.mc-label{font-size:.65rem;color:var(--sub);letter-spacing:.1rem;text-transform:uppercase;margin-bottom:4px}
+.mc-val{font-size:.88rem;font-weight:700;color:var(--text);line-height:1.4}
+.tips-card{background:var(--card);border-radius:18px;padding:22px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.tips-card h3{font-size:.68rem;font-weight:700;letter-spacing:.2rem;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:7px;color:var(--sub)}
+
+@media(max-width:420px){
+  .intro-title{font-size:1.8rem}
+  .profiles-row{grid-template-columns:1fr}
+  .match-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── INTRO ── -->
+<div id="s-intro" class="screen active">
+  <div class="intro-inner">
+    <span class="heart-icon">💕</span>
+    <h1 class="intro-title">恋愛スタイル<br><span class="accent">診断</span></h1>
+    <p class="intro-desc">5つの愛情言語からあなたの恋愛スタイルを探ります。<br>15の質問に正直に答えてください。</p>
+    <div class="lang-pills" id="intro-pills"></div>
+    <div class="mode-btns">
+      <button class="mode-btn btn-solo" onclick="startMode('solo')">
+        <span class="mode-icon">🌸</span>ひとりで診断する
+      </button>
+      <button class="mode-btn btn-couple" onclick="startMode('couple')">
+        <span class="mode-icon">💑</span>カップルで相性診断する
+      </button>
+    </div>
+    <p class="intro-note">所要時間 約2〜3分 · 全15問</p>
+  </div>
+</div>
+
+<!-- ── QUIZ ── -->
+<div id="s-quiz" class="screen">
+  <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
+  <div class="quiz-hdr">
+    <div class="quiz-hdr-left">
+      <div class="who-badge" id="who-badge" style="display:none"></div>
+      <div class="q-counter" id="q-counter">Q 1 / 15</div>
+    </div>
+    <span class="q-pct" id="q-pct">0%</span>
+  </div>
+  <div class="quiz-body">
+    <div class="q-lang-badge" id="q-lang-badge"></div>
+    <div class="q-text" id="q-text"></div>
+    <div class="opts" id="opts"></div>
+    <div class="q-nav">
+      <button class="nav-back" id="btn-back" onclick="navQ(-1)" disabled>← 戻る</button>
+      <button class="nav-next" id="btn-next" onclick="navQ(1)" disabled>次へ →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HANDOFF (couple) ── -->
+<div id="s-handoff" class="screen">
+  <div class="handoff-card">
+    <span class="handoff-icon">🎉</span>
+    <div class="handoff-title">パートナーAの診断完了！</div>
+    <div class="handoff-desc">スマホをパートナーBに渡して、同じ質問に答えてもらいましょう。</div>
+    <div class="partner-a-result" id="pa-result-preview"></div>
+    <button class="btn-handoff" onclick="startPartnerB()">パートナーBの診断へ →</button>
+  </div>
+</div>
+
+<!-- ── SINGLE RESULT ── -->
+<div id="s-result" class="screen">
+  <div class="result-hero" id="result-hero">
+    <div class="rh-num" id="rh-num"></div>
+    <span class="rh-icon" id="rh-icon"></span>
+    <div class="rh-label" id="rh-label">LOVE LANGUAGE</div>
+    <div class="rh-title" id="rh-title"></div>
+    <div class="rh-sub" id="rh-sub"></div>
+  </div>
+  <div class="result-body">
+    <div class="chart-card">
+      <div class="chart-title">あなたの愛情言語プロフィール</div>
+      <div id="result-chart"></div>
+    </div>
+    <div class="sec-card">
+      <h3><span class="sec-dot" id="desc-dot"></span>あなたのスタイル</h3>
+      <div class="desc-p" id="r-desc"></div>
+    </div>
+    <div class="sec-card">
+      <h3><span class="sec-dot" style="background:#4ADE80"></span>愛情を受け取るとき</h3>
+      <div class="tip-list" id="r-receive"></div>
+    </div>
+    <div class="sec-card">
+      <h3><span class="sec-dot" style="background:#60A5FA"></span>愛情を伝えるとき</h3>
+      <div class="tip-list" id="r-give"></div>
+    </div>
+    <div class="sec-card">
+      <h3><span class="sec-dot" style="background:#FBBF24"></span>パートナーへのアドバイス</h3>
+      <div class="tip-list" id="r-partner"></div>
+    </div>
+    <div id="solo-btns"></div>
+  </div>
+</div>
+
+<!-- ── COUPLE RESULT ── -->
+<div id="s-couple" class="screen">
+  <div class="couple-hero">
+    <div class="ch-title">相性診断の結果 💕</div>
+    <div class="ch-sub">二人の愛情言語を分析しました</div>
+  </div>
+  <div class="couple-body">
+    <div class="profiles-row" id="profiles-row"></div>
+    <div class="compat-card">
+      <div class="compat-label">COMPATIBILITY SCORE</div>
+      <div class="compat-ring-wrap">
+        <svg class="compat-ring-svg" viewBox="0 0 120 120">
+          <circle class="compat-ring-track" cx="60" cy="60" r="54"/>
+          <circle class="compat-ring-fill" cx="60" cy="60" r="54" id="compat-ring" stroke="#EC4899"/>
+        </svg>
+        <div class="compat-pct"><span id="compat-num">0</span><span style="font-size:1.2rem">%</span><span class="compat-pct-sub" id="compat-grade"></span></div>
+      </div>
+      <div class="compat-title" id="compat-title"></div>
+      <div class="compat-desc" id="compat-desc"></div>
+    </div>
+    <div class="match-grid" id="match-grid"></div>
+    <div class="tips-card">
+      <h3><span class="sec-dot" style="background:#EC4899"></span>二人へのヒント</h3>
+      <div class="tip-list" id="couple-tips"></div>
+    </div>
+    <button class="btn-retry" onclick="restart()">もう一度診断する</button>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+const LL = [
+  { id:'words', name:'言葉', icon:'💬', color:'#EC4899', light:'#FDF2F8',
+    label:'言葉の愛情表現',
+    desc:'「好き」「ありがとう」「すごいね」という言葉が、心の奥深くに届きます。口頭や文章での表現を大切にし、愛情は言葉に乗せて伝えるのが一番だと感じています。',
+    receive:['「愛してる」「大切だよ」を積極的に口に出して','日常の小さなことへの感謝の言葉が嬉しい','褒め言葉や励ましが何よりのエネルギーになる'],
+    give:['言葉が苦手でも、一言でいい——伝えることが大切','メモや短いメッセージでも大きな効果がある','ネガティブな言葉には特に敏感なので選んで'],
+    partner:['毎日一回「ありがとう」か「好きだよ」を伝えてみて','批判より「こうしてほしい」という表現を心がけて','手紙やメッセージでの気持ち共有を大切にして'] },
+
+  { id:'acts', name:'行動', icon:'🤝', color:'#F97316', light:'#FFF7ED',
+    label:'行動による愛情表現',
+    desc:'「何かしてあげよう」という姿勢が、言葉より雄弁に愛を語ります。家事の手伝い、サプライズの準備、困ったときに率先して動いてくれる姿に深い愛情を感じるタイプです。',
+    receive:['言われる前に気づいて動いてくれることが嬉しい','疲れているとき助けてくれると愛情を感じる','小さな気配りや行動の積み重ねが心に響く'],
+    give:['口より手を動かすことで愛情を示そう','「何か手伝える？」と声かけする習慣を','行動で示す愛が相手に伝わっているか確認して'],
+    partner:['「してあげたい」気持ちを積極的に行動に移して','家事や日常の負担を分かち合うことを意識して','具体的なサポートが最大の愛情表現になる'] },
+
+  { id:'gifts', name:'贈り物', icon:'🎁', color:'#EAB308', light:'#FEFCE8',
+    label:'贈り物による愛情表現',
+    desc:'プレゼントの価格より「私のことを考えてくれた」という事実が心を動かします。記念日や誕生日だけでなく、ふとした瞬間の小さな贈り物にも深い意味と愛を感じます。',
+    receive:['値段より「選んでくれた気持ち」が大切','サプライズプレゼントに特別な愛情を感じる','記念日を覚えていてくれることが嬉しい'],
+    give:['特別な日を忘れずにカレンダーに記録しよう','日常の小さな手みやげを大切にして','「これを見てあなたを思い出した」の一言を添えて'],
+    partner:['記念日・誕生日は必ずお祝いを大切にして','プレゼントは金額よりセンスと気持ちが大事','日常でふと「これどうぞ」のサプライズを'] },
+
+  { id:'time', name:'時間', icon:'⏰', color:'#06B6D4', light:'#ECFEFF',
+    label:'一緒にいる時間',
+    desc:'スマホをしまって、二人だけの世界に没頭できる瞬間が最高の愛情表現です。共に何かを体験し、完全に「あなただけを見ている」という時間に深い愛情と絆を感じます。',
+    receive:['スマホなしで自分だけに集中してほしい','一緒に体験する時間（旅行・料理・映画）が嬉しい','「二人の時間」を優先してもらえると嬉しい'],
+    give:['デートや共有体験を意識的に作ろう','スマホを置いて、目を合わせて話す時間を','相手の好きなことに付き合う余裕を持って'],
+    partner:['毎日でも「一緒にいる時間」を意識的に作って','ながらスマホをやめ、相手に集中して','二人だけの特別なルーティン（お茶タイムなど）を'] },
+
+  { id:'touch', name:'スキンシップ', icon:'🤗', color:'#8B5CF6', light:'#F5F3FF',
+    label:'身体的な愛情表現',
+    desc:'ハグ、手をつなぐ、肩に触れるなど、物理的な接触が愛情の言語です。言葉より触れることで安心と愛を確認します。身体的な距離の近さが、心の近さを表していると感じます。',
+    receive:['ハグや手つなぎが日常にあると安心できる','さりげないボディタッチに愛情を感じる','体を寄せ合う時間が幸福感につながる'],
+    give:['積極的にハグや手つなぎを習慣にしよう','「疲れてる？」と背中をさする小さな気遣いを','一緒にいるときの身体的な距離感を意識して'],
+    partner:['日常の中でハグや手つなぎを欠かさないで','さりげない優しいタッチを大切にして','スキンシップを「言葉の代わり」と思って'] },
+];
+
+const QS = [
+  {text:'パートナーから「ありがとう」「好きだよ」と声に出して言ってもらえると、特別な気持ちになる', lang:'words'},
+  {text:'パートナーが率先して家事や用事を手伝ってくれると、愛情を感じる', lang:'acts'},
+  {text:'二人だけで過ごす時間を何よりも大切にしたい', lang:'time'},
+  {text:'ハグや手をつなぐことで、言葉以上に安心感と愛情を感じる', lang:'touch'},
+  {text:'プレゼントをもらうと、相手が自分のことを考えてくれていたと実感できる', lang:'gifts'},
+  {text:'褒め言葉や感謝の言葉は、何よりもやる気と幸せをくれる', lang:'words'},
+  {text:'自分が大変なとき、パートナーが気づいて動いてくれることが嬉しい', lang:'acts'},
+  {text:'一緒に映画・旅行・料理などを体験することが、最高の愛情表現だと思う', lang:'time'},
+  {text:'さりげなく肩に触れたり、隣に寄り添ってくれることに温かさを感じる', lang:'touch'},
+  {text:'誕生日や記念日のサプライズが、愛情の深さを感じさせてくれる', lang:'gifts'},
+  {text:'気持ちを手紙やメッセージで伝えてもらうことが好きで、大切に保存する', lang:'words'},
+  {text:'「何かしてあげよう」という姿勢が、パートナーへの愛情の証だと感じる', lang:'acts'},
+  {text:'スマホをしまって、自分だけに目を向けてくれる時間が大切だ', lang:'time'},
+  {text:'一緒にいるとき、身体的な距離の近さが心の近さを表していると思う', lang:'touch'},
+  {text:'高価でなくても、私を思って選んでくれたものは何より嬉しい', lang:'gifts'},
+];
+
+const OPTS_LABELS = [
+  '全然違う','あまり違う','どちらでも','少しそう','まさにそう'
+];
+
+// Compatibility descriptions
+const COMPAT_DESC = [
+  {min:80, grade:'💕 深く共鳴し合う', title:'自然に通じ合えるふたり', desc:'同じ愛情言語を持ち、お互いが求めるものを自然に与え合えるベストな組み合わせ。深い理解と安心感に満ちた関係を築けるでしょう。'},
+  {min:60, grade:'🌸 補い合う', title:'違いが二人を豊かにする', desc:'愛情の伝え方に違いはあっても、お互いを補い合えるバランスの良い組み合わせ。意識的に相手の言語を学ぶことで、さらに深い絆が生まれます。'},
+  {min:40, grade:'✨ 成長し合う', title:'理解が愛を深める', desc:'愛情表現のスタイルが異なるふたり。コミュニケーションを大切にすることで、お互いへの理解が深まり、唯一無二の関係になれます。'},
+  {min:0,  grade:'🌟 刺激し合う', title:'違うから面白い', desc:'全く異なる愛情言語を持つふたり。最初は戸惑いがあるかもしれませんが、違いを受け入れることで、豊かで刺激的な関係が育まれます。'},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+
+let mode = 'solo';
+let cur = 0;
+let answers = new Array(15).fill(null);
+let scoresA = null;
+let scoresB = null;
+let isPartnerB = false;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+(function initIntro() {
+  const pills = document.getElementById('intro-pills');
+  LL.forEach(l => {
+    const p = document.createElement('div');
+    p.className = 'lang-pill';
+    p.style.cssText = `color:${l.color};border-color:${l.color}44;background:${l.light}`;
+    p.textContent = l.icon + ' ' + l.name;
+    pills.appendChild(p);
+  });
+})();
+
+// ── SCREENS ───────────────────────────────────────────────────────────────────
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function restart() {
+  mode = 'solo'; cur = 0; isPartnerB = false;
+  answers.fill(null); scoresA = null; scoresB = null;
+  showScreen('s-intro');
+}
+
+// ── MODE ──────────────────────────────────────────────────────────────────────
+
+function startMode(m) {
+  mode = m; isPartnerB = false;
+  cur = 0; answers.fill(null);
+  renderQ();
+  showScreen('s-quiz');
+}
+
+function startPartnerB() {
+  isPartnerB = true; cur = 0; answers.fill(null);
+  renderQ();
+  showScreen('s-quiz');
+}
+
+// ── QUIZ ──────────────────────────────────────────────────────────────────────
+
+function renderQ() {
+  const q = QS[cur];
+  const lang = LL.find(l => l.id === q.lang);
+  const pct = Math.round((cur / QS.length) * 100);
+
+  document.getElementById('prog-bar').style.width = pct + '%';
+  document.getElementById('q-counter').textContent = `Q ${cur + 1} / ${QS.length}`;
+  document.getElementById('q-pct').textContent = pct + '%';
+
+  // Who badge
+  const badge = document.getElementById('who-badge');
+  if (mode === 'couple') {
+    badge.style.display = 'inline-block';
+    badge.style.cssText = `display:inline-block;padding:3px 10px;border-radius:12px;font-size:.65rem;font-weight:700;letter-spacing:.1rem;background:${isPartnerB ? '#EDE9FE' : '#FDF2F8'};color:${isPartnerB ? '#7C3AED' : '#BE185D'}`;
+    badge.textContent = isPartnerB ? 'PARTNER B' : 'PARTNER A';
+  } else {
+    badge.style.display = 'none';
+  }
+
+  // Lang badge
+  const lb = document.getElementById('q-lang-badge');
+  lb.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:.7rem;font-weight:600;margin-bottom:14px;border:1px solid ${lang.color}44;background:${lang.light};color:${lang.color}`;
+  lb.textContent = lang.icon + ' ' + lang.name;
+
+  document.getElementById('q-text').textContent = q.text;
+
+  const optsEl = document.getElementById('opts');
+  optsEl.innerHTML = '';
+  OPTS_LABELS.forEach((label, i) => {
+    const val = i + 1;
+    const btn = document.createElement('button');
+    btn.className = 'opt' + (answers[cur] === val ? ' sel' : '');
+    btn.innerHTML = `<span class="opt-num">${val}</span>${label}`;
+    btn.onclick = () => selectOpt(val);
+    optsEl.appendChild(btn);
+  });
+
+  document.getElementById('btn-back').disabled = cur === 0;
+  const nextBtn = document.getElementById('btn-next');
+  nextBtn.disabled = answers[cur] === null;
+  const isLast = cur === QS.length - 1;
+  nextBtn.textContent = isLast ? '結果を見る ✨' : '次へ →';
+}
+
+function selectOpt(val) {
+  answers[cur] = val;
+  document.querySelectorAll('.opt').forEach((b, i) => b.classList.toggle('sel', i + 1 === val));
+  document.getElementById('btn-next').disabled = false;
+}
+
+function navQ(dir) {
+  if (dir === 1 && cur === QS.length - 1) {
+    finishQuiz(); return;
+  }
+  cur = Math.max(0, Math.min(QS.length - 1, cur + dir));
+  renderQ();
+}
+
+// ── SCORING ───────────────────────────────────────────────────────────────────
+
+function calcScores(ans) {
+  const raw = {};
+  LL.forEach(l => raw[l.id] = 0);
+  QS.forEach((q, i) => { raw[q.lang] += (ans[i] ?? 3); });
+  // max per language = 3 questions × 5 = 15
+  const maxPer = 15;
+  const pct = {};
+  LL.forEach(l => { pct[l.id] = Math.round((raw[l.id] / maxPer) * 100); });
+  return pct;
+}
+
+function topLang(scores) {
+  return LL.reduce((top, l) => scores[l.id] > scores[top.id] ? l : top, LL[0]);
+}
+
+// ── FINISH ────────────────────────────────────────────────────────────────────
+
+function finishQuiz() {
+  const scores = calcScores(answers);
+
+  if (!isPartnerB) {
+    scoresA = scores;
+    if (mode === 'couple') {
+      buildHandoff(scores);
+      showScreen('s-handoff');
+    } else {
+      buildResult(scores, false);
+      showScreen('s-result');
+    }
+  } else {
+    scoresB = scores;
+    buildCoupleResult(scoresA, scoresB);
+    showScreen('s-couple');
+  }
+}
+
+// ── HANDOFF ───────────────────────────────────────────────────────────────────
+
+function buildHandoff(scores) {
+  const top = topLang(scores);
+  const el = document.getElementById('pa-result-preview');
+  el.innerHTML = `
+    <span class="pa-lang-icon">${top.icon}</span>
+    <div class="pa-info">
+      <div class="pa-label">パートナーAの愛情言語</div>
+      <div class="pa-name" style="color:${top.color}">${top.name}</div>
+      <div class="pa-sub">${top.label}</div>
+    </div>`;
+}
+
+// ── SINGLE RESULT ─────────────────────────────────────────────────────────────
+
+function buildResult(scores, forCouple) {
+  const top = topLang(scores);
+  const sorted = [...LL].sort((a, b) => scores[b.id] - scores[a.id]);
+
+  // Hero
+  const hero = document.getElementById('result-hero');
+  hero.style.background = `linear-gradient(155deg, ${top.color}EE, ${top.color}88)`;
+  document.getElementById('rh-num').textContent = top.icon;
+  document.getElementById('rh-icon').textContent = top.icon;
+  document.getElementById('rh-title').textContent = top.name;
+  document.getElementById('rh-sub').textContent = top.label;
+  document.getElementById('desc-dot').style.background = top.color;
+  document.getElementById('r-desc').textContent = top.desc;
+
+  // Chart
+  const chart = document.getElementById('result-chart');
+  chart.innerHTML = '';
+  sorted.forEach(l => {
+    const isTop = l.id === top.id;
+    const row = document.createElement('div');
+    row.className = 'lang-bar-row' + (isTop ? ' lb-row-top' : '');
+    row.innerHTML = `
+      <span class="lb-icon">${l.icon}</span>
+      <span class="lb-name">${l.name}</span>
+      <div class="lb-track"><div class="lb-fill" style="background:${l.color}" data-w="${scores[l.id]}"></div></div>
+      <span class="lb-pct">${scores[l.id]}%</span>`;
+    chart.appendChild(row);
+  });
+
+  // Lists
+  buildTips('r-receive', top.receive, top.color);
+  buildTips('r-give', top.give, '#60A5FA');
+  buildTips('r-partner', top.partner, '#FBBF24');
+
+  // Buttons
+  const btns = document.getElementById('solo-btns');
+  btns.innerHTML = forCouple
+    ? `<button class="btn-couple-next" onclick="showHandoff()">パートナーBの診断へ →</button>`
+    : `<button class="btn-retry" onclick="restart()">もう一度診断する</button>`;
+
+  // Animate bars
+  requestAnimationFrame(() => setTimeout(() => {
+    document.querySelectorAll('.lb-fill').forEach(el => { el.style.width = el.dataset.w + '%'; });
+  }, 200));
+}
+
+function buildTips(id, tips, color) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  tips.forEach(tip => {
+    const row = document.createElement('div');
+    row.className = 'tip-row';
+    row.innerHTML = `<span class="tip-bullet" style="background:${color}">✓</span>${tip}`;
+    el.appendChild(row);
+  });
+}
+
+// ── COUPLE RESULT ─────────────────────────────────────────────────────────────
+
+function buildCoupleResult(sA, sB) {
+  const topA = topLang(sA);
+  const topB = topLang(sB);
+
+  // Mini profiles
+  const row = document.getElementById('profiles-row');
+  row.innerHTML = '';
+  [{who:'A', scores:sA, top:topA}, {who:'B', scores:sB, top:topB}].forEach(({who,scores,top}) => {
+    const sorted = [...LL].sort((a,b) => scores[b.id]-scores[a.id]);
+    const cell = document.createElement('div');
+    cell.className = 'profile-mini';
+    cell.innerHTML = `
+      <div class="pm-who">PARTNER ${who}</div>
+      <span class="pm-icon">${top.icon}</span>
+      <div class="pm-name" style="color:${top.color}">${top.name}</div>
+      <div class="pm-bars">${sorted.map(l => `
+        <div class="pm-bar-row">
+          <span class="pm-bar-ico">${l.icon}</span>
+          <div class="pm-bar-track"><div class="pm-bar-fill" style="background:${l.color};width:${scores[l.id]}%"></div></div>
+        </div>`).join('')}
+      </div>`;
+    row.appendChild(cell);
+  });
+
+  // Compatibility score
+  const canBgiveA = sB[topA.id] / 100; // B's score in A's primary lang
+  const canAgiveB = sA[topB.id] / 100; // A's score in B's primary lang
+  const sameBonus = topA.id === topB.id ? 20 : 0;
+  const raw = Math.round((canBgiveA + canAgiveB) / 2 * 80) + sameBonus;
+  const compatPct = Math.min(95, Math.max(25, raw));
+
+  // Animate ring (circ = 2π×54 ≈ 339)
+  const ring = document.getElementById('compat-ring');
+  const offset = 339 * (1 - compatPct / 100);
+  const gradColor = compatPct >= 75 ? '#EC4899' : compatPct >= 55 ? '#F97316' : '#8B5CF6';
+  ring.style.stroke = gradColor;
+  setTimeout(() => { ring.style.strokeDashoffset = offset; }, 300);
+
+  // Animate number
+  let n = 0;
+  const numEl = document.getElementById('compat-num');
+  const inc = setInterval(() => {
+    n = Math.min(compatPct, n + 2);
+    numEl.textContent = n;
+    if (n >= compatPct) clearInterval(inc);
+  }, 20);
+
+  // Description
+  const cd = COMPAT_DESC.find(d => compatPct >= d.min);
+  document.getElementById('compat-grade').textContent = cd.grade;
+  document.getElementById('compat-title').textContent = cd.title;
+  document.getElementById('compat-desc').textContent = cd.desc;
+
+  // Match grid
+  const grid = document.getElementById('match-grid');
+  grid.innerHTML = `
+    <div class="match-cell">
+      <span class="mc-ico">${topA.icon}</span>
+      <div class="mc-label">AのTop言語</div>
+      <div class="mc-val" style="color:${topA.color}">${topA.name}</div>
+    </div>
+    <div class="match-cell">
+      <span class="mc-ico">${topB.icon}</span>
+      <div class="mc-label">BのTop言語</div>
+      <div class="mc-val" style="color:${topB.color}">${topB.name}</div>
+    </div>
+    <div class="match-cell">
+      <span class="mc-ico">🎯</span>
+      <div class="mc-label">BがAに与える</div>
+      <div class="mc-val">${topA.name}を<br>${Math.round(canBgiveA*100)}%与えられる</div>
+    </div>
+    <div class="match-cell">
+      <span class="mc-ico">🎁</span>
+      <div class="mc-label">AがBに与える</div>
+      <div class="mc-val">${topB.name}を<br>${Math.round(canAgiveB*100)}%与えられる</div>
+    </div>`;
+
+  // Combined tips
+  const tips = genCoupleTips(topA, topB, compatPct);
+  buildTips('couple-tips', tips, '#EC4899');
+}
+
+function genCoupleTips(tA, tB, pct) {
+  const tips = [];
+  if (tA.id === tB.id) {
+    tips.push(`二人とも「${tA.name}」タイプ。自然に伝わり合えますが、マンネリに注意しましょう`);
+    tips.push('同じ言語だからこそ、マンネリ防止のための新鮮な工夫を忘れずに');
+    tips.push('二人の「当たり前」が違う部分にも目を向けて、感謝を言葉にして');
+  } else {
+    tips.push(`Aさんは「${tA.name}」、Bさんは「${tB.name}」。意識的にお互いの言語を学びましょう`);
+    tips.push(`Aさんへ：Bさんには${tB.name}で愛情を表現すると、より伝わりやすいです`);
+    tips.push(`Bさんへ：Aさんには${tA.name}で愛情を表現すると、より伝わりやすいです`);
+    tips.push('「愛しているのに伝わらない」は言語の違い。翻訳する努力が愛の証です');
+  }
+  if (pct < 55) tips.push('定期的に「どんな愛情表現が嬉しい？」と話し合う時間を作って');
+  tips.push('どんな組み合わせも、お互いを理解しようとする心があれば最強のパートナーに');
+  return tips.slice(0, 4);
+}
+</script>
+</body>
+</html>
