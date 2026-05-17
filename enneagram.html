@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>エニアグラム診断</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#F5F3EE;--card:#FFFFFF;--text:#1A1A2E;--sub:#6B6B8A;--border:#E8E4DC}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Hiragino Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.screen{display:none;animation:fadeIn .4s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ── INTRO ── */
+#s-intro{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:linear-gradient(160deg,#1A1A2E 0%,#2D2B55 50%,#1A1A2E 100%);text-align:center;position:relative;overflow:hidden}
+#s-intro.active{display:flex}
+#s-intro::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(139,92,246,.15) 0%,transparent 60%),radial-gradient(ellipse at 70% 30%,rgba(59,130,246,.12) 0%,transparent 50%)}
+.intro-inner{position:relative;z-index:1;max-width:560px}
+.intro-badge{display:inline-block;padding:5px 16px;border:1px solid rgba(255,255,255,.2);border-radius:20px;font-size:.72rem;letter-spacing:.25rem;color:rgba(255,255,255,.6);margin-bottom:28px;text-transform:uppercase}
+.intro-title{font-size:2.8rem;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.1;margin-bottom:16px}
+.intro-title span{background:linear-gradient(135deg,#A78BFA,#60A5FA);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.intro-desc{font-size:.95rem;color:rgba(255,255,255,.55);line-height:1.8;margin-bottom:40px}
+.nine-dots{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:36px;max-width:180px;margin-left:auto;margin-right:auto}
+.ndot{width:14px;height:14px;border-radius:50%;opacity:.7}
+.btn-start{display:inline-block;padding:15px 48px;background:#fff;color:#1A1A2E;border:none;border-radius:50px;font-size:.95rem;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.05em;transition:all .2s;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.btn-start:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.intro-note{margin-top:20px;font-size:.72rem;color:rgba(255,255,255,.3);letter-spacing:.05em}
+
+/* ── QUIZ ── */
+#s-quiz{min-height:100vh;display:none;flex-direction:column;background:var(--bg)}
+#s-quiz.active{display:flex}
+.progress-bar-wrap{height:4px;background:var(--border);position:fixed;top:0;left:0;right:0;z-index:10}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,#8B5CF6,#3B82F6);transition:width .5s ease;border-radius:2px}
+.quiz-header{padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center;max-width:640px;margin:0 auto;width:100%;padding-top:28px}
+.q-counter{font-size:.75rem;color:var(--sub);letter-spacing:.15rem;font-weight:600}
+.q-pct{font-size:.75rem;color:var(--sub)}
+.quiz-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 24px 40px;max-width:640px;margin:0 auto;width:100%}
+.q-num{font-size:.7rem;color:#A78BFA;letter-spacing:.2rem;font-weight:700;text-transform:uppercase;margin-bottom:16px}
+.q-text{font-size:1.18rem;line-height:1.75;color:var(--text);margin-bottom:36px;font-weight:500;text-align:center;min-height:80px}
+.options{display:flex;flex-direction:column;gap:10px;width:100%}
+.opt-btn{
+  padding:15px 20px;
+  background:var(--card);
+  border:1.5px solid var(--border);
+  border-radius:12px;
+  cursor:pointer;
+  font-family:inherit;
+  font-size:.9rem;
+  color:var(--sub);
+  text-align:left;
+  transition:all .18s;
+  display:flex;align-items:center;gap:14px;
+  position:relative;overflow:hidden;
+}
+.opt-btn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .18s}
+.opt-btn:hover{border-color:#C4B5FD;color:var(--text);background:#FDFCFF}
+.opt-btn:hover::before{background:#A78BFA}
+.opt-btn.selected{border-color:#8B5CF6;background:#F5F3FF;color:var(--text);font-weight:600}
+.opt-btn.selected::before{background:#8B5CF6}
+.opt-icon{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--sub);flex-shrink:0;transition:all .18s;font-weight:700}
+.opt-btn.selected .opt-icon{background:#8B5CF6;border-color:#8B5CF6;color:#fff}
+.opt-btn:hover .opt-icon{border-color:#A78BFA;color:#8B5CF6}
+.quiz-nav{display:flex;justify-content:space-between;align-items:center;margin-top:28px;width:100%}
+.nav-btn{padding:10px 24px;border:1.5px solid var(--border);background:none;border-radius:8px;font-family:inherit;font-size:.85rem;color:var(--sub);cursor:pointer;transition:all .18s}
+.nav-btn:hover:not(:disabled){border-color:#8B5CF6;color:#8B5CF6}
+.nav-btn:disabled{opacity:.3;cursor:not-allowed}
+.btn-next{padding:12px 32px;background:linear-gradient(135deg,#8B5CF6,#6D28D9);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(139,92,246,.3)}
+.btn-next:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(139,92,246,.4)}
+.btn-next:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── RESULT ── */
+#s-result{min-height:100vh;display:none;background:var(--bg)}
+#s-result.active{display:block}
+.result-hero{padding:52px 24px 36px;text-align:center;position:relative;overflow:hidden}
+.result-hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(to top,var(--bg),transparent)}
+.result-type-num{font-size:5rem;font-weight:900;opacity:.12;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);letter-spacing:-.05em;color:#fff}
+.result-badge{display:inline-block;padding:4px 14px;border:1px solid rgba(255,255,255,.3);border-radius:20px;font-size:.68rem;color:rgba(255,255,255,.7);letter-spacing:.2rem;text-transform:uppercase;margin-bottom:14px;position:relative}
+.result-title{font-size:2.2rem;font-weight:800;color:#fff;position:relative;margin-bottom:6px;letter-spacing:-.02em}
+.result-subtitle{font-size:.95rem;color:rgba(255,255,255,.65);position:relative;letter-spacing:.05em}
+.result-body{max-width:680px;margin:0 auto;padding:0 20px 60px}
+.motivation-card{background:#fff;border-radius:16px;padding:22px 24px;margin:-20px 0 20px;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;gap:20px}
+.mot-col{flex:1}
+.mot-label{font-size:.65rem;font-weight:700;letter-spacing:.2rem;text-transform:uppercase;margin-bottom:6px;opacity:.5}
+.mot-text{font-size:.88rem;line-height:1.6;color:var(--text)}
+.mot-div{width:1px;background:var(--border)}
+.section-card{background:#fff;border-radius:16px;padding:24px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.section-card h3{font-size:.72rem;font-weight:700;letter-spacing:.22rem;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section-card h3 .s-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.desc-text{font-size:.92rem;line-height:1.85;color:#3A3A5A}
+.item-list{display:flex;flex-direction:column;gap:10px}
+.item-row{display:flex;align-items:flex-start;gap:12px;font-size:.88rem;line-height:1.6;color:#3A3A5A}
+.item-row .bullet{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px}
+.score-chart{display:flex;flex-direction:column;gap:8px}
+.score-row{display:flex;align-items:center;gap:10px}
+.score-type-lbl{font-size:.75rem;color:var(--sub);width:20px;text-align:center;font-weight:700;flex-shrink:0}
+.score-type-name{font-size:.72rem;color:var(--sub);width:70px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.score-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.score-fill{height:100%;border-radius:4px;transition:width 1s ease}
+.score-pct{font-size:.7rem;color:var(--sub);width:32px;text-align:right;flex-shrink:0}
+.score-row.top .score-type-lbl,.score-row.top .score-type-name{color:var(--text);font-weight:700}
+.wing-row{display:flex;gap:10px;justify-content:center;margin-top:4px}
+.wing-pill{padding:6px 16px;border-radius:20px;font-size:.78rem;font-weight:600;background:rgba(139,92,246,.1);color:#7C3AED;border:1px solid rgba(139,92,246,.2)}
+.btn-retry{display:block;margin:24px auto 0;padding:14px 44px;background:var(--text);color:#fff;border:none;border-radius:50px;font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.05em}
+.btn-retry:hover{opacity:.85;transform:translateY(-1px)}
+
+@media(max-width:480px){
+  .intro-title{font-size:2rem}
+  .result-title{font-size:1.7rem}
+  .motivation-card{flex-direction:column}
+  .mot-div{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="s-intro" class="screen active">
+  <div class="intro-inner">
+    <div class="intro-badge">Personality Test</div>
+    <h1 class="intro-title">エニア<span>グラム</span>診断</h1>
+    <p class="intro-desc">9つの性格タイプからあなたの本質を探る。<br>20の質問に正直に答えてください。</p>
+    <div class="nine-dots" id="intro-dots"></div>
+    <button class="btn-start" onclick="startQuiz()">診断スタート →</button>
+    <p class="intro-note">所要時間 約3〜5分 · 全20問</p>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="s-quiz" class="screen">
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-fill" style="width:0%"></div></div>
+  <div class="quiz-header">
+    <span class="q-counter" id="q-counter">Q 1 / 20</span>
+    <span class="q-pct" id="q-pct">0%</span>
+  </div>
+  <div class="quiz-body">
+    <div class="q-num" id="q-num">QUESTION 01</div>
+    <div class="q-text" id="q-text"></div>
+    <div class="options" id="options"></div>
+    <div class="quiz-nav">
+      <button class="nav-btn" id="btn-prev" onclick="goQ(-1)" disabled>← 戻る</button>
+      <button class="btn-next" id="btn-next" onclick="goQ(1)" disabled>次へ →</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="s-result" class="screen">
+  <div class="result-hero" id="result-hero">
+    <div class="result-type-num" id="rh-num"></div>
+    <div class="result-badge" id="rh-badge">Type</div>
+    <div class="result-title" id="rh-title"></div>
+    <div class="result-subtitle" id="rh-sub"></div>
+  </div>
+  <div class="result-body">
+    <div class="motivation-card" id="mot-card">
+      <div class="mot-col"><div class="mot-label">核心的な動機</div><div class="mot-text" id="r-mot"></div></div>
+      <div class="mot-div"></div>
+      <div class="mot-col"><div class="mot-label">恐れていること</div><div class="mot-text" id="r-fear"></div></div>
+    </div>
+    <div class="section-card">
+      <h3><span class="s-dot" id="desc-dot"></span>タイプの特徴</h3>
+      <div class="desc-text" id="r-desc"></div>
+    </div>
+    <div class="section-card">
+      <h3><span class="s-dot" style="background:#4ADE80"></span>強み</h3>
+      <div class="item-list" id="r-strengths"></div>
+    </div>
+    <div class="section-card">
+      <h3><span class="s-dot" style="background:#F87171"></span>課題・弱み</h3>
+      <div class="item-list" id="r-weaknesses"></div>
+    </div>
+    <div class="section-card">
+      <h3><span class="s-dot" style="background:#FBBF24"></span>成長のヒント</h3>
+      <div class="item-list" id="r-growth"></div>
+    </div>
+    <div class="section-card">
+      <h3><span class="s-dot" style="background:#A78BFA"></span>スコア分布</h3>
+      <div class="score-chart" id="score-chart"></div>
+      <div style="margin-top:16px">
+        <div class="mot-label" style="text-align:center;margin-bottom:10px">ウィング（隣接タイプ）</div>
+        <div class="wing-row" id="wing-row"></div>
+      </div>
+    </div>
+    <button class="btn-retry" onclick="restart()">もう一度診断する</button>
+  </div>
+</div>
+
+<script>
+// ── TYPE DATA ──────────────────────────────────────────────────────────────
+
+const TYPES = {
+  1:{name:'改革者',sub:'The Reformer',color:'#5C6BC0',light:'#E8EAF6',
+    mot:'善で正しくあること、世界をより良くすること',
+    fear:'腐敗・欠陥・悪であることへの恐れ',
+    desc:'原則を重んじ、理想を追い求める完璧主義者。高い倫理観と責任感を持ち、物事を改善しようとする強い意志がある。自分にも他者にも高い基準を求める傾向があり、細部への注意力が際立って高い。',
+    strengths:['高い倫理観と誠実さ','細部への鋭い注意力と品質へのこだわり','強い責任感と自律性','世界をより良くしようとする情熱'],
+    weaknesses:['完璧主義による厳しい自己批判','些細なミスを見過ごせない傾向','感情より「正しさ」を優先しすぎる','批判的・説教的になりやすい'],
+    growth:['「十分に良い」を認める練習をしよう','自分への厳しさを他者への優しさと同じレベルに緩める','プロセスを楽しむ余裕を意識的につくる','感情を「弱さ」ではなく大切な情報として受け取ろう']},
+  2:{name:'助ける人',sub:'The Helper',color:'#E05C7A',light:'#FCE4EC',
+    mot:'愛され、必要とされること',
+    fear:'価値がなく、愛されないこと',
+    desc:'温かく気配り上手な博愛主義者。他者の感情に敏感で、助けることに喜びを見出す。自然に人を気にかけ、サポートする能力に長けているが、自分自身のニーズを後回しにしがちな面もある。',
+    strengths:['深い共感力と温かさ','他者のニーズを察する高い感受性','人と人との絆を育む能力','奉仕することへの純粋な喜び'],
+    weaknesses:['自分のニーズを無視しやすい','承認や感謝を求めすぎることがある','「あなたのために」という操作的な行動','拒絶されることへの強い恐れ'],
+    growth:['「No」と言うことも愛の一形態だと知る','まず自分自身を満たすことを許可しよう','他者を助けることと自分を大切にすることのバランスを意識する','感謝されなくても良い関係性を育てよう']},
+  3:{name:'達成者',sub:'The Achiever',color:'#F59E0B',light:'#FEF3C7',
+    mot:'価値ある存在と感じ、認められること',
+    fear:'無価値であること、失敗すること',
+    desc:'目標志向で魅力あふれる実力者。効率的に目標を達成し、人から認められることにエネルギーを感じる。高い適応力と社会的なスキルを持ち、どんな環境でも輝ける存在感がある。',
+    strengths:['高い目標達成能力と行動力','どんな環境にも適応できる柔軟性','人を鼓舞するカリスマ性','効率的な思考と実行力'],
+    weaknesses:['成功しないと価値がないと感じやすい','外見や評価に過敏になることがある','感情を後回しにして燃え尽きる','勝利のために誠実さを妥協することがある'],
+    growth:['成果ではなく「在り方」に価値を見出す練習をしよう','立ち止まって内なる声に耳を傾ける時間を作る','失敗を「学び」として受け入れる柔軟性を育てよう','認められなくても行動できる内的動機を探そう']},
+  4:{name:'個人主義者',sub:'The Individualist',color:'#8B5CF6',light:'#EDE9FE',
+    mot:'自分自身であること、深い意味を見出すこと',
+    fear:'アイデンティティがなく、意味のない存在であること',
+    desc:'自己表現豊かで感受性が強い独創的な魂。深い内面世界を持ち、独自性を大切にする。芸術や美に強い親和性を持ち、他者が見過ごすような感情の機微を捉える繊細さがある。',
+    strengths:['豊かな感受性と深い共感力','独創的で芸術的な表現力','感情の複雑さを理解する深さ','他者の痛みに寄り添える真摯さ'],
+    weaknesses:['感情の波に飲み込まれやすい','「自分は特別に不幸だ」という思考パターン','嫉妬心や自己憐憫に陥ることがある','現在より「ないもの」に意識が向きやすい'],
+    growth:['感情は天気のようなもの——波があっても大丈夫と知ろう','「今ここ」の美しさに気づく練習をしよう','他者と深くつながることで孤独感を和らげる','日常の小さな喜びを丁寧に受け取ろう']},
+  5:{name:'研究者',sub:'The Investigator',color:'#059669',light:'#D1FAE5',
+    mot:'有能で理解していること、知識を持つこと',
+    fear:'無力で役に立たない、知識がないことへの恐れ',
+    desc:'洞察力に優れた知識の探求者。観察し、分析し、深く理解することを求める。プライバシーを大切にし、感情より論理を優先する。静かな環境で力を発揮する思慮深い観察者。',
+    strengths:['深い洞察力と分析能力','複雑な問題を解決する独立した思考','専門知識の深さと正確さ','客観的で偏りのない視点'],
+    weaknesses:['知識を得てからでないと行動できない','感情表現が苦手で孤立しがち','エネルギー消費を過度に恐れる','他者との深い関係を避ける傾向'],
+    growth:['「十分な知識」はないことを受け入れ、行動しよう','感情も情報の一つとして大切にする','意図的に人とつながる時間を作ろう','所有より「経験」に価値を見出す練習を']},
+  6:{name:'忠誠者',sub:'The Loyalist',color:'#0891B2',light:'#CFFAFE',
+    mot:'安心・安全・信頼できるサポートを得ること',
+    fear:'サポートなしに孤立・見捨てられること',
+    desc:'責任感が強く信頼できる安全志向タイプ。忠誠心が高く、グループや仲間を守る意識が強い。潜在的なリスクを察知する鋭い感覚を持ち、準備と計画を重視する慎重な思考者。',
+    strengths:['高い忠誠心と信頼性','潜在的なリスクを察知する鋭さ','グループへの強いコミットメント','責任感と誠実さ'],
+    weaknesses:['不安や心配が判断を曇らせることがある','権威に対して従いすぎる or 反発しすぎる','最悪の事態を想定しすぎる傾向','自己信頼を持てず依存しがち'],
+    growth:['不安は信号だが、事実ではないと知ろう','自分の判断を少しずつ信頼する練習を','「今、安全である」という現実に意識を向ける','勇気とは恐れがないことではなく、恐れながら進むことだと知ろう']},
+  7:{name:'熱狂者',sub:'The Enthusiast',color:'#F97316',light:'#FFEDD5',
+    mot:'充実し満足し刺激的であること',
+    fear:'痛み・剥奪・欠乏を経験すること',
+    desc:'自発的で多才な楽観主義者。楽しく刺激的な体験を求め、可能性に満ちた未来に目を向ける。エネルギッシュで発想が豊かで、人を笑顔にする明るさがある。一つにとどまるのが苦手な面も。',
+    strengths:['尽きないエネルギーと楽観主義','革新的な発想と創造性','新しい体験への積極的な姿勢','人を元気にする明るさと熱量'],
+    weaknesses:['深く一つのことに集中するのが苦手','痛みや困難から逃げる傾向','衝動的で計画が続かないことがある','重要な感情的テーマを避けてしまう'],
+    growth:['不快感の中にも価値があると知ろう','「深さ」が「広さ」と同じくらい豊かだと気づく','一つのことを最後までやり切る体験を積もう','ネガティブな感情も自分の一部として受け入れよう']},
+  8:{name:'挑戦者',sub:'The Challenger',color:'#DC2626',light:'#FEE2E2',
+    mot:'自分を守り、運命をコントロールすること',
+    fear:'傷つけられ、コントロールされること',
+    desc:'自信あふれる決断力のある保護者。強さを重んじ、正義感が強い。大きなビジョンを持ち、仲間や弱者を守るために力を惜しまない。表面上は強く見えるが、深い内面に温かさを持つ。',
+    strengths:['強いリーダーシップと決断力','弱者を守る強い正義感','大きなビジョンと推進力','真実を言い切る率直さ'],
+    weaknesses:['弱さを見せることを過度に恐れる','対立や対決を好む傾向','思いやりより「力」で動きやすい','怒りで他者を傷つけることがある'],
+    growth:['脆弱性を見せることが真の強さだと知ろう','柔らかい感情にも正直に向き合う練習を','「制御」より「信頼」を関係の基盤にしよう','怒りの下にある本当の感情に気づいてみよう']},
+  9:{name:'平和主義者',sub:'The Peacemaker',color:'#65A365',light:'#DCFCE7',
+    mot:'内外の平和を保ち、つながりを維持すること',
+    fear:'失うこと、分離すること',
+    desc:'受容的で穏やかな癒しの存在。調和を重んじ、異なる視点を受け入れる包容力がある。人々の橋渡しをする自然な調停者。自分のニーズより周囲の調和を優先しがちな優しさがある。',
+    strengths:['深い受容力と包容力','異なる視点を橋渡しする調整力','争いを和らげる自然な才能','人を安心させる穏やかな存在感'],
+    weaknesses:['自分のニーズや意見を後回しにしやすい','対立を避けるために「消えて」しまう','重要なことを先延ばしにする傾向','他者の感情に影響されすぎる'],
+    growth:['あなた自身の存在が大切であることを知ろう','「No」と言うことが関係をより深くすることもある','自分のニーズを声に出す小さな練習を積もう','「調和」のためでなく、「自分の意志」で動く瞬間を意識する']},
+};
+
+// ── QUESTIONS ─────────────────────────────────────────────────────────────
+
+// weights: {typeNum: score_weight, ...}
+const QS = [
+  {t:'物事には正しいやり方があり、それを守ることが大切だと思う',w:{1:3,6:1}},
+  {t:'困っている人を見ると、何かしてあげたくなる',w:{2:3,9:1}},
+  {t:'自分の成功や実績は、自己評価に大きく影響する',w:{3:3,8:1}},
+  {t:'自分には他の人が理解できない深い感情の世界があると感じる',w:{4:3,5:1}},
+  {t:'何かを始める前に、まず十分に調べて情報を集めたい',w:{5:3,1:1}},
+  {t:'先のことを心配して、最悪の場合を想定することが多い',w:{6:3,1:1}},
+  {t:'楽しいことや新しい体験を常に求め、退屈することが苦手だ',w:{7:3,3:1}},
+  {t:'自分の意見に強く反対されると、より強く主張したくなる',w:{8:3,1:1}},
+  {t:'争いになりそうな状況では、場の空気を和らげようとする',w:{9:3,2:1}},
+  {t:'細かいミスや不完全さが目についてしまい、気になる',w:{1:3,5:1}},
+  {t:'人から必要とされていないと感じると、不安になる',w:{2:3,6:1}},
+  {t:'人前では自分のベストな姿を見せることを意識している',w:{3:3,7:1}},
+  {t:'自分は普通の人とは少し違う、独自の感性があると感じる',w:{4:3,8:1}},
+  {t:'一人でいる時間を十分に確保しないと、エネルギーが枯れる',w:{5:3,4:1}},
+  {t:'確認しないと安心できないことが多く、慎重に行動する',w:{6:3,1:1}},
+  {t:'一つのことに縛られず、多くの可能性を持っていたい',w:{7:3,9:1}},
+  {t:'力や権限を持つことで、自分や周囲を守れると思っている',w:{8:3,2:1}},
+  {t:'自分の意見を強く主張するより、相手に合わせることが多い',w:{9:3,6:1}},
+  {t:'感情的になる前に、まず論理的に状況を分析したい',w:{5:3,8:1}},
+  {t:'喜びや悲しみを、他の人より強く・深く感じることがある',w:{4:3,2:1}},
+];
+
+const OPTS = [
+  'まったく当てはまらない',
+  'あまり当てはまらない',
+  'どちらともいえない',
+  'やや当てはまる',
+  'とてもよく当てはまる',
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+
+let cur = 0;
+let answers = new Array(QS.length).fill(null);
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+
+(function initIntro() {
+  const colors = Object.values(TYPES).map(t => t.color);
+  const dots = document.getElementById('intro-dots');
+  colors.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'ndot';
+    d.style.background = c;
+    dots.appendChild(d);
+  });
+})();
+
+// ── SCREENS ────────────────────────────────────────────────────────────────
+
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function startQuiz() {
+  cur = 0;
+  answers.fill(null);
+  renderQ();
+  goScreen('s-quiz');
+}
+
+function restart() {
+  startQuiz();
+}
+
+// ── QUIZ ───────────────────────────────────────────────────────────────────
+
+function renderQ() {
+  const q = QS[cur];
+  const pct = Math.round((cur / QS.length) * 100);
+
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('q-counter').textContent = `Q ${cur + 1} / ${QS.length}`;
+  document.getElementById('q-pct').textContent = pct + '%';
+  document.getElementById('q-num').textContent = 'QUESTION ' + String(cur + 1).padStart(2, '0');
+  document.getElementById('q-text').textContent = q.t;
+
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  OPTS.forEach((label, i) => {
+    const val = i + 1;
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn' + (answers[cur] === val ? ' selected' : '');
+    btn.innerHTML = `<span class="opt-icon">${val}</span>${label}`;
+    btn.onclick = () => selectOpt(val);
+    opts.appendChild(btn);
+  });
+
+  document.getElementById('btn-prev').disabled = cur === 0;
+  document.getElementById('btn-next').disabled = answers[cur] === null;
+
+  const isLast = cur === QS.length - 1;
+  const nextBtn = document.getElementById('btn-next');
+  nextBtn.textContent = isLast ? '結果を見る ✨' : '次へ →';
+  nextBtn.disabled = answers[cur] === null;
+}
+
+function selectOpt(val) {
+  answers[cur] = val;
+  document.querySelectorAll('.opt-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i + 1 === val);
+  });
+  document.getElementById('btn-next').disabled = false;
+}
+
+function goQ(dir) {
+  if (dir === 1 && cur === QS.length - 1) {
+    showResult();
+    return;
+  }
+  cur = Math.max(0, Math.min(QS.length - 1, cur + dir));
+  renderQ();
+}
+
+// ── SCORING ────────────────────────────────────────────────────────────────
+
+function calcScores() {
+  // raw scores
+  const raw = {};
+  for (let t = 1; t <= 9; t++) raw[t] = 0;
+
+  QS.forEach((q, i) => {
+    const ans = answers[i] ?? 3;
+    Object.entries(q.w).forEach(([type, weight]) => {
+      raw[type] += ans * weight;
+    });
+  });
+
+  // max possible per type
+  const maxP = {};
+  for (let t = 1; t <= 9; t++) maxP[t] = 0;
+  QS.forEach(q => {
+    Object.entries(q.w).forEach(([type, weight]) => {
+      maxP[type] += 5 * weight;
+    });
+  });
+
+  // normalized 0-100
+  const scores = {};
+  for (let t = 1; t <= 9; t++) {
+    scores[t] = maxP[t] > 0 ? Math.round((raw[t] / maxP[t]) * 100) : 0;
+  }
+  return scores;
+}
+
+// ── RESULT ─────────────────────────────────────────────────────────────────
+
+function showResult() {
+  const scores = calcScores();
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const topType = parseInt(sorted[0][0]);
+  const T = TYPES[topType];
+
+  // Hero
+  const hero = document.getElementById('result-hero');
+  hero.style.background = `linear-gradient(160deg, ${T.color}DD, ${T.color}88)`;
+  document.getElementById('rh-num').textContent = topType;
+  document.getElementById('rh-badge').textContent = `Type ${topType}`;
+  document.getElementById('rh-title').textContent = T.name;
+  document.getElementById('rh-sub').textContent = T.sub;
+
+  // Motivation card
+  document.getElementById('r-mot').textContent = T.mot;
+  document.getElementById('r-fear').textContent = T.fear;
+
+  // Description dot
+  document.getElementById('desc-dot').style.background = T.color;
+
+  // Description
+  document.getElementById('r-desc').textContent = T.desc;
+
+  // Lists
+  buildList('r-strengths', T.strengths, '#4ADE80');
+  buildList('r-weaknesses', T.weaknesses, '#F87171');
+  buildList('r-growth', T.growth, '#FBBF24');
+
+  // Score chart
+  const chart = document.getElementById('score-chart');
+  chart.innerHTML = '';
+  sorted.forEach(([t, pct]) => {
+    const ti = parseInt(t);
+    const isTop = ti === topType;
+    const row = document.createElement('div');
+    row.className = 'score-row' + (isTop ? ' top' : '');
+    row.innerHTML = `
+      <span class="score-type-lbl">${t}</span>
+      <span class="score-type-name">${TYPES[ti].name}</span>
+      <div class="score-track"><div class="score-fill" style="background:${TYPES[ti].color};width:0%" data-w="${pct}"></div></div>
+      <span class="score-pct">${pct}%</span>`;
+    chart.appendChild(row);
+  });
+
+  // Wing
+  const wings = [(topType === 1 ? 9 : topType - 1), (topType === 9 ? 1 : topType + 1)];
+  const wingRow = document.getElementById('wing-row');
+  wingRow.innerHTML = '';
+  wings.forEach(w => {
+    const pill = document.createElement('div');
+    pill.className = 'wing-pill';
+    pill.style.background = TYPES[w].light;
+    pill.style.color = TYPES[w].color;
+    pill.style.borderColor = TYPES[w].color + '44';
+    pill.textContent = `Type ${w}: ${TYPES[w].name}`;
+    wingRow.appendChild(pill);
+  });
+
+  goScreen('s-result');
+
+  // Animate bars after render
+  requestAnimationFrame(() => setTimeout(() => {
+    document.querySelectorAll('.score-fill').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 200));
+}
+
+function buildList(id, items, color) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `<span class="bullet" style="background:${color}">✓</span>${item}`;
+    el.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>
