@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timer Challenge</title>
+<style>
+:root{--bg:#07080F;--sf:#0D0F1E;--bd:#18193A;--ac:#00C8FF;--txt:#C8D4F0;--sub:#384070;--r:92}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'SF Mono','Courier New',Consolas,monospace;
+  background:var(--bg);
+  color:var(--txt);
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:16px 20px 24px;
+  user-select:none;
+  -webkit-user-select:none;
+  overflow-x:hidden;
+}
+
+/* TITLE */
+.title{font-size:.72rem;letter-spacing:.5rem;color:var(--sub);text-transform:uppercase;margin-bottom:24px;text-align:center}
+
+/* TARGET ROW */
+.target-row{display:flex;align-items:center;gap:0;margin-bottom:20px}
+.adj-btn{width:36px;height:36px;background:none;border:1px solid var(--bd);border-radius:6px;color:var(--sub);font-size:1.1rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;line-height:1}
+.adj-btn:hover{border-color:var(--ac);color:var(--ac)}
+.target-display{
+  padding:0 20px;
+  font-size:1.5rem;font-weight:700;color:var(--txt);letter-spacing:.05em;
+  text-align:center;min-width:120px;
+}
+.target-label{font-size:.65rem;color:var(--sub);letter-spacing:.2rem;display:block;text-align:center;margin-top:2px}
+.random-btn{
+  margin-left:12px;
+  padding:5px 12px;
+  background:none;border:1px solid var(--bd);border-radius:20px;
+  color:var(--sub);font-size:.68rem;font-family:inherit;letter-spacing:.1rem;cursor:pointer;
+  transition:all .15s;
+}
+.random-btn.on{border-color:var(--ac);color:var(--ac);background:rgba(0,200,255,.07)}
+.random-btn:hover{border-color:var(--ac);color:var(--ac)}
+
+/* RING + TIMER */
+.ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 20px}
+.ring-svg{position:absolute;inset:0;width:100%;height:100%}
+.ring-track{fill:none;stroke:var(--bd);stroke-width:3}
+.ring-arc{
+  fill:none;stroke-width:3;stroke-linecap:round;
+  transition:stroke-dashoffset .6s ease,stroke .3s;
+  transform:rotate(-90deg);transform-origin:50% 50%;
+}
+/* circ = 2π×92 ≈ 578 */
+.ring-arc{stroke-dasharray:578;stroke-dashoffset:578;stroke:var(--ac)}
+.ring-spinner{fill:none;stroke:var(--ac);stroke-width:3;stroke-linecap:round;
+  stroke-dasharray:120 458;transform-origin:50% 50%;
+  opacity:0;transition:opacity .2s}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.timer-center{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.t-state-lbl{font-size:.6rem;letter-spacing:.3rem;color:var(--sub);text-transform:uppercase;margin-bottom:6px;min-height:14px}
+.t-digits{
+  font-size:2.6rem;font-weight:700;letter-spacing:.05em;
+  color:#fff;
+  transition:color .3s;
+  min-width:140px;text-align:center;
+}
+.t-digits.running{color:var(--sub)}
+.t-digits.success{color:#00FF88}
+.t-digits.miss{color:#FF4466}
+.t-delta{font-size:.85rem;margin-top:4px;min-height:20px;text-align:center;letter-spacing:.05em;transition:color .3s}
+
+/* GRADE popup */
+.grade-badge{
+  font-size:1rem;letter-spacing:.25rem;font-weight:700;
+  min-height:22px;text-align:center;margin-bottom:16px;
+  transition:opacity .3s;
+}
+
+/* DIFF */
+.diff-row{display:flex;gap:6px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
+.diff-btn{
+  padding:5px 12px;
+  border:1px solid var(--bd);border-radius:3px;
+  background:none;color:var(--sub);
+  font-size:.65rem;font-family:inherit;letter-spacing:.15rem;cursor:pointer;
+  transition:all .18s;
+  text-transform:uppercase;
+}
+.diff-btn:hover{border-color:var(--ac);color:var(--ac)}
+.diff-btn.sel{background:rgba(0,200,255,.1);color:var(--txt);border-color:currentColor}
+.diff-tol{font-size:.55rem;color:var(--sub);text-align:center;margin-top:-14px;margin-bottom:20px;letter-spacing:.1rem}
+
+/* ACTION BUTTON */
+.action-btn{
+  width:220px;height:56px;
+  background:none;
+  border:1px solid var(--ac);border-radius:4px;
+  color:var(--ac);
+  font-size:.85rem;font-family:inherit;letter-spacing:.35rem;
+  cursor:pointer;
+  transition:all .18s;
+  text-transform:uppercase;
+  position:relative;overflow:hidden;
+}
+.action-btn::before{
+  content:'';position:absolute;inset:0;
+  background:var(--ac);opacity:0;transition:opacity .18s;
+}
+.action-btn:hover::before{opacity:.08}
+.action-btn.stop-mode{border-color:#FF4466;color:#FF4466}
+.action-btn.stop-mode::before{background:#FF4466}
+.action-btn span{position:relative;z-index:1}
+
+/* SPACE hint */
+.key-hint{font-size:.6rem;color:var(--sub);letter-spacing:.15rem;margin-top:8px;text-align:center}
+
+/* STATS */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  width:100%;max-width:420px;
+  margin-top:22px;
+}
+.stat-cell{background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:10px 8px;text-align:center}
+.stat-val{font-size:1.1rem;font-weight:700;color:#fff;display:block;margin-bottom:3px}
+.stat-lbl{font-size:.6rem;color:var(--sub);letter-spacing:.12rem;text-transform:uppercase}
+
+/* HISTORY */
+.history-row{
+  display:flex;gap:5px;margin-top:14px;min-height:16px;align-items:center;
+  max-width:420px;flex-wrap:wrap;justify-content:center;
+}
+.hist-dot{
+  width:10px;height:10px;border-radius:50%;
+  transition:transform .2s;
+}
+.hist-dot.ok{background:#00FF88}
+.hist-dot.miss{background:#FF4466}
+.hist-dot.new{animation:popDot .3s ease}
+@keyframes popDot{0%{transform:scale(0)}60%{transform:scale(1.4)}100%{transform:scale(1)}}
+
+/* flash overlay */
+.flash{
+  position:fixed;inset:0;pointer-events:none;
+  opacity:0;transition:opacity .05s;z-index:99;
+}
+.flash.go{opacity:.08;transition:none}
+.flash.out{opacity:0;transition:opacity .4s}
+
+/* responsive */
+@media(max-width:380px){
+  .t-digits{font-size:2.1rem}
+  .ring-wrap{width:190px;height:190px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="title">Timer Challenge</div>
+
+<!-- TARGET -->
+<div class="target-row">
+  <button class="adj-btn" id="btn-minus" onclick="adjTarget(-1)">−</button>
+  <div>
+    <div class="target-display" id="target-display">5.000<span style="font-size:.9rem">s</span></div>
+  </div>
+  <button class="adj-btn" id="btn-plus" onclick="adjTarget(1)">＋</button>
+  <button class="random-btn" id="btn-rand" onclick="toggleRandom()">RANDOM</button>
+</div>
+
+<!-- RING -->
+<div class="ring-wrap">
+  <svg class="ring-svg" viewBox="0 0 200 200">
+    <circle class="ring-track" cx="100" cy="100" r="92"/>
+    <circle class="ring-spinner" cx="100" cy="100" r="92" id="ring-spin"
+      transform="rotate(-90 100 100)"/>
+    <circle class="ring-arc" cx="100" cy="100" r="92" id="ring-arc"/>
+  </svg>
+  <div class="timer-center">
+    <div class="t-state-lbl" id="state-lbl">TARGET</div>
+    <div class="t-digits" id="t-digits">5.000</div>
+    <div class="t-delta" id="t-delta"></div>
+  </div>
+</div>
+
+<!-- GRADE -->
+<div class="grade-badge" id="grade-badge"></div>
+
+<!-- DIFFICULTY -->
+<div class="diff-row" id="diff-row"></div>
+<div class="diff-tol" id="diff-tol"></div>
+
+<!-- BUTTON -->
+<button class="action-btn" id="action-btn" onclick="handleAction()">
+  <span id="action-lbl">START</span>
+</button>
+<div class="key-hint">SPACE で操作</div>
+
+<!-- STATS -->
+<div class="stats-grid">
+  <div class="stat-cell"><span class="stat-val" id="s-score">0</span><span class="stat-lbl">SCORE</span></div>
+  <div class="stat-cell"><span class="stat-val" id="s-best">0</span><span class="stat-lbl">BEST</span></div>
+  <div class="stat-cell"><span class="stat-val" id="s-streak">0</span><span class="stat-lbl">STREAK</span></div>
+  <div class="stat-cell"><span class="stat-val" id="s-hstreak">0</span><span class="stat-lbl">MAX STREAK</span></div>
+</div>
+
+<!-- HISTORY DOTS -->
+<div class="history-row" id="history-row"></div>
+
+<!-- FLASH -->
+<div class="flash" id="flash"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+
+const DIFFS = [
+  {n:'EASY',   tol:300, mult:1.0, c:'#00FF88'},
+  {n:'NORMAL', tol:150, mult:1.5, c:'#00C8FF'},
+  {n:'HARD',   tol:75,  mult:2.5, c:'#FFB800'},
+  {n:'EXPERT', tol:30,  mult:4.0, c:'#FF6644'},
+  {n:'MASTER', tol:15,  mult:6.0, c:'#FF2288'},
+];
+
+const GRADES = [
+  {ms:10,  name:'PERFECT',  pts:1000, c:'#FFD700'},
+  {ms:30,  name:'AMAZING',  pts:800,  c:'#00FF88'},
+  {ms:75,  name:'GREAT',    pts:600,  c:'#00C8FF'},
+  {ms:150, name:'GOOD',     pts:400,  c:'#88AAFF'},
+  {ms:300, name:'CLOSE',    pts:200,  c:'#FFB800'},
+  {ms:Infinity, name:'MISS',pts:0,    c:'#FF4466'},
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+
+const CIRC = 2 * Math.PI * 92; // ≈578
+
+let state = 'idle'; // idle | running | result
+let targetMs = 5000;
+let randomMode = false;
+let diffIdx = 1;
+let startTime = 0;
+let elapsed = 0;
+let rafId = null;
+let spinAnim = null;
+
+let score = 0;
+let bestScore = 0;
+let streak = 0;
+let hStreak = 0;
+let history = [];
+
+// ── DOM REFS ─────────────────────────────────────────────────────────────────
+
+const elTarget   = document.getElementById('target-display');
+const elStateLbl = document.getElementById('state-lbl');
+const elDigits   = document.getElementById('t-digits');
+const elDelta    = document.getElementById('t-delta');
+const elGrade    = document.getElementById('grade-badge');
+const elDiffTol  = document.getElementById('diff-tol');
+const elActionBtn= document.getElementById('action-btn');
+const elActionLbl= document.getElementById('action-lbl');
+const elScore    = document.getElementById('s-score');
+const elBest     = document.getElementById('s-best');
+const elStreak   = document.getElementById('s-streak');
+const elHStreak  = document.getElementById('s-hstreak');
+const elHistory  = document.getElementById('history-row');
+const elFlash    = document.getElementById('flash');
+const ringArc    = document.getElementById('ring-arc');
+const ringSpinner= document.getElementById('ring-spin');
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+
+function init() {
+  buildDiffButtons();
+  renderIdle();
+}
+
+function buildDiffButtons() {
+  const row = document.getElementById('diff-row');
+  row.innerHTML = '';
+  DIFFS.forEach((d, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'diff-btn' + (i === diffIdx ? ' sel' : '');
+    btn.textContent = d.n;
+    btn.style.color = i === diffIdx ? d.c : '';
+    btn.style.borderColor = i === diffIdx ? d.c : '';
+    btn.onclick = () => { if(state !== 'running'){diffIdx = i; buildDiffButtons(); updateDiffTol();} };
+    row.appendChild(btn);
+  });
+  updateDiffTol();
+}
+
+function updateDiffTol() {
+  const d = DIFFS[diffIdx];
+  elDiffTol.textContent = `許容誤差 ±${d.tol}ms  ×${d.mult}倍スコア`;
+}
+
+// ── TARGET ───────────────────────────────────────────────────────────────────
+
+function adjTarget(dir) {
+  if (state === 'running') return;
+  const step = 500;
+  targetMs = Math.max(1000, Math.min(15000, targetMs + dir * step));
+  renderTargetDisplay();
+  renderIdle();
+}
+
+function renderTargetDisplay() {
+  elTarget.innerHTML = fmtTime(targetMs) + '<span style="font-size:.9rem">s</span>';
+}
+
+function toggleRandom() {
+  randomMode = !randomMode;
+  document.getElementById('btn-rand').classList.toggle('on', randomMode);
+}
+
+function randomizeTarget() {
+  const options = [1000,1500,2000,2500,3000,4000,5000,6000,7000,8000,10000];
+  targetMs = options[Math.floor(Math.random() * options.length)];
+  renderTargetDisplay();
+}
+
+// ── FORMAT ───────────────────────────────────────────────────────────────────
+
+function fmtTime(ms) {
+  return (ms / 1000).toFixed(3);
+}
+
+function fmtDelta(ms) {
+  const sign = ms >= 0 ? '+' : '−';
+  return sign + Math.abs(ms).toFixed(0) + 'ms';
+}
+
+// ── RING ─────────────────────────────────────────────────────────────────────
+
+function setRingFill(pct, color) {
+  const offset = CIRC * (1 - Math.min(1, pct));
+  ringArc.style.strokeDashoffset = offset;
+  ringArc.style.stroke = color;
+}
+
+function startSpinner() {
+  ringSpinner.style.opacity = '1';
+  ringSpinner.style.stroke = DIFFS[diffIdx].c;
+  let angle = -90;
+  const step = () => {
+    angle = (angle + 1.8) % 360;
+    ringSpinner.setAttribute('transform', `rotate(${angle} 100 100)`);
+    spinAnim = requestAnimationFrame(step);
+  };
+  spinAnim = requestAnimationFrame(step);
+}
+
+function stopSpinner() {
+  if (spinAnim) { cancelAnimationFrame(spinAnim); spinAnim = null; }
+  ringSpinner.style.opacity = '0';
+}
+
+// ── STATES ───────────────────────────────────────────────────────────────────
+
+function renderIdle() {
+  elStateLbl.textContent = 'TARGET';
+  elDigits.textContent = fmtTime(targetMs);
+  elDigits.className = 't-digits';
+  elDelta.textContent = '';
+  elDelta.style.color = '';
+  elGrade.textContent = '';
+  elGrade.style.color = '';
+  elActionLbl.textContent = 'START';
+  elActionBtn.className = 'action-btn';
+  renderTargetDisplay();
+
+  // Ring: show target fill dimly
+  setRingFill(0, 'var(--bd)');
+  ringArc.style.strokeDashoffset = 0;
+  ringArc.style.stroke = 'var(--bd)';
+  ringArc.style.transition = 'none';
+  stopSpinner();
+}
+
+function renderRunning() {
+  elStateLbl.textContent = 'RUNNING';
+  elDigits.textContent = '· · ·';
+  elDigits.className = 't-digits running';
+  elDelta.textContent = '';
+  elGrade.textContent = '';
+  elActionLbl.textContent = 'STOP';
+  elActionBtn.className = 'action-btn stop-mode';
+
+  // Ring: dimmed
+  ringArc.style.stroke = 'var(--bd)';
+  ringArc.style.strokeDashoffset = 0;
+  startSpinner();
+}
+
+function renderResult(elapsedMs) {
+  const diff = elapsedMs - targetMs;
+  const absDiff = Math.abs(diff);
+  const grade = GRADES.find(g => absDiff <= g.ms);
+  const d = DIFFS[diffIdx];
+  const success = absDiff <= d.tol;
+  const streakBonus = 1 + Math.min(streak * 0.1, 2.0);
+  const pts = Math.floor(grade.pts * d.mult * streakBonus);
+
+  // Update streak / history
+  if (success) {
+    streak++;
+    hStreak = Math.max(hStreak, streak);
+    history.push('ok');
+  } else {
+    streak = 0;
+    history.push('miss');
+  }
+  if (history.length > 20) history.shift();
+
+  // Update score
+  score += pts;
+  bestScore = Math.max(bestScore, score);
+
+  // Update accuracy ring (1 = perfect, 0 = totally off)
+  const accuracyPct = Math.max(0, 1 - absDiff / (d.tol * 3));
+  stopSpinner();
+  ringArc.style.transition = 'stroke-dashoffset .6s ease, stroke .3s';
+  setRingFill(accuracyPct, grade.c);
+
+  // Digits
+  elDigits.textContent = fmtTime(elapsedMs);
+  elDigits.className = 't-digits ' + (success ? 'success' : 'miss');
+  elStateLbl.textContent = success ? '✓ SUCCESS' : '✕ MISS';
+  elStateLbl.style.color = success ? '#00FF88' : '#FF4466';
+
+  // Delta
+  elDelta.textContent = fmtDelta(diff) + (diff >= 0 ? ' OVER' : ' UNDER');
+  elDelta.style.color = grade.c;
+
+  // Grade
+  elGrade.textContent = grade.name;
+  elGrade.style.color = grade.c;
+  if (pts > 0) elGrade.textContent += `  +${pts}`;
+
+  // Button
+  elActionLbl.textContent = 'TRY AGAIN';
+  elActionBtn.className = 'action-btn';
+
+  // Flash
+  doFlash(success ? '#00FF88' : '#FF4466');
+
+  // Stats
+  elScore.textContent = score;
+  elBest.textContent = bestScore;
+  elStreak.textContent = streak;
+  elHStreak.textContent = hStreak;
+
+  // History dots
+  renderHistory();
+}
+
+function renderHistory() {
+  elHistory.innerHTML = '';
+  history.forEach((h, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'hist-dot ' + h + (i === history.length-1 ? ' new' : '');
+    elHistory.appendChild(dot);
+  });
+}
+
+function doFlash(color) {
+  elFlash.style.background = color;
+  elFlash.classList.add('go');
+  requestAnimationFrame(() => {
+    elFlash.classList.remove('go');
+    elFlash.classList.add('out');
+    setTimeout(() => elFlash.classList.remove('out'), 500);
+  });
+}
+
+// ── GAME LOGIC ───────────────────────────────────────────────────────────────
+
+function handleAction() {
+  if (state === 'idle' || state === 'result') {
+    doStart();
+  } else if (state === 'running') {
+    doStop();
+  }
+}
+
+function doStart() {
+  if (randomMode) randomizeTarget();
+  state = 'running';
+  startTime = performance.now();
+  elStateLbl.style.color = '';
+  renderRunning();
+}
+
+function doStop() {
+  if (state !== 'running') return;
+  state = 'result';
+  elapsed = performance.now() - startTime;
+  renderResult(elapsed);
+}
+
+// ── KEYBOARD ─────────────────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    handleAction();
+  }
+  if ((e.code === 'ArrowLeft' || e.code === 'ArrowDown') && state !== 'running') adjTarget(-1);
+  if ((e.code === 'ArrowRight' || e.code === 'ArrowUp') && state !== 'running') adjTarget(1);
+});
+
+// ── START ─────────────────────────────────────────────────────────────────────
+
+init();
+</script>
+</body>
+</html>
