@@ -373,20 +373,24 @@ function buildStrips() {
   }
 }
 
-function renderReels(pos=[4,4,4]) {
-  for(let r=0;r<3;r++){
-    const el=document.getElementById('reel'+r);
-    el.innerHTML='';
-    const strip=reelStrips[r];
-    // Show 3 symbols centered on pos[r]
-    for(let i=-1;i<=1;i++){
-      const idx=(pos[r]+i+strip.length)%strip.length;
-      const div=document.createElement('div');
-      div.className='reel-item';
-      div.textContent=strip[idx];
-      el.appendChild(div);
-    }
+function renderReel(r, pos) {
+  const el=document.getElementById('reel'+r);
+  const strip=reelStrips[r];
+  el.style.transition='none'; // snap instantly, no CSS transition glitch
+  el.innerHTML='';
+  el.style.transform='translateY(-80px)'; // center symbol into the 80px viewport
+  for(let i=-1;i<=1;i++){
+    const idx=(pos+i+strip.length)%strip.length;
+    const div=document.createElement('div');
+    div.className='reel-item';
+    div.textContent=strip[idx];
+    el.appendChild(div);
   }
+  requestAnimationFrame(()=>el.style.transition=''); // restore transition after snap
+}
+
+function renderReels(pos=[4,4,4]) {
+  for(let r=0;r<3;r++) renderReel(r, pos[r]);
 }
 
 function getSymAt(reel,pos){
@@ -460,7 +464,8 @@ function maxBet(){
 
 // ===== REEL SPIN ANIMATION =====
 function animateReel(reelEl, finalPos, duration, delay, onDone) {
-  let start=null, totalTurns=3+Math.random()*3;
+  const reelIdx=parseInt(reelEl.id.slice(-1));
+  let totalTurns=3+Math.random()*3;
   const itemHeight=80;
   const totalScroll=totalTurns*STRIP_LEN*itemHeight;
 
@@ -492,17 +497,12 @@ function animateReel(reelEl, finalPos, duration, delay, onDone) {
       const progress=Math.min(elapsed/duration,1);
       const eased=ease(progress);
       const offset=eased*totalScroll;
-      reelEl.style.transform=`translateY(-${offset%( STRIP_LEN*itemHeight)}px)`;
+      reelEl.style.transform=`translateY(-${offset%(STRIP_LEN*2*itemHeight)}px)`;
       if(progress<1){
         if(Math.random()>.7) playSpin();
         requestAnimationFrame(frame);
       } else {
-        // Snap to final
-        renderReels([
-          parseInt(document.getElementById('reel0').dataset.pos||4),
-          parseInt(document.getElementById('reel1').dataset.pos||4),
-          parseInt(document.getElementById('reel2').dataset.pos||4)
-        ]);
+        renderReel(reelIdx, finalPos);
         if(onDone) onDone();
       }
     }
