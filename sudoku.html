@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数独</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:         #0d0d12;
+      --surface:    #16161e;
+      --surface2:   #1e1e28;
+      --border:     #2a2a38;
+      --border-box: #555570;
+      --border-out: #e0e0f0;
+      --text:       #e0e0e0;
+      --dim:        #555;
+      --given:      #ffffff;
+      --user:       #5b9cf6;
+      --error:      #ff5566;
+      --memo-c:     #4a80c8;
+      --accent:     #3a7bd5;
+      --accent2:    #5b9cf6;
+      --hl:         #1c2340;
+      --sel:        #243068;
+      --same:       #1a2250;
+      --ok:         #4caf50;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px 14px 48px;
+    }
+
+    .wrap { width: 100%; max-width: 460px; }
+
+    /* ── Header ── */
+    header { text-align: center; padding: 18px 0 22px; }
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: 0.35em;
+      color: var(--given);
+    }
+    .sub {
+      font-size: 0.6rem;
+      color: var(--dim);
+      letter-spacing: 0.55em;
+      margin-top: 5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+
+    .diff-group {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .diff-btn {
+      padding: 5px 11px;
+      background: transparent;
+      border: none;
+      color: var(--dim);
+      font-size: 0.72rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .diff-btn.on { background: var(--accent); color: #fff; }
+    .diff-btn:hover:not(.on) { color: var(--text); }
+
+    #timer {
+      font-size: 1.35rem;
+      font-weight: 300;
+      letter-spacing: 0.06em;
+      color: var(--dim);
+      font-variant-numeric: tabular-nums;
+      min-width: 68px;
+      text-align: right;
+    }
+
+    /* ── Grid ── */
+    .grid-wrap {
+      width: 100%;
+      aspect-ratio: 1;
+      margin-bottom: 12px;
+    }
+
+    #grid {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      grid-template-rows:    repeat(9, 1fr);
+      border: 2.5px solid var(--border-out);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--surface);
+      transition: box-shadow .3s;
+    }
+
+    .cell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background .1s;
+      border-right:  1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    /* Remove redundant outer borders */
+    .cell:nth-child(9n)   { border-right: none; }
+    .cell:nth-child(n+73) { border-bottom: none; }
+
+    /* 3×3 box separators */
+    .cell[data-col="2"], .cell[data-col="5"] { border-right:  2px solid var(--border-box); }
+    .cell[data-row="2"], .cell[data-row="5"] { border-bottom: 2px solid var(--border-box); }
+
+    .cv {
+      font-size: clamp(13px, 3.5vw, 22px);
+      font-weight: 600;
+      line-height: 1;
+      z-index: 1;
+    }
+    .cell.given  .cv { color: var(--given); }
+    .cell.user   .cv { color: var(--user); }
+    .cell.err    .cv { color: var(--error); }
+
+    .cell.sel  { background: var(--sel); }
+    .cell.hl   { background: var(--hl); }
+    .cell.same { background: var(--same); }
+
+    /* Memo mini-grid */
+    .mg {
+      position: absolute;
+      inset: 1px;
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows:    repeat(3, 1fr);
+    }
+    .mg.show { display: grid; }
+    .mn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(5px, .95vw, 8px);
+      color: transparent;
+      font-weight: 600;
+    }
+    .mn.on { color: var(--memo-c); }
+
+    /* ── Numpad ── */
+    #numpad {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 5px;
+      margin-bottom: 9px;
+    }
+    .nb {
+      aspect-ratio: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: clamp(13px, 2.8vw, 19px);
+      font-weight: 700;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all .14s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nb:hover { background: #24242e; border-color: #444; }
+    .nb.on    { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Action buttons ── */
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      margin-bottom: 9px;
+    }
+    .ab {
+      padding: 11px 4px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-size: 0.68rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all .14s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      letter-spacing: .04em;
+    }
+    .ab .ic { font-size: 1.15rem; line-height: 1; }
+    .ab:hover { background: #24242e; border-color: #444; color: var(--text); }
+    .ab.memo-on { background: #13201a; border-color: var(--ok); color: var(--ok); }
+    .ab.dim-out { opacity: .35; pointer-events: none; }
+
+    /* ── New game ── */
+    #btn-new {
+      width: 100%;
+      padding: 13px;
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: .85rem;
+      letter-spacing: .2em;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all .2s;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    #btn-new:hover { background: var(--accent); color: #fff; }
+
+    /* ── Win modal ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.82);
+      backdrop-filter: blur(5px);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay.show { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border-box);
+      border-radius: 18px;
+      padding: 40px 32px 36px;
+      text-align: center;
+      max-width: 300px;
+      width: 88%;
+      animation: pop .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes pop {
+      from { transform: scale(.75); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .modal-emoji { font-size: 3.2rem; margin-bottom: 10px; }
+    .modal h2 { font-size: 1.9rem; color: #fff; margin-bottom: 6px; }
+    .modal-diff { color: var(--dim); font-size: .78rem; letter-spacing: .12em; margin-bottom: 18px; }
+    .modal-time {
+      font-size: 3.2rem;
+      font-weight: 300;
+      color: var(--accent2);
+      letter-spacing: .08em;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 4px;
+    }
+    .modal-lbl { color: var(--dim); font-size: .7rem; letter-spacing: .22em; text-transform: uppercase; margin-bottom: 26px; }
+    .modal-btn {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      font-size: .9rem;
+      letter-spacing: .15em;
+      border-radius: 8px;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-weight: 700;
+      transition: opacity .2s;
+    }
+    .modal-btn:hover { opacity: .82; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>数 独</h1>
+    <div class="sub">S u d o k u</div>
+  </header>
+
+  <div class="topbar">
+    <div class="diff-group">
+      <button class="diff-btn on" data-d="easy">かんたん</button>
+      <button class="diff-btn"    data-d="normal">ふつう</button>
+      <button class="diff-btn"    data-d="hard">むずかしい</button>
+    </div>
+    <div id="timer">00:00</div>
+  </div>
+
+  <div class="grid-wrap">
+    <div id="grid"></div>
+  </div>
+
+  <div id="numpad"></div>
+
+  <div class="actions">
+    <button class="ab" id="btn-erase">
+      <span class="ic">⌫</span><span>けす</span>
+    </button>
+    <button class="ab" id="btn-memo">
+      <span class="ic">✏️</span><span>メモ</span>
+    </button>
+    <button class="ab" id="btn-hint">
+      <span class="ic">💡</span><span id="hint-lbl">ヒント</span>
+    </button>
+    <button class="ab" id="btn-check">
+      <span class="ic">✓</span><span>チェック</span>
+    </button>
+  </div>
+
+  <button id="btn-new">新しいゲーム</button>
+</div>
+
+<!-- Win modal -->
+<div class="overlay" id="win-overlay">
+  <div class="modal">
+    <div class="modal-emoji">🎉</div>
+    <h2>クリア！</h2>
+    <div class="modal-diff" id="win-diff"></div>
+    <div class="modal-time" id="win-time">00:00</div>
+    <div class="modal-lbl">クリアタイム</div>
+    <button class="modal-btn" id="win-btn">もう一度プレイ</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ── Utility ────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const fmt = s => `${String(s/60|0).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.random() * (i + 1) | 0;
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ── Sudoku Engine ──────────────────────────────────────────────────────
+  function valid(g, r, c, n) {
+    for (let i = 0; i < 9; i++) {
+      if (g[r][i] === n || g[i][c] === n) return false;
+    }
+    const br = (r/3|0)*3, bc = (c/3|0)*3;
+    for (let i = br; i < br+3; i++)
+      for (let j = bc; j < bc+3; j++)
+        if (g[i][j] === n) return false;
+    return true;
+  }
+
+  function fill(g) {
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (g[r][c] === 0) {
+          for (const n of shuffle([1,2,3,4,5,6,7,8,9])) {
+            if (valid(g, r, c, n)) {
+              g[r][c] = n;
+              if (fill(g)) return true;
+              g[r][c] = 0;
+            }
+          }
+          return false;
+        }
+    return true;
+  }
+
+  // Count solutions (stops at `lim`; default 2 for uniqueness checks)
+  function countSol(g, lim = 2) {
+    let n = 0;
+    (function solve() {
+      for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++)
+          if (g[r][c] === 0) {
+            for (let v = 1; v <= 9; v++) {
+              if (valid(g, r, c, v)) {
+                g[r][c] = v;
+                solve();
+                g[r][c] = 0;
+                if (n >= lim) return;
+              }
+            }
+            return;
+          }
+      n++;
+    })();
+    return n;
+  }
+
+  function makePuzzle(diff) {
+    // 1. Build solved grid
+    const sol = Array.from({length:9}, () => Array(9).fill(0));
+    fill(sol);
+
+    // 2. Remove cells
+    const target = {easy:36, normal:46, hard:56}[diff];
+    const puz = sol.map(r => [...r]);
+    const pos = shuffle(Array.from({length:81}, (_,i) => [i/9|0, i%9]));
+
+    let removed = 0;
+    for (const [r, c] of pos) {
+      if (removed >= target) break;
+      const bak = puz[r][c];
+      puz[r][c] = 0;
+      // Uniqueness check (skip for hard to keep generation fast)
+      if (diff !== 'hard') {
+        if (countSol(puz.map(x => [...x])) !== 1) { puz[r][c] = bak; continue; }
+      }
+      removed++;
+    }
+    return { sol, puz };
+  }
+
+  // ── Game State ─────────────────────────────────────────────────────────
+  let sol, puz, usr, memo;
+  let selR = -1, selC = -1;
+  let selN = 0;
+  let memoMode = false;
+  let diff = 'easy';
+  let sec = 0, tiv = null;
+  let hints = 0;
+  let over = false;
+
+  const HINTS = {easy:5, normal:3, hard:1};
+  const DIFF_NAMES = {easy:'かんたん', normal:'ふつう', hard:'むずかしい'};
+
+  // ── Cell DOM helpers ───────────────────────────────────────────────────
+  function cellEl(r, c) {
+    return document.querySelector(`#grid .cell[data-row="${r}"][data-col="${c}"]`);
+  }
+
+  // ── Build/Render ───────────────────────────────────────────────────────
+  function buildGrid() {
+    const g = $('grid');
+    g.innerHTML = '';
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const d = document.createElement('div');
+        d.className = 'cell';
+        d.dataset.row = r;
+        d.dataset.col = c;
+
+        const cv = document.createElement('span');
+        cv.className = 'cv';
+
+        const mg = document.createElement('div');
+        mg.className = 'mg';
+        for (let n = 1; n <= 9; n++) {
+          const mn = document.createElement('span');
+          mn.className = 'mn';
+          mn.dataset.n = n;
+          mn.textContent = n;
+          mg.appendChild(mn);
+        }
+
+        d.appendChild(cv);
+        d.appendChild(mg);
+        d.addEventListener('click', () => clickCell(r, c));
+        g.appendChild(d);
+      }
+    }
+  }
+
+  function renderAll() {
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        renderCell(r, c);
+    renderSel();
+  }
+
+  function renderCell(r, c) {
+    const el = cellEl(r, c);
+    if (!el) return;
+
+    const given = puz[r][c] !== 0;
+    const v     = usr[r][c];
+    const m     = memo[r][c];
+
+    el.className = 'cell';
+    if (given) {
+      el.classList.add('given');
+    } else if (v !== 0) {
+      el.classList.add(v !== sol[r][c] ? 'err' : 'user');
+    }
+
+    el.querySelector('.cv').textContent = v ? v : '';
+
+    const mg = el.querySelector('.mg');
+    if (m.size > 0 && v === 0) {
+      mg.classList.add('show');
+      mg.querySelectorAll('.mn').forEach(mn => {
+        mn.classList.toggle('on', m.has(+mn.dataset.n));
+      });
+    } else {
+      mg.classList.remove('show');
+    }
+  }
+
+  function renderSel() {
+    document.querySelectorAll('#grid .cell').forEach(el => {
+      el.classList.remove('sel','hl','same');
+    });
+    if (selR < 0) return;
+
+    const sv = usr[selR][selC];
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const el = cellEl(r, c);
+        if (r === selR && c === selC) {
+          el.classList.add('sel');
+        } else {
+          const sameBox = (r/3|0)===(selR/3|0) && (c/3|0)===(selC/3|0);
+          if (r === selR || c === selC || sameBox) el.classList.add('hl');
+        }
+        if (sv > 0 && usr[r][c] === sv && !(r===selR && c===selC))
+          el.classList.add('same');
+      }
+    }
+  }
+
+  // ── Interactions ───────────────────────────────────────────────────────
+  function clickCell(r, c) {
+    if (over) return;
+    selR = r; selC = c;
+    renderSel();
+    if (selN > 0) doInput(selN);
+  }
+
+  function doInput(n) {
+    if (over || selR < 0) return;
+    if (puz[selR][selC] !== 0) return; // given
+
+    if (memoMode) {
+      if (n === 0) { memo[selR][selC].clear(); }
+      else {
+        const m = memo[selR][selC];
+        m.has(n) ? m.delete(n) : m.add(n);
+      }
+    } else {
+      usr[selR][selC] = n;
+      if (n !== 0) {
+        memo[selR][selC].clear();
+        wipeMemos(selR, selC, n);
+      }
+      checkWin();
+    }
+    renderAll();
+  }
+
+  function wipeMemos(r, c, n) {
+    const br = (r/3|0)*3, bc = (c/3|0)*3;
+    for (let i = 0; i < 9; i++) { memo[r][i].delete(n); memo[i][c].delete(n); }
+    for (let i = br; i < br+3; i++)
+      for (let j = bc; j < bc+3; j++)
+        memo[i][j].delete(n);
+  }
+
+  function checkWin() {
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (usr[r][c] !== sol[r][c]) return;
+    clearInterval(tiv);
+    over = true;
+    setTimeout(() => {
+      $('win-time').textContent = fmt(sec);
+      $('win-diff').textContent = DIFF_NAMES[diff];
+      $('win-overlay').classList.add('show');
+    }, 350);
+  }
+
+  // ── Hint ───────────────────────────────────────────────────────────────
+  function useHint() {
+    if (over || hints <= 0) return;
+    const cands = [];
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (puz[r][c] === 0 && usr[r][c] !== sol[r][c])
+          cands.push([r, c]);
+    if (!cands.length) return;
+
+    let t = null;
+    if (selR >= 0) t = cands.find(([r,c]) => r===selR && c===selC) || null;
+    if (!t) t = cands[Math.random() * cands.length | 0];
+
+    const [r, c] = t;
+    usr[r][c] = sol[r][c];
+    memo[r][c].clear();
+    wipeMemos(r, c, sol[r][c]);
+    selR = r; selC = c;
+    hints--;
+    syncHintBtn();
+    renderAll();
+    checkWin();
+  }
+
+  // ── Check / flash ──────────────────────────────────────────────────────
+  function checkBoard() {
+    let errs = 0;
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (puz[r][c] === 0 && usr[r][c] !== 0 && usr[r][c] !== sol[r][c])
+          errs++;
+    flash(errs > 0 ? 'rgba(255,85,100,.45)' : 'rgba(76,175,80,.45)');
+    renderAll();
+  }
+
+  function flash(color) {
+    const g = $('grid');
+    g.style.boxShadow = `0 0 28px ${color}`;
+    setTimeout(() => { g.style.boxShadow = ''; }, 1100);
+  }
+
+  // ── Timer ──────────────────────────────────────────────────────────────
+  function startTimer() {
+    clearInterval(tiv);
+    sec = 0;
+    $('timer').textContent = '00:00';
+    tiv = setInterval(() => { $('timer').textContent = fmt(++sec); }, 1000);
+  }
+
+  // ── New game ───────────────────────────────────────────────────────────
+  function newGame() {
+    over = memoMode = false;
+    selR = selC = selN = -1;
+    selN = 0;
+
+    $('btn-memo').classList.remove('memo-on');
+    $('win-overlay').classList.remove('show');
+    document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+
+    const { sol: s, puz: p } = makePuzzle(diff);
+    sol  = s;
+    puz  = p;
+    usr  = p.map(r => [...r]);
+    memo = Array.from({length:9}, () => Array.from({length:9}, () => new Set()));
+
+    hints = HINTS[diff];
+    syncHintBtn();
+    buildGrid();
+    renderAll();
+    startTimer();
+  }
+
+  function syncHintBtn() {
+    $('hint-lbl').textContent = `ヒント(${hints})`;
+    $('btn-hint').classList.toggle('dim-out', hints <= 0);
+  }
+
+  // ── Numpad ─────────────────────────────────────────────────────────────
+  const np = $('numpad');
+  for (let n = 1; n <= 9; n++) {
+    const b = document.createElement('button');
+    b.className = 'nb';
+    b.textContent = n;
+    b.dataset.n = n;
+    b.addEventListener('click', () => {
+      const was = selN === n;
+      document.querySelectorAll('.nb').forEach(x => x.classList.remove('on'));
+      if (was) { selN = 0; }
+      else { selN = n; b.classList.add('on'); if (selR >= 0) doInput(n); }
+    });
+    np.appendChild(b);
+  }
+
+  // ── Action buttons ─────────────────────────────────────────────────────
+  $('btn-erase').addEventListener('click', () => {
+    selN = 0;
+    document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+    doInput(0);
+  });
+  $('btn-memo').addEventListener('click', () => {
+    memoMode = !memoMode;
+    $('btn-memo').classList.toggle('memo-on', memoMode);
+  });
+  $('btn-hint').addEventListener('click', useHint);
+  $('btn-check').addEventListener('click', checkBoard);
+  $('btn-new').addEventListener('click', newGame);
+  $('win-btn').addEventListener('click', newGame);
+
+  // ── Difficulty ─────────────────────────────────────────────────────────
+  document.querySelectorAll('.diff-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.diff-btn').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      diff = b.dataset.d;
+    });
+  });
+
+  // ── Keyboard ───────────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (over) return;
+    const k = e.key;
+
+    if (k >= '1' && k <= '9') { doInput(+k); return; }
+    if (k === '0' || k === 'Backspace' || k === 'Delete') {
+      selN = 0;
+      document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+      doInput(0);
+      return;
+    }
+    if (k === 'm' || k === 'M') {
+      memoMode = !memoMode;
+      $('btn-memo').classList.toggle('memo-on', memoMode);
+      return;
+    }
+
+    // Arrow navigation
+    if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) return;
+    e.preventDefault();
+
+    if (selR < 0) { selR = 0; selC = 0; }
+    else {
+      if (k === 'ArrowUp')    selR = Math.max(0, selR - 1);
+      if (k === 'ArrowDown')  selR = Math.min(8, selR + 1);
+      if (k === 'ArrowLeft')  selC = Math.max(0, selC - 1);
+      if (k === 'ArrowRight') selC = Math.min(8, selC + 1);
+    }
+    renderSel();
+  });
+
+  // ── Start ──────────────────────────────────────────────────────────────
+  newGame();
+})();
+</script>
+</body>
+</html>
