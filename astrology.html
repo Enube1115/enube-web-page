@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>占星術診断 — Astrology</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#07071a;
+  --bg2:#0d0d28;
+  --surface:rgba(255,255,255,0.05);
+  --surface2:rgba(255,255,255,0.08);
+  --border:rgba(255,255,255,0.1);
+  --text:#e8e8f8;
+  --dim:#8888b8;
+  --gold:#f0c060;
+  --gold2:#ffd980;
+  --purple:#9b6dff;
+  --pink:#ff6eb4;
+  --cyan:#60d8ff;
+  --green:#60ffb4;
+  --r:16px;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── STARFIELD ── */
+#stars{position:fixed;inset:0;pointer-events:none;z-index:0;}
+.star{position:absolute;border-radius:50%;background:#fff;animation:twinkle var(--d,3s) ease-in-out infinite var(--delay,0s);}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(1);}50%{opacity:.9;transform:scale(1.4);}}
+
+/* ── LAYOUT ── */
+.page{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:0 16px 80px;}
+
+/* ── HEADER ── */
+header{text-align:center;padding:48px 0 36px;}
+.hbadge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(155,109,255,.15);border:1px solid rgba(155,109,255,.35);
+  border-radius:100px;padding:6px 20px;font-size:.72rem;
+  color:var(--purple);letter-spacing:.12em;text-transform:uppercase;margin-bottom:20px;
+}
+h1{
+  font-size:clamp(2rem,6vw,3.4rem);font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(135deg,#fff 0%,var(--gold) 40%,var(--purple) 80%,var(--pink) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:10px;
+}
+.hsub{color:var(--dim);font-size:.95rem;letter-spacing:.05em;}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;gap:6px;justify-content:center;flex-wrap:wrap;
+  margin-bottom:32px;
+}
+.tab{
+  padding:9px 22px;background:var(--surface);border:1px solid var(--border);
+  border-radius:100px;color:var(--dim);font-size:.82rem;cursor:pointer;
+  transition:all .2s;letter-spacing:.05em;
+}
+.tab:hover{border-color:rgba(255,255,255,.2);color:var(--text);}
+.tab.on{
+  background:linear-gradient(135deg,var(--purple),var(--pink));
+  border-color:transparent;color:#fff;
+  box-shadow:0 4px 20px rgba(155,109,255,.4);
+}
+
+/* ── PANEL ── */
+.panel{display:none;}
+.panel.on{display:block;}
+
+/* ── ZODIAC GRID ── */
+.zodiac-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));
+  gap:10px;margin-bottom:28px;
+}
+.zcard{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:14px 6px 12px;text-align:center;
+  cursor:pointer;transition:all .22s;user-select:none;
+}
+.zcard:hover{background:var(--surface2);border-color:rgba(255,255,255,.2);transform:translateY(-3px);}
+.zcard.sel{
+  border-color:var(--gold);background:rgba(240,192,96,.1);
+  box-shadow:0 0 20px rgba(240,192,96,.25);
+}
+.zcard .sym{font-size:1.9rem;margin-bottom:4px;}
+.zcard .zname{font-size:.72rem;color:var(--dim);letter-spacing:.04em;}
+.zcard.sel .zname{color:var(--gold);}
+
+/* ── RESULT CARD ── */
+.result-wrap{animation:fadeUp .4s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+
+.result-hero{
+  background:linear-gradient(135deg,rgba(155,109,255,.18),rgba(255,110,180,.12));
+  border:1px solid rgba(155,109,255,.3);
+  border-radius:var(--r);padding:28px 28px 24px;margin-bottom:18px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+}
+.hero-sym{font-size:4rem;filter:drop-shadow(0 0 16px rgba(240,192,96,.6));}
+.hero-info h2{font-size:1.6rem;font-weight:800;color:var(--gold);}
+.hero-info .hdates{color:var(--dim);font-size:.82rem;margin:.2rem 0;}
+.hero-info .helmt{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.badge{
+  padding:3px 12px;border-radius:100px;font-size:.72rem;font-weight:600;letter-spacing:.05em;
+}
+.badge-fire{background:rgba(255,100,60,.18);color:#ff8060;border:1px solid rgba(255,100,60,.3);}
+.badge-earth{background:rgba(80,200,100,.18);color:#60d090;border:1px solid rgba(80,200,100,.3);}
+.badge-air{background:rgba(96,216,255,.18);color:#60d8ff;border:1px solid rgba(96,216,255,.3);}
+.badge-water{background:rgba(80,120,255,.18);color:#8090ff;border:1px solid rgba(80,120,255,.3);}
+.badge-ruler{background:rgba(240,192,96,.15);color:var(--gold);border:1px solid rgba(240,192,96,.3);}
+
+/* ── SECTION CARDS ── */
+.cards-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:14px;}
+.info-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;
+}
+.info-card h3{
+  font-size:.82rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:12px;display:flex;align-items:center;gap:7px;
+}
+.info-card h3 .ico{font-size:1rem;}
+.info-card p{font-size:.88rem;line-height:1.75;color:var(--text);}
+
+/* ── TRAIT BARS ── */
+.trait-list{display:flex;flex-direction:column;gap:10px;}
+.trait{display:flex;flex-direction:column;gap:5px;}
+.trait-top{display:flex;justify-content:space-between;font-size:.8rem;}
+.trait-top .tlabel{color:var(--text);}
+.trait-top .tval{color:var(--gold);}
+.trait-bar{height:6px;background:rgba(255,255,255,.08);border-radius:100px;overflow:hidden;}
+.trait-fill{height:100%;border-radius:100px;transition:width .8s cubic-bezier(.4,0,.2,1);}
+
+/* ── SCORE STARS ── */
+.score-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.stars{display:flex;gap:3px;}
+.star-i{font-size:1.1rem;transition:opacity .3s;}
+.star-i.off{opacity:.25;}
+
+/* ── FORTUNE SECTION ── */
+.fortune-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px;}
+.fortune-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:18px;text-align:center;
+}
+.fortune-card .fc-ico{font-size:1.8rem;margin-bottom:8px;}
+.fortune-card .fc-label{font-size:.7rem;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;}
+.fortune-card .fc-stars{justify-content:center;margin-bottom:8px;}
+.fortune-card .fc-msg{font-size:.82rem;color:var(--text);line-height:1.6;}
+
+.lucky-row{
+  background:linear-gradient(135deg,rgba(240,192,96,.1),rgba(155,109,255,.08));
+  border:1px solid rgba(240,192,96,.25);border-radius:var(--r);
+  padding:18px 22px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;
+}
+.lucky-item{text-align:center;}
+.lucky-label{font-size:.68rem;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;}
+.lucky-value{font-size:1rem;font-weight:700;color:var(--gold);}
+
+/* ── COMPATIBILITY ── */
+.compat-section{}
+.compat-select-row{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:start;
+  margin-bottom:24px;
+}
+.compat-select-row .vs{
+  display:flex;align-items:center;justify-content:center;padding-top:50px;
+  font-size:1.2rem;font-weight:800;color:var(--dim);
+}
+.compat-sub-label{font-size:.75rem;color:var(--dim);text-align:center;margin-bottom:8px;letter-spacing:.06em;}
+.compat-mini-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
+.cz{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:6px 2px;text-align:center;cursor:pointer;transition:all .18s;
+}
+.cz:hover{background:var(--surface2);}
+.cz.sel-a{border-color:var(--purple);background:rgba(155,109,255,.15);}
+.cz.sel-b{border-color:var(--pink);background:rgba(255,110,180,.15);}
+.cz .czsym{font-size:1.15rem;}
+.cz .czname{font-size:.58rem;color:var(--dim);}
+
+.compat-result{
+  background:linear-gradient(135deg,rgba(155,109,255,.15),rgba(255,110,180,.1));
+  border:1px solid rgba(155,109,255,.3);border-radius:var(--r);
+  padding:28px;text-align:center;animation:fadeUp .4s ease both;
+}
+.compat-symbols{font-size:3rem;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:16px;}
+.compat-names{font-size:.85rem;color:var(--dim);margin-bottom:20px;}
+.compat-score-big{
+  font-size:4rem;font-weight:800;
+  background:linear-gradient(135deg,var(--gold),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1;margin-bottom:4px;
+}
+.compat-pct{font-size:1rem;color:var(--dim);margin-bottom:20px;}
+.compat-meter{
+  height:10px;background:rgba(255,255,255,.08);border-radius:100px;
+  overflow:hidden;max-width:360px;margin:0 auto 24px;
+}
+.compat-fill{
+  height:100%;border-radius:100px;
+  background:linear-gradient(90deg,var(--purple),var(--pink),var(--gold));
+  transition:width 1s cubic-bezier(.4,0,.2,1);
+}
+.compat-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;text-align:left;}
+.cc-item{background:var(--surface);border-radius:10px;padding:12px;}
+.cc-item .cc-lbl{font-size:.72rem;color:var(--dim);margin-bottom:6px;letter-spacing:.06em;}
+.cc-item .cc-bar{height:5px;background:rgba(255,255,255,.08);border-radius:100px;overflow:hidden;}
+.cc-item .cc-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--purple),var(--pink));}
+.cc-item .cc-pct{font-size:.78rem;color:var(--text);margin-top:4px;font-weight:600;}
+.compat-msg{
+  background:var(--surface);border-radius:12px;padding:16px;margin-top:16px;
+  font-size:.88rem;line-height:1.75;color:var(--text);text-align:left;
+}
+
+/* ── TODAY PANEL ── */
+.today-hero{
+  background:linear-gradient(135deg,rgba(96,216,255,.1),rgba(155,109,255,.12));
+  border:1px solid rgba(96,216,255,.25);border-radius:var(--r);
+  padding:24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.today-date{font-size:.82rem;color:var(--cyan);letter-spacing:.08em;margin-bottom:4px;}
+.today-title{font-size:1.5rem;font-weight:800;color:#fff;}
+.today-moon{font-size:1.1rem;color:var(--dim);margin-top:4px;}
+.today-all-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+.today-zcard{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:12px 8px;text-align:center;
+  cursor:pointer;transition:all .2s;
+}
+.today-zcard:hover{background:var(--surface2);transform:translateY(-2px);}
+.today-zcard .tz-sym{font-size:1.6rem;margin-bottom:4px;}
+.today-zcard .tz-name{font-size:.68rem;color:var(--dim);margin-bottom:8px;}
+.today-zcard .tz-score{display:flex;justify-content:center;gap:2px;}
+.today-zcard .ts{font-size:.75rem;}
+.today-zcard .ts.off{opacity:.2;}
+
+.today-detail{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:22px;animation:fadeUp .3s ease both;
+}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:20px 0;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .compat-select-row{grid-template-columns:1fr;gap:16px;}
+  .compat-select-row .vs{padding-top:0;}
+  .compat-mini-grid{grid-template-columns:repeat(6,1fr);}
+  .result-hero{gap:14px;}
+  .hero-sym{font-size:3rem;}
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<div class="page">
+  <header>
+    <div class="hbadge">✦ Astrology ✦</div>
+    <h1>占星術診断</h1>
+    <p class="hsub">星が語るあなたの本質・恋愛・仕事・運命</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="diagnosis">🔮 星座診断</button>
+    <button class="tab" data-tab="compat">💫 相性診断</button>
+    <button class="tab" data-tab="today">⭐ 今日の運勢</button>
+  </div>
+
+  <!-- ── DIAGNOSIS PANEL ── -->
+  <div class="panel on" id="tab-diagnosis">
+    <div class="zodiac-grid" id="diagGrid"></div>
+    <div id="diagResult"></div>
+  </div>
+
+  <!-- ── COMPAT PANEL ── -->
+  <div class="panel" id="tab-compat">
+    <div class="compat-section">
+      <div class="compat-select-row">
+        <div>
+          <div class="compat-sub-label">あなたの星座</div>
+          <div class="compat-mini-grid" id="compatGridA"></div>
+        </div>
+        <div class="vs">VS</div>
+        <div>
+          <div class="compat-sub-label">相手の星座</div>
+          <div class="compat-mini-grid" id="compatGridB"></div>
+        </div>
+      </div>
+      <div id="compatResult"></div>
+    </div>
+  </div>
+
+  <!-- ── TODAY PANEL ── -->
+  <div class="panel" id="tab-today">
+    <div class="today-hero">
+      <div style="font-size:2.8rem;">🌙</div>
+      <div>
+        <div class="today-date" id="todayDate"></div>
+        <div class="today-title">今日の全星座運勢</div>
+        <div class="today-moon" id="moonPhase"></div>
+      </div>
+    </div>
+    <div class="today-all-grid" id="todayGrid"></div>
+    <div id="todayDetail" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<script>
+// ── DATA ───────────────────────────────────────────────────────────────────
+
+const SIGNS = [
+  { id:'aries',    sym:'♈', name:'牡羊座', en:'Aries',       dates:'3/21〜4/19',  el:'fire',  ruler:'火星',   color:'#ff6040' },
+  { id:'taurus',   sym:'♉', name:'牡牛座', en:'Taurus',      dates:'4/20〜5/20',  el:'earth', ruler:'金星',   color:'#60c870' },
+  { id:'gemini',   sym:'♊', name:'双子座', en:'Gemini',      dates:'5/21〜6/21',  el:'air',   ruler:'水星',   color:'#60d8ff' },
+  { id:'cancer',   sym:'♋', name:'蟹座',   en:'Cancer',      dates:'6/22〜7/22',  el:'water', ruler:'月',     color:'#8090ff' },
+  { id:'leo',      sym:'♌', name:'獅子座', en:'Leo',         dates:'7/23〜8/22',  el:'fire',  ruler:'太陽',   color:'#ffd060' },
+  { id:'virgo',    sym:'♍', name:'乙女座', en:'Virgo',       dates:'8/23〜9/22',  el:'earth', ruler:'水星',   color:'#80e0a0' },
+  { id:'libra',    sym:'♎', name:'天秤座', en:'Libra',       dates:'9/23〜10/23', el:'air',   ruler:'金星',   color:'#ffa0c0' },
+  { id:'scorpio',  sym:'♏', name:'蠍座',   en:'Scorpio',     dates:'10/24〜11/21',el:'water', ruler:'冥王星', color:'#c060ff' },
+  { id:'sagittarius',sym:'♐',name:'射手座',en:'Sagittarius', dates:'11/22〜12/21',el:'fire',  ruler:'木星',   color:'#ff9040' },
+  { id:'capricorn',sym:'♑', name:'山羊座', en:'Capricorn',   dates:'12/22〜1/19', el:'earth', ruler:'土星',   color:'#a0a8c0' },
+  { id:'aquarius', sym:'♒', name:'水瓶座', en:'Aquarius',    dates:'1/20〜2/18',  el:'air',   ruler:'天王星', color:'#40d0ff' },
+  { id:'pisces',   sym:'♓', name:'魚座',   en:'Pisces',      dates:'2/19〜3/20',  el:'water', ruler:'海王星', color:'#a080ff' },
+];
+
+const SIGN_DATA = {
+  aries:{
+    keyword:'情熱・先駆者・チャレンジャー',
+    personality:'牡羊座は十二星座の先頭を飾る星座で、情熱と行動力に満ちたパイオニアです。生まれつきのリーダーシップを持ち、新しいことへの挑戦を恐れません。直感的に動くため時に衝動的に見えますが、その純粋なエネルギーは周囲を鼓舞します。自信家で競争心が強く、目標に向かって一直線に突き進む力があります。',
+    love:'恋愛では情熱的かつ正直で、好きになったら猛アプローチします。やや自己中心的な面があるため、相手のペースに合わせる練習が大切。独占欲も強めで束縛してしまうことも。しかし真剣に好きな相手への献身は本物です。',
+    work:'仕事では先陣を切るのが得意。起業家・リーダー・スポーツ・営業など、挑戦と競争を要する分野で輝きます。粘り強さより瞬発力が武器なので、短期プロジェクトで特に力を発揮します。',
+    traits:[{l:'行動力',v:95},{l:'情熱',v:92},{l:'リーダーシップ',v:85},{l:'忍耐力',v:50},{l:'協調性',v:60}],
+    lucky:{color:'赤',number:'1・9',stone:'ルビー',day:'火曜日'},
+  },
+  taurus:{
+    keyword:'安定・美・忍耐・豊かさ',
+    personality:'牡牛座は五感に優れた実用主義者です。美しいもの、快適なもの、上質なものへの感受性が抜群で、芸術や料理などの分野で才能を発揮します。変化を好まず安定を求めるため、一度決めたことをやり遂げる粘り強さが際立ちます。頑固に見えるのは、深く考えた末の確固たる信念から来るものです。',
+    love:'恋愛では誠実で長続きする関係を望みます。一目惚れより時間をかけて信頼を築くタイプ。パートナーへの愛情表現は物質的なギフトやおいしい食事など形に残るものが多いです。嫉妬深い一面もありますが、それだけ深く愛している証拠。',
+    work:'金融・不動産・料理・音楽・デザインなど、価値を生み出す仕事で輝きます。計画性と継続力があるため長期プロジェクトに強く、信頼できる人材として評価されます。',
+    traits:[{l:'忍耐力',v:95},{l:'安定感',v:92},{l:'審美眼',v:88},{l:'柔軟性',v:40},{l:'決断速度',v:45}],
+    lucky:{color:'緑・ピンク',number:'2・6',stone:'エメラルド',day:'金曜日'},
+  },
+  gemini:{
+    keyword:'知性・コミュニケーション・双面性',
+    personality:'双子座は知的好奇心の塊。多彩な話題を軽やかに語り、どんな人とも打ち解ける社交術を持ちます。二つの顔を持つ双子のシンボル通り、気分や意見が変わりやすい面も。しかしそれは多様な視点を持てる柔軟な知性の証。飽きやすいため、常に刺激と新鮮さを求めています。',
+    love:'恋愛では会話と知的刺激が最重要。話が合う相手には猛烈に惹かれます。熱しやすく冷めやすい傾向があり、マンネリを強く嫌います。自由を大切にするため束縛されることが最も苦手。友達から恋人に発展するパターンが多いです。',
+    work:'ライター・ジャーナリスト・教師・営業・マーケティングなど言葉を使う仕事が適職。マルチタスクが得意でアイデアも豊富。ただし集中力の維持と締め切り管理が課題になりやすいです。',
+    traits:[{l:'知性',v:95},{l:'コミュ力',v:92},{l:'適応力',v:88},{l:'集中力',v:48},{l:'一貫性',v:42}],
+    lucky:{color:'黄色・シルバー',number:'3・5',stone:'アクアマリン',day:'水曜日'},
+  },
+  cancer:{
+    keyword:'感受性・家族・保護・直感',
+    personality:'蟹座は十二星座で最も感受性が豊か。深い共感力と直感力を持ち、周囲の感情の変化を敏感に察知します。家族や親しい人への愛情は深く、誰かの役に立つことに喜びを感じます。外では硬い殻で自分を守りますが、信頼できる人の前では驚くほど柔らかい内面を見せます。',
+    love:'恋愛では情緒的なつながりと安心感を最優先します。相手を大切にし、細かな気遣いで愛情を表現します。傷つくことを恐れて関係を深めるのに時間がかかることも。一度心を開いたら変わらぬ愛情で相手を包みます。過去の恋愛を引きずりやすい面も。',
+    work:'看護・保育・心理・料理・不動産・芸術など、人の心や生活に寄り添う仕事が向いています。細部への気配りと粘り強さが職場で重宝されます。',
+    traits:[{l:'共感力',v:97},{l:'直感力',v:90},{l:'献身性',v:92},{l:'メンタル強度',v:50},{l:'大胆さ',v:45}],
+    lucky:{color:'白・シルバー',number:'2・7',stone:'ムーンストーン',day:'月曜日'},
+  },
+  leo:{
+    keyword:'輝き・リーダー・誇り・創造性',
+    personality:'獅子座は太陽に支配される王の星座。舞台の中心で輝くことに喜びを感じ、その存在感はひときわ目立ちます。寛大で暖かく、周囲に与えることを惜しまない大きな心の持ち主。自己表現への欲求が強く、認められることをエネルギー源にします。プライドが高い分、リーダーとしての責任感も抜群です。',
+    love:'恋愛では情熱的なアプローチと豪快なロマンチシズムが魅力。相手をドラマチックに喜ばせることが好きです。承認欲求が強いため、称えてくれる相手に深く惹かれます。束縛されると途端に輝きを失うため、互いの自由を尊重できる関係が理想です。',
+    work:'俳優・アーティスト・経営者・政治家・エンタメなど表舞台で輝く職種が天職。人を率いる立場になると本領発揮します。スポットライトから外れると意欲が低下する傾向も。',
+    traits:[{l:'カリスマ',v:97},{l:'創造力',v:90},{l:'寛大さ',v:85},{l:'謙虚さ',v:45},{l:'持久力',v:68}],
+    lucky:{color:'ゴールド・オレンジ',number:'1・5',stone:'ペリドット',day:'日曜日'},
+  },
+  virgo:{
+    keyword:'完璧主義・分析・奉仕・誠実',
+    personality:'乙女座は緻密な分析力と完璧主義を兼ね備えた星座。細部へのこだわりが強く、どんな仕事も丁寧に仕上げます。現実主義でありながら理想が高く、自分にも他者にも高い基準を求める傾向があります。奉仕精神が旺盛で、誰かの役に立つことに本質的な喜びを感じます。批評眼の鋭さが時に批判的に見られることも。',
+    love:'恋愛では相手を観察し、じっくり見極めてから動くタイプ。感情より理性を優先しがちで、愛情表現が控えめです。しかし一度決めた相手への誠実さと献身はピカイチ。完璧主義ゆえに相手の欠点が気になることも。批判ではなく愛情から来るものだと伝えることが大切。',
+    work:'医療・研究・IT・編集・会計・栄養など、正確さと専門性が求められる分野で頭角を現します。細部まで妥協しない仕事ぶりで職場の信頼を勝ち取ります。',
+    traits:[{l:'分析力',v:97},{l:'几帳面さ',v:94},{l:'誠実さ',v:90},{l:'柔軟性',v:50},{l:'自己評価',v:52}],
+    lucky:{color:'ネイビー・茶',number:'5・6',stone:'サファイア',day:'水曜日'},
+  },
+  libra:{
+    keyword:'調和・美・公正・優雅',
+    personality:'天秤座は美と調和を愛する外交官。バランス感覚に優れ、どんな対立も穏やかに仲裁する能力を持ちます。美的センスが高く、空間や装いを洗練させる才能があります。決断が遅いのはすべての側面を公平に考慮するから。人を喜ばせたいという願望から、自分の本音を後回しにしてしまうこともあります。',
+    love:'恋愛では理想的なパートナーシップを強く望みます。ロマンチックで優しく、関係の調和を何より大切にします。争いが苦手なため、不満を溜め込んでしまいがち。相手を美化しすぎて理想と現実のギャップに戸惑うことも。外見だけでなく内面の美しさも重視します。',
+    work:'弁護士・外交官・デザイナー・PRなど、調整力と美的感覚が活きる仕事が向いています。チームの潤滑油として活躍し、人間関係を良好に保つ力が評価されます。',
+    traits:[{l:'協調性',v:95},{l:'審美眼',v:92},{l:'公正さ',v:90},{l:'決断力',v:45},{l:'自己主張',v:55}],
+    lucky:{color:'ピンク・水色',number:'6・9',stone:'オパール',day:'金曜日'},
+  },
+  scorpio:{
+    keyword:'深み・変容・直感・情熱',
+    personality:'蠍座は十二星座で最も深く謎めいた星座。表面には出さない強烈な感情と洞察力を秘め、人の本質を見抜く目を持ちます。変容と再生のエネルギーを宿し、何度でも困難から立ち上がる不死鳥のような強さがあります。秘密主義で容易に心を開かない分、一度信頼した相手には絶対的な忠誠を誓います。',
+    love:'恋愛では全身全霊で没頭するか、まったく興味がないかの二択。中途半端な関係は望みません。強烈な嫉妬心と独占欲は深い愛情の裏返し。パートナーとの魂レベルのつながりを求め、表面的な関係には満足できません。',
+    work:'心理士・探偵・研究者・外科医・ファイナンス・オカルト分野など、深部に迫る仕事が天職。秘密を守る能力と緻密な調査力は高く評価されます。',
+    traits:[{l:'直感力',v:97},{l:'意志力',v:95},{l:'洞察力',v:93},{l:'執着心',v:85},{l:'妥協力',v:35}],
+    lucky:{color:'黒・深紅',number:'8・0',stone:'トパーズ',day:'火曜日'},
+  },
+  sagittarius:{
+    keyword:'自由・探求・楽観・哲学',
+    personality:'射手座は自由と冒険を愛する哲学者。世界を旅し、新しい文化や思想と触れることで成長します。楽観的で開放的なエネルギーが周囲を明るくし、本音をストレートに語る誠実さが魅力。束縛を極端に嫌い、心身の自由を何より大切にします。大局を見る力は抜群ですが、細部の詰めが甘くなりがちです。',
+    love:'恋愛では友達感覚の軽やかな関係から始まることが多い。冒険を共にできるパートナーを求めます。束縛されると一気に冷めるため、対等な自由を尊重してくれる相手との相性が最高。コミットメントを恐れる面がありますが、本当に好きな相手には真剣になれます。',
+    work:'旅行・教育・出版・哲学・宗教・スポーツなど、視野の広さと楽観性が活きる職場で輝きます。組織の枠にとらわれず、フリーランスや海外での活動も向いています。',
+    traits:[{l:'楽観性',v:95},{l:'好奇心',v:97},{l:'正直さ',v:90},{l:'忍耐力',v:50},{l:'計画性',v:45}],
+    lucky:{color:'紫・ターコイズ',number:'3・9',stone:'ターコイズ',day:'木曜日'},
+  },
+  capricorn:{
+    keyword:'野心・規律・責任・現実',
+    personality:'山羊座は十二星座で最も野心的で自律した星座。目標を高く設定し、どんな困難も乗り越える不屈の精神を持ちます。責任感が強く、約束を破ることを極端に嫌います。感情より理性を優先し、実績と信頼を積み上げることに人生の意味を見出します。外見は冷静に見えますが、内には深い温かさが宿っています。',
+    love:'恋愛では感情表現が不得意で、愛情を行動で示すタイプ。安定した長期の関係を好み、信頼できるパートナーを求めます。仕事に集中するあまり恋愛に時間を割けないことも。一度本気になったら、最も誠実で頼れるパートナーになります。',
+    work:'経営者・政治家・建築家・財務・法律など、権威と責任を伴う分野で頂点を目指します。長期的な視野でコツコツ積み上げる力が、最終的に大きな成功をもたらします。',
+    traits:[{l:'野心',v:95},{l:'自律力',v:97},{l:'責任感',v:92},{l:'感情表現',v:40},{l:'柔軟性',v:45}],
+    lucky:{color:'ブラック・ダークグリーン',number:'8・10',stone:'ガーネット',day:'土曜日'},
+  },
+  aquarius:{
+    keyword:'革新・独創性・人道主義・自由',
+    personality:'水瓶座は時代を先取りする革命家。型にはまらない独自の発想と、人類全体への愛を兼ね備えたビジョナリーです。個性を何より大切にし、集団の中でも独自の立場を守ります。テクノロジーや社会変革への関心が高く、理想の未来を実現するために行動します。感情より理念で動くため、時に冷淡に見られることも。',
+    love:'恋愛では精神的なつながりと対等な関係を最重視。支配・束縛は即NGです。型破りな恋愛観を持ち、友情と恋愛の境界が曖昧なことも多い。感情を言語化するのが苦手なため、相手に愛情が伝わりにくいことが課題。',
+    work:'IT・科学・NG O・革新的スタートアップ・社会活動など、未来と社会に関わる仕事で輝きます。組織の規則より理念を優先するため、自由度の高い環境が理想です。',
+    traits:[{l:'独創性',v:97},{l:'革新性',v:94},{l:'知性',v:92},{l:'感情表現',v:42},{l:'協調性',v:55}],
+    lucky:{color:'エレクトリックブルー・シルバー',number:'4・11',stone:'アメジスト',day:'土曜日'},
+  },
+  pisces:{
+    keyword:'感受性・直感・夢・慈悲',
+    personality:'魚座は最も深い感受性と霊的直感を持つ星座。現実と夢の境界が薄く、芸術・音楽・詩の世界で卓越した才能を発揮します。強い共感力で人の痛みを我が事のように感じ取り、自然に人を癒す力があります。境界線が曖昧なため他者に流されやすい側面も。自分だけの神聖な時間と空間を持つことが大切です。',
+    love:'恋愛では魂のつながりを求める究極のロマンチスト。理想の愛を夢見るあまり現実から目を背けることも。相手に尽くすことに喜びを感じますが、自己犠牲が過ぎると消耗します。深い共感力は最大の武器で、パートナーを心の奥まで理解する能力があります。',
+    work:'音楽・芸術・医療・ヒーリング・映画・宗教など、魂に触れる仕事が天職。組織の厳しいルールより、自分のペースで創造できる環境が向いています。',
+    traits:[{l:'共感力',v:98},{l:'創造力',v:92},{l:'直感力',v:94},{l:'現実感',v:40},{l:'決断力',v:42}],
+    lucky:{color:'シーグリーン・ラベンダー',number:'7・12',stone:'アクアマリン',day:'木曜日'},
+  },
+};
+
+// Compatibility matrix (symmetric, 0-100)
+const COMPAT = {
+  aries:    { aries:65, taurus:55, gemini:82, cancer:50, leo:90, virgo:60, libra:75, scorpio:60, sagittarius:90, capricorn:55, aquarius:75, pisces:65 },
+  taurus:   { aries:55, taurus:70, gemini:55, cancer:85, leo:65, virgo:90, libra:72, scorpio:78, sagittarius:48, capricorn:88, aquarius:50, pisces:82 },
+  gemini:   { aries:82, taurus:55, gemini:68, cancer:52, leo:78, virgo:65, libra:90, scorpio:50, sagittarius:80, capricorn:52, aquarius:88, pisces:60 },
+  cancer:   { aries:50, taurus:85, gemini:52, cancer:72, leo:60, virgo:80, libra:58, scorpio:90, sagittarius:48, capricorn:70, aquarius:48, pisces:92 },
+  leo:      { aries:90, taurus:65, gemini:78, cancer:60, leo:68, virgo:58, libra:85, scorpio:62, sagittarius:88, capricorn:58, aquarius:72, pisces:65 },
+  virgo:    { aries:60, taurus:90, gemini:65, cancer:80, leo:58, virgo:70, libra:62, scorpio:82, sagittarius:55, capricorn:90, aquarius:62, pisces:72 },
+  libra:    { aries:75, taurus:72, gemini:90, cancer:58, leo:85, virgo:62, libra:68, scorpio:60, sagittarius:80, capricorn:60, aquarius:88, pisces:68 },
+  scorpio:  { aries:60, taurus:78, gemini:50, cancer:90, leo:62, virgo:82, libra:60, scorpio:68, sagittarius:52, capricorn:80, aquarius:55, pisces:90 },
+  sagittarius:{aries:90,taurus:48,gemini:80,cancer:48,leo:88,virgo:55,libra:80,scorpio:52,sagittarius:70,capricorn:52,aquarius:85,pisces:60},
+  capricorn:{ aries:55, taurus:88, gemini:52, cancer:70, leo:58, virgo:90, libra:60, scorpio:80, sagittarius:52, capricorn:72, aquarius:58, pisces:75 },
+  aquarius: { aries:75, taurus:50, gemini:88, cancer:48, leo:72, virgo:62, libra:88, scorpio:55, sagittarius:85, capricorn:58, aquarius:70, pisces:65 },
+  pisces:   { aries:65, taurus:82, gemini:60, cancer:92, leo:65, virgo:72, libra:68, scorpio:90, sagittarius:60, capricorn:75, aquarius:65, pisces:72 },
+};
+
+const COMPAT_MESSAGES = {
+  high: [
+    '二人は星が定めた運命の出会い。同じリズムで生きるソウルメイトです。深い理解と共鳴が自然と生まれ、一緒にいるだけでエネルギーが満たされます。',
+    '天界が認めた相性。お互いの弱点を補い合い、強みを引き出す理想的なペアです。共に成長し、宇宙レベルの絆を育てていけるでしょう。',
+    '磁石のように惹き合う二人。言葉がなくても通じ合える深いつながりがあります。共に過ごすほど絆が深まる、祝福されたペアです。',
+  ],
+  mid: [
+    '良い相性ですが、お互いの違いを理解し尊重することが大切。価値観の違いを乗り越えた先に、より強い絆が待っています。',
+    '補完し合える関係性。最初は戸惑いを感じることもありますが、お互いから多くを学ぶ成長の関係が築けます。',
+    '刺激的な関係。違う星のエネルギーがぶつかり合い、化学反応を起こします。理解を深める努力が関係をさらに豊かにします。',
+  ],
+  low: [
+    '挑戦的な相性ですが、それだけ学び合えることも多い関係。違いを欠点ではなく多様性として受け入れることで道が開けます。',
+    '異なるリズムを持つ二人。コミュニケーションと思いやりに特別な注意を払うことで、ユニークな絆が生まれる可能性があります。',
+    '星の配置は難しめですが、愛情と根気があればすべてを乗り越えられます。成長の機会に満ちたチャレンジングな関係です。',
+  ],
+};
+
+// Today's fortune seed (based on date)
+function dateSeed() {
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth()+1) * 100 + d.getDate();
+}
+
+function seededRand(seed, idx) {
+  let x = Math.sin(seed + idx * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+}
+
+function getTodayFortune(signIdx) {
+  const seed = dateSeed() + signIdx * 100;
+  const overall = Math.floor(seededRand(seed, 1) * 3) + 3; // 3-5
+  const love    = Math.floor(seededRand(seed, 2) * 3) + 3;
+  const work    = Math.floor(seededRand(seed, 3) * 3) + 3;
+  const money   = Math.floor(seededRand(seed, 4) * 3) + 3;
+  const health  = Math.floor(seededRand(seed, 5) * 3) + 3;
+  const luckNum = Math.floor(seededRand(seed, 6) * 99) + 1;
+  const colors  = ['赤','橙','黄','緑','水色','青','紫','ピンク','白','金','銀','茶'];
+  const luckColor = colors[Math.floor(seededRand(seed, 7) * colors.length)];
+  const items   = ['傘','本','カフェ','音楽','散歩','電話','手紙','花','空','笑顔','朝日','星'];
+  const luckItem = items[Math.floor(seededRand(seed, 8) * items.length)];
+
+  const msgs = [
+    ['新しい流れが始まる予感。積極的な一歩が運を開きます。','計画が実を結ぶ吉日。落ち着いて取り組んで。','直感を信じて動くと思わぬ展開が。','周囲との調和が幸運を呼ぶ一日です。','少し慎重に。休息も大切な投資です。'],
+    ['素直な気持ちを伝えると関係が深まります。','ときめきの予感あり。目線を意識してみて。','大切な人との時間を優先して。','新しい出会いの可能性が高まる日。','焦らず相手のペースを尊重して。'],
+    ['アイデアが湧き出る日。メモを忘れずに。','集中力が高まる好機。難題に挑んで。','チームワークが成果につながる一日。','上司や先輩からのサポートを期待して。','着実な積み重ねが評価される日です。'],
+  ];
+  const overallMsg = msgs[0][Math.floor(seededRand(seed, 9) * 5)];
+  const loveMsg    = msgs[1][Math.floor(seededRand(seed, 10)* 5)];
+  const workMsg    = msgs[2][Math.floor(seededRand(seed, 11)* 5)];
+
+  return { overall, love, work, money, health, luckNum, luckColor, luckItem, overallMsg, loveMsg, workMsg };
+}
+
+const MOON_PHASES = ['🌑 新月','🌒 三日月','🌓 上弦の月','🌔 十三夜月','🌕 満月','🌖 十六夜月','🌗 下弦の月','🌘 晦月'];
+function getMoonPhase() {
+  const d = new Date();
+  const cycle = 29.53;
+  const known = new Date(2000, 0, 6); // known new moon
+  const diff = (d - known) / (1000*60*60*24);
+  const phase = ((diff % cycle + cycle) % cycle) / cycle;
+  return MOON_PHASES[Math.floor(phase * 8)];
+}
+
+// ── Render helpers ──────────────────────────────────────────────────────────
+
+const elBadge = (el) => `<span class="badge badge-${el}">${{fire:'🔥 火',earth:'🌱 土',air:'💨 風',water:'💧 水'}[el]}</span>`;
+
+function starsHTML(val, max=5) {
+  return Array.from({length:max}, (_,i) =>
+    `<span class="star-i${i<val?'':' off'}">★</span>`
+  ).join('');
+}
+
+function traitBar(item, color='var(--purple)') {
+  return `<div class="trait">
+    <div class="trait-top"><span class="tlabel">${item.l}</span><span class="tval">${item.v}%</span></div>
+    <div class="trait-bar"><div class="trait-fill" style="width:${item.v}%;background:linear-gradient(90deg,${color},var(--pink));"></div></div>
+  </div>`;
+}
+
+// ── DIAGNOSIS ──────────────────────────────────────────────────────────────
+
+let diagSel = null;
+const diagGrid = document.getElementById('diagGrid');
+
+SIGNS.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'zcard';
+  d.innerHTML = `<div class="sym">${s.sym}</div><div class="zname">${s.name}</div>`;
+  d.addEventListener('click', () => selectDiag(i));
+  diagGrid.appendChild(d);
+});
+
+function selectDiag(idx) {
+  document.querySelectorAll('#diagGrid .zcard').forEach((el, i) => {
+    el.classList.toggle('sel', i === idx);
+  });
+  diagSel = idx;
+  renderDiag(idx);
+}
+
+function renderDiag(idx) {
+  const s = SIGNS[idx];
+  const d = SIGN_DATA[s.id];
+  const ft = getTodayFortune(idx);
+
+  const elClass = `badge-${s.el}`;
+  const elName = {fire:'火のエレメント',earth:'土のエレメント',air:'風のエレメント',water:'水のエレメント'}[s.el];
+
+  document.getElementById('diagResult').innerHTML = `
+  <div class="result-wrap">
+    <div class="result-hero">
+      <div class="hero-sym">${s.sym}</div>
+      <div class="hero-info">
+        <h2>${s.name} <span style="font-size:.9rem;color:var(--dim);font-weight:400;">${s.en}</span></h2>
+        <div class="hdates">🗓 ${s.dates}</div>
+        <div class="helmt">
+          <span class="badge ${elClass}">${elName}</span>
+          <span class="badge badge-ruler">👑 ${s.ruler}支配</span>
+          <span class="badge" style="background:rgba(255,255,255,.07);color:var(--dim);">🔑 ${d.keyword}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards-row">
+      <div class="info-card">
+        <h3><span class="ico">🌟</span>性格・本質</h3>
+        <p>${d.personality}</p>
+      </div>
+      <div class="info-card">
+        <h3><span class="ico">💕</span>恋愛傾向</h3>
+        <p>${d.love}</p>
+      </div>
+    </div>
+
+    <div class="cards-row">
+      <div class="info-card">
+        <h3><span class="ico">💼</span>仕事・キャリア</h3>
+        <p>${d.work}</p>
+      </div>
+      <div class="info-card">
+        <h3><span class="ico">📊</span>特性グラフ</h3>
+        <div class="trait-list">
+          ${d.traits.map(t => traitBar(t, s.color)).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="info-card" style="margin-bottom:14px;">
+      <h3><span class="ico">⭐</span>今日の運勢</h3>
+      <div class="fortune-grid" style="margin-bottom:12px;">
+        <div class="fortune-card">
+          <div class="fc-ico">🌠</div>
+          <div class="fc-label">総合運</div>
+          <div class="stars fc-stars">${starsHTML(ft.overall)}</div>
+          <div class="fc-msg">${ft.overallMsg}</div>
+        </div>
+        <div class="fortune-card">
+          <div class="fc-ico">💖</div>
+          <div class="fc-label">恋愛運</div>
+          <div class="stars fc-stars">${starsHTML(ft.love)}</div>
+          <div class="fc-msg">${ft.loveMsg}</div>
+        </div>
+        <div class="fortune-card">
+          <div class="fc-ico">💼</div>
+          <div class="fc-label">仕事運</div>
+          <div class="stars fc-stars">${starsHTML(ft.work)}</div>
+          <div class="fc-msg">${ft.workMsg}</div>
+        </div>
+        <div class="fortune-card">
+          <div class="fc-ico">💰</div>
+          <div class="fc-label">金運</div>
+          <div class="stars fc-stars">${starsHTML(ft.money)}</div>
+          <div class="fc-msg">堅実な選択が吉。衝動買いには注意。</div>
+        </div>
+      </div>
+      <div class="lucky-row">
+        <div class="lucky-item"><div class="lucky-label">ラッキーカラー</div><div class="lucky-value">${d.lucky.color}</div></div>
+        <div class="lucky-item"><div class="lucky-label">ラッキーナンバー</div><div class="lucky-value">${d.lucky.number}</div></div>
+        <div class="lucky-item"><div class="lucky-label">パワーストーン</div><div class="lucky-value">${d.lucky.stone}</div></div>
+        <div class="lucky-item"><div class="lucky-label">ラッキーデー</div><div class="lucky-value">${d.lucky.day}</div></div>
+        <div class="lucky-item"><div class="lucky-label">今日のラッキー数</div><div class="lucky-value">${ft.luckNum}</div></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Animate bars
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.trait-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      requestAnimationFrame(() => { el.style.width = w; });
+    });
+  });
+}
+
+// ── COMPATIBILITY ──────────────────────────────────────────────────────────
+
+let compatA = null, compatB = null;
+
+function buildCompatGrid(containerId, side) {
+  const g = document.getElementById(containerId);
+  SIGNS.forEach((s, i) => {
+    const d = document.createElement('div');
+    d.className = 'cz';
+    d.innerHTML = `<div class="czsym">${s.sym}</div><div class="czname">${s.name.replace('座','')}</div>`;
+    d.dataset.i = i;
+    d.addEventListener('click', () => {
+      document.querySelectorAll(`#${containerId} .cz`).forEach(el => el.classList.remove(side==='a'?'sel-a':'sel-b'));
+      d.classList.add(side==='a'?'sel-a':'sel-b');
+      if (side==='a') compatA = i; else compatB = i;
+      if (compatA !== null && compatB !== null) renderCompat();
+    });
+    g.appendChild(d);
+  });
+}
+
+buildCompatGrid('compatGridA', 'a');
+buildCompatGrid('compatGridB', 'b');
+
+function renderCompat() {
+  const sa = SIGNS[compatA], sb = SIGNS[compatB];
+  const score = COMPAT[sa.id][sb.id];
+  const level = score >= 78 ? 'high' : score >= 60 ? 'mid' : 'low';
+  const msgs = COMPAT_MESSAGES[level];
+  const msg = msgs[Math.floor(Math.random() * msgs.length)];
+
+  // Category scores
+  const cats = [
+    { l:'愛情面', v: Math.min(100, score + (Math.random()*20|0) - 10) },
+    { l:'友情面', v: Math.min(100, score + (Math.random()*20|0) - 5)  },
+    { l:'価値観', v: Math.min(100, score + (Math.random()*24|0) - 12) },
+    { l:'知的相性', v: Math.min(100, score + (Math.random()*22|0) - 11)},
+    { l:'長続き度', v: Math.min(100, score + (Math.random()*20|0) - 8) },
+    { l:'信頼感', v: Math.min(100, score + (Math.random()*18|0) - 9)  },
+  ].map(c => ({l: c.l, v: Math.max(20, Math.round(c.v))}));
+
+  document.getElementById('compatResult').innerHTML = `
+  <div class="compat-result">
+    <div class="compat-symbols">
+      <span title="${sa.name}">${sa.sym}</span>
+      <span style="font-size:1.5rem;color:var(--dim);">✦</span>
+      <span title="${sb.name}">${sb.sym}</span>
+    </div>
+    <div class="compat-names">${sa.name} &amp; ${sb.name}</div>
+    <div class="compat-score-big">${score}</div>
+    <div class="compat-pct">/ 100 点</div>
+    <div class="compat-meter"><div class="compat-fill" style="width:0%" id="cfill"></div></div>
+    <div class="compat-cats">
+      ${cats.map(c => `
+        <div class="cc-item">
+          <div class="cc-lbl">${c.l}</div>
+          <div class="cc-bar"><div class="cc-fill" style="width:0%" data-w="${c.v}%"></div></div>
+          <div class="cc-pct">${c.v}%</div>
+        </div>`).join('')}
+    </div>
+    <div class="compat-msg">${msg}</div>
+  </div>`;
+
+  requestAnimationFrame(() => {
+    const fill = document.getElementById('cfill');
+    if (fill) fill.style.width = score + '%';
+    document.querySelectorAll('.cc-fill').forEach(el => {
+      const w = el.dataset.w;
+      requestAnimationFrame(() => { el.style.width = w; });
+    });
+  });
+}
+
+// ── TODAY ──────────────────────────────────────────────────────────────────
+
+const todayDate = document.getElementById('todayDate');
+const d = new Date();
+todayDate.textContent = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+document.getElementById('moonPhase').textContent = getMoonPhase();
+
+const todayGrid = document.getElementById('todayGrid');
+let todaySel = null;
+
+SIGNS.forEach((s, i) => {
+  const ft = getTodayFortune(i);
+  const div = document.createElement('div');
+  div.className = 'today-zcard';
+  div.innerHTML = `
+    <div class="tz-sym">${s.sym}</div>
+    <div class="tz-name">${s.name}</div>
+    <div class="tz-score">${starsHTML(ft.overall).replace(/star-i/g,'ts')}</div>`;
+  div.addEventListener('click', () => {
+    document.querySelectorAll('.today-zcard').forEach(el => el.classList.remove('sel'));
+    div.classList.add('sel');
+    todaySel = i;
+    renderTodayDetail(i);
+  });
+  todayGrid.appendChild(div);
+});
+
+function renderTodayDetail(idx) {
+  const s = SIGNS[idx];
+  const ft = getTodayFortune(idx);
+  document.getElementById('todayDetail').innerHTML = `
+  <div class="today-detail">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+      <span style="font-size:2.5rem;">${s.sym}</span>
+      <div>
+        <div style="font-size:1.2rem;font-weight:800;color:var(--gold);">${s.name}</div>
+        <div style="font-size:.8rem;color:var(--dim);">${s.dates}</div>
+      </div>
+    </div>
+    <div class="fortune-grid">
+      <div class="fortune-card">
+        <div class="fc-ico">🌠</div><div class="fc-label">総合運</div>
+        <div class="stars fc-stars">${starsHTML(ft.overall)}</div>
+        <div class="fc-msg">${ft.overallMsg}</div>
+      </div>
+      <div class="fortune-card">
+        <div class="fc-ico">💖</div><div class="fc-label">恋愛運</div>
+        <div class="stars fc-stars">${starsHTML(ft.love)}</div>
+        <div class="fc-msg">${ft.loveMsg}</div>
+      </div>
+      <div class="fortune-card">
+        <div class="fc-ico">💼</div><div class="fc-label">仕事運</div>
+        <div class="stars fc-stars">${starsHTML(ft.work)}</div>
+        <div class="fc-msg">${ft.workMsg}</div>
+      </div>
+      <div class="fortune-card">
+        <div class="fc-ico">💰</div><div class="fc-label">金運</div>
+        <div class="stars fc-stars">${starsHTML(ft.money)}</div>
+        <div class="fc-msg">計画的な出費が吉。臨時収入の兆しも。</div>
+      </div>
+      <div class="fortune-card">
+        <div class="fc-ico">💪</div><div class="fc-label">健康運</div>
+        <div class="stars fc-stars">${starsHTML(ft.health)}</div>
+        <div class="fc-msg">水分補給と睡眠を意識して。</div>
+      </div>
+    </div>
+    <div class="lucky-row" style="margin-top:14px;">
+      <div class="lucky-item"><div class="lucky-label">ラッキーカラー</div><div class="lucky-value">${ft.luckColor}</div></div>
+      <div class="lucky-item"><div class="lucky-label">ラッキーナンバー</div><div class="lucky-value">${ft.luckNum}</div></div>
+      <div class="lucky-item"><div class="lucky-label">今日のキーワード</div><div class="lucky-value">${ft.luckItem}</div></div>
+    </div>
+  </div>`;
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('on');
+  });
+});
+
+// ── STARFIELD ─────────────────────────────────────────────────────────────
+
+(function() {
+  const canvas = document.getElementById('stars');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 180; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.4 + 0.3,
+        a: Math.random(),
+        s: Math.random() * 0.005 + 0.002,
+        dir: Math.random() > 0.5 ? 1 : -1,
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      s.a += s.s * s.dir;
+      if (s.a > 1 || s.a < 0.1) s.dir *= -1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  initStars();
+  draw();
+  window.addEventListener('resize', () => { resize(); initStars(); });
+})();
+</script>
+</body>
+</html>
