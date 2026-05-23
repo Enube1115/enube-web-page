@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>世界時計</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#07080f;--bg2:#0e0f1c;--bg3:#131425;
+  --s1:rgba(255,255,255,.05);--s2:rgba(255,255,255,.08);
+  --b1:rgba(255,255,255,.08);--b2:rgba(255,255,255,.18);
+  --text:#f0f0fa;--dim:#6060a0;--dim2:#9898c8;
+  --accent:#00d4ff;--accent2:#7c5cfc;--red:#ff5a5f;
+  --r:16px;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 20% 0%,rgba(0,212,255,.08) 0%,transparent 55%),
+             radial-gradient(ellipse at 80% 100%,rgba(124,92,252,.07) 0%,transparent 55%);}
+.page{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 16px 60px;}
+
+/* ── HEADER ── */
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:24px 0 20px;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{font-size:2rem;}
+.logo-text h1{font-size:1.6rem;font-weight:900;letter-spacing:-.02em;background:linear-gradient(135deg,#fff 0%,var(--accent) 60%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.logo-text p{font-size:.72rem;color:var(--dim2);letter-spacing:.08em;margin-top:1px;}
+.utc-badge{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:8px 16px;text-align:right;}
+.utc-label{font-size:.62rem;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;}
+.utc-time{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent);letter-spacing:.04em;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:6px;margin-bottom:24px;}
+.tab{padding:9px 22px;background:var(--s1);border:1px solid var(--b1);border-radius:100px;color:var(--dim2);font-size:.82rem;cursor:pointer;transition:all .2s;letter-spacing:.04em;}
+.tab:hover{border-color:var(--b2);color:var(--text);}
+.tab.on{background:linear-gradient(135deg,var(--accent2),var(--accent));border-color:transparent;color:#fff;box-shadow:0 4px 20px rgba(0,212,255,.25);}
+
+/* ── PANELS ── */
+.panel{display:none;}
+.panel.on{display:block;}
+
+/* ── CLOCK GRID ── */
+.grid-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.grid-header h2{font-size:1rem;font-weight:700;color:var(--dim2);letter-spacing:.06em;text-transform:uppercase;}
+.add-btn{display:flex;align-items:center;gap:6px;padding:8px 18px;background:var(--s1);border:1px solid var(--b1);border-radius:100px;color:var(--accent);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.04em;}
+.add-btn:hover{background:rgba(0,212,255,.1);border-color:var(--accent);}
+
+.clock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;}
+
+/* ── CLOCK CARD ── */
+.clock-card{
+  background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);
+  padding:18px;display:flex;gap:16px;align-items:center;
+  transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;
+}
+.clock-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;pointer-events:none;}
+.clock-card.daytime::before{background:linear-gradient(135deg,rgba(255,200,80,.04),transparent);}
+.clock-card.nighttime::before{background:linear-gradient(135deg,rgba(80,100,255,.06),transparent);}
+.clock-card:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(0,0,0,.4);}
+.clock-card::before{opacity:1;}
+
+.clock-left{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.analog{width:96px;height:96px;}
+
+.clock-right{flex:1;min-width:0;}
+.city-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.city-name{display:flex;align-items:center;gap:6px;}
+.city-flag{font-size:1rem;}
+.city-jp{font-size:.95rem;font-weight:700;color:var(--text);}
+.city-en{font-size:.65rem;color:var(--dim2);margin-top:1px;}
+.card-actions{display:flex;align-items:center;gap:6px;}
+.dn-badge{font-size:.85rem;}
+.del-btn{width:22px;height:22px;border-radius:50%;background:none;border:1px solid transparent;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.7rem;transition:all .18s;line-height:1;}
+.del-btn:hover{background:rgba(255,90,90,.15);border-color:rgba(255,90,90,.4);color:var(--red);}
+
+.digital-time{font-size:1.9rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;color:var(--text);line-height:1;margin-bottom:3px;}
+.city-date{font-size:.75rem;color:var(--dim2);margin-bottom:5px;}
+.tz-offset{font-size:.68rem;color:var(--accent);background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:1px 7px;display:inline-block;font-family:'SF Mono',Consolas,monospace;letter-spacing:.03em;}
+
+/* ── ADD CITY MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:200;display:none;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.on{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--b2);border-radius:20px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;animation:modalIn .25s cubic-bezier(.34,1.56,.64,1);}
+@keyframes modalIn{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--b1);}
+.modal-head h3{font-size:1rem;font-weight:700;}
+.modal-close{width:32px;height:32px;border-radius:50%;background:var(--s1);border:1px solid var(--b1);color:var(--dim2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;transition:all .18s;}
+.modal-close:hover{background:var(--s2);color:var(--text);}
+.modal-search{padding:12px 18px;border-bottom:1px solid var(--b1);}
+.modal-search input{width:100%;padding:9px 14px;background:var(--bg3);border:1px solid var(--b1);border-radius:8px;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;}
+.modal-search input::placeholder{color:var(--dim);}
+.modal-search input:focus{border-color:var(--accent);}
+.city-list{overflow-y:auto;flex:1;}
+.city-list-item{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(255,255,255,.03);}
+.city-list-item:hover{background:var(--s1);}
+.city-list-item.added{opacity:.4;pointer-events:none;}
+.cli-left{display:flex;align-items:center;gap:10px;}
+.cli-flag{font-size:.95rem;}
+.cli-names{display:flex;flex-direction:column;}
+.cli-jp{font-size:.85rem;font-weight:600;}
+.cli-en{font-size:.68rem;color:var(--dim2);}
+.cli-tz{font-size:.68rem;color:var(--dim);font-family:'SF Mono',Consolas,monospace;}
+.cli-add{font-size:.75rem;color:var(--accent);font-weight:600;padding:3px 10px;border-radius:6px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);}
+
+/* ── CONVERTER PANEL ── */
+.conv-box{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:22px;margin-bottom:20px;}
+.conv-box h3{font-size:.8rem;font-weight:700;color:var(--dim2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;}
+.conv-inputs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+@media(max-width:540px){.conv-inputs{grid-template-columns:1fr;}}
+.conv-field label{display:block;font-size:.68rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;}
+.conv-select,.conv-input{width:100%;padding:10px 12px;background:var(--bg2);border:1px solid var(--b1);border-radius:8px;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236060a0' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+.conv-select:focus,.conv-input:focus{border-color:var(--accent);}
+.conv-input[type=time]::-webkit-calendar-picker-indicator,
+.conv-input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5);}
+
+.conv-result-label{font-size:.8rem;font-weight:700;color:var(--dim2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.conv-table{width:100%;border-collapse:collapse;}
+.conv-table th{font-size:.65rem;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;text-align:left;padding:6px 12px 10px;border-bottom:1px solid var(--b1);}
+.conv-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;font-size:.85rem;}
+.conv-table tr:hover td{background:var(--s1);}
+.conv-table tr:last-child td{border-bottom:none;}
+.ctd-city{display:flex;align-items:center;gap:8px;font-weight:600;}
+.ctd-time{font-size:1.05rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);}
+.ctd-date{font-size:.72rem;color:var(--dim2);margin-top:1px;}
+.ctd-offset{font-size:.68rem;color:var(--accent);font-family:'SF Mono',Consolas,monospace;}
+.ctd-diff{font-size:.72rem;padding:2px 8px;border-radius:4px;}
+.ctd-diff.ahead{background:rgba(0,255,140,.1);color:#00ff8c;}
+.ctd-diff.behind{background:rgba(255,90,90,.1);color:#ff7070;}
+.ctd-diff.same{background:var(--s2);color:var(--dim2);}
+.source-row td{background:rgba(0,212,255,.06)!important;}
+.source-row .ctd-city::after{content:'〈変換元〉';font-size:.6rem;color:var(--accent);font-weight:400;margin-left:4px;}
+
+@media(max-width:520px){
+  .clock-card{flex-direction:column;text-align:center;}
+  .clock-right{width:100%;}
+  .city-row{justify-content:center;}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🌍</div>
+      <div class="logo-text">
+        <h1>世界時計</h1>
+        <p>WORLD CLOCK & TIMEZONE CONVERTER</p>
+      </div>
+    </div>
+    <div class="utc-badge">
+      <div class="utc-label">UTC</div>
+      <div class="utc-time" id="utcTime">--:--:--</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="clocks">🕐 世界時計</button>
+    <button class="tab" data-tab="converter">🔄 タイムゾーン変換</button>
+  </div>
+
+  <!-- WORLD CLOCKS -->
+  <div class="panel on" id="panel-clocks">
+    <div class="grid-header">
+      <h2>現在時刻</h2>
+      <button class="add-btn" id="addBtn">＋ 都市を追加</button>
+    </div>
+    <div class="clock-grid" id="clockGrid"></div>
+  </div>
+
+  <!-- CONVERTER -->
+  <div class="panel" id="panel-converter">
+    <div class="conv-box">
+      <h3>変換元</h3>
+      <div class="conv-inputs">
+        <div class="conv-field">
+          <label>タイムゾーン</label>
+          <select class="conv-select" id="convTz"></select>
+        </div>
+        <div class="conv-field">
+          <label>日付</label>
+          <input type="date" class="conv-input" id="convDate">
+        </div>
+        <div class="conv-field">
+          <label>時刻</label>
+          <input type="time" class="conv-input" id="convTime">
+        </div>
+      </div>
+    </div>
+    <div class="conv-result-label">
+      <span>🌐</span><span>変換結果</span>
+    </div>
+    <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;">
+      <table class="conv-table">
+        <thead>
+          <tr>
+            <th>都市</th>
+            <th>時刻</th>
+            <th>日付</th>
+            <th>UTC</th>
+            <th>時差</th>
+          </tr>
+        </thead>
+        <tbody id="convBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CITY MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>🌏 都市を追加</h3>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-search">
+      <input type="text" id="citySearch" placeholder="都市名・国名で検索…" autocomplete="off">
+    </div>
+    <div class="city-list" id="cityList"></div>
+  </div>
+</div>
+
+<script>
+// ── CITY DATABASE ──────────────────────────────────────────────────────────
+const ALL_CITIES = [
+  {id:'tokyo',      name:'東京',          en:'Tokyo',           flag:'🇯🇵', tz:'Asia/Tokyo'},
+  {id:'osaka',      name:'大阪',          en:'Osaka',           flag:'🇯🇵', tz:'Asia/Tokyo'},
+  {id:'sapporo',    name:'札幌',          en:'Sapporo',         flag:'🇯🇵', tz:'Asia/Tokyo'},
+  {id:'seoul',      name:'ソウル',        en:'Seoul',           flag:'🇰🇷', tz:'Asia/Seoul'},
+  {id:'beijing',    name:'北京',          en:'Beijing',         flag:'🇨🇳', tz:'Asia/Shanghai'},
+  {id:'shanghai',   name:'上海',          en:'Shanghai',        flag:'🇨🇳', tz:'Asia/Shanghai'},
+  {id:'hong_kong',  name:'香港',          en:'Hong Kong',       flag:'🇭🇰', tz:'Asia/Hong_Kong'},
+  {id:'taipei',     name:'台北',          en:'Taipei',          flag:'🇹🇼', tz:'Asia/Taipei'},
+  {id:'singapore',  name:'シンガポール',  en:'Singapore',       flag:'🇸🇬', tz:'Asia/Singapore'},
+  {id:'kuala_lumpur',name:'クアラルンプール',en:'Kuala Lumpur', flag:'🇲🇾', tz:'Asia/Kuala_Lumpur'},
+  {id:'jakarta',    name:'ジャカルタ',    en:'Jakarta',         flag:'🇮🇩', tz:'Asia/Jakarta'},
+  {id:'manila',     name:'マニラ',        en:'Manila',          flag:'🇵🇭', tz:'Asia/Manila'},
+  {id:'bangkok',    name:'バンコク',      en:'Bangkok',         flag:'🇹🇭', tz:'Asia/Bangkok'},
+  {id:'ho_chi_minh',name:'ホーチミン',    en:'Ho Chi Minh',     flag:'🇻🇳', tz:'Asia/Ho_Chi_Minh'},
+  {id:'yangon',     name:'ヤンゴン',      en:'Yangon',          flag:'🇲🇲', tz:'Asia/Yangon'},
+  {id:'dhaka',      name:'ダッカ',        en:'Dhaka',           flag:'🇧🇩', tz:'Asia/Dhaka'},
+  {id:'kolkata',    name:'コルカタ',      en:'Kolkata',         flag:'🇮🇳', tz:'Asia/Kolkata'},
+  {id:'delhi',      name:'ニューデリー',  en:'New Delhi',       flag:'🇮🇳', tz:'Asia/Kolkata'},
+  {id:'karachi',    name:'カラチ',        en:'Karachi',         flag:'🇵🇰', tz:'Asia/Karachi'},
+  {id:'dubai',      name:'ドバイ',        en:'Dubai',           flag:'🇦🇪', tz:'Asia/Dubai'},
+  {id:'riyadh',     name:'リヤド',        en:'Riyadh',          flag:'🇸🇦', tz:'Asia/Riyadh'},
+  {id:'tehran',     name:'テヘラン',      en:'Tehran',          flag:'🇮🇷', tz:'Asia/Tehran'},
+  {id:'istanbul',   name:'イスタンブール',en:'Istanbul',         flag:'🇹🇷', tz:'Europe/Istanbul'},
+  {id:'moscow',     name:'モスクワ',      en:'Moscow',          flag:'🇷🇺', tz:'Europe/Moscow'},
+  {id:'cairo',      name:'カイロ',        en:'Cairo',           flag:'🇪🇬', tz:'Africa/Cairo'},
+  {id:'nairobi',    name:'ナイロビ',      en:'Nairobi',         flag:'🇰🇪', tz:'Africa/Nairobi'},
+  {id:'johannesburg',name:'ヨハネスブルグ',en:'Johannesburg',  flag:'🇿🇦', tz:'Africa/Johannesburg'},
+  {id:'lagos',      name:'ラゴス',        en:'Lagos',           flag:'🇳🇬', tz:'Africa/Lagos'},
+  {id:'london',     name:'ロンドン',      en:'London',          flag:'🇬🇧', tz:'Europe/London'},
+  {id:'paris',      name:'パリ',          en:'Paris',           flag:'🇫🇷', tz:'Europe/Paris'},
+  {id:'berlin',     name:'ベルリン',      en:'Berlin',          flag:'🇩🇪', tz:'Europe/Berlin'},
+  {id:'madrid',     name:'マドリード',    en:'Madrid',          flag:'🇪🇸', tz:'Europe/Madrid'},
+  {id:'rome',       name:'ローマ',        en:'Rome',            flag:'🇮🇹', tz:'Europe/Rome'},
+  {id:'amsterdam',  name:'アムステルダム',en:'Amsterdam',       flag:'🇳🇱', tz:'Europe/Amsterdam'},
+  {id:'zurich',     name:'チューリッヒ',  en:'Zurich',          flag:'🇨🇭', tz:'Europe/Zurich'},
+  {id:'stockholm',  name:'ストックホルム',en:'Stockholm',       flag:'🇸🇪', tz:'Europe/Stockholm'},
+  {id:'vienna',     name:'ウィーン',      en:'Vienna',          flag:'🇦🇹', tz:'Europe/Vienna'},
+  {id:'athens',     name:'アテネ',        en:'Athens',          flag:'🇬🇷', tz:'Europe/Athens'},
+  {id:'warsaw',     name:'ワルシャワ',    en:'Warsaw',          flag:'🇵🇱', tz:'Europe/Warsaw'},
+  {id:'lisbon',     name:'リスボン',      en:'Lisbon',          flag:'🇵🇹', tz:'Europe/Lisbon'},
+  {id:'new_york',   name:'ニューヨーク',  en:'New York',        flag:'🇺🇸', tz:'America/New_York'},
+  {id:'toronto',    name:'トロント',      en:'Toronto',         flag:'🇨🇦', tz:'America/Toronto'},
+  {id:'chicago',    name:'シカゴ',        en:'Chicago',         flag:'🇺🇸', tz:'America/Chicago'},
+  {id:'los_angeles',name:'ロサンゼルス',  en:'Los Angeles',     flag:'🇺🇸', tz:'America/Los_Angeles'},
+  {id:'vancouver',  name:'バンクーバー',  en:'Vancouver',       flag:'🇨🇦', tz:'America/Vancouver'},
+  {id:'mexico_city',name:'メキシコシティ',en:'Mexico City',     flag:'🇲🇽', tz:'America/Mexico_City'},
+  {id:'sao_paulo',  name:'サンパウロ',    en:'São Paulo',       flag:'🇧🇷', tz:'America/Sao_Paulo'},
+  {id:'buenos_aires',name:'ブエノスアイレス',en:'Buenos Aires', flag:'🇦🇷', tz:'America/Argentina/Buenos_Aires'},
+  {id:'sydney',     name:'シドニー',      en:'Sydney',          flag:'🇦🇺', tz:'Australia/Sydney'},
+  {id:'melbourne',  name:'メルボルン',    en:'Melbourne',       flag:'🇦🇺', tz:'Australia/Melbourne'},
+  {id:'auckland',   name:'オークランド',  en:'Auckland',        flag:'🇳🇿', tz:'Pacific/Auckland'},
+  {id:'honolulu',   name:'ホノルル',      en:'Honolulu',        flag:'🇺🇸', tz:'Pacific/Honolulu'},
+];
+
+const DEFAULT_IDS = ['tokyo','new_york','london','paris','sydney','dubai'];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let activeIds = JSON.parse(localStorage.getItem('wc_cities') || 'null') || [...DEFAULT_IDS];
+function saveIds(){ localStorage.setItem('wc_cities', JSON.stringify(activeIds)); }
+const cityById = id => ALL_CITIES.find(c => c.id === id);
+
+// ── ANALOG CLOCK SVG ───────────────────────────────────────────────────────
+function buildSVG(id) {
+  const r = 47, cx = 50, cy = 50;
+  let marks = '';
+  for (let i = 0; i < 60; i++) {
+    const a = (i * 6 - 90) * Math.PI / 180;
+    const isHour = i % 5 === 0;
+    const r1 = isHour ? 37 : 42, r2 = isHour ? 43 : 44;
+    const sw = isHour ? 2 : .8;
+    const col = isHour ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.2)';
+    const x1 = (cx + r1 * Math.cos(a)).toFixed(2);
+    const y1 = (cy + r1 * Math.sin(a)).toFixed(2);
+    const x2 = (cx + r2 * Math.cos(a)).toFixed(2);
+    const y2 = (cy + r2 * Math.sin(a)).toFixed(2);
+    marks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>`;
+  }
+  return `<svg class="analog" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="fg${id}" cx="42%" cy="38%">
+        <stop offset="0%" stop-color="#1a1b2e"/>
+        <stop offset="100%" stop-color="#0a0b18"/>
+      </radialGradient>
+    </defs>
+    <circle cx="50" cy="50" r="49" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
+    <circle cx="50" cy="50" r="48" fill="url(#fg${id})"/>
+    ${marks}
+    <line class="hh" x1="50" y1="50" x2="50" y2="31" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    <line class="mh" x1="50" y1="50" x2="50" y2="22" stroke="#a0d0f0" stroke-width="2.5" stroke-linecap="round"/>
+    <line class="sh" x1="50" y1="57" x2="50" y2="17" stroke="#ff5a5f" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="3.5" fill="#a0d0f0"/>
+    <circle cx="50" cy="50" r="1.8" fill="#ff5a5f"/>
+  </svg>`;
+}
+
+// ── TIME HELPERS ───────────────────────────────────────────────────────────
+function getNowInTz(tz) {
+  const now = new Date();
+  const s   = now.toLocaleString('en-US', {timeZone:tz, hour12:false,
+    year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  // "05/23/2026, 14:30:00"
+  const [datePart, timePart] = s.split(', ');
+  const [mo,dy,yr] = datePart.split('/');
+  const [h,m,sec]  = timePart.split(':');
+  return {
+    year:+yr, month:+mo, day:+dy,
+    hour:+h === 24 ? 0 : +h, // handle midnight edge
+    min:+m, sec:+sec,
+    ms: now.getMilliseconds(),
+  };
+}
+
+function isDaytime(tz) {
+  const {hour} = getNowInTz(tz);
+  return hour >= 6 && hour < 20;
+}
+
+function getTzOffsetLabel(tz) {
+  const now = new Date();
+  try {
+    const parts = new Intl.DateTimeFormat('en',{timeZone:tz,timeZoneName:'shortOffset'}).formatToParts(now);
+    return parts.find(p=>p.type==='timeZoneName')?.value || '';
+  } catch { return ''; }
+}
+
+function fmt2(n){ return String(n).padStart(2,'0'); }
+
+function rotateSVG(svg, h, m, s, ms) {
+  const hDeg = (h % 12) * 30 + m * .5 + s * (1/120);
+  const mDeg = m * 6 + s * .1;
+  const sDeg = s * 6 + ms * .006;
+  const rot = (el, deg) => el?.setAttribute('transform', `rotate(${deg.toFixed(2)},50,50)`);
+  rot(svg.querySelector('.hh'), hDeg);
+  rot(svg.querySelector('.mh'), mDeg);
+  rot(svg.querySelector('.sh'), sDeg);
+}
+
+// ── BUILD CARD ─────────────────────────────────────────────────────────────
+let cardUid = 0;
+function buildCard(city) {
+  const uid = ++cardUid;
+  const day = isDaytime(city.tz);
+  const offset = getTzOffsetLabel(city.tz);
+  const t = getNowInTz(city.tz);
+  const timeStr = `${fmt2(t.hour)}:${fmt2(t.min)}:${fmt2(t.sec)}`;
+  const dateStr = `${t.year}/${fmt2(t.month)}/${fmt2(t.day)}(${['日','月','火','水','木','金','土'][new Date(t.year,t.month-1,t.day).getDay()]})`;
+
+  const card = document.createElement('div');
+  card.className = `clock-card ${day?'daytime':'nighttime'}`;
+  card.dataset.id = city.id;
+  card.dataset.uid = uid;
+
+  card.innerHTML = `
+    <div class="clock-left">
+      ${buildSVG(uid)}
+    </div>
+    <div class="clock-right">
+      <div class="city-row">
+        <div class="city-name">
+          <span class="city-flag">${city.flag}</span>
+          <div>
+            <div class="city-jp">${city.name}</div>
+            <div class="city-en">${city.en}</div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <span class="dn-badge">${day?'☀️':'🌙'}</span>
+          <button class="del-btn" title="削除">✕</button>
+        </div>
+      </div>
+      <div class="digital-time">${timeStr}</div>
+      <div class="city-date">${dateStr}</div>
+      <span class="tz-offset">${offset}</span>
+    </div>`;
+
+  card.querySelector('.del-btn').addEventListener('click', () => removeCity(city.id));
+
+  // Initial hand position
+  const svg = card.querySelector('.analog');
+  rotateSVG(svg, t.hour, t.min, t.sec, t.ms);
+
+  return card;
+}
+
+// ── RENDER GRID ────────────────────────────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('clockGrid');
+  grid.innerHTML = '';
+  activeIds.forEach(id => {
+    const city = cityById(id);
+    if (city) grid.appendChild(buildCard(city));
+  });
+}
+
+// ── TICK ───────────────────────────────────────────────────────────────────
+function tick() {
+  // UTC
+  const now = new Date();
+  document.getElementById('utcTime').textContent =
+    `${fmt2(now.getUTCHours())}:${fmt2(now.getUTCMinutes())}:${fmt2(now.getUTCSeconds())}`;
+
+  // Update each card
+  document.querySelectorAll('.clock-card').forEach(card => {
+    const city = cityById(card.dataset.id);
+    if (!city) return;
+    const t = getNowInTz(city.tz);
+    const timeStr = `${fmt2(t.hour)}:${fmt2(t.min)}:${fmt2(t.sec)}`;
+    const day = t.hour >= 6 && t.hour < 20;
+    const d = new Date(t.year, t.month-1, t.day);
+    const dateStr = `${t.year}/${fmt2(t.month)}/${fmt2(t.day)}(${'日月火水木金土'[d.getDay()]})`;
+
+    card.querySelector('.digital-time').textContent = timeStr;
+    card.querySelector('.city-date').textContent = dateStr;
+    card.querySelector('.dn-badge').textContent = day ? '☀️' : '🌙';
+    card.classList.toggle('daytime', day);
+    card.classList.toggle('nighttime', !day);
+
+    const svg = card.querySelector('.analog');
+    rotateSVG(svg, t.hour, t.min, t.sec, t.ms);
+  });
+
+  // Converter live update
+  if (document.getElementById('panel-converter').classList.contains('on')) {
+    runConverter();
+  }
+}
+
+setInterval(tick, 200); // 200ms for smooth second hand
+
+// ── ADD / REMOVE ───────────────────────────────────────────────────────────
+function removeCity(id) {
+  activeIds = activeIds.filter(x => x !== id);
+  saveIds();
+  document.querySelector(`.clock-card[data-id="${id}"]`)?.remove();
+}
+
+function addCity(id) {
+  if (activeIds.includes(id)) return;
+  activeIds.push(id);
+  saveIds();
+  const city = cityById(id);
+  if (city) document.getElementById('clockGrid').appendChild(buildCard(city));
+  closeModal();
+  buildConverterOptions();
+}
+
+// ── MODAL ──────────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('addModal').classList.add('on');
+  document.getElementById('citySearch').value = '';
+  renderCityList('');
+  setTimeout(() => document.getElementById('citySearch').focus(), 100);
+}
+function closeModal() { document.getElementById('addModal').classList.remove('on'); }
+
+function renderCityList(q) {
+  const list = document.getElementById('cityList');
+  const query = q.toLowerCase();
+  const filtered = ALL_CITIES.filter(c =>
+    !query ||
+    c.name.includes(query) ||
+    c.en.toLowerCase().includes(query) ||
+    c.tz.toLowerCase().includes(query)
+  );
+  list.innerHTML = filtered.map(c => `
+    <div class="city-list-item${activeIds.includes(c.id)?' added':''}" data-id="${c.id}">
+      <div class="cli-left">
+        <span class="cli-flag">${c.flag}</span>
+        <div class="cli-names">
+          <div class="cli-jp">${c.name}</div>
+          <div class="cli-en">${c.en}</div>
+          <div class="cli-tz">${c.tz}</div>
+        </div>
+      </div>
+      <span class="cli-add">${activeIds.includes(c.id)?'追加済':'追加'}</span>
+    </div>`).join('');
+
+  list.querySelectorAll('.city-list-item:not(.added)').forEach(el => {
+    el.addEventListener('click', () => addCity(el.dataset.id));
+  });
+}
+
+document.getElementById('addBtn').addEventListener('click', openModal);
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('addModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('addModal')) closeModal();
+});
+document.getElementById('citySearch').addEventListener('input', e => renderCityList(e.target.value));
+
+// ── CONVERTER ──────────────────────────────────────────────────────────────
+function buildConverterOptions() {
+  const sel = document.getElementById('convTz');
+  const cur = sel.value;
+  sel.innerHTML = ALL_CITIES.map(c =>
+    `<option value="${c.tz}" data-id="${c.id}">${c.flag} ${c.name} (${c.tz})</option>`
+  ).join('');
+  if (cur) sel.value = cur;
+}
+
+function initConverter() {
+  buildConverterOptions();
+  const now = new Date();
+  document.getElementById('convDate').value =
+    `${now.getFullYear()}-${fmt2(now.getMonth()+1)}-${fmt2(now.getDate())}`;
+  document.getElementById('convTime').value =
+    `${fmt2(now.getHours())}:${fmt2(now.getMinutes())}`;
+
+  ['convTz','convDate','convTime'].forEach(id =>
+    document.getElementById(id).addEventListener('change', runConverter)
+  );
+}
+
+function getOffsetMs(tz) {
+  const now = new Date();
+  const utcStr = now.toLocaleString('en-US', {timeZone:'UTC', hour12:false,
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const tzStr = now.toLocaleString('en-US', {timeZone:tz, hour12:false,
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  return new Date(tzStr.replace(',','')) - new Date(utcStr.replace(',',''));
+}
+
+function runConverter() {
+  const srcTz  = document.getElementById('convTz').value;
+  const dateV  = document.getElementById('convDate').value;
+  const timeV  = document.getElementById('convTime').value;
+  if (!dateV || !timeV) return;
+
+  const inputMs = new Date(`${dateV}T${timeV}:00Z`).getTime();
+  const srcOffMs = getOffsetMs(srcTz);
+  const utcMs = inputMs - srcOffMs;
+  const utcDate = new Date(utcMs);
+
+  const srcOffMin = Math.round(srcOffMs / 60000);
+  const days = ['日','月','火','水','木','金','土'];
+
+  const body = document.getElementById('convBody');
+  body.innerHTML = '';
+
+  // Show active cities + source if not in list
+  const targetTzSet = new Set();
+  activeIds.forEach(id => { const c = cityById(id); if(c) targetTzSet.add(c.tz); });
+  targetTzSet.add(srcTz);
+  const tzList = ALL_CITIES.filter(c => targetTzSet.has(c.tz));
+
+  // Deduplicate by tz (show first match)
+  const seen = new Set();
+  const unique = tzList.filter(c => { if(seen.has(c.tz)) return false; seen.add(c.tz); return true; });
+
+  unique.sort((a,b) => getOffsetMs(a.tz) - getOffsetMs(b.tz));
+
+  unique.forEach(city => {
+    const tzOffMs  = getOffsetMs(city.tz);
+    const localDate = new Date(utcMs + tzOffMs);
+    const h = localDate.getUTCHours(), m = localDate.getUTCMinutes();
+    const dateObj = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate()));
+    const dayName = days[dateObj.getUTCDay()];
+    const dateStr2 = `${localDate.getUTCFullYear()}/${fmt2(localDate.getUTCMonth()+1)}/${fmt2(localDate.getUTCDate())}(${dayName})`;
+    const diffMin = Math.round((tzOffMs - srcOffMs) / 60000);
+    const diffH = diffMin / 60;
+    const diffStr = diffH === 0 ? '±0h' : (diffH > 0 ? `+${diffH}h` : `${diffH}h`);
+    const diffCls = diffMin === 0 ? 'same' : diffMin > 0 ? 'ahead' : 'behind';
+    const isSource = city.tz === srcTz;
+
+    const tzLbl = getTzOffsetLabel(city.tz);
+    const tr = document.createElement('tr');
+    if (isSource) tr.className = 'source-row';
+    tr.innerHTML = `
+      <td><div class="ctd-city">${city.flag} ${city.name}</div></td>
+      <td><div class="ctd-time">${fmt2(h)}:${fmt2(m)}</div></td>
+      <td><div class="ctd-date">${dateStr2}</div></td>
+      <td><span class="ctd-offset">${tzLbl}</span></td>
+      <td><span class="ctd-diff ${diffCls}">${diffStr}</span></td>`;
+    body.appendChild(tr);
+  });
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('on');
+    if (btn.dataset.tab === 'converter') runConverter();
+  });
+});
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+renderGrid();
+initConverter();
+tick();
+</script>
+</body>
+</html>
