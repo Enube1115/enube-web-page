@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout Planner</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#07070e;--bg2:#0e0e1c;
+  --s1:rgba(255,255,255,.05);--s2:rgba(255,255,255,.08);
+  --b1:rgba(255,255,255,.08);--b2:rgba(255,255,255,.18);
+  --text:#f0f0fa;--dim:#6060a0;--dim2:#9898c8;
+  --r:14px;
+  --orange:#ff5a20;--cyan:#00d4ff;--green:#00ff8c;--pink:#ff2d78;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(rgba(255,255,255,.025) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:600px;margin:0 auto;padding-bottom:72px;}
+.page{display:none;padding:0 16px 20px;}
+.page.on{display:block;}
+
+/* ── NAV ── */
+.nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:600px;z-index:200;
+  display:flex;
+  background:rgba(7,7,14,.92);backdrop-filter:blur(20px);
+  border-top:1px solid var(--b1);
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:10px 0 14px;background:none;border:none;cursor:pointer;
+  color:var(--dim);font-size:.65rem;letter-spacing:.06em;
+  transition:color .2s;
+}
+.nav-btn .ni{font-size:1.25rem;line-height:1;}
+.nav-btn.on{color:var(--orange);}
+
+/* ── SETUP PAGE ── */
+.setup-header{text-align:center;padding:32px 0 24px;}
+.setup-header h1{font-size:clamp(1.8rem,5vw,2.6rem);font-weight:900;letter-spacing:-.02em;background:linear-gradient(135deg,#fff 0%,var(--orange) 50%,var(--pink) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.setup-header p{color:var(--dim2);font-size:.9rem;margin-top:6px;}
+
+.section-label{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:12px;padding-left:2px;}
+
+.goal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px;}
+.goal-card{
+  background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);
+  padding:18px 10px;text-align:center;cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+.goal-card:hover{background:var(--s2);}
+.goal-card.sel{border-color:var(--gc,var(--orange));background:rgba(var(--gcr,255,90,32),.12);box-shadow:0 0 20px rgba(var(--gcr,255,90,32),.2);}
+.goal-icon{font-size:2rem;}
+.goal-name{font-size:.85rem;font-weight:700;color:var(--text);}
+.goal-desc{font-size:.68rem;color:var(--dim2);line-height:1.4;}
+
+.part-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:28px;}
+.part-btn{
+  background:var(--s1);border:1px solid var(--b1);border-radius:10px;
+  padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+}
+.part-btn:hover{background:var(--s2);}
+.part-btn.sel{border-color:var(--orange);background:rgba(255,90,32,.12);color:var(--orange);}
+.part-btn .pi{font-size:1.5rem;}
+.part-btn .pn{font-size:.72rem;color:var(--dim2);}
+.part-btn.sel .pn{color:var(--orange);}
+
+.gen-btn{
+  width:100%;padding:16px;
+  background:linear-gradient(135deg,var(--orange),var(--pink));
+  border:none;border-radius:var(--r);
+  color:#fff;font-size:1rem;font-weight:800;letter-spacing:.08em;
+  cursor:pointer;transition:opacity .2s;
+  box-shadow:0 8px 32px rgba(255,90,32,.35);
+}
+.gen-btn:hover{opacity:.9;}
+.gen-btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
+
+/* ── WORKOUT PAGE ── */
+.workout-topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 0 16px;
+}
+.workout-topbar h2{font-size:1.15rem;font-weight:800;}
+.wtimer{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--cyan);}
+
+.progress-wrap{margin-bottom:18px;}
+.progress-info{display:flex;justify-content:space-between;font-size:.75rem;color:var(--dim2);margin-bottom:7px;}
+.progress-bar{height:6px;background:rgba(255,255,255,.08);border-radius:100px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--pink));border-radius:100px;transition:width .4s ease;}
+
+.meta-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;}
+.mtag{padding:4px 12px;border-radius:100px;font-size:.72rem;font-weight:600;}
+
+.ex-list{display:flex;flex-direction:column;gap:12px;margin-bottom:20px;}
+
+.ex-card{
+  background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);
+  overflow:hidden;transition:all .3s;
+}
+.ex-card.done{background:rgba(0,255,140,.05);border-color:rgba(0,255,140,.25);}
+.ex-card.done .ex-name{text-decoration:line-through;opacity:.6;}
+
+.ex-top{padding:16px 16px 0;}
+.ex-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.ex-name{font-size:1rem;font-weight:700;line-height:1.3;}
+.ex-en{font-size:.72rem;color:var(--dim);margin-top:1px;}
+.check-btn{
+  width:32px;height:32px;flex-shrink:0;
+  border-radius:50%;border:2px solid var(--b2);
+  background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;transition:all .2s;color:transparent;
+}
+.check-btn:hover{border-color:var(--green);}
+.ex-card.done .check-btn{background:var(--green);border-color:var(--green);color:#000;}
+
+.ex-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.etag{padding:2px 9px;border-radius:100px;font-size:.67rem;font-weight:600;background:var(--s2);color:var(--dim2);}
+
+.ex-stats{
+  display:flex;gap:0;
+  background:var(--s2);border-radius:8px;
+  margin-bottom:12px;overflow:hidden;
+}
+.ex-stat{
+  flex:1;text-align:center;padding:10px 4px;
+  border-right:1px solid var(--b1);
+}
+.ex-stat:last-child{border-right:none;}
+.ex-stat .sv{font-size:1.05rem;font-weight:800;color:var(--text);}
+.ex-stat .sl{font-size:.62rem;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+
+.ex-tip{
+  display:flex;align-items:flex-start;gap:8px;
+  background:rgba(255,165,0,.07);border-radius:8px;
+  padding:10px;margin-bottom:10px;font-size:.8rem;color:var(--dim2);line-height:1.6;
+}
+.ex-tip .tip-ico{flex-shrink:0;font-size:.9rem;margin-top:1px;}
+
+.ex-bottom{
+  padding:10px 14px 14px;
+  display:flex;align-items:center;gap:10px;
+}
+.weight-wrap{flex:1;display:flex;align-items:center;gap:6px;}
+.weight-input{
+  width:70px;padding:6px 8px;border-radius:8px;
+  background:var(--s2);border:1px solid var(--b1);
+  color:var(--text);font-size:.88rem;font-weight:600;text-align:center;outline:none;
+}
+.weight-input:focus{border-color:var(--orange);}
+.weight-unit{font-size:.75rem;color:var(--dim);}
+.rest-btn{
+  padding:7px 14px;border-radius:8px;
+  background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);
+  color:var(--cyan);font-size:.78rem;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap;
+}
+.rest-btn:hover{background:rgba(0,212,255,.2);}
+
+.finish-btn{
+  width:100%;padding:15px;
+  background:linear-gradient(135deg,var(--green),#00b4d8);
+  border:none;border-radius:var(--r);
+  color:#000;font-size:.95rem;font-weight:800;letter-spacing:.06em;
+  cursor:pointer;box-shadow:0 6px 24px rgba(0,255,140,.25);
+  transition:opacity .2s;
+}
+.finish-btn:hover{opacity:.9;}
+
+/* ── TIMER OVERLAY ── */
+.timer-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,.85);backdrop-filter:blur(12px);
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:20px;
+}
+.timer-overlay.on{display:flex;}
+.timer-circle{position:relative;width:180px;height:180px;}
+.timer-circle svg{position:absolute;inset:0;transform:rotate(-90deg);}
+.tc-bg{fill:none;stroke:rgba(255,255,255,.1);stroke-width:8;}
+.tc-prog{fill:none;stroke:var(--cyan);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .9s linear;}
+.timer-num{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:2.8rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--cyan);
+}
+.timer-num span{font-size:.75rem;color:var(--dim2);font-weight:400;}
+.timer-skip{
+  padding:10px 28px;background:var(--s2);border:1px solid var(--b2);
+  border-radius:100px;color:var(--text);font-size:.85rem;cursor:pointer;
+  transition:all .2s;
+}
+.timer-skip:hover{background:var(--s1);border-color:var(--b2);}
+
+/* ── COMPLETE OVERLAY ── */
+.complete-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,.88);backdrop-filter:blur(14px);
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+}
+.complete-overlay.on{display:flex;}
+.complete-card{
+  background:var(--bg2);border:1px solid rgba(0,255,140,.3);
+  border-radius:20px;padding:32px 24px;text-align:center;
+  width:100%;max-width:380px;
+  animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{from{transform:scale(.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+.complete-card .ce{font-size:3.5rem;margin-bottom:10px;}
+.complete-card h2{font-size:1.7rem;font-weight:900;margin-bottom:6px;}
+.complete-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0;}
+.cstat{background:var(--s1);border-radius:10px;padding:12px 6px;}
+.cstat .cv{font-size:1.4rem;font-weight:800;color:var(--green);}
+.cstat .cl{font-size:.65rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:3px;}
+.complete-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+.btn-outline{padding:12px;background:none;border:1px solid var(--b2);border-radius:10px;color:var(--dim2);font-size:.88rem;cursor:pointer;transition:all .2s;}
+.btn-outline:hover{border-color:var(--b2);color:var(--text);}
+.btn-primary{padding:13px;background:linear-gradient(135deg,var(--orange),var(--pink));border:none;border-radius:10px;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .2s;}
+.btn-primary:hover{opacity:.9;}
+
+/* ── HISTORY PAGE ── */
+.hist-header{padding:24px 0 20px;display:flex;align-items:center;justify-content:space-between;}
+.hist-header h2{font-size:1.4rem;font-weight:800;}
+.clear-btn{font-size:.75rem;color:var(--dim);background:none;border:none;cursor:pointer;padding:4px 8px;}
+.clear-btn:hover{color:var(--pink);}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px;}
+.stat-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px;text-align:center;}
+.stat-card .sv{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,var(--orange),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stat-card .sl{font-size:.68rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;}
+
+.hist-empty{text-align:center;padding:60px 20px;color:var(--dim);}
+.hist-empty .he{font-size:3rem;margin-bottom:12px;}
+
+.hist-list{display:flex;flex-direction:column;gap:10px;}
+.hist-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;}
+.hist-card-top{padding:14px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.hist-left{}
+.hist-date{font-size:.78rem;color:var(--dim2);margin-bottom:3px;}
+.hist-goal-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.hist-goal{padding:2px 10px;border-radius:100px;font-size:.7rem;font-weight:700;}
+.hist-parts{font-size:.78rem;color:var(--dim2);}
+.hist-right{text-align:right;flex-shrink:0;}
+.hist-dur{font-size:.9rem;font-weight:700;color:var(--cyan);}
+.hist-vol{font-size:.72rem;color:var(--dim);margin-top:2px;}
+.hist-detail{padding:0 16px 14px;display:none;}
+.hist-card.open .hist-detail{display:block;}
+.hist-ex-list{list-style:none;display:flex;flex-direction:column;gap:5px;}
+.hist-ex-item{display:flex;align-items:center;gap:8px;font-size:.8rem;}
+.hist-ex-item .hei{color:var(--dim);}
+.hist-chk{color:var(--green);font-size:.85rem;}
+
+@media(max-width:420px){
+  .goal-grid{grid-template-columns:1fr 1fr 1fr;}
+  .goal-icon{font-size:1.6rem;}
+  .goal-name{font-size:.78rem;}
+  .goal-desc{display:none;}
+  .part-grid{grid-template-columns:repeat(4,1fr);}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── SETUP PAGE ── -->
+  <div class="page on" id="page-setup">
+    <div class="setup-header">
+      <h1>WORKOUT<br>PLANNER</h1>
+      <p>目標と部位を選んでメニューを作ろう</p>
+    </div>
+
+    <div class="section-label">目標を選ぶ</div>
+    <div class="goal-grid" id="goalGrid"></div>
+
+    <div class="section-label">鍛える部位（複数可）</div>
+    <div class="part-grid" id="partGrid"></div>
+
+    <button class="gen-btn" id="genBtn" disabled>メニューを作成 →</button>
+  </div>
+
+  <!-- ── WORKOUT PAGE ── -->
+  <div class="page" id="page-workout">
+    <div class="workout-topbar">
+      <div>
+        <h2 id="wTitle">Today's Workout</h2>
+        <div id="wDate" style="font-size:.75rem;color:var(--dim);margin-top:2px;"></div>
+      </div>
+      <div class="wtimer" id="wTimer">00:00</div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-info">
+        <span id="progText">0 / 0 完了</span>
+        <span id="progPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="meta-tags" id="metaTags"></div>
+    <div class="ex-list" id="exList"></div>
+    <button class="finish-btn" id="finishBtn">🏆 ワークアウト完了</button>
+  </div>
+
+  <!-- ── HISTORY PAGE ── -->
+  <div class="page" id="page-history">
+    <div class="hist-header">
+      <h2>記録</h2>
+      <button class="clear-btn" id="clearBtn">全削除</button>
+    </div>
+    <div class="stats-row" id="statsRow"></div>
+    <div id="histContent"></div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- BOTTOM NAV -->
+<div class="nav">
+  <button class="nav-btn on" data-page="setup"><span class="ni">⚡</span>プラン</button>
+  <button class="nav-btn" data-page="workout"><span class="ni">🏋️</span>ワークアウト</button>
+  <button class="nav-btn" data-page="history"><span class="ni">📊</span>記録</button>
+</div>
+
+<!-- REST TIMER OVERLAY -->
+<div class="timer-overlay" id="timerOverlay">
+  <div style="font-size:.8rem;color:var(--dim2);letter-spacing:.1em;text-transform:uppercase;">休憩タイマー</div>
+  <div class="timer-circle">
+    <svg viewBox="0 0 180 180" width="180" height="180">
+      <circle class="tc-bg" cx="90" cy="90" r="80"/>
+      <circle class="tc-prog" id="tcProg" cx="90" cy="90" r="80"
+        stroke-dasharray="502" stroke-dashoffset="0"/>
+    </svg>
+    <div class="timer-num">
+      <div id="timerNum">00</div>
+      <span>秒</span>
+    </div>
+  </div>
+  <div style="font-size:.85rem;color:var(--dim2);" id="timerLabel">次の種目まで</div>
+  <button class="timer-skip" id="timerSkip">スキップ ›</button>
+</div>
+
+<!-- COMPLETE OVERLAY -->
+<div class="complete-overlay" id="completeOverlay">
+  <div class="complete-card">
+    <div class="ce">🏆</div>
+    <h2>完了！</h2>
+    <div style="color:var(--dim2);font-size:.85rem;margin-bottom:4px;" id="completeMsg">お疲れ様でした！</div>
+    <div class="complete-stats" id="completeStats"></div>
+    <div class="complete-actions">
+      <button class="btn-outline" id="cNewPlan">新しいプランを作る</button>
+      <button class="btn-primary" id="cClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ───────────────────────────────────────────────────────────────────
+
+const GOALS = [
+  { id:'hypertrophy', name:'筋肥大', icon:'💪', desc:'高重量・低回数',
+    color:'#ff5a20', rgb:'255,90,32',
+    sets:4, repsKey:'reps_h', rest:90, label:'4セット × 8〜12回', restLabel:'90秒休憩' },
+  { id:'diet', name:'ダイエット', icon:'🔥', desc:'高回数・短休憩',
+    color:'#00d4ff', rgb:'0,212,255',
+    sets:3, repsKey:'reps_d', rest:45, label:'3セット × 15〜20回', restLabel:'45秒休憩' },
+  { id:'fitness', name:'体力向上', icon:'⚡', desc:'バランス重視',
+    color:'#00ff8c', rgb:'0,255,140',
+    sets:3, repsKey:'reps_f', rest:60, label:'3セット × 10〜15回', restLabel:'60秒休憩' },
+];
+
+const PARTS = [
+  { id:'chest',     name:'胸',   icon:'🫁' },
+  { id:'back',      name:'背中', icon:'🦾' },
+  { id:'shoulder',  name:'肩',   icon:'🔝' },
+  { id:'arm',       name:'腕',   icon:'💪' },
+  { id:'abs',       name:'腹筋', icon:'🔥' },
+  { id:'leg',       name:'脚',   icon:'🦵' },
+  { id:'fullbody',  name:'全身', icon:'⚡' },
+];
+
+// reps_h=筋肥大 / reps_d=ダイエット / reps_f=体力向上
+const DB = {
+  chest:[
+    { id:'bp',  name:'バーベルベンチプレス',    en:'Bench Press',         muscle:'大胸筋（中部）', eq:'バーベル', diff:3, tip:'肩甲骨を寄せて胸を張り、乳頭ライン付近にバーを下ろす。',         reps_h:'8〜12回', reps_d:'15〜20回', reps_f:'10〜15回', goals:['hypertrophy','fitness'] },
+    { id:'idp', name:'インクラインダンベルプレス',en:'Incline DB Press',   muscle:'大胸筋（上部）', eq:'ダンベル', diff:2, tip:'30〜45°の傾斜で実施。上部の胸に強く効く。',                     reps_h:'10〜12回',reps_d:'15〜18回', reps_f:'12〜15回', goals:['hypertrophy','fitness'] },
+    { id:'dip', name:'ディップス',             en:'Dips',                 muscle:'大胸筋・三頭筋', eq:'自重',     diff:3, tip:'前傾みで大胸筋に効かせる。肘を外に開くと胸に入る。',             reps_h:'8〜12回', reps_d:'15〜20回', reps_f:'10〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'pup', name:'腕立て伏せ',             en:'Push-up',             muscle:'大胸筋・三頭筋', eq:'自重',     diff:1, tip:'体を一直線に保ち、肘は45°外に。胸がギリギリ床に触れるまで。',   reps_h:'15〜20回',reps_d:'20〜25回', reps_f:'15〜20回', goals:['diet','fitness','hypertrophy'] },
+    { id:'cf',  name:'ダンベルフライ',          en:'DB Flye',             muscle:'大胸筋（外側）', eq:'ダンベル', diff:2, tip:'肘を軽く曲げたまま腕を弧に動かす。収縮で胸を絞り込む。',         reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+  ],
+  back:[
+    { id:'pu',  name:'懸垂',                   en:'Pull-up',             muscle:'広背筋・二頭筋', eq:'自重',     diff:4, tip:'肩甲骨を引き下げてから引く。反動を使わない。',                   reps_h:'6〜10回', reps_d:'10〜15回', reps_f:'8〜12回',  goals:['hypertrophy','fitness'] },
+    { id:'lpd', name:'ラットプルダウン',        en:'Lat Pulldown',        muscle:'広背筋',        eq:'マシン',    diff:2, tip:'胸を張り、肘を腰に向けて引き下げる。バーは鎖骨の前まで。',      reps_h:'10〜12回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'bbr', name:'バーベルロウ',            en:'Barbell Row',         muscle:'広背筋・菱形筋', eq:'バーベル', diff:3, tip:'背中を平らに保ち、へそに向けて引く。肘を体側に寄せる。',         reps_h:'8〜10回', reps_d:'12〜15回', reps_f:'10〜12回', goals:['hypertrophy','fitness'] },
+    { id:'dbr', name:'ダンベルロウ',            en:'DB Row',              muscle:'広背筋（片側）', eq:'ダンベル', diff:2, tip:'体幹を固定し、腰ポケットに向けて引く。しっかり肩甲骨を動かす。', reps_h:'10〜12回',reps_d:'15〜18回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'dl',  name:'デッドリフト',            en:'Deadlift',            muscle:'広背筋・脊柱起立筋',eq:'バーベル',diff:5,tip:'背中をまっすぐに保ち、バーを体に沿わせて引く。最強の全身種目。',reps_h:'5〜8回',  reps_d:'10〜12回', reps_f:'8〜10回',  goals:['hypertrophy','fitness'] },
+    { id:'scr', name:'シーテッドケーブルロウ',  en:'Seated Cable Row',    muscle:'広背筋・菱形筋', eq:'ケーブル', diff:2, tip:'上体を立てたまま引く。肩甲骨を寄せるイメージ。',               reps_h:'10〜12回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+  ],
+  shoulder:[
+    { id:'ohp', name:'ショルダープレス',        en:'OHP',                 muscle:'三角筋（全部）', eq:'バーベル', diff:3, tip:'コアを締め、頭上にまっすぐ押し上げる。首を前に出さない。',         reps_h:'8〜10回', reps_d:'12〜15回', reps_f:'10〜12回', goals:['hypertrophy','fitness'] },
+    { id:'lr',  name:'サイドレイズ',            en:'Lateral Raise',       muscle:'三角筋（中部）', eq:'ダンベル', diff:2, tip:'肘を軽く曲げ、真横に持ち上げる。小指を上に向けるイメージ。',     reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'rdf', name:'リアデルトフライ',        en:'Rear Delt Fly',       muscle:'三角筋（後部）', eq:'ダンベル', diff:2, tip:'上体を倒し、肘を軽く曲げ後方へ広げる。肩甲骨を寄せる。',         reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness'] },
+    { id:'ap',  name:'アーノルドプレス',        en:'Arnold Press',        muscle:'三角筋（全部）', eq:'ダンベル', diff:3, tip:'掌を自分に向けた状態から、回外しながら頭上に押し上げる。',         reps_h:'10〜12回',reps_d:'12〜15回', reps_f:'10〜12回', goals:['hypertrophy','fitness'] },
+    { id:'fp',  name:'フェイスプル',            en:'Face Pull',           muscle:'三角筋（後部）', eq:'ケーブル', diff:2, tip:'顔に向けて引きながら、肘を肩より高く保つ。',                     reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+  ],
+  arm:[
+    { id:'bbc', name:'バーベルカール',          en:'Barbell Curl',        muscle:'上腕二頭筋',     eq:'バーベル', diff:2, tip:'肘を固定し、ゆっくり下ろす。腰を反らせない。',                   reps_h:'10〜12回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness'] },
+    { id:'hc',  name:'ハンマーカール',          en:'Hammer Curl',         muscle:'上腕筋・腕橈骨筋',eq:'ダンベル', diff:1, tip:'親指が上向きのまま。腕全体を太くする種目。',                   reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'ic',  name:'インクラインカール',       en:'Incline Curl',        muscle:'上腕二頭筋（長頭）',eq:'ダンベル',diff:2,tip:'傾斜台に体を預け、完全に腕が伸びた状態から。ストレッチが深い。',reps_h:'10〜12回',reps_d:'15〜18回', reps_f:'12〜15回', goals:['hypertrophy'] },
+    { id:'tpd', name:'トライセプスプッシュダウン',en:'Tricep Pushdown',   muscle:'上腕三頭筋',     eq:'ケーブル', diff:1, tip:'肘を体側に固定。完全に伸ばしきる瞬間を意識する。',               reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'ote', name:'オーバーヘッドエクステンション',en:'OHext',         muscle:'上腕三頭筋（長頭）',eq:'ダンベル',diff:2,tip:'肘を頭の後ろで固定して上下する。長頭を最大ストレッチ。',       reps_h:'10〜12回',reps_d:'15〜18回', reps_f:'12〜15回', goals:['hypertrophy','fitness'] },
+    { id:'cgb', name:'ナローグリップベンチ',     en:'Close-grip Bench',    muscle:'上腕三頭筋・大胸筋',eq:'バーベル',diff:3,tip:'手幅を肩幅に。肘を体側に寄せて押し上げる。',                  reps_h:'8〜10回', reps_d:'12〜15回', reps_f:'10〜12回', goals:['hypertrophy'] },
+  ],
+  abs:[
+    { id:'cr',  name:'クランチ',               en:'Crunch',              muscle:'腹直筋（上部）', eq:'自重',     diff:1, tip:'腰を床につけ、肩甲骨が浮く程度まで上げる。首は引かない。',       reps_h:'20〜25回',reps_d:'20〜30回', reps_f:'20〜25回', goals:['hypertrophy','diet','fitness'] },
+    { id:'plk', name:'プランク',               en:'Plank',               muscle:'体幹全体',       eq:'自重',     diff:2, tip:'頭から踵まで一直線。腰を下げず、呼吸を止めない。',               reps_h:'60秒',    reps_d:'45秒',     reps_f:'45秒',     goals:['diet','fitness','hypertrophy'] },
+    { id:'lr2', name:'レッグレイズ',           en:'Leg Raise',           muscle:'腹直筋（下部）', eq:'自重',     diff:3, tip:'腰を床に押し付けながらゆっくり上げ下げ。反動なし。',             reps_h:'15〜20回',reps_d:'20〜25回', reps_f:'15〜20回', goals:['hypertrophy','diet','fitness'] },
+    { id:'rt',  name:'ロシアンツイスト',       en:'Russian Twist',       muscle:'腹斜筋',         eq:'自重',     diff:2, tip:'足を浮かせると強度UP。左右交互にゆっくり捻る。',                 reps_h:'20〜30回',reps_d:'20〜30回', reps_f:'20〜30回', goals:['diet','fitness','hypertrophy'] },
+    { id:'abw', name:'アブローラー',           en:'Ab Wheel',            muscle:'腹直筋・体幹',   eq:'器具',     diff:4, tip:'膝つきから始める。背中が曲がらないように注意。',                 reps_h:'10〜15回',reps_d:'12〜15回', reps_f:'10〜15回', goals:['hypertrophy','fitness'] },
+    { id:'mc',  name:'マウンテンクライマー',   en:'Mountain Climber',    muscle:'体幹・有酸素',   eq:'自重',     diff:2, tip:'プランク姿勢から交互に膝を素早く引き込む。30〜45秒。',           reps_h:'30秒',    reps_d:'45秒',     reps_f:'30秒',     goals:['diet','fitness'] },
+  ],
+  leg:[
+    { id:'sq',  name:'バーベルスクワット',      en:'Barbell Squat',       muscle:'大腿四頭筋・臀筋',eq:'バーベル', diff:4, tip:'膝をつま先方向に向け、深さは太ももが床と平行まで。',              reps_h:'6〜10回', reps_d:'15〜20回', reps_f:'10〜15回', goals:['hypertrophy','fitness'] },
+    { id:'lp',  name:'レッグプレス',           en:'Leg Press',           muscle:'大腿四頭筋・臀筋',eq:'マシン',   diff:2, tip:'足の位置で効く筋肉が変わる。腰を浮かせないよう注意。',             reps_h:'10〜12回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'rdl', name:'ルーマニアンデッドリフト',en:'Romanian DL',         muscle:'ハムスト・臀筋',  eq:'バーベル', diff:3, tip:'膝を軽く曲げ、股関節から折りたたむイメージ。背中を丸めない。',   reps_h:'10〜12回',reps_d:'12〜15回', reps_f:'10〜12回', goals:['hypertrophy','fitness'] },
+    { id:'lc',  name:'レッグカール',           en:'Leg Curl',            muscle:'ハムストリングス',eq:'マシン',   diff:1, tip:'腰が浮かないよう注意。ゆっくりした動作で効かせる。',               reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'le',  name:'レッグエクステンション',  en:'Leg Extension',       muscle:'大腿四頭筋',     eq:'マシン',   diff:1, tip:'完全伸展で1秒止める。膝に痛みがある場合は軽量で。',               reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['hypertrophy','fitness','diet'] },
+    { id:'lunge',name:'ランジ',               en:'Lunge',               muscle:'大腿四頭筋・臀筋',eq:'自重',     diff:2, tip:'前脚の膝が90°になるまで下げる。体幹を立てて、膝がつま先より前に出ない。',reps_h:'12〜15回',reps_d:'15〜20回',reps_f:'12〜15回',goals:['diet','fitness','hypertrophy']},
+    { id:'cr3', name:'カーフレイズ',           en:'Calf Raise',          muscle:'腓腹筋・ヒラメ筋',eq:'自重',     diff:1, tip:'かかとを最大まで上げ、一番高い位置で1秒止める。',               reps_h:'20〜25回',reps_d:'20〜30回', reps_f:'20〜25回', goals:['hypertrophy','fitness','diet'] },
+  ],
+  fullbody:[
+    { id:'dl3', name:'デッドリフト',           en:'Deadlift',            muscle:'全身',           eq:'バーベル', diff:5, tip:'背中をまっすぐ保ちバーを体に沿わせる。最強の全身種目。',           reps_h:'5〜8回',  reps_d:'10〜12回', reps_f:'8〜10回',  goals:['hypertrophy','fitness'] },
+    { id:'bur', name:'バーピー',               en:'Burpee',              muscle:'全身・有酸素',   eq:'自重',     diff:3, tip:'素早く動いて心拍数を上げる。脂肪燃焼に最適。',                   reps_h:'10〜12回',reps_d:'15〜20回', reps_f:'12〜15回', goals:['diet','fitness'] },
+    { id:'kbs', name:'ケトルベルスイング',      en:'KB Swing',            muscle:'臀筋・ハムスト',  eq:'ケトルベル',diff:3, tip:'股関節の蝶番運動。膝ではなく股関節を使って爆発的に。',           reps_h:'12〜15回',reps_d:'15〜20回', reps_f:'15〜20回', goals:['diet','fitness'] },
+    { id:'thrus',name:'スラスター',            en:'Thruster',            muscle:'全身・脚・肩',   eq:'ダンベル', diff:4, tip:'スクワットからのショルダープレスを連続動作で。',                 reps_h:'10〜12回',reps_d:'12〜15回', reps_f:'10〜12回', goals:['diet','fitness'] },
+    { id:'jj',  name:'ジャンピングジャック',   en:'Jumping Jack',        muscle:'全身・有酸素',   eq:'自重',     diff:1, tip:'ウォームアップや有酸素として。リズムよく。',                     reps_h:'30秒',    reps_d:'45秒',     reps_f:'30秒',     goals:['diet','fitness'] },
+    { id:'brow', name:'ベントオーバーロウ＋スクワット',en:'Row+Squat',   muscle:'全身',           eq:'ダンベル', diff:3, tip:'ロウとスクワットを組み合わせた複合種目。',                       reps_h:'10〜12回',reps_d:'12〜15回', reps_f:'10〜12回', goals:['fitness','diet'] },
+  ],
+};
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+const state = {
+  goal: null,
+  parts: new Set(),
+  plan: [],
+  done: new Set(),
+  weights: {},
+  startTime: null,
+  timerIv: null,
+  restSec: 0,
+  restIv: null,
+  currentPage: 'setup',
+};
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+const fmt2 = n => String(n).padStart(2,'0');
+const fmtSec = s => `${fmt2(s/60|0)}:${fmt2(s%60)}`;
+const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function getDateStr() {
+  const d=new Date();
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+}
+
+// ── STORAGE ────────────────────────────────────────────────────────────────
+function loadHistory(){ try{ return JSON.parse(localStorage.getItem('wk_history')||'[]'); }catch{ return []; } }
+function saveHistory(arr){ localStorage.setItem('wk_history',JSON.stringify(arr)); }
+
+// ── PLAN GENERATION ────────────────────────────────────────────────────────
+function generatePlan(goalId, parts) {
+  const goal = GOALS.find(g=>g.id===goalId);
+  const selected = [...parts];
+  const perPart = selected.length === 1 ? 6 : selected.length === 2 ? 4 : 3;
+
+  const plan = [];
+  for (const partId of selected) {
+    const pool = (DB[partId]||[]).filter(ex => ex.goals.includes(goalId));
+    // Compound exercises first (diff >= 3), then isolation
+    const compound = pool.filter(e=>e.diff>=3);
+    const isolation = pool.filter(e=>e.diff<3);
+    const ordered = [...compound, ...isolation];
+    const picked = shuffle(ordered).slice(0, Math.min(perPart, ordered.length));
+    plan.push(...picked.map(ex => ({
+      ...ex,
+      partId,
+      sets: goal.sets,
+      reps: ex[goal.repsKey] || '10〜15回',
+      rest: goal.rest,
+    })));
+  }
+  return plan;
+}
+
+// ── SETUP PAGE ─────────────────────────────────────────────────────────────
+function buildSetup() {
+  const gg = document.getElementById('goalGrid');
+  GOALS.forEach(g => {
+    const d = document.createElement('div');
+    d.className = 'goal-card';
+    d.style.setProperty('--gc', g.color);
+    d.style.setProperty('--gcr', g.rgb);
+    d.innerHTML = `<div class="goal-icon">${g.icon}</div><div class="goal-name">${g.name}</div><div class="goal-desc">${g.desc}</div>`;
+    d.addEventListener('click', () => {
+      document.querySelectorAll('.goal-card').forEach(el=>el.classList.remove('sel'));
+      d.classList.add('sel');
+      state.goal = g.id;
+      updateGenBtn();
+    });
+    gg.appendChild(d);
+  });
+
+  const pg = document.getElementById('partGrid');
+  PARTS.forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'part-btn';
+    d.innerHTML = `<div class="pi">${p.icon}</div><div class="pn">${p.name}</div>`;
+    d.addEventListener('click', () => {
+      if (state.parts.has(p.id)) { state.parts.delete(p.id); d.classList.remove('sel'); }
+      else { state.parts.add(p.id); d.classList.add('sel'); }
+      updateGenBtn();
+    });
+    pg.appendChild(d);
+  });
+
+  document.getElementById('genBtn').addEventListener('click', startWorkout);
+}
+
+function updateGenBtn() {
+  document.getElementById('genBtn').disabled = !(state.goal && state.parts.size > 0);
+}
+
+// ── WORKOUT ────────────────────────────────────────────────────────────────
+function startWorkout() {
+  state.plan = generatePlan(state.goal, state.parts);
+  state.done.clear();
+  state.weights = {};
+  state.startTime = Date.now();
+
+  renderWorkout();
+  switchPage('workout');
+
+  clearInterval(state.timerIv);
+  state.timerIv = setInterval(() => {
+    const sec = Math.floor((Date.now() - state.startTime) / 1000);
+    document.getElementById('wTimer').textContent = fmtSec(sec);
+  }, 1000);
+}
+
+function renderWorkout() {
+  const goal = GOALS.find(g=>g.id===state.goal);
+
+  document.getElementById('wTitle').textContent = goal.name + ' ワークアウト';
+  document.getElementById('wDate').textContent = getDateStr();
+
+  // Meta tags
+  const mt = document.getElementById('metaTags');
+  mt.innerHTML = '';
+  const tagData = [
+    { text: goal.icon + ' ' + goal.name, style: `background:rgba(${goal.rgb},.15);color:${goal.color};border:1px solid rgba(${goal.rgb},.3);` },
+    { text: '📋 ' + goal.label, style: 'background:rgba(255,255,255,.06);color:#a0a0d0;border:1px solid rgba(255,255,255,.1);' },
+    { text: '⏱ ' + goal.restLabel, style: 'background:rgba(255,255,255,.06);color:#a0a0d0;border:1px solid rgba(255,255,255,.1);' },
+    ...[...state.parts].map(pid => {
+      const p = PARTS.find(x=>x.id===pid);
+      return { text: p.icon+' '+p.name, style:'background:rgba(255,255,255,.06);color:#a0a0d0;border:1px solid rgba(255,255,255,.1);' };
+    }),
+  ];
+  tagData.forEach(t => {
+    const s = document.createElement('span');
+    s.className = 'mtag'; s.style.cssText = t.style; s.textContent = t.text;
+    mt.appendChild(s);
+  });
+
+  renderExList();
+  updateProgress();
+
+  document.getElementById('finishBtn').addEventListener('click', finishWorkout);
+}
+
+function renderExList() {
+  const list = document.getElementById('exList');
+  list.innerHTML = '';
+
+  state.plan.forEach((ex, i) => {
+    const done = state.done.has(ex.id + i);
+    const d = document.createElement('div');
+    d.className = 'ex-card' + (done ? ' done' : '');
+    d.dataset.idx = i;
+
+    const part = PARTS.find(p=>p.id===ex.partId);
+    const diffStars = '●'.repeat(ex.diff) + '○'.repeat(5-ex.diff);
+
+    d.innerHTML = `
+      <div class="ex-top">
+        <div class="ex-head">
+          <div>
+            <div class="ex-name">${ex.name}</div>
+            <div class="ex-en">${ex.en} — ${part ? part.icon+' '+part.name : ''}</div>
+          </div>
+          <button class="check-btn" data-idx="${i}" title="完了">${done?'✓':''}</button>
+        </div>
+        <div class="ex-tags">
+          <span class="etag">🎯 ${ex.muscle}</span>
+          <span class="etag">🏷 ${ex.eq}</span>
+          <span class="etag">難易度 ${diffStars}</span>
+        </div>
+        <div class="ex-stats">
+          <div class="ex-stat"><div class="sv">${ex.sets}</div><div class="sl">セット</div></div>
+          <div class="ex-stat"><div class="sv" style="font-size:.88rem">${ex.reps}</div><div class="sl">レップ</div></div>
+          <div class="ex-stat"><div class="sv">${ex.rest}s</div><div class="sl">休憩</div></div>
+        </div>
+        <div class="ex-tip"><span class="tip-ico">💡</span><span>${ex.tip}</span></div>
+      </div>
+      <div class="ex-bottom">
+        <div class="weight-wrap">
+          <input type="number" class="weight-input" placeholder="—" min="0" max="500" step="2.5"
+            value="${state.weights[ex.id+i]||''}" data-idx="${i}">
+          <span class="weight-unit">kg</span>
+        </div>
+        <button class="rest-btn" data-rest="${ex.rest}" data-exname="${ex.name}">⏱ 休憩 ${ex.rest}s</button>
+      </div>`;
+
+    // Check btn
+    d.querySelector('.check-btn').addEventListener('click', () => toggleDone(i));
+
+    // Weight input
+    d.querySelector('.weight-input').addEventListener('change', e => {
+      state.weights[ex.id + i] = e.target.value;
+    });
+
+    // Rest btn
+    d.querySelector('.rest-btn').addEventListener('click', e => {
+      startRestTimer(parseInt(e.currentTarget.dataset.rest), e.currentTarget.dataset.exname);
+    });
+
+    list.appendChild(d);
+  });
+}
+
+function toggleDone(idx) {
+  const key = state.plan[idx].id + idx;
+  if (state.done.has(key)) state.done.delete(key);
+  else state.done.add(key);
+  updateProgress();
+
+  const card = document.querySelector(`.ex-card[data-idx="${idx}"]`);
+  const btn  = card.querySelector('.check-btn');
+  const done = state.done.has(key);
+  card.classList.toggle('done', done);
+  btn.textContent = done ? '✓' : '';
+}
+
+function updateProgress() {
+  const total = state.plan.length;
+  const done  = state.done.size;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progText').textContent = `${done} / ${total} 完了`;
+  document.getElementById('progPct').textContent  = pct + '%';
+  document.getElementById('progFill').style.width = pct + '%';
+}
+
+// ── REST TIMER ─────────────────────────────────────────────────────────────
+function startRestTimer(sec, exName) {
+  clearInterval(state.restIv);
+  state.restSec = sec;
+  const total = sec;
+  const circ = 2 * Math.PI * 80; // r=80
+
+  const overlay = document.getElementById('timerOverlay');
+  const numEl   = document.getElementById('timerNum');
+  const progEl  = document.getElementById('tcProg');
+  const label   = document.getElementById('timerLabel');
+
+  label.textContent = exName + ' の休憩';
+  overlay.classList.add('on');
+
+  function tick() {
+    numEl.textContent = state.restSec;
+    const ratio = state.restSec / total;
+    progEl.style.strokeDashoffset = circ * (1 - ratio);
+    if (state.restSec <= 0) {
+      clearInterval(state.restIv);
+      overlay.classList.remove('on');
+      // Vibrate if supported
+      if (navigator.vibrate) navigator.vibrate([200,100,200]);
+    } else {
+      state.restSec--;
+    }
+  }
+
+  tick();
+  state.restIv = setInterval(tick, 1000);
+}
+
+document.getElementById('timerSkip').addEventListener('click', () => {
+  clearInterval(state.restIv);
+  document.getElementById('timerOverlay').classList.remove('on');
+});
+
+// ── FINISH WORKOUT ─────────────────────────────────────────────────────────
+function finishWorkout() {
+  clearInterval(state.timerIv);
+  const sec   = Math.floor((Date.now() - state.startTime) / 1000);
+  const doneN = state.done.size;
+  const total = state.plan.length;
+
+  // Estimate volume
+  let vol = 0;
+  state.plan.forEach((ex, i) => {
+    const w = parseFloat(state.weights[ex.id+i] || 0);
+    const repsNum = parseInt(ex.reps) || 10;
+    if (w > 0) vol += w * repsNum * ex.sets;
+  });
+
+  // Save to history
+  const record = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    goalId: state.goal,
+    parts: [...state.parts],
+    duration: sec,
+    doneCount: doneN,
+    totalCount: total,
+    volume: Math.round(vol),
+    exercises: state.plan.map((ex, i) => ({
+      name: ex.name,
+      sets: ex.sets,
+      reps: ex.reps,
+      weight: state.weights[ex.id+i] || '',
+      done: state.done.has(ex.id+i),
+    })),
+  };
+  const hist = loadHistory();
+  hist.unshift(record);
+  if (hist.length > 50) hist.pop();
+  saveHistory(hist);
+
+  // Show overlay
+  const goal = GOALS.find(g=>g.id===state.goal);
+  const pct = total ? Math.round(doneN/total*100) : 0;
+  document.getElementById('completeStats').innerHTML = `
+    <div class="cstat"><div class="cv">${fmtSec(sec)}</div><div class="cl">タイム</div></div>
+    <div class="cstat"><div class="cv">${doneN}/${total}</div><div class="cl">完了</div></div>
+    <div class="cstat"><div class="cv">${vol>0?vol+'kg':'—'}</div><div class="cl">総ボリューム</div></div>`;
+  document.getElementById('completeMsg').textContent =
+    pct===100 ? '全種目コンプリート！最高のワークアウト！' :
+    pct>=70   ? '素晴らしいワークアウトでした！' :
+                'お疲れ様でした！次回も頑張ろう。';
+  document.getElementById('completeOverlay').classList.add('on');
+}
+
+document.getElementById('cClose').addEventListener('click', () => {
+  document.getElementById('completeOverlay').classList.remove('on');
+  switchPage('history');
+  renderHistory();
+});
+document.getElementById('cNewPlan').addEventListener('click', () => {
+  document.getElementById('completeOverlay').classList.remove('on');
+  switchPage('setup');
+});
+
+// ── HISTORY ────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const hist = loadHistory();
+  const now  = new Date();
+  const thisWeek = hist.filter(h => {
+    const d = new Date(h.date);
+    const diff = (now - d) / (1000*60*60*24);
+    return diff < 7;
+  });
+  const streak = calcStreak(hist);
+
+  // Stats
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="sv">${hist.length}</div><div class="sl">総回数</div></div>
+    <div class="stat-card"><div class="sv">${thisWeek.length}</div><div class="sl">今週</div></div>
+    <div class="stat-card"><div class="sv">${streak}🔥</div><div class="sl">連続日数</div></div>`;
+
+  if (!hist.length) {
+    document.getElementById('histContent').innerHTML = `<div class="hist-empty"><div class="he">📋</div><p>まだ記録がありません。<br>ワークアウトを完了すると記録されます。</p></div>`;
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'hist-list';
+
+  hist.forEach(rec => {
+    const goal = GOALS.find(g=>g.id===rec.goalId) || GOALS[0];
+    const d = new Date(rec.date);
+    const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+    const partsStr = (rec.parts||[]).map(pid=>{ const p=PARTS.find(x=>x.id===pid); return p?p.name:''; }).join(' · ');
+
+    const card = document.createElement('div');
+    card.className = 'hist-card';
+    card.innerHTML = `
+      <div class="hist-card-top">
+        <div class="hist-left">
+          <div class="hist-date">${dateStr}</div>
+          <div class="hist-goal-row">
+            <span class="hist-goal" style="background:rgba(${goal.rgb||'255,90,32'},.15);color:${goal.color};">${goal.icon} ${goal.name}</span>
+            <span class="hist-parts">${partsStr}</span>
+          </div>
+        </div>
+        <div class="hist-right">
+          <div class="hist-dur">${fmtSec(rec.duration||0)}</div>
+          <div class="hist-vol">${rec.doneCount||0}/${rec.totalCount||0}種目${rec.volume?` · ${rec.volume}kg`:''}</div>
+        </div>
+      </div>
+      <div class="hist-detail">
+        <ul class="hist-ex-list">
+          ${(rec.exercises||[]).map(ex=>`
+            <li class="hist-ex-item">
+              <span class="hist-chk">${ex.done?'✓':'○'}</span>
+              <span>${ex.name}</span>
+              <span class="hei">${ex.sets}×${ex.reps}${ex.weight?' / '+ex.weight+'kg':''}</span>
+            </li>`).join('')}
+        </ul>
+      </div>`;
+
+    card.querySelector('.hist-card-top').addEventListener('click', () => {
+      card.classList.toggle('open');
+    });
+    list.appendChild(card);
+  });
+
+  document.getElementById('histContent').innerHTML = '';
+  document.getElementById('histContent').appendChild(list);
+}
+
+function calcStreak(hist) {
+  if (!hist.length) return 0;
+  const dates = [...new Set(hist.map(h => new Date(h.date).toDateString()))];
+  let streak = 0;
+  const now = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    if (dates.includes(d.toDateString())) streak++;
+    else if (i > 0) break;
+  }
+  return streak;
+}
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (confirm('全ての記録を削除しますか？')) {
+    saveHistory([]);
+    renderHistory();
+  }
+});
+
+// ── NAV / PAGE ──────────────────────────────────────────────────────────────
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.getElementById('page-' + id).classList.add('on');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('on', b.dataset.page === id));
+  state.currentPage = id;
+  if (id === 'history') renderHistory();
+}
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchPage(btn.dataset.page));
+});
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+buildSetup();
+renderHistory();
+</script>
+</body>
+</html>
