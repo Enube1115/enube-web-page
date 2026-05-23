@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音楽ジャンル診断</title>
+<style>
+  :root {
+    --bg: #080810;
+    --bg2: #0f0f1a;
+    --surface: rgba(255,255,255,0.05);
+    --surface2: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8e8f4;
+    --text-sub: #7878a8;
+    --accent: #a855f7;
+    --accent2: #ec4899;
+    --accent3: #06b6d4;
+    --glow: rgba(168,85,247,0.35);
+    --radius: 16px;
+    --tr: 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG */
+  .bg-wrap {
+    position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  }
+  .orb {
+    position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.18;
+    animation: drift 14s ease-in-out infinite;
+  }
+  .o1 { width:500px;height:500px;background:#a855f7;top:-150px;left:-100px;animation-delay:0s; }
+  .o2 { width:400px;height:400px;background:#ec4899;bottom:-100px;right:-80px;animation-delay:-5s; }
+  .o3 { width:350px;height:350px;background:#06b6d4;top:45%;left:55%;animation-delay:-10s; }
+  @keyframes drift {
+    0%,100%{transform:translate(0,0) scale(1);}
+    33%{transform:translate(25px,-25px) scale(1.04);}
+    66%{transform:translate(-18px,18px) scale(0.96);}
+  }
+
+  /* LAYOUT */
+  .page { position:relative; z-index:1; max-width:680px; margin:0 auto; padding:24px 20px 60px; }
+
+  /* HEADER */
+  .header { text-align:center; padding:48px 0 36px; }
+  .header-badge {
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:100px;padding:6px 18px;font-size:11px;
+    color:var(--text-sub);letter-spacing:.12em;text-transform:uppercase;
+    margin-bottom:18px;backdrop-filter:blur(12px);
+  }
+  .header-badge span{color:var(--accent);}
+  h1 {
+    font-size:clamp(2rem,6vw,3rem);font-weight:800;letter-spacing:-.03em;
+    line-height:1.1;margin-bottom:12px;
+    background:linear-gradient(135deg,var(--text) 0%,var(--accent) 55%,var(--accent2) 100%);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .subtitle { color:var(--text-sub);font-size:.95rem;line-height:1.6; }
+
+  /* PROGRESS */
+  .progress-bar-wrap {
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:100px;height:6px;margin-bottom:24px;overflow:hidden;
+  }
+  .progress-bar {
+    height:100%;border-radius:100px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    transition:width .5s cubic-bezier(.4,0,.2,1);
+    box-shadow:0 0 12px var(--glow);
+  }
+  .progress-text { text-align:center;font-size:.8rem;color:var(--text-sub);margin-bottom:28px; }
+  .progress-text span { color:var(--text);font-weight:700; }
+
+  /* QUESTION CARD */
+  .q-card {
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:28px;margin-bottom:20px;
+    backdrop-filter:blur(16px);
+    animation:slideUp .4s ease both;
+  }
+  @keyframes slideUp {
+    from{opacity:0;transform:translateY(20px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  .q-num {
+    font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--accent);font-weight:700;margin-bottom:10px;
+  }
+  .q-text { font-size:1.1rem;font-weight:700;line-height:1.5;color:var(--text); }
+
+  /* OPTIONS */
+  .options { display:flex;flex-direction:column;gap:10px;margin-top:20px; }
+  .opt {
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;padding:14px 18px;cursor:pointer;
+    display:flex;align-items:center;gap:14px;
+    font-size:.9rem;color:var(--text);
+    transition:all var(--tr);text-align:left;
+    position:relative;overflow:hidden;
+  }
+  .opt:hover {
+    border-color:var(--border2);background:var(--surface2);
+    transform:translateX(4px);
+  }
+  .opt.selected {
+    border-color:var(--accent);background:rgba(168,85,247,.12);
+    box-shadow:0 0 0 1px rgba(168,85,247,.3);
+  }
+  .opt-icon {
+    font-size:1.4rem;flex-shrink:0;width:36px;text-align:center;
+    transition:transform var(--tr);
+  }
+  .opt:hover .opt-icon,.opt.selected .opt-icon { transform:scale(1.15); }
+  .opt-check {
+    margin-left:auto;width:20px;height:20px;border-radius:50%;
+    border:2px solid var(--border2);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    transition:all var(--tr);font-size:.7rem;
+  }
+  .opt.selected .opt-check {
+    background:var(--accent);border-color:var(--accent);color:#fff;
+  }
+
+  /* NAV */
+  .nav-row { display:flex;gap:12px;justify-content:space-between;align-items:center;margin-top:24px; }
+  .btn {
+    padding:12px 28px;border-radius:12px;font-size:.9rem;font-weight:700;
+    cursor:pointer;border:none;transition:all var(--tr);
+    display:flex;align-items:center;gap:8px;
+  }
+  .btn-ghost {
+    background:var(--surface);border:1px solid var(--border);color:var(--text-sub);
+  }
+  .btn-ghost:hover { border-color:var(--border2);color:var(--text);background:var(--surface2); }
+  .btn-primary {
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;box-shadow:0 8px 24px var(--glow);flex:1;justify-content:center;
+  }
+  .btn-primary:hover { transform:translateY(-2px);box-shadow:0 12px 32px var(--glow); }
+  .btn-primary:disabled { opacity:.4;cursor:not-allowed;transform:none; }
+
+  /* RESULT */
+  .result { display:none;animation:slideUp .5s ease both; }
+  .result.show { display:block; }
+
+  .genre-hero {
+    border-radius:20px;padding:36px 28px;margin-bottom:24px;
+    position:relative;overflow:hidden;text-align:center;
+    border:1px solid rgba(255,255,255,.1);
+  }
+  .genre-hero::before {
+    content:'';position:absolute;inset:0;
+    background:var(--genre-grad);opacity:.2;
+  }
+  .genre-hero-bg {
+    position:absolute;inset:0;
+    background:var(--genre-grad);opacity:.08;
+    filter:blur(40px);
+  }
+  .genre-emoji { font-size:4rem;margin-bottom:12px;display:block;position:relative;z-index:1; }
+  .genre-label {
+    font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;
+    color:rgba(255,255,255,.5);margin-bottom:6px;position:relative;z-index:1;
+  }
+  .genre-name {
+    font-size:clamp(1.8rem,5vw,2.6rem);font-weight:800;
+    letter-spacing:-.02em;position:relative;z-index:1;
+    background:var(--genre-grad);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .genre-sub {
+    font-size:.9rem;color:rgba(255,255,255,.55);margin-top:8px;position:relative;z-index:1;
+  }
+
+  /* MATCH BAR */
+  .match-row { display:flex;align-items:center;gap:10px;margin-top:16px;position:relative;z-index:1; }
+  .match-label { font-size:.75rem;color:rgba(255,255,255,.5);white-space:nowrap; }
+  .match-track { flex:1;background:rgba(255,255,255,.1);border-radius:100px;height:8px;overflow:hidden; }
+  .match-fill { height:100%;border-radius:100px;background:var(--genre-grad);transition:width 1s ease; }
+  .match-pct { font-size:.9rem;font-weight:800;color:#fff;white-space:nowrap; }
+
+  /* RESULT SECTIONS */
+  .res-section {
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:22px;margin-bottom:16px;
+    backdrop-filter:blur(12px);
+  }
+  .res-section h3 {
+    font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--text-sub);margin-bottom:14px;
+    display:flex;align-items:center;gap:7px;
+  }
+  .res-section h3::before {
+    content:'';width:3px;height:14px;border-radius:2px;
+    background:var(--genre-grad);display:block;
+  }
+
+  /* TRAITS */
+  .traits { display:flex;flex-wrap:wrap;gap:8px; }
+  .trait {
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:100px;padding:6px 14px;font-size:.8rem;
+    color:var(--text);
+  }
+
+  /* ARTISTS */
+  .artists { display:flex;flex-direction:column;gap:10px; }
+  .artist {
+    display:flex;align-items:center;gap:12px;
+    padding:10px 14px;background:var(--surface2);
+    border-radius:10px;border:1px solid var(--border);
+  }
+  .artist-icon {
+    width:38px;height:38px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.3rem;background:var(--surface);
+    border:1px solid var(--border);flex-shrink:0;
+  }
+  .artist-info { flex:1; }
+  .artist-name { font-size:.88rem;font-weight:700; }
+  .artist-desc { font-size:.75rem;color:var(--text-sub);margin-top:2px; }
+
+  /* PLAYLIST VIBES */
+  .vibes { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+  .vibe {
+    padding:14px;border-radius:12px;
+    background:var(--surface2);border:1px solid var(--border);
+    text-align:center;
+  }
+  .vibe-emoji { font-size:1.6rem;margin-bottom:6px;display:block; }
+  .vibe-title { font-size:.8rem;font-weight:700; }
+  .vibe-desc { font-size:.7rem;color:var(--text-sub);margin-top:3px; }
+
+  /* SECONDARY GENRES */
+  .secondary { display:flex;flex-direction:column;gap:8px; }
+  .sec-row {
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;background:var(--surface2);
+    border-radius:10px;border:1px solid var(--border);
+  }
+  .sec-emoji { font-size:1.2rem;width:28px;text-align:center;flex-shrink:0; }
+  .sec-name { font-size:.85rem;font-weight:700;flex:1; }
+  .sec-bar-wrap { width:80px;background:var(--surface);border-radius:100px;height:5px;overflow:hidden; }
+  .sec-bar { height:100%;border-radius:100px;background:var(--genre-grad); }
+  .sec-pct { font-size:.78rem;color:var(--text-sub);width:32px;text-align:right; }
+
+  /* RETRY */
+  .retry-row { display:flex;gap:12px;margin-top:28px; }
+  .btn-retry {
+    flex:1;padding:14px;border-radius:12px;font-size:.9rem;font-weight:700;
+    cursor:pointer;border:none;
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    transition:all var(--tr);
+  }
+  .btn-retry:hover { background:var(--surface2);border-color:var(--border2); }
+  .btn-home {
+    flex:1;padding:14px;border-radius:12px;font-size:.9rem;font-weight:700;
+    cursor:pointer;border:none;color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    box-shadow:0 8px 24px var(--glow);
+    transition:all var(--tr);text-decoration:none;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn-home:hover { transform:translateY(-2px);box-shadow:0 12px 32px var(--glow); }
+
+  /* INTRO */
+  .intro-card {
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:28px;margin-bottom:20px;
+    backdrop-filter:blur(16px);text-align:center;
+  }
+  .intro-emoji { font-size:3.5rem;margin-bottom:16px;display:block; }
+  .intro-card h2 { font-size:1.3rem;font-weight:800;margin-bottom:10px; }
+  .intro-card p { font-size:.9rem;color:var(--text-sub);line-height:1.7; }
+  .genre-chips { display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:18px 0 0; }
+  .chip {
+    padding:5px 14px;border-radius:100px;font-size:.75rem;font-weight:700;
+    border:1px solid var(--border);background:var(--surface2);color:var(--text-sub);
+  }
+
+  @media(max-width:480px){
+    .vibes{grid-template-columns:1fr;}
+    .nav-row{flex-direction:column;}
+    .btn-primary,.btn-ghost{width:100%;justify-content:center;}
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-wrap">
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+</div>
+
+<div class="page">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">✦ <span>Music</span> Diagnosis ✦</div>
+    <h1>音楽ジャンル診断</h1>
+    <p class="subtitle">15問に答えて、あなたの魂に響くジャンルを見つけよう</p>
+  </div>
+
+  <!-- INTRO -->
+  <div id="intro">
+    <div class="intro-card">
+      <span class="intro-emoji">🎵</span>
+      <h2>あなたに合う音楽ジャンルは？</h2>
+      <p>生活スタイル・気分・好みに関する15の質問に答えると、<br>あなたの個性に最もフィットする音楽ジャンルを診断します。</p>
+      <div class="genre-chips">
+        <span class="chip">🎸 ロック</span><span class="chip">🎹 ポップ</span>
+        <span class="chip">🎤 ヒップホップ</span><span class="chip">🎷 ジャズ</span>
+        <span class="chip">🎻 クラシック</span><span class="chip">🔊 エレクトロニック</span>
+        <span class="chip">🌿 フォーク</span><span class="chip">🌸 K-POP</span>
+        <span class="chip">🤘 メタル</span><span class="chip">🎼 R&B</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="startQuiz()" style="width:100%;justify-content:center;padding:16px;">
+      診断スタート →
+    </button>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="quiz" style="display:none;">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    </div>
+    <div class="progress-text">質問 <span id="qCurrent">1</span> / <span id="qTotal">15</span></div>
+
+    <div class="q-card" id="qCard">
+      <div class="q-num" id="qNum">Q1</div>
+      <div class="q-text" id="qText"></div>
+      <div class="options" id="options"></div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="prevBtn" onclick="prevQ()" style="display:none;">← 戻る</button>
+      <button class="btn btn-primary" id="nextBtn" onclick="nextQ()" disabled>次へ →</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+const GENRES = {
+  pop: {
+    name: 'ポップ',
+    en: 'POP',
+    emoji: '🎤',
+    grad: 'linear-gradient(135deg, #f472b6, #a855f7)',
+    desc: '明るく聴きやすい、みんなのための音楽',
+    traits: ['メロディアス','感情豊か','キャッチー','トレンド感','ダンサブル','前向き'],
+    artists: [
+      { icon: '🌟', name: 'Taylor Swift', desc: 'ポップの女王。共感度100%の歌詞が特徴' },
+      { icon: '🎵', name: 'Bruno Mars', desc: 'ファンク×ポップの完璧なブレンド' },
+      { icon: '✨', name: 'Billie Eilish', desc: 'ダークポップの新星。唯一無二の世界観' },
+      { icon: '🎶', name: 'Ed Sheeran', desc: 'アコースティック×ポップのシンガーソングライター' },
+    ],
+    vibes: [
+      { emoji: '☀️', title: 'サマーヒット', desc: '海辺で流したい夏の定番' },
+      { emoji: '💃', title: 'ダンスパーティー', desc: 'みんなで踊り出す名曲たち' },
+      { emoji: '💔', title: '失恋ソング', desc: '涙と共感が止まらない夜' },
+      { emoji: '🌈', title: 'ドライブBGM', desc: '窓全開で叫びたいアンセム' },
+    ],
+    msg: '明るくポジティブ、共感力が高く、人との繋がりを大切にするあなたにぴったり！',
+  },
+  rock: {
+    name: 'ロック',
+    en: 'ROCK',
+    emoji: '🎸',
+    grad: 'linear-gradient(135deg, #f97316, #ef4444)',
+    desc: '魂の叫びを歪んだギターに乗せて',
+    traits: ['情熱的','反骨精神','エネルギッシュ','個性的','ライブ感','疾走感'],
+    artists: [
+      { icon: '🤘', name: 'Queen', desc: 'ロック史上最高のバンド。フレディの声は永遠' },
+      { icon: '⚡', name: 'Foo Fighters', desc: 'グランジからモダンロックへの架け橋' },
+      { icon: '🎸', name: 'Arctic Monkeys', desc: 'UKインディーロックの旗手' },
+      { icon: '🔥', name: 'Led Zeppelin', desc: 'ヘビーリフの元祖。ロックの父' },
+    ],
+    vibes: [
+      { emoji: '🎤', title: 'ライブアンセム', desc: '会場全員で叫ぶコーラス' },
+      { emoji: '🌩️', title: 'ドライブロック', desc: '深夜の高速を爆走するとき' },
+      { emoji: '💪', title: 'ワークアウト', desc: 'アドレナリン全開のプレイリスト' },
+      { emoji: '🖤', title: 'クラシックロック', desc: '時代を超えた伝説の名盤' },
+    ],
+    msg: '情熱的で反骨精神あふれるあなた。自分の信念を曲げず、真っ直ぐに生きるロッカー気質！',
+  },
+  hiphop: {
+    name: 'ヒップホップ / R&B',
+    en: 'HIP-HOP / R&B',
+    emoji: '🎤',
+    grad: 'linear-gradient(135deg, #fbbf24, #f97316)',
+    desc: 'ビートに乗せたリアルなストーリー',
+    traits: ['自己表現','リズム感','クール','自信満々','ストリート感','創造性'],
+    artists: [
+      { icon: '👑', name: 'Kendrick Lamar', desc: '詩的なリリシストの頂点' },
+      { icon: '🌊', name: 'Drake', desc: 'モダンヒップホップの象徴的存在' },
+      { icon: '✨', name: 'Beyoncé', desc: 'R&Bとポップを融合した女王' },
+      { icon: '🎶', name: 'The Weeknd', desc: 'ダークR&Bの新時代の旗手' },
+    ],
+    vibes: [
+      { emoji: '🏙️', title: 'シティナイト', desc: '夜の都市を歩くときの相棒' },
+      { emoji: '🔥', title: 'バイブスMAX', desc: 'テンションを最高潮に上げる' },
+      { emoji: '💎', title: 'フレックス', desc: '自信と誇りに満ちたアンセム' },
+      { emoji: '🌙', title: '夜のムード', desc: '深夜のドライブに溶け込むR&B' },
+    ],
+    msg: '自分らしさを追求し、言葉とリズムで世界を表現するあなた。クールで唯一無二の存在感を放っている！',
+  },
+  electronic: {
+    name: 'エレクトロニック',
+    en: 'ELECTRONIC',
+    emoji: '🔊',
+    grad: 'linear-gradient(135deg, #06b6d4, #6366f1)',
+    desc: 'テクノロジーと感情が融合した未来の音',
+    traits: ['近未来感','没入感','エネルギー','テクノ感','クリエイティブ','多幸感'],
+    artists: [
+      { icon: '🤖', name: 'Daft Punk', desc: '電子音楽の革命的デュオ' },
+      { icon: '🌐', name: 'Calvin Harris', desc: 'EDMシーンを牽引するDJ/プロデューサー' },
+      { icon: '⚡', name: 'Disclosure', desc: 'UKハウスの新感覚ブラザーズ' },
+      { icon: '🎛️', name: 'Aphex Twin', desc: 'アンビエント〜ドラムンベースの鬼才' },
+    ],
+    vibes: [
+      { emoji: '🎪', title: 'フェスの夜', desc: 'ステージ前で体を揺らす感覚' },
+      { emoji: '🚀', title: '宇宙旅行', desc: '無重力を感じる浮遊感あるサウンド' },
+      { emoji: '🏋️', title: 'ランニング', desc: 'BPM高めで足が自然に動く' },
+      { emoji: '💻', title: '集中作業', desc: 'フローに入るための音のシャワー' },
+    ],
+    msg: 'テクノロジーと感性の境界を生きるあなた。未来思考で常に新しい体験を求める革新者！',
+  },
+  jazz: {
+    name: 'ジャズ',
+    en: 'JAZZ',
+    emoji: '🎷',
+    grad: 'linear-gradient(135deg, #d97706, #92400e)',
+    desc: '即興と対話から生まれる知的な音楽',
+    traits: ['洗練','知的好奇心','即興性','自由','ムーディー','深み'],
+    artists: [
+      { icon: '🎺', name: 'Miles Davis', desc: 'ジャズの神様。時代を超えた革新者' },
+      { icon: '🎷', name: 'John Coltrane', desc: 'スピリチュアルジャズの探求者' },
+      { icon: '🎹', name: 'Norah Jones', desc: 'コンテンポラリージャズの甘い声' },
+      { icon: '✨', name: 'Diana Krall', desc: 'ジャズピアノとボーカルの融合' },
+    ],
+    vibes: [
+      { emoji: '☕', title: 'カフェモーニング', desc: '静かな朝のコーヒーと共に' },
+      { emoji: '🌆', title: 'バーの夜', desc: '薄暗いバーカウンターで揺れる' },
+      { emoji: '📚', title: '読書タイム', desc: '集中力を高める知的なBGM' },
+      { emoji: '🍷', title: '大人のディナー', desc: '洗練された空間を演出する' },
+    ],
+    msg: '知的で深みのある思考を持つあなた。型にはまらず、自由に人生を即興演奏している！',
+  },
+  classical: {
+    name: 'クラシック',
+    en: 'CLASSICAL',
+    emoji: '🎻',
+    grad: 'linear-gradient(135deg, #7c3aed, #4338ca)',
+    desc: '何世紀も生き続ける音楽の最高峰',
+    traits: ['繊細','感受性豊か','深い集中','歴史感','崇高','感動的'],
+    artists: [
+      { icon: '👑', name: 'Beethoven', desc: '不滅の交響曲。苦しみから生まれた歓喜' },
+      { icon: '🎼', name: 'Mozart', desc: '神童。音楽史上最高の天才' },
+      { icon: '🎹', name: 'Chopin', desc: 'ピアノの詩人。繊細な感情表現' },
+      { icon: '🌸', name: 'Yuja Wang', desc: '現代最高峰のピアニスト' },
+    ],
+    vibes: [
+      { emoji: '🌅', title: '早朝の瞑想', desc: '夜明けと共に心を整える' },
+      { emoji: '📝', title: '深夜の作業', desc: '集中力が極限まで高まる' },
+      { emoji: '🎭', title: 'コンサートホール', desc: '鳥肌が立つような感動体験' },
+      { emoji: '🌙', title: '眠れない夜', desc: '美しい旋律に身を委ねる' },
+    ],
+    msg: '深い感受性と集中力を持つあなた。美しいものを追求し、時間をかけて本質を理解する思慮深い人！',
+  },
+  folk: {
+    name: 'フォーク / アコースティック',
+    en: 'FOLK / ACOUSTIC',
+    emoji: '🌿',
+    grad: 'linear-gradient(135deg, #16a34a, #065f46)',
+    desc: '一本のギターが語る人生のストーリー',
+    traits: ['素直','温かみ','自然体','ストーリーテラー','ノスタルジック','誠実'],
+    artists: [
+      { icon: '🌿', name: 'Bob Dylan', desc: '時代を動かした言葉の魔術師' },
+      { icon: '🎸', name: 'Bon Iver', desc: '孤独と美しさを歌うインディーフォーク' },
+      { icon: '🌲', name: 'Joni Mitchell', desc: 'フォークの女神。詩的な世界観' },
+      { icon: '🎵', name: 'Sufjan Stevens', desc: '繊細なサウンドで描く叙事詩' },
+    ],
+    vibes: [
+      { emoji: '🏕️', title: 'キャンプファイヤー', desc: '星空の下でギターを弾き語り' },
+      { emoji: '🍂', title: '秋の散歩', desc: '落ち葉を踏みしめながら聴く' },
+      { emoji: '📖', title: 'ひとり時間', desc: '静かな午後に心を解放する' },
+      { emoji: '🌄', title: '旅の途中', desc: '窓から流れる景色と共に' },
+    ],
+    msg: '素直で誠実、人の心に寄り添えるあなた。飾らない言葉で相手に届く、温かいストーリーテラー！',
+  },
+  kpop: {
+    name: 'K-POP',
+    en: 'K-POP',
+    emoji: '🌸',
+    grad: 'linear-gradient(135deg, #ec4899, #f43f5e)',
+    desc: 'アイドル文化とポップを極めたジャパンカルチャー',
+    traits: ['エネルギッシュ','完璧主義','推し活','ビジュアル重視','ダンス好き','トレンド感'],
+    artists: [
+      { icon: '💜', name: 'BTS', desc: '世界を席巻した7人の伝説' },
+      { icon: '🌸', name: 'BLACKPINK', desc: '強さとかわいさを兼ね備えた4人組' },
+      { icon: '✨', name: 'aespa', desc: '仮想世界とリアルが交差する新感覚ガールズ' },
+      { icon: '🎤', name: 'Stray Kids', desc: '自己プロデュースで世界を揺らす8人組' },
+    ],
+    vibes: [
+      { emoji: '💎', title: 'カムバック待機', desc: '新曲解禁前夜の興奮と期待' },
+      { emoji: '🎪', title: 'コンサート', desc: '光るペンライトと一体感' },
+      { emoji: '💃', title: 'ダンス練習', desc: '振り付けを完コピしたい衝動' },
+      { emoji: '📱', title: '推し動画巡り', desc: '無限にループする沼コンテンツ' },
+    ],
+    msg: '熱い情熱と追求心を持つあなた。美しさとエンターテインメントへのこだわりが人一倍強い推し活マスター！',
+  },
+  metal: {
+    name: 'メタル',
+    en: 'METAL',
+    emoji: '🤘',
+    grad: 'linear-gradient(135deg, #374151, #1f2937)',
+    desc: '圧倒的な音の壁がすべてを解放する',
+    traits: ['強靭な精神','正直','激しい感情','深い思考','独自の価値観','忠実'],
+    artists: [
+      { icon: '🤘', name: 'Metallica', desc: 'メタルの王者。世界で最も影響力のあるバンド' },
+      { icon: '⚡', name: 'Black Sabbath', desc: 'ヘビーメタルの始祖。すべてはここから' },
+      { icon: '🔥', name: 'Rammstein', desc: 'ドイツ語インダストリアルメタルの鬼才' },
+      { icon: '🎸', name: 'Bring Me The Horizon', desc: 'メタルコアからオルタナへの進化' },
+    ],
+    vibes: [
+      { emoji: '⚡', title: 'ハードトレーニング', desc: '限界を超えるための燃料' },
+      { emoji: '🌑', title: '深夜の解放', desc: '誰にも見せない感情を吐き出す' },
+      { emoji: '🎸', title: 'モッシュピット', desc: 'ライブで全てを忘れる瞬間' },
+      { emoji: '🧠', title: '複雑な思考', desc: '長尺の楽曲で深く考える' },
+    ],
+    msg: '激しい感情の中に深い思慮を持つあなた。外の世界に流されず、自分だけの真実を追い求める強者！',
+  },
+  rnb: {
+    name: 'R&B / ソウル',
+    en: 'R&B / SOUL',
+    emoji: '🎼',
+    grad: 'linear-gradient(135deg, #7c3aed, #db2777)',
+    desc: 'メロウなグルーヴが心を溶かす',
+    traits: ['感情豊か','官能的','深みのある声好き','ロマンチック','情熱的','洗練'],
+    artists: [
+      { icon: '🎤', name: 'Stevie Wonder', desc: 'ソウルの神様。音楽の神に選ばれた人' },
+      { icon: '✨', name: 'Frank Ocean', desc: 'コンテンポラリーR&Bの最高峰' },
+      { icon: '💜', name: 'SZA', desc: 'ネオソウルの女王。深みのある歌詞' },
+      { icon: '🌹', name: 'D\'Angelo', desc: 'ネオソウルを再定義した孤高の存在' },
+    ],
+    vibes: [
+      { emoji: '🕯️', title: 'キャンドルナイト', desc: 'ムーディーな夜に溶け込む' },
+      { emoji: '🌆', title: '黄昏のドライブ', desc: 'オレンジの空に似合うグルーヴ' },
+      { emoji: '💝', title: 'ロマンチックな夜', desc: '2人の距離を縮める魔法の音楽' },
+      { emoji: '☕', title: '週末の朝', desc: '体を起こしながら揺れる' },
+    ],
+    msg: '豊かな感情と深いロマンチシズムを持つあなた。人の感情の機微を敏感に察し、愛情深く接する表現者！',
+  },
+};
+
+const QUESTIONS = [
+  {
+    text: '週末の理想の過ごし方は？',
+    icon: '🗓️',
+    options: [
+      { text: '友達と騒いでパーティー🎉', icon: '🥳', scores: { pop: 3, kpop: 2, electronic: 2 } },
+      { text: '音楽を爆音でかけながら運動', icon: '🏃', scores: { rock: 3, metal: 2, electronic: 2 } },
+      { text: 'カフェでひとりゆっくり読書', icon: '📚', scores: { jazz: 3, classical: 2, folk: 2 } },
+      { text: '家で好きなコンテンツに没頭', icon: '🛋️', scores: { kpop: 2, rnb: 2, hiphop: 2 } },
+    ]
+  },
+  {
+    text: '自分の性格を一言で表すと？',
+    icon: '🪞',
+    options: [
+      { text: '明るくて社交的', icon: '☀️', scores: { pop: 3, kpop: 2, hiphop: 1 } },
+      { text: '熱くて情熱的', icon: '🔥', scores: { rock: 3, metal: 2, hiphop: 2 } },
+      { text: '落ち着いていて深い', icon: '🌊', scores: { jazz: 3, classical: 2, rnb: 2 } },
+      { text: '感受性豊かでクリエイティブ', icon: '🎨', scores: { folk: 2, electronic: 2, classical: 2, rnb: 1 } },
+    ]
+  },
+  {
+    text: '音楽を聴く時間はいつが多い？',
+    icon: '⏰',
+    options: [
+      { text: '朝の準備中・通勤時', icon: '🌅', scores: { pop: 2, kpop: 2, electronic: 2 } },
+      { text: '運動・スポーツ中', icon: '💪', scores: { rock: 3, metal: 3, electronic: 2 } },
+      { text: '仕事・勉強中のBGMとして', icon: '💻', scores: { classical: 3, jazz: 3, electronic: 2 } },
+      { text: '夜リラックスしているとき', icon: '🌙', scores: { rnb: 3, jazz: 2, folk: 2 } },
+    ]
+  },
+  {
+    text: 'ライブに行くとしたら？',
+    icon: '🎪',
+    options: [
+      { text: 'ド派手な演出のアリーナライブ', icon: '💥', scores: { pop: 2, kpop: 3, electronic: 2 } },
+      { text: 'ライブハウスで体を揺らす', icon: '🎸', scores: { rock: 3, metal: 3, folk: 1 } },
+      { text: 'ジャズバーの小さなステージ', icon: '🎷', scores: { jazz: 3, rnb: 2, classical: 1 } },
+      { text: 'フェスのメインステージ', icon: '🎡', scores: { electronic: 3, rock: 2, hiphop: 2 } },
+    ]
+  },
+  {
+    text: 'あなたのファッションスタイルは？',
+    icon: '👗',
+    options: [
+      { text: 'トレンドを追ったおしゃれ系', icon: '✨', scores: { pop: 2, kpop: 3, hiphop: 2 } },
+      { text: 'ストリート・スポーティー系', icon: '🧢', scores: { hiphop: 3, kpop: 1, rock: 1 } },
+      { text: 'シンプル・ナチュラル系', icon: '🌿', scores: { folk: 3, jazz: 2, classical: 1 } },
+      { text: '黒・ダーク系・ロック系', icon: '🖤', scores: { rock: 3, metal: 3, electronic: 1 } },
+    ]
+  },
+  {
+    text: '共感できるモットーは？',
+    icon: '💬',
+    options: [
+      { text: '楽しければいい！人生は一度きり', icon: '🎊', scores: { pop: 3, kpop: 2, electronic: 2 } },
+      { text: '自分の信念を貫く。妥協しない', icon: '💪', scores: { rock: 3, metal: 3, hiphop: 2 } },
+      { text: '深く考え、本質を見極める', icon: '🧠', scores: { jazz: 2, classical: 3, metal: 1 } },
+      { text: 'ありのままの自分でいる', icon: '🌱', scores: { folk: 3, rnb: 2, jazz: 1 } },
+    ]
+  },
+  {
+    text: '好きな映画のジャンルは？',
+    icon: '🎬',
+    options: [
+      { text: 'ラブストーリー・ロマンス', icon: '💕', scores: { pop: 2, rnb: 3, kpop: 2 } },
+      { text: 'アクション・SF・スリラー', icon: '🚀', scores: { rock: 2, electronic: 3, metal: 2 } },
+      { text: 'ヒューマンドラマ・インディー', icon: '🎭', scores: { folk: 3, jazz: 2, classical: 2 } },
+      { text: 'ドキュメンタリー・伝記', icon: '📽️', scores: { hiphop: 2, jazz: 2, classical: 2 } },
+    ]
+  },
+  {
+    text: '理想の恋愛スタイルは？',
+    icon: '💑',
+    options: [
+      { text: '盛り上がる恋愛。ドキドキが大事', icon: '💓', scores: { pop: 2, kpop: 3, rnb: 2 } },
+      { text: 'ぶつかり合いながらも深い絆', icon: '🔥', scores: { rock: 3, hiphop: 2, metal: 1 } },
+      { text: '知的で落ち着いた大人の恋愛', icon: '🍷', scores: { jazz: 3, classical: 2, rnb: 2 } },
+      { text: 'さりげない日常を共に過ごす', icon: '🌸', scores: { folk: 3, pop: 1, rnb: 1 } },
+    ]
+  },
+  {
+    text: 'あなたの感情表現は？',
+    icon: '😊',
+    options: [
+      { text: '表情・言動で全部出る。隠せない', icon: '😄', scores: { pop: 3, kpop: 2, rock: 2 } },
+      { text: '普段は静かだが、爆発するとすごい', icon: '🌋', scores: { metal: 3, rock: 2, classical: 1 } },
+      { text: '言葉より態度で示す', icon: '🤐', scores: { jazz: 2, hiphop: 2, folk: 2 } },
+      { text: '歌・文字・アートで表現したい', icon: '🎨', scores: { folk: 3, rnb: 2, classical: 2 } },
+    ]
+  },
+  {
+    text: '好きなテンポ・リズムは？',
+    icon: '🥁',
+    options: [
+      { text: 'アップテンポ・キャッチー', icon: '⚡', scores: { pop: 3, kpop: 3, electronic: 2 } },
+      { text: '重くて力強いビート', icon: '💥', scores: { rock: 3, metal: 3, hiphop: 2 } },
+      { text: 'スウィングやゆったりした揺らぎ', icon: '🌊', scores: { jazz: 3, rnb: 3, folk: 1 } },
+      { text: '複雑なリズムと意外な展開', icon: '🎯', scores: { classical: 3, electronic: 2, jazz: 2 } },
+    ]
+  },
+  {
+    text: 'ストレスの発散方法は？',
+    icon: '💆',
+    options: [
+      { text: '友達と騒いで気分転換', icon: '🎉', scores: { pop: 3, kpop: 2, hiphop: 2 } },
+      { text: '激しい運動や身体を動かす', icon: '🏋️', scores: { rock: 2, metal: 3, electronic: 2 } },
+      { text: '静かな場所でひとりになる', icon: '🌲', scores: { classical: 2, folk: 3, jazz: 2 } },
+      { text: '好きなコンテンツに没頭する', icon: '📱', scores: { kpop: 2, rnb: 2, hiphop: 2 } },
+    ]
+  },
+  {
+    text: 'あなたが大切にしている価値観は？',
+    icon: '⭐',
+    options: [
+      { text: '楽しさ・ポジティブ・共感', icon: '💛', scores: { pop: 3, kpop: 2, folk: 1 } },
+      { text: '自由・反骨・個性', icon: '✊', scores: { rock: 3, hiphop: 3, metal: 2 } },
+      { text: '知性・洗練・深み', icon: '📖', scores: { jazz: 3, classical: 3, folk: 1 } },
+      { text: '誠実・素直・温もり', icon: '🌿', scores: { folk: 3, rnb: 2, pop: 1 } },
+    ]
+  },
+  {
+    text: '旅行するとしたらどこ？',
+    icon: '✈️',
+    options: [
+      { text: 'NYやLAなど都市でショッピング・観光', icon: '🗽', scores: { hiphop: 3, pop: 2, kpop: 2 } },
+      { text: 'ヨーロッパの歴史ある街を散策', icon: '🏰', scores: { classical: 3, jazz: 2, folk: 2 } },
+      { text: 'アジアのK-POP聖地巡礼', icon: '🌸', scores: { kpop: 3, pop: 2, rnb: 1 } },
+      { text: '自然の中でキャンプ・トレッキング', icon: '🏔️', scores: { folk: 3, rock: 2, metal: 1 } },
+    ]
+  },
+  {
+    text: '好きな声・歌声のタイプは？',
+    icon: '🎤',
+    options: [
+      { text: '高くて透き通るような澄んだ声', icon: '🌟', scores: { pop: 3, kpop: 3, classical: 2 } },
+      { text: '低くてしゃがれた迫力のある声', icon: '🎙️', scores: { rock: 3, metal: 2, hiphop: 2 } },
+      { text: '滑らかで艶やかなムーディーな声', icon: '🌹', scores: { rnb: 3, jazz: 3, folk: 1 } },
+      { text: 'ラップ・語りかけるようなフロウ', icon: '🎤', scores: { hiphop: 3, electronic: 1, rnb: 2 } },
+    ]
+  },
+  {
+    text: '音楽に求めるものは？',
+    icon: '🎵',
+    options: [
+      { text: '一緒に歌えるキャッチーなメロディー', icon: '🎶', scores: { pop: 3, kpop: 3, folk: 1 } },
+      { text: 'アドレナリンが出るような高揚感', icon: '⚡', scores: { rock: 2, metal: 3, electronic: 3 } },
+      { text: 'じっくり味わえる奥深い表現', icon: '🌊', scores: { jazz: 3, classical: 3, folk: 2 } },
+      { text: 'リアルな感情やストーリー', icon: '💭', scores: { hiphop: 3, folk: 2, rnb: 3 } },
+    ]
+  },
+];
+
+let current = 0;
+let answers = new Array(QUESTIONS.length).fill(null);
+
+function startQuiz() {
+  document.getElementById('intro').style.display = 'none';
+  document.getElementById('quiz').style.display = 'block';
+  renderQ(0);
+}
+
+function renderQ(idx) {
+  current = idx;
+  const q = QUESTIONS[idx];
+  const total = QUESTIONS.length;
+  const pct = (idx / total) * 100;
+
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('qCurrent').textContent = idx + 1;
+  document.getElementById('qTotal').textContent = total;
+  document.getElementById('qNum').textContent = `Q${idx + 1}  ${q.icon}`;
+  document.getElementById('qText').textContent = q.text;
+
+  const card = document.getElementById('qCard');
+  card.style.animation = 'none';
+  card.offsetHeight;
+  card.style.animation = 'slideUp .35s ease both';
+
+  const optDiv = document.getElementById('options');
+  optDiv.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt' + (answers[idx] === i ? ' selected' : '');
+    btn.innerHTML = `
+      <span class="opt-icon">${opt.icon}</span>
+      <span>${opt.text}</span>
+      <span class="opt-check">${answers[idx] === i ? '✓' : ''}</span>
+    `;
+    btn.addEventListener('click', () => selectOpt(i));
+    optDiv.appendChild(btn);
+  });
+
+  document.getElementById('prevBtn').style.display = idx > 0 ? 'flex' : 'none';
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.disabled = answers[idx] === null;
+  nextBtn.textContent = idx === total - 1 ? '結果を見る →' : '次へ →';
+}
+
+function selectOpt(i) {
+  answers[current] = i;
+  document.querySelectorAll('.opt').forEach((b, j) => {
+    b.classList.toggle('selected', j === i);
+    b.querySelector('.opt-check').textContent = j === i ? '✓' : '';
+  });
+  document.getElementById('nextBtn').disabled = false;
+}
+
+function nextQ() {
+  if (answers[current] === null) return;
+  if (current + 1 >= QUESTIONS.length) {
+    showResult();
+  } else {
+    renderQ(current + 1);
+  }
+}
+
+function prevQ() {
+  if (current > 0) renderQ(current - 1);
+}
+
+function calcScores() {
+  const scores = {};
+  Object.keys(GENRES).forEach(g => scores[g] = 0);
+  QUESTIONS.forEach((q, qi) => {
+    const ans = answers[qi];
+    if (ans === null) return;
+    const s = q.options[ans].scores;
+    Object.entries(s).forEach(([g, v]) => { scores[g] = (scores[g] || 0) + v; });
+  });
+  return scores;
+}
+
+function showResult() {
+  document.getElementById('quiz').style.display = 'none';
+  const resultDiv = document.getElementById('result');
+  resultDiv.classList.add('show');
+
+  const scores = calcScores();
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const [topKey, topScore] = sorted[0];
+  const genre = GENRES[topKey];
+  const maxPossible = QUESTIONS.length * 3;
+  const pct = Math.round((topScore / maxPossible) * 100);
+
+  // RENDER
+  const secondaries = sorted.slice(1, 4);
+  const secMax = sorted[0][1];
+
+  resultDiv.innerHTML = `
+    <style>
+      #result { --genre-grad: ${genre.grad}; }
+    </style>
+
+    <!-- HERO -->
+    <div class="genre-hero">
+      <div class="genre-hero-bg"></div>
+      <span class="genre-emoji">${genre.emoji}</span>
+      <div class="genre-label">Your Genre</div>
+      <div class="genre-name">${genre.name}</div>
+      <div class="genre-sub">${genre.desc}</div>
+      <div class="match-row">
+        <span class="match-label">マッチ度</span>
+        <div class="match-track"><div class="match-fill" id="matchFill" style="width:0%"></div></div>
+        <span class="match-pct">${pct}%</span>
+      </div>
+    </div>
+
+    <!-- PERSONALITY -->
+    <div class="res-section">
+      <h3>あなたの音楽パーソナリティ</h3>
+      <p style="font-size:.88rem;color:var(--text-sub);line-height:1.7;margin-bottom:14px;">${genre.msg}</p>
+      <div class="traits">
+        ${genre.traits.map(t => `<span class="trait">${t}</span>`).join('')}
+      </div>
+    </div>
+
+    <!-- ARTISTS -->
+    <div class="res-section">
+      <h3>おすすめアーティスト</h3>
+      <div class="artists">
+        ${genre.artists.map(a => `
+          <div class="artist">
+            <div class="artist-icon">${a.icon}</div>
+            <div class="artist-info">
+              <div class="artist-name">${a.name}</div>
+              <div class="artist-desc">${a.desc}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- PLAYLIST VIBES -->
+    <div class="res-section">
+      <h3>プレイリストのイメージ</h3>
+      <div class="vibes">
+        ${genre.vibes.map(v => `
+          <div class="vibe">
+            <span class="vibe-emoji">${v.emoji}</span>
+            <div class="vibe-title">${v.title}</div>
+            <div class="vibe-desc">${v.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- SECONDARY -->
+    <div class="res-section">
+      <h3>他のジャンル相性</h3>
+      <div class="secondary">
+        ${secondaries.map(([k, sc]) => {
+          const g = GENRES[k];
+          const sp = secMax > 0 ? Math.round((sc / secMax) * 100) : 0;
+          return `
+            <div class="sec-row">
+              <span class="sec-emoji">${g.emoji}</span>
+              <span class="sec-name">${g.name}</span>
+              <div class="sec-bar-wrap"><div class="sec-bar" style="width:${sp}%;background:${g.grad}"></div></div>
+              <span class="sec-pct">${sp}%</span>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="retry-row">
+      <button class="btn-retry" onclick="retryQuiz()">🔄 もう一度診断する</button>
+      <a class="btn-home" href="index.html">🏠 ホームへ戻る</a>
+    </div>
+  `;
+
+  // animate match bar
+  setTimeout(() => {
+    const fill = document.getElementById('matchFill');
+    if (fill) fill.style.width = pct + '%';
+  }, 100);
+}
+
+function retryQuiz() {
+  answers = new Array(QUESTIONS.length).fill(null);
+  current = 0;
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('result').innerHTML = '';
+  document.getElementById('intro').style.display = 'block';
+}
+</script>
+</body>
+</html>
