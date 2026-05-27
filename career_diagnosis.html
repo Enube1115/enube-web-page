@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔭 将来職業診断</title>
+<style>
+:root{
+  --bg:#07090f;--surf:#0e1220;--surf2:#151c2e;--surf3:#1c2540;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.13);
+  --text:#eceff8;--muted:#6472a0;--muted2:#8494c0;
+  --p:#7c6ffc;--p2:#e963c8;--p3:#38c9f5;--gold:#f6a623;--green:#22d3a0;--red:#f66;
+  --glow:rgba(124,111,252,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* BG */
+.bg{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(110px);opacity:.16;animation:float 16s ease-in-out infinite}
+.o1{width:700px;height:700px;background:radial-gradient(#7c6ffc,transparent 70%);top:-200px;left:-150px}
+.o2{width:550px;height:550px;background:radial-gradient(#e963c8,transparent 70%);bottom:-150px;right:-100px;animation-delay:-6s}
+.o3{width:450px;height:450px;background:radial-gradient(#38c9f5,transparent 70%);top:35%;left:50%;animation-delay:-11s}
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-35px) scale(1.04)}66%{transform:translate(-20px,18px) scale(.97)}}
+
+/* LAYOUT */
+.wrap{position:relative;z-index:1;max-width:740px;margin:0 auto;padding:20px 18px}
+.screen{display:none}
+.screen.active{display:block;animation:up .45s cubic-bezier(.22,1,.36,1) both}
+@keyframes up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+
+/* ── WELCOME ── */
+.w-hero{
+  background:linear-gradient(145deg,var(--surf),var(--surf2));
+  border:1px solid var(--border2);border-radius:28px;
+  padding:60px 36px 48px;text-align:center;margin-top:36px;
+  position:relative;overflow:hidden;
+}
+.w-hero::before{
+  content:'';position:absolute;inset:0;
+  background:conic-gradient(from 0deg at 50% 0%,rgba(124,111,252,.04),rgba(233,99,200,.04),rgba(56,201,245,.04),transparent 60%);
+  pointer-events:none;
+}
+.w-glyph{font-size:5rem;display:block;margin-bottom:14px;line-height:1;animation:glyph 4s ease-in-out infinite}
+@keyframes glyph{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(2deg)}}
+.w-title{
+  font-size:2.4rem;font-weight:900;letter-spacing:-.04em;margin-bottom:12px;
+  background:linear-gradient(130deg,#b0b8ff 0%,#f0a8fa 50%,#7ee8ff 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.w-sub{color:var(--muted2);font-size:1rem;line-height:1.75;max-width:420px;margin:0 auto 30px}
+.w-chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:38px}
+.w-chip{
+  background:var(--surf3);border:1px solid var(--border2);
+  border-radius:50px;padding:7px 18px;font-size:.82rem;color:var(--muted2);
+  display:inline-flex;align-items:center;gap:7px;
+}
+.w-chip b{color:var(--p3)}
+.btn-start{
+  background:linear-gradient(135deg,var(--p),var(--p2));
+  color:#fff;border:none;border-radius:15px;padding:18px 58px;
+  font-size:1.1rem;font-weight:800;cursor:pointer;letter-spacing:.3px;
+  box-shadow:0 8px 36px rgba(124,111,252,.45);
+  transition:transform .2s,box-shadow .2s;
+}
+.btn-start:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 14px 48px rgba(124,111,252,.55)}
+
+/* ── PROGRESS HEADER ── */
+.prog-hd{
+  display:flex;align-items:center;gap:14px;
+  padding:18px 0 14px;
+}
+.prog-info{font-size:.82rem;color:var(--muted);font-weight:600;flex-shrink:0;min-width:56px}
+.prog-info b{color:var(--p3)}
+.prog-track{flex:1;height:6px;background:var(--surf2);border-radius:10px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--p),var(--p2));border-radius:10px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+
+/* ── QUESTION CARD ── */
+.q-wrap{
+  background:linear-gradient(150deg,var(--surf),var(--surf2));
+  border:1px solid var(--border2);border-radius:22px;
+  padding:34px 30px 26px;margin-bottom:14px;
+  position:relative;overflow:hidden;
+}
+.q-wrap::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--p),var(--p2),var(--p3));
+}
+.q-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(124,111,252,.1);border:1px solid rgba(124,111,252,.22);
+  color:#b0b8ff;border-radius:50px;padding:4px 14px;
+  font-size:.76rem;font-weight:700;letter-spacing:.04em;margin-bottom:16px;
+}
+.q-text{font-size:1.28rem;font-weight:700;line-height:1.5;color:var(--text)}
+.q-hint{font-size:.84rem;color:var(--muted);margin-top:6px}
+
+/* OPTIONS */
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{
+  background:var(--surf2);border:1.5px solid var(--border);
+  border-radius:14px;padding:15px 18px;cursor:pointer;
+  font-size:.96rem;color:var(--text);text-align:left;
+  display:flex;align-items:center;gap:14px;
+  transition:all .18s;position:relative;overflow:hidden;
+}
+.opt::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(124,111,252,.07),transparent 60%);
+  opacity:0;transition:opacity .18s;pointer-events:none;
+}
+.opt:hover::before{opacity:1}
+.opt:hover{border-color:rgba(124,111,252,.4);transform:translateX(4px);background:rgba(124,111,252,.07)}
+.opt:active{transform:scale(.99)}
+.opt.chosen{
+  border-color:var(--p);background:rgba(124,111,252,.14);
+  animation:bounce .25s ease;
+}
+@keyframes bounce{0%{transform:scale(.98)}60%{transform:scale(1.02)}100%{transform:scale(1)}}
+.opt-em{font-size:1.45rem;width:36px;text-align:center;flex-shrink:0}
+.opt-label{line-height:1.4}
+
+/* ── LOADING ── */
+.ld-center{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:68vh;gap:22px;text-align:center;
+}
+.ld-ring{
+  width:76px;height:76px;border-radius:50%;
+  border:3px solid transparent;
+  border-top-color:var(--p);
+  border-right-color:var(--p3);
+  animation:spin 1s linear infinite;
+  position:relative;
+}
+.ld-ring::after{
+  content:'🔭';position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;animation:spin 1s linear infinite reverse;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-title{font-size:1.15rem;font-weight:700;color:var(--text)}
+.ld-track{width:280px;height:7px;background:var(--surf2);border-radius:10px;overflow:hidden}
+.ld-fill{height:100%;background:linear-gradient(90deg,var(--p),var(--p2),var(--p3));width:0;border-radius:10px;transition:width .05s}
+.ld-steps{width:280px;display:flex;flex-direction:column;gap:9px}
+.ld-step{
+  display:flex;align-items:center;gap:10px;
+  font-size:.85rem;color:var(--muted);opacity:0;
+  transition:opacity .4s,color .4s;
+}
+.ld-step.on{opacity:1;color:var(--muted2)}
+.ld-step.done{color:var(--green)}
+.ld-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .4s}
+.ld-step.on .ld-dot{background:var(--p3)}
+.ld-step.done .ld-dot{background:var(--green)}
+
+/* ── RESULT ── */
+/* Hero */
+.r-hero{
+  background:linear-gradient(150deg,var(--surf),var(--surf2));
+  border:1px solid var(--border2);border-radius:26px;
+  padding:38px 30px 30px;margin-bottom:16px;
+  position:relative;overflow:hidden;text-align:center;
+}
+.r-hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(124,111,252,.12),transparent 65%);
+  pointer-events:none;
+}
+.r-crown{
+  display:inline-block;
+  background:linear-gradient(135deg,var(--gold),#fa7c1b);
+  color:#fff;font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  padding:5px 18px;border-radius:50px;margin-bottom:14px;
+}
+.r-icon{font-size:5.5rem;display:block;line-height:1;margin-bottom:8px;animation:r-float 4s ease-in-out infinite}
+@keyframes r-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.r-name{
+  font-size:2.5rem;font-weight:900;letter-spacing:-.04em;
+  background:linear-gradient(130deg,#c4caff,#f5b0fa,#90e8ff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:10px;
+}
+.r-tagline{color:var(--muted2);font-size:.96rem;line-height:1.7;max-width:500px;margin:0 auto 22px}
+.r-salary{
+  display:inline-flex;align-items:center;gap:10px;
+  background:rgba(246,166,35,.1);border:1px solid rgba(246,166,35,.28);
+  color:var(--gold);border-radius:14px;padding:11px 24px;
+  font-size:1.15rem;font-weight:800;margin-bottom:26px;
+}
+
+/* Radar */
+.radar-box{display:flex;justify-content:center;margin:4px 0 18px}
+.radar-box canvas{max-width:300px;width:100%}
+
+/* Trait bars */
+.tbars{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px}
+.tbar{}
+.tbar-head{
+  font-size:.74rem;color:var(--muted);margin-bottom:4px;
+  display:flex;justify-content:space-between;
+}
+.tbar-track{height:6px;background:var(--surf3);border-radius:3px;overflow:hidden}
+.tbar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--p),var(--p3));transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+
+/* Info row */
+.info-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.info-card{
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:18px;padding:22px;
+}
+.info-card.full{grid-column:1/-1}
+.ic-head{
+  font-size:.73rem;color:var(--muted);font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;
+  margin-bottom:13px;display:flex;align-items:center;gap:7px;
+}
+.ic-text{font-size:.9rem;color:var(--text);line-height:1.8}
+.tag-s{
+  display:inline-block;
+  background:rgba(124,111,252,.1);border:1px solid rgba(124,111,252,.22);
+  color:#b8bcff;border-radius:7px;padding:4px 11px;
+  font-size:.78rem;font-weight:600;margin:3px 3px 3px 0;
+}
+.tag-p{
+  display:inline-block;
+  background:rgba(233,99,200,.1);border:1px solid rgba(233,99,200,.22);
+  color:#f5b0e8;border-radius:7px;padding:4px 11px;
+  font-size:.78rem;font-weight:600;margin:3px 3px 3px 0;
+}
+
+/* Match score */
+.match-score{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);
+  color:var(--green);border-radius:8px;padding:3px 12px;font-size:.8rem;font-weight:700;
+  margin-bottom:8px;
+}
+
+/* Alternatives */
+.alt-head{font-size:.88rem;font-weight:700;color:var(--muted2);margin-bottom:13px;padding-left:2px}
+.alt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:30px}
+.alt-card{
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:16px;padding:18px 12px;text-align:center;
+  cursor:pointer;transition:all .2s;
+}
+.alt-card:hover{border-color:var(--border2);transform:translateY(-4px);background:var(--surf2);box-shadow:0 12px 32px rgba(0,0,0,.3)}
+.alt-em{font-size:2rem;margin-bottom:7px}
+.alt-name{font-size:.8rem;font-weight:700;line-height:1.3;color:var(--text);margin-bottom:5px}
+.alt-pct{font-size:.72rem;font-weight:700;color:var(--p3)}
+.alt-salary{font-size:.7rem;color:var(--muted);margin-top:3px}
+
+/* Modal */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;backdrop-filter:blur(6px);
+  animation:fadeIn .2s ease;
+}
+.modal-bg.hidden{display:none}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--surf2);border:1px solid var(--border2);
+  border-radius:22px;padding:32px 28px;max-width:480px;width:100%;
+  position:relative;max-height:90vh;overflow-y:auto;
+  animation:up .3s cubic-bezier(.22,1,.36,1);
+}
+.modal-close{
+  position:absolute;top:16px;right:16px;
+  background:var(--surf3);border:1px solid var(--border2);
+  color:var(--muted2);border-radius:8px;width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:1rem;transition:all .2s;
+}
+.modal-close:hover{color:var(--text);background:var(--surf)}
+.modal-icon{font-size:3rem;margin-bottom:8px;text-align:center;display:block}
+.modal-name{font-size:1.5rem;font-weight:800;text-align:center;margin-bottom:5px}
+.modal-salary{text-align:center;margin-bottom:16px}
+.modal-section{margin-bottom:14px}
+.modal-sh{font-size:.74rem;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.modal-desc{font-size:.88rem;color:var(--muted2);line-height:1.75}
+
+/* Retry */
+.btn-retry{
+  width:100%;
+  background:linear-gradient(135deg,var(--p),var(--p2));
+  color:#fff;border:none;border-radius:15px;padding:17px;
+  font-size:1rem;font-weight:800;cursor:pointer;letter-spacing:.3px;
+  transition:transform .2s,opacity .2s;margin-bottom:44px;
+  box-shadow:0 6px 28px rgba(124,111,252,.3);
+}
+.btn-retry:hover{transform:translateY(-2px);opacity:.9}
+
+/* Responsive */
+@media(max-width:540px){
+  .info-row{grid-template-columns:1fr}
+  .w-hero{padding:44px 18px 38px}
+  .q-wrap{padding:24px 16px 20px}
+  .r-hero{padding:28px 16px 24px}
+  .tbars{grid-template-columns:1fr}
+  .modal{padding:24px 18px}
+}
+</style>
+</head>
+<body>
+<div class="bg">
+  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+</div>
+
+<div class="wrap">
+
+  <!-- ─────── WELCOME ─────── -->
+  <div class="screen active" id="s-welcome">
+    <div class="w-hero">
+      <span class="w-glyph">🔭</span>
+      <div class="w-title">将来職業診断</div>
+      <div class="w-sub">15問の質問に答えるだけで、<br>あなたの強みにぴったりな職業がわかる。</div>
+      <div class="w-chips">
+        <div class="w-chip">⏱️ 所要時間 <b>約3分</b></div>
+        <div class="w-chip">💼 全 <b>22種類</b> の職業</div>
+        <div class="w-chip">📊 <b>8つ</b> の特性分析</div>
+        <div class="w-chip">💰 <b>平均年収</b> も表示</div>
+      </div>
+      <button class="btn-start" onclick="startQuiz()">診断スタート →</button>
+    </div>
+  </div>
+
+  <!-- ─────── QUIZ ─────── -->
+  <div class="screen" id="s-quiz">
+    <div class="prog-hd">
+      <span class="prog-info">Q<b id="qN">1</b>/15</span>
+      <div class="prog-track"><div class="prog-fill" id="progFill" style="width:6.6%"></div></div>
+      <span class="prog-info" id="progPct" style="text-align:right">7%</span>
+    </div>
+    <div class="q-wrap" id="qCard">
+      <div class="q-badge" id="qBadge">Q1</div>
+      <div class="q-text" id="qText"></div>
+      <div class="q-hint">直感で選んでみよう</div>
+    </div>
+    <div class="opts" id="opts"></div>
+  </div>
+
+  <!-- ─────── LOADING ─────── -->
+  <div class="screen" id="s-loading">
+    <div class="ld-center">
+      <div class="ld-ring"></div>
+      <div class="ld-title">22種類の職業と照合中…</div>
+      <div class="ld-track"><div class="ld-fill" id="ldFill"></div></div>
+      <div class="ld-steps" id="ldSteps"></div>
+    </div>
+  </div>
+
+  <!-- ─────── RESULT ─────── -->
+  <div class="screen" id="s-result">
+    <div class="r-hero">
+      <div class="r-crown">🏆 あなたに最も向いている職業</div>
+      <span class="r-icon" id="rIcon"></span>
+      <div class="r-name" id="rName"></div>
+      <div class="r-tagline" id="rTagline"></div>
+      <div><span class="r-salary">💴 平均年収 <span id="rSalary"></span></span></div>
+      <div class="radar-box"><canvas id="radar" width="300" height="260"></canvas></div>
+      <div class="tbars" id="tbars"></div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-card">
+        <div class="ic-head">⚙️ 必要なスキル</div>
+        <div id="rSkills"></div>
+      </div>
+      <div class="info-card">
+        <div class="ic-head">🌟 向いている性格</div>
+        <div id="rPersonality"></div>
+      </div>
+      <div class="info-card full">
+        <div class="ic-head">📋 仕事の特徴</div>
+        <div class="ic-text" id="rDesc"></div>
+      </div>
+    </div>
+
+    <div class="alt-head">✨ 他にも向いている職業（タップで詳細）</div>
+    <div class="alt-grid" id="altGrid"></div>
+
+    <button class="btn-retry" onclick="restart()">🔄 もう一度診断する</button>
+  </div>
+
+</div>
+
+<!-- ─────── MODAL ─────── -->
+<div class="modal-bg hidden" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <span class="modal-icon" id="mIcon"></span>
+    <div class="modal-name" id="mName"></div>
+    <div class="modal-salary"><span class="r-salary" style="font-size:.95rem">💴 <span id="mSalary"></span></span></div>
+    <div class="modal-section">
+      <div class="modal-sh">📋 仕事の特徴</div>
+      <div class="modal-desc" id="mDesc"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sh">⚙️ 必要なスキル</div>
+      <div id="mSkills"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sh">🌟 向いている性格</div>
+      <div id="mPersonality"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════ */
+const TRAITS=['logical','creative','social','leadership','stable','technical','empathy','research'];
+const TL={
+  logical:'分析・論理',creative:'創造・表現',social:'対人・社交',
+  leadership:'リーダー',stable:'安定志向',technical:'技術・専門',
+  empathy:'共感・感受',research:'探求・研究'
+};
+
+const CAREERS=[
+  {id:'se',name:'ソフトウェアエンジニア',icon:'💻',
+   tagline:'コードで世界を動かす、デジタル社会の建築家。',
+   desc:'システム設計からプログラミング・テスト・運用まで幅広く担当。Web・アプリ・AI・クラウドなど活躍領域は無限大。リモートワーク率が高く、成果重視で働けるのが魅力。常に最新技術を追いかける刺激的なキャリア。',
+   skills:['プログラミング','システム設計','アルゴリズム','クラウド','チームコラボ'],
+   personality:['論理的','探求心がある','集中力が高い','問題解決が好き'],
+   salary:'550〜950万円',
+   profile:{logical:9,creative:5,social:3,leadership:4,stable:6,technical:10,empathy:3,research:8}},
+
+  {id:'uxd',name:'UX/UIデザイナー',icon:'🎨',
+   tagline:'美しさと使いやすさを両立させるユーザー体験の職人。',
+   desc:'アプリやWebのインターフェース設計全般を担当。ユーザーリサーチ・ワイヤーフレーム・プロトタイプから最終デザインまで幅広い。クリエイティブと論理の両方が求められる人気職種。需要が急増中。',
+   skills:['Figma/XD','ビジュアルデザイン','UXリサーチ','プロトタイピング','CSS基礎'],
+   personality:['感性が豊か','ユーザー思考','細部へのこだわり','トレンド感覚'],
+   salary:'450〜800万円',
+   profile:{logical:5,creative:10,social:6,leadership:4,stable:5,technical:6,empathy:8,research:5}},
+
+  {id:'doctor',name:'医師',icon:'🩺',
+   tagline:'命と向き合い、知識と判断力で患者を救う医療の最前線。',
+   desc:'診察・診断・治療・手術など医療全般を担う。内科・外科・精神科など専門は多岐。高い専門知識と強い責任感が必要。長い研修を経てキャリアを積む。社会的信頼と高収入を誇る職種。',
+   skills:['医学知識','診断スキル','コミュニケーション','冷静な判断力','体力・精神力'],
+   personality:['使命感が強い','責任感がある','冷静沈着','向上心がある'],
+   salary:'1000〜2000万円',
+   profile:{logical:9,creative:4,social:7,leadership:7,stable:8,technical:7,empathy:8,research:9}},
+
+  {id:'teacher',name:'教師・教育者',icon:'📖',
+   tagline:'未来を担う世代を育てる、社会の根幹を支えるガイド。',
+   desc:'学校・塾・オンライン講師など幅広い場で活躍。授業計画・教材作成・生徒の精神的サポートまで担当。子どもの成長を間近で感じられるやりがいが魅力。教育コンテンツ制作なども注目されている。',
+   skills:['教授法','コミュニケーション','忍耐力','教材作成','クラスマネジメント'],
+   personality:['人が好き','忍耐力がある','説明が得意','面倒見がいい'],
+   salary:'400〜650万円',
+   profile:{logical:6,creative:6,social:9,leadership:7,stable:8,technical:3,empathy:9,research:5}},
+
+  {id:'marketer',name:'マーケター',icon:'📣',
+   tagline:'消費者の心を動かし、ブランドと人をつなぐ戦略家。',
+   desc:'市場調査・広告戦略・SNS運用・データ分析など多彩な業務。デジタルマーケは需要急増中。クリエイティブと数字を両方扱うユニークな職種。成果が数値で見えるのでやりがいを感じやすい。',
+   skills:['データ分析','コピーライティング','SNS運用','広告設計','ブランド戦略'],
+   personality:['好奇心旺盛','数字に強い','トレンドに敏感','発信力がある'],
+   salary:'500〜900万円',
+   profile:{logical:7,creative:8,social:8,leadership:6,stable:5,technical:5,empathy:6,research:7}},
+
+  {id:'lawyer',name:'弁護士・法律家',icon:'⚖️',
+   tagline:'法律と論理で社会正義を守るプロフェッショナル。',
+   desc:'民事・刑事・企業法務など多様な案件を担当。依頼人の代理として交渉・訴訟・法的アドバイスを行う。高い論理力と文書作成力が必要。司法試験という高いハードルを越えた先のキャリア。',
+   skills:['法律知識','論理的文書作成','交渉術','リサーチ力','説得力'],
+   personality:['論理的','正義感が強い','粘り強い','几帳面'],
+   salary:'700〜1500万円',
+   profile:{logical:10,creative:5,social:7,leadership:8,stable:6,technical:4,empathy:5,research:8}},
+
+  {id:'entrepreneur',name:'起業家',icon:'🚀',
+   tagline:'ゼロから事業を作り出し、世界を変えるビジョナリー。',
+   desc:'自ら事業を立ち上げ経営する。アイデア具現化・資金調達・チームビルディング・営業まで全てこなす。失敗を恐れない挑戦心と強いリーダーシップが必要。成功すれば大きなリターンが得られる。',
+   skills:['事業計画','リーダーシップ','営業・交渉','財務知識','問題解決'],
+   personality:['行動力がある','リスク許容力が高い','熱意がある','諦めない'],
+   salary:'300〜青天井',
+   profile:{logical:7,creative:9,social:8,leadership:10,stable:2,technical:5,empathy:6,research:6}},
+
+  {id:'researcher',name:'研究者・科学者',icon:'🔬',
+   tagline:'未知を探求し、人類の知の地平を広げる知識の先駆者。',
+   desc:'大学・研究機関・企業R&Dなどで専門分野の研究を行う。仮説設定・実験・データ分析・論文執筆を繰り返す。長期視野と深い専門知識が必要。じっくり一つのテーマを掘り下げることが好きな人に向く。',
+   skills:['統計・データ分析','論文執筆','実験設計','批判的思考','英語力'],
+   personality:['好奇心が強い','粘り強い','細部へのこだわり','独創的'],
+   salary:'500〜900万円',
+   profile:{logical:9,creative:7,social:3,leadership:4,stable:7,technical:8,empathy:4,research:10}},
+
+  {id:'counselor',name:'カウンセラー・心理士',icon:'🌱',
+   tagline:'心に寄り添い、人の悩みを解きほぐす心のサポーター。',
+   desc:'悩みを抱えるクライアントの話を聴き、心理的サポートを行う。学校・病院・企業・個人開業など様々な場で活躍。傾聴スキルと共感力が最も重要。公認心理師資格でキャリアが広がる。',
+   skills:['傾聴スキル','共感力','心理学知識','守秘義務','問題解決支援'],
+   personality:['共感力が高い','穏やか','観察力がある','信頼感を与える'],
+   salary:'350〜600万円',
+   profile:{logical:5,creative:4,social:8,leadership:4,stable:7,technical:3,empathy:10,research:7}},
+
+  {id:'accountant',name:'公認会計士・税理士',icon:'📊',
+   tagline:'数字の専門家として企業の財務を守る安定のプロ。',
+   desc:'企業の会計監査・税務申告・財務コンサルを担当。高い専門性と資格が必要だが安定した需要がある。数字への正確さと几帳面さが求められる。独立開業も可能なキャリアの幅が広い職種。',
+   skills:['会計・簿記','税法知識','Excel/データ処理','監査技術','コミュニケーション'],
+   personality:['几帳面','数字が得意','責任感がある','コツコツ型'],
+   salary:'600〜1200万円',
+   profile:{logical:9,creative:3,social:5,leadership:5,stable:9,technical:7,empathy:4,research:6}},
+
+  {id:'creator',name:'映像・動画クリエイター',icon:'🎬',
+   tagline:'映像という表現で感動を届けるビジュアルストーリーテラー。',
+   desc:'YouTube・広告・映画・SNSなど様々な媒体の映像制作。企画・撮影・編集・公開まで幅広く担当。SNS時代に需要急増。個人でのチャンネル運営で収益化も可能。独自の世界観が武器。',
+   skills:['動画編集','撮影技術','企画・構成','SNS運用','サムネデザイン'],
+   personality:['表現力がある','こだわりが強い','自己プロデュース力','流行に敏感'],
+   salary:'300〜1000万円',
+   profile:{logical:4,creative:10,social:6,leadership:5,stable:4,technical:7,empathy:7,research:4}},
+
+  {id:'architect',name:'建築士',icon:'🏛️',
+   tagline:'空間を設計し、人の生活環境に形を与えるクリエイター。',
+   desc:'住宅・商業施設・公共建築などの設計を担当。クライアントのニーズを汲み取り、安全・機能・美しさを融合させた設計を行う。CADと創造力が必須。国家資格取得後に活躍の場が広がる。',
+   skills:['CAD/BIM','構造・設備知識','プレゼン力','法規知識','デザイン力'],
+   personality:['クリエイティブ','几帳面','空間センスがある','コミュ力がある'],
+   salary:'450〜800万円',
+   profile:{logical:7,creative:9,social:5,leadership:6,stable:7,technical:9,empathy:5,research:6}},
+
+  {id:'chef',name:'シェフ・料理人',icon:'👨‍🍳',
+   tagline:'五感を刺激する料理で人々に喜びと感動を届ける職人。',
+   desc:'レストラン・ホテル・ケータリングなどで料理を作る。食材知識・調理技術・盛り付けセンスが必要。独立開業や有名シェフへの道もある。体力と創造力の両方が問われるやりがいのある職種。',
+   skills:['調理技術','食材知識','衛生管理','メニュー開発','原価管理'],
+   personality:['手先が器用','創造力がある','向上心が強い','チームワーク重視'],
+   salary:'350〜700万円（独立で青天井）',
+   profile:{logical:5,creative:9,social:7,leadership:6,stable:6,technical:7,empathy:7,research:5}},
+
+  {id:'nurse',name:'看護師・医療従事者',icon:'🏥',
+   tagline:'患者に寄り添い、医療チームとして命を支えるケアの専門家。',
+   desc:'患者の健康管理・治療補助・精神的サポートを担当。医師と連携しながら幅広い医療処置を行う。高い需要と安定した雇用が特徴。資格取得後は全国・海外でも活躍できる。',
+   skills:['看護技術','医療知識','コミュニケーション','冷静な判断力','チームワーク'],
+   personality:['思いやりがある','責任感が強い','体力がある','冷静沈着'],
+   salary:'400〜700万円',
+   profile:{logical:6,creative:4,social:9,leadership:6,stable:9,technical:6,empathy:10,research:5}},
+
+  {id:'journalist',name:'ジャーナリスト・記者',icon:'📰',
+   tagline:'真実を追い求め、情報で社会を動かすメディアの番人。',
+   desc:'取材・インタビュー・執筆・報道など情報発信業務全般。新聞・テレビ・WebメディアなどAI時代でも存在感がある職種。鋭い観察眼と表現力が武器。社会への影響力が大きい職種。',
+   skills:['文章力','取材・インタビュー','リサーチ力','分析力','社会知識'],
+   personality:['好奇心旺盛','行動力がある','公正さを重視','粘り強い'],
+   salary:'450〜800万円',
+   profile:{logical:7,creative:8,social:8,leadership:7,stable:4,technical:4,empathy:7,research:9}},
+
+  {id:'finance',name:'金融アナリスト',icon:'💹',
+   tagline:'市場データを読み解き、投資判断を支える数字のプロ。',
+   desc:'株式・債券・経済指標などを分析し投資レポートを作成。証券会社・投資銀行・ファンドで活躍。高い論理的思考力と数学センスが必要。成果報酬型で高収入が期待できる職種。',
+   skills:['財務分析','統計・計量経済','Excel/Python','英語力','プレゼン'],
+   personality:['数字に強い','論理的','プレッシャー耐性','競争心がある'],
+   salary:'700〜1500万円',
+   profile:{logical:10,creative:4,social:5,leadership:6,stable:7,technical:8,empathy:3,research:9}},
+
+  {id:'hr',name:'人事・HRスペシャリスト',icon:'🤝',
+   tagline:'組織と人材をつなぎ、会社の文化と成長を育む人のプロ。',
+   desc:'採用・育成・評価・労務管理など人材に関わる全業務を担当。組織の最重要資産「人」を扱うやりがいのある職種。近年はHRテック活用によるデータドリブン人事が注目されている。',
+   skills:['採用・面接スキル','労働法知識','コーチング','組織開発','データ分析'],
+   personality:['人が好き','観察眼がある','公平な視点','コミュ力が高い'],
+   salary:'400〜750万円',
+   profile:{logical:6,creative:5,social:10,leadership:7,stable:7,technical:4,empathy:9,research:5}},
+
+  {id:'game',name:'ゲームクリエイター',icon:'🎮',
+   tagline:'想像力を形にし、世界中のプレイヤーに体験を届けるゲームの神。',
+   desc:'プランナー・プログラマー・グラフィッカー・サウンドなど分業で制作。インディーから大手まで多様なパスがある。自分の作ったゲームで世界中のプレイヤーを楽しませる夢がある職種。',
+   skills:['Unity/Unreal','プログラミング','ゲームデザイン','3Dモデリング','企画書作成'],
+   personality:['ゲームが好き','クリエイティブ','こだわりが強い','チームワーク重視'],
+   salary:'400〜900万円',
+   profile:{logical:7,creative:10,social:5,leadership:5,stable:5,technical:9,empathy:6,research:6}},
+
+  {id:'eco',name:'環境コンサルタント',icon:'🌿',
+   tagline:'地球の未来を守るため、環境と経済の橋渡しをする専門家。',
+   desc:'企業や自治体に環境対策・脱炭素化・ESG戦略などをアドバイス。近年急成長している分野で、社会課題解決への貢献度が高い。グローバルな視野とデータ分析力が重要。',
+   skills:['環境法規','データ分析','プレゼン力','プロジェクト管理','英語力'],
+   personality:['社会課題意識が高い','論理的','行動力がある','協調性がある'],
+   salary:'500〜900万円',
+   profile:{logical:8,creative:6,social:7,leadership:7,stable:6,technical:7,empathy:7,research:8}},
+
+  {id:'photo',name:'フォトグラファー',icon:'📷',
+   tagline:'レンズ越しに世界の美しさと真実を切り取る視覚のアーティスト。',
+   desc:'ポートレート・商品・報道・風景など多様なジャンルで活躍。フリーランスとして独立しやすいが収入は実力次第。感性と独自の視点が武器。SNS時代に個人ブランドの構築が重要。',
+   skills:['撮影技術','Photoshop/Lightroom','構図・ライティング','クライアント対応','SNSマーケ'],
+   personality:['感性が豊か','観察眼がある','美的センスがある','忍耐力がある'],
+   salary:'300〜800万円',
+   profile:{logical:4,creative:10,social:6,leadership:4,stable:4,technical:6,empathy:9,research:4}},
+
+  {id:'civil',name:'公務員',icon:'🏛️',
+   tagline:'社会インフラを支え、公共の利益のために働く安定のプロ。',
+   desc:'国家・地方公務員として行政サービス・政策立案・公共施設管理などを担当。雇用と収入の安定が最大の強み。公共の利益に貢献できる使命感のある職種。年功序列で着実にキャリアを積める。',
+   skills:['行政知識','文書作成','法律・規制理解','コミュニケーション','調整力'],
+   personality:['安定志向','責任感がある','几帳面','チームワーク重視'],
+   salary:'400〜700万円',
+   profile:{logical:7,creative:3,social:7,leadership:5,stable:10,technical:5,empathy:6,research:5}},
+
+  {id:'ai',name:'AIエンジニア・データサイエンティスト',icon:'🤖',
+   tagline:'データと機械学習で未来を設計するAI時代の最前線プレイヤー。',
+   desc:'機械学習モデル開発・データパイプライン構築・AIシステム実装を担当。Python・統計・線形代数が基礎。最も需要が高まっている職種の一つで給与水準も高い。継続的な学習が必須の刺激的なキャリア。',
+   skills:['Python/R','機械学習','統計学','SQL','クラウド(AWS/GCP)'],
+   personality:['数学・統計が得意','探求心が強い','論理的','自己学習力がある'],
+   salary:'650〜1200万円',
+   profile:{logical:10,creative:6,social:3,leadership:4,stable:6,technical:10,empathy:3,research:10}},
+
+  {id:'social_worker',name:'社会福祉士・ソーシャルワーカー',icon:'🫶',
+   tagline:'社会的に弱い立場の人を支援し、福祉の橋渡しをする専門家。',
+   desc:'高齢者・障がい者・生活困窮者などを支援。福祉施設・病院・行政機関など幅広く活躍。高い共感力とコミュニケーションスキルが必要。社会課題に直接向き合うやりがいのある職種。',
+   skills:['福祉知識','傾聴・相談援助','社会資源の活用','記録・書類作成','連携・調整'],
+   personality:['共感力が高い','粘り強い','使命感がある','柔軟性がある'],
+   salary:'350〜550万円',
+   profile:{logical:5,creative:4,social:9,leadership:5,stable:7,technical:3,empathy:10,research:5}},
+];
+
+const QUESTIONS=[
+  {text:'休日はどう過ごすことが多い？',
+   opts:[
+    {e:'📚',l:'本や論文・ドキュメンタリーで知識を深める',t:{logical:2,research:2}},
+    {e:'🎨',l:'絵・音楽・DIYなど何かを創って楽しむ',t:{creative:2,empathy:1}},
+    {e:'🗣️',l:'友人とおしゃべり・イベントに参加する',t:{social:2,empathy:1}},
+    {e:'🏃',l:'アウトドアや新しいことへのチャレンジ',t:{leadership:2,creative:1}},
+  ]},
+  {text:'職場・学校でどんなタイプと言われる？',
+   opts:[
+    {e:'🧠',l:'分析家・理屈っぽいと言われる',t:{logical:2,stable:1}},
+    {e:'💡',l:'アイデアマン・クリエイティブと言われる',t:{creative:2,research:1}},
+    {e:'🤗',l:'聞き上手・相談されることが多い',t:{empathy:2,social:1}},
+    {e:'⚡',l:'行動力がある・頼れるリーダー的存在',t:{leadership:2,social:1}},
+  ]},
+  {text:'仕事で最も重視したいのは？',
+   opts:[
+    {e:'🔒',l:'安定した収入と将来性',t:{stable:2,logical:1}},
+    {e:'✨',l:'自分のアイデアや個性を活かせる',t:{creative:2,leadership:1}},
+    {e:'❤️',l:'人の役に立ち感謝される',t:{empathy:2,social:1}},
+    {e:'🔬',l:'最先端の知識・技術を使える',t:{technical:2,research:1}},
+  ]},
+  {text:'問題に直面したとき、どう対処する？',
+   opts:[
+    {e:'📊',l:'データを集めて論理的に分析してから動く',t:{logical:2,research:1}},
+    {e:'🌈',l:'直感とひらめきで斬新な解決策を考える',t:{creative:2,leadership:1}},
+    {e:'👥',l:'仲間に相談してみんなで解決策を探す',t:{social:2,empathy:1}},
+    {e:'🚀',l:'まず行動してみて試行錯誤する',t:{leadership:2,technical:1}},
+  ]},
+  {text:'理想の職場環境は？',
+   opts:[
+    {e:'🎧',l:'静かに一人で集中できる個人作業環境',t:{stable:1,research:2,technical:1}},
+    {e:'🖌️',l:'自由でクリエイティブな雰囲気',t:{creative:2,technical:1}},
+    {e:'💬',l:'チームワークが活発な職場',t:{social:2,leadership:1}},
+    {e:'🌎',l:'成果重視で自分のペースで働ける環境',t:{creative:1,leadership:1,stable:1}},
+  ]},
+  {text:'得意・好きだった学校の科目は？',
+   opts:[
+    {e:'📐',l:'数学・理科・プログラミング',t:{logical:2,technical:1}},
+    {e:'🎭',l:'美術・音楽・国語（表現系）',t:{creative:2,empathy:1}},
+    {e:'🌍',l:'社会・歴史・倫理（文系）',t:{social:1,empathy:1,research:1}},
+    {e:'🏅',l:'体育・部活・課外活動',t:{leadership:2,social:1}},
+  ]},
+  {text:'5年後、どんな自分でありたい？',
+   opts:[
+    {e:'🏆',l:'特定分野のエキスパートとして認められている',t:{technical:2,research:1,stable:1}},
+    {e:'🎯',l:'自分の作品や事業で名前が知られている',t:{creative:2,leadership:1}},
+    {e:'🌟',l:'多くの人に感謝・信頼されている',t:{social:1,empathy:2}},
+    {e:'💰',l:'結果を出して高収入・高ポジションにいる',t:{leadership:2,logical:1}},
+  ]},
+  {text:'大切にしている価値観は？',
+   opts:[
+    {e:'🔍',l:'物事を正確・丁寧に行うこと',t:{logical:2,stable:2}},
+    {e:'💫',l:'常に新しいアイデアを生み出すこと',t:{creative:2,research:1}},
+    {e:'🤝',l:'チームや人間関係を大切にすること',t:{social:2,empathy:1}},
+    {e:'📈',l:'成果・結果にこだわって動くこと',t:{leadership:2,technical:1}},
+  ]},
+  {text:'どんな状況でストレスを感じる？',
+   opts:[
+    {e:'❓',l:'あいまいな指示や不明確なルール',t:{stable:2,logical:1}},
+    {e:'🔄',l:'同じことの繰り返しが続くとき',t:{creative:2,leadership:1}},
+    {e:'😞',l:'人間関係がうまくいかないとき',t:{empathy:2,social:1}},
+    {e:'⏸️',l:'努力しても結果が出ない停滞感',t:{leadership:2,research:1}},
+  ]},
+  {text:'どんな作業が好き？',
+   opts:[
+    {e:'📈',l:'データ分析・レポート・資料作成',t:{logical:2,research:2}},
+    {e:'✍️',l:'文章・デザイン・映像など表現する作業',t:{creative:2,technical:1}},
+    {e:'🎤',l:'人に教えたり、プレゼンしたりする',t:{social:2,empathy:1}},
+    {e:'🗺️',l:'計画を立てて実行に移す',t:{leadership:2,stable:1}},
+  ]},
+  {text:'お金への考え方は？',
+   opts:[
+    {e:'🏠',l:'安定した収入が最優先。生活の安心感が大事',t:{stable:2,logical:1}},
+    {e:'🌱',l:'やりがいがあれば多少少なくてもOK',t:{creative:2,empathy:1}},
+    {e:'💎',l:'実力に見合った高い報酬が欲しい',t:{leadership:2,technical:1}},
+    {e:'🌍',l:'社会に貢献できることにお金を使いたい',t:{empathy:2,social:1}},
+  ]},
+  {text:'仕事での充実感を感じるのは？',
+   opts:[
+    {e:'🧩',l:'難しい問題を自力で解決できたとき',t:{logical:2,research:1}},
+    {e:'🎪',l:'素晴らしい作品・プロダクトを完成させたとき',t:{creative:2,technical:1}},
+    {e:'🥰',l:'誰かに「ありがとう」と感謝されたとき',t:{empathy:2,social:1}},
+    {e:'🏅',l:'数字・目標を達成して結果を出したとき',t:{leadership:2,stable:1}},
+  ]},
+  {text:'チームの中でなりやすい役割は？',
+   opts:[
+    {e:'📋',l:'緻密な計画・分析担当のブレーン',t:{logical:2,stable:1}},
+    {e:'🎨',l:'斬新なアイデアを出すクリエイター',t:{creative:2,research:1}},
+    {e:'🌉',l:'メンバーをつなぐ橋渡し・調整役',t:{social:2,empathy:1}},
+    {e:'🎯',l:'方向性を示してチームを引っ張るリーダー',t:{leadership:2,technical:1}},
+  ]},
+  {text:'将来のビジョンはどれが一番近い？',
+   opts:[
+    {e:'🔭',l:'一つの専門分野を極めた第一人者になる',t:{research:2,technical:2,stable:1}},
+    {e:'🏢',l:'自分のビジネス・ブランドを持つ',t:{leadership:2,creative:1}},
+    {e:'🌏',l:'困っている人・社会課題の解決に貢献する',t:{empathy:2,social:1}},
+    {e:'👑',l:'大きなプロジェクトを率いて成功させる',t:{leadership:1,social:1,logical:1}},
+  ]},
+  {text:'AI・新技術の急速な発展についてどう思う？',
+   opts:[
+    {e:'⚙️',l:'積極的に習得して自分の武器にしたい',t:{technical:2,research:1}},
+    {e:'🎭',l:'創造的なツールとして面白く使いこなしたい',t:{creative:2,technical:1}},
+    {e:'💬',l:'人とのつながりや感情に活かしたい',t:{social:2,empathy:1}},
+    {e:'🛡️',l:'変化より安定した環境のほうが自分には合う',t:{stable:2,logical:1}},
+  ]},
+];
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let scores={},cur=0,busy=false;
+const initScores=()=>TRAITS.forEach(t=>scores[t]=0);
+
+/* ═══════════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════════ */
+const show=id=>{
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-'+id).classList.add('active');
+};
+function startQuiz(){initScores();cur=0;busy=false;renderQ();show('quiz')}
+function restart(){show('welcome')}
+
+/* ═══════════════════════════════════════════
+   QUIZ
+═══════════════════════════════════════════ */
+function renderQ(){
+  const q=QUESTIONS[cur];
+  const n=cur+1;
+  const pct=Math.round(n/QUESTIONS.length*100);
+  document.getElementById('qN').textContent=n;
+  document.getElementById('qBadge').textContent='Q'+n;
+  document.getElementById('qText').textContent=q.text;
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('progPct').textContent=pct+'%';
+  const ol=document.getElementById('opts');
+  ol.innerHTML='';
+  q.opts.forEach((o,i)=>{
+    const b=document.createElement('button');
+    b.className='opt';
+    b.innerHTML=`<span class="opt-em">${o.e}</span><span class="opt-label">${o.l}</span>`;
+    b.style.cssText=`animation:up .4s ${i*.06}s ease both`;
+    b.onclick=()=>pick(i,b,o);
+    ol.appendChild(b);
+  });
+}
+
+function pick(i,btn,opt){
+  if(busy)return;busy=true;
+  btn.classList.add('chosen');
+  document.querySelectorAll('.opt').forEach(b=>{b.disabled=true;b.style.pointerEvents='none'});
+  for(const[t,v]of Object.entries(opt.t))scores[t]=(scores[t]||0)+v;
+  setTimeout(()=>{
+    cur++;
+    if(cur>=QUESTIONS.length){runLoad()}
+    else{busy=false;renderQ()}
+  },320);
+}
+
+/* ═══════════════════════════════════════════
+   LOADING
+═══════════════════════════════════════════ */
+const LD_MSGS=['回答データを解析中…','特性プロファイルを構築中…','22職業とマッチング中…','スキルマップを生成中…','診断結果をまとめています…'];
+function runLoad(){
+  show('loading');
+  const fill=document.getElementById('ldFill');
+  const stepsEl=document.getElementById('ldSteps');
+  stepsEl.innerHTML=LD_MSGS.map(m=>`<div class="ld-step"><div class="ld-dot"></div>${m}</div>`).join('');
+  const steps=[...stepsEl.querySelectorAll('.ld-step')];
+  const thresholds=[0,20,45,68,88];
+  let w=0,si=0;
+  const iv=setInterval(()=>{
+    w=Math.min(w+1.4,100);
+    fill.style.width=w+'%';
+    while(si<thresholds.length&&w>=thresholds[si]){
+      if(steps[si-1])steps[si-1].classList.add('done');
+      if(steps[si])steps[si].classList.add('on');
+      si++;
+    }
+    if(w>=100){
+      clearInterval(iv);
+      steps.forEach(s=>s.classList.add('done'));
+      setTimeout(showResult,500);
+    }
+  },28);
+}
+
+/* ═══════════════════════════════════════════
+   MATCHING
+═══════════════════════════════════════════ */
+function matchCareers(){
+  const uv=TRAITS.map(t=>scores[t]||0);
+  const mx=Math.max(...uv)||1;
+  const nu=uv.map(v=>v/mx);
+  return CAREERS.map(c=>{
+    const cv=TRAITS.map(t=>c.profile[t]/10);
+    let d=0,um=0,cm=0;
+    for(let i=0;i<TRAITS.length;i++){d+=nu[i]*cv[i];um+=nu[i]**2;cm+=cv[i]**2}
+    return{career:c,score:d/(Math.sqrt(um)*Math.sqrt(cm)+1e-9)};
+  }).sort((a,b)=>b.score-a.score);
+}
+
+/* ═══════════════════════════════════════════
+   RESULT
+═══════════════════════════════════════════ */
+function showResult(){
+  const matches=matchCareers();
+  const top=matches[0].career;
+  const topScore=Math.round(matches[0].score*100);
+
+  document.getElementById('rIcon').textContent=top.icon;
+  document.getElementById('rName').textContent=top.name;
+  document.getElementById('rTagline').textContent=top.tagline;
+  document.getElementById('rSalary').textContent=top.salary;
+  document.getElementById('rDesc').textContent=top.desc;
+  document.getElementById('rSkills').innerHTML=top.skills.map(s=>`<span class="tag-s">${s}</span>`).join('');
+  document.getElementById('rPersonality').innerHTML=top.personality.map(p=>`<span class="tag-p">${p}</span>`).join('');
+
+  // Trait bars
+  const uv=TRAITS.map(t=>scores[t]||0);
+  const mx=Math.max(...uv)||1;
+  const tb=document.getElementById('tbars');
+  tb.innerHTML=TRAITS.map((t,i)=>{
+    const pct=Math.round(uv[i]/mx*100);
+    return`<div class="tbar">
+      <div class="tbar-head"><span>${TL[t]}</span><span>${pct}%</span></div>
+      <div class="tbar-track"><div class="tbar-fill" id="tf${i}" style="width:0%" data-w="${pct}"></div></div>
+    </div>`;
+  }).join('');
+
+  // Alt careers
+  const ag=document.getElementById('altGrid');
+  ag.innerHTML=matches.slice(1,4).map(m=>`
+    <div class="alt-card" onclick="openModal('${m.career.id}',${Math.round(m.score*100)})">
+      <div class="alt-em">${m.career.icon}</div>
+      <div class="alt-name">${m.career.name}</div>
+      <div class="alt-pct">適合度 ${Math.round(m.score*100)}%</div>
+      <div class="alt-salary">${m.career.salary}</div>
+    </div>`).join('');
+
+  show('result');
+
+  // Animate after render
+  requestAnimationFrame(()=>setTimeout(()=>{
+    TRAITS.forEach((_,i)=>{
+      const el=document.getElementById('tf'+i);
+      if(el)el.style.width=el.dataset.w+'%';
+    });
+    drawRadar(uv,mx);
+  },150));
+}
+
+/* ═══════════════════════════════════════════
+   RADAR CHART
+═══════════════════════════════════════════ */
+function drawRadar(uv,mx){
+  const c=document.getElementById('radar');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height,cx=W/2,cy=H/2+8,R=Math.min(W,H)*.33;
+  const N=TRAITS.length;
+  ctx.clearRect(0,0,W,H);
+  const ang=i=>Math.PI*2*i/N-Math.PI/2;
+  const pt=(i,r)=>({x:cx+r*Math.cos(ang(i)),y:cy+r*Math.sin(ang(i))});
+
+  // Grid
+  for(let ring=1;ring<=4;ring++){
+    const r=R*ring/4;
+    ctx.beginPath();
+    for(let i=0;i<N;i++){const p=pt(i,r);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}
+    ctx.closePath();
+    ctx.strokeStyle=`rgba(255,255,255,${ring===4?.12:.06})`;
+    ctx.lineWidth=1;ctx.stroke();
+  }
+  // Spokes
+  for(let i=0;i<N;i++){
+    const p=pt(i,R);
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=1;ctx.stroke();
+  }
+  // Data fill
+  const vals=uv.map(v=>v/mx);
+  ctx.beginPath();
+  for(let i=0;i<N;i++){const p=pt(i,R*vals[i]);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}
+  ctx.closePath();
+  const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+  grad.addColorStop(0,'rgba(124,111,252,.5)');
+  grad.addColorStop(1,'rgba(233,99,200,.25)');
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.strokeStyle='rgba(176,184,255,.7)';ctx.lineWidth=2;ctx.stroke();
+  // Dots
+  for(let i=0;i<N;i++){
+    const p=pt(i,R*vals[i]);
+    ctx.beginPath();ctx.arc(p.x,p.y,4.5,0,Math.PI*2);
+    ctx.fillStyle='#c4caff';ctx.fill();
+  }
+  // Labels
+  ctx.font='11.5px "Segoe UI",system-ui,sans-serif';
+  ctx.fillStyle='rgba(196,210,240,.82)';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let i=0;i<N;i++){
+    const p=pt(i,R+26);
+    ctx.fillText(TL[TRAITS[i]],p.x,p.y);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+function openModal(id,pct){
+  const c=CAREERS.find(x=>x.id===id);
+  if(!c)return;
+  document.getElementById('mIcon').textContent=c.icon;
+  document.getElementById('mName').textContent=c.name;
+  document.getElementById('mSalary').textContent=c.salary;
+  document.getElementById('mDesc').textContent=c.desc;
+  document.getElementById('mSkills').innerHTML=c.skills.map(s=>`<span class="tag-s">${s}</span>`).join('');
+  document.getElementById('mPersonality').innerHTML=c.personality.map(p=>`<span class="tag-p">${p}</span>`).join('');
+  document.getElementById('modal').classList.remove('hidden');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modal'))
+    document.getElementById('modal').classList.add('hidden');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').classList.add('hidden')});
+</script>
+</body>
+</html>
