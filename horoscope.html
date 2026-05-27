@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✨ 星座占い</title>
+<style>
+:root{
+  --bg:#06060f;--surf:rgba(255,255,255,.04);--surf2:rgba(255,255,255,.07);
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.15);
+  --text:#eceeff;--muted:#7880a8;--muted2:#a0a8cc;
+  --gold:#f6c94e;--gold2:#e89b20;
+  --p:#9d7dfc;--p2:#d46eea;--p3:#56c8f5;
+  --green:#34d399;--pink:#f472b6;--orange:#fb923c;
+  --r5:#fbbf24;--r4:#a78bfa;--r3:#38bdf8;--r2:#94a3b8;--r1:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;
+}
+
+/* ── STARFIELD ── */
+#stars-canvas{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  width:100%;height:100%;
+}
+
+/* ── NEBULA ORBS ── */
+.nebula{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.nb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.12;animation:nb-drift 20s ease-in-out infinite}
+.nb1{width:700px;height:700px;background:radial-gradient(#7c3aed,transparent 70%);top:-200px;left:-200px}
+.nb2{width:600px;height:600px;background:radial-gradient(#be185d,transparent 70%);bottom:-150px;right:-150px;animation-delay:-8s}
+.nb3{width:500px;height:500px;background:radial-gradient(#0e7490,transparent 70%);top:30%;left:40%;animation-delay:-14s;opacity:.09}
+@keyframes nb-drift{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-40px)}}
+
+/* ── LAYOUT ── */
+.wrap{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:20px 18px 60px}
+
+/* ── HEADER ── */
+header{text-align:center;padding:50px 0 36px}
+.h-date{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(246,201,78,.08);border:1px solid rgba(246,201,78,.2);
+  color:var(--gold);border-radius:50px;padding:6px 20px;
+  font-size:.8rem;font-weight:700;letter-spacing:.08em;margin-bottom:18px;
+}
+h1{
+  font-size:clamp(2rem,6vw,3rem);font-weight:900;letter-spacing:-.04em;
+  background:linear-gradient(130deg,#d4bbff 0%,#f9a8fa 40%,#fcd68a 80%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:10px;
+}
+.h-sub{color:var(--muted2);font-size:.97rem;line-height:1.7}
+
+/* ── SIGN SELECTOR ── */
+.selector-title{
+  text-align:center;font-size:.8rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:18px;
+}
+.sign-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);
+  gap:10px;margin-bottom:40px;
+}
+.sign-btn{
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:16px;padding:14px 6px 10px;
+  cursor:pointer;text-align:center;
+  transition:all .22s cubic-bezier(.4,0,.2,1);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+}
+.sign-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(157,125,252,.1),rgba(212,110,234,.07));
+  opacity:0;transition:opacity .22s;pointer-events:none;
+}
+.sign-btn:hover::before{opacity:1}
+.sign-btn:hover{border-color:rgba(157,125,252,.35);transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.4)}
+.sign-btn.active{
+  background:linear-gradient(135deg,rgba(157,125,252,.2),rgba(212,110,234,.15));
+  border-color:var(--p);
+  box-shadow:0 0 0 2px rgba(157,125,252,.3),0 10px 32px rgba(0,0,0,.4);
+  transform:translateY(-4px);
+}
+.sign-glyph{font-size:1.6rem;line-height:1}
+.sign-name{font-size:.68rem;font-weight:700;color:var(--muted2);line-height:1;letter-spacing:.02em}
+.sign-date{font-size:.58rem;color:var(--muted);line-height:1}
+.sign-btn.active .sign-name{color:var(--text)}
+
+/* ── RESULT SECTION ── */
+#result{
+  display:none;
+  animation:fade-up .55s cubic-bezier(.22,1,.36,1) both;
+}
+#result.show{display:block}
+@keyframes fade-up{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+
+/* Hero card */
+.r-hero{
+  background:linear-gradient(150deg,rgba(255,255,255,.05),rgba(255,255,255,.025));
+  border:1px solid var(--border2);border-radius:28px;
+  padding:40px 30px 32px;margin-bottom:16px;
+  text-align:center;position:relative;overflow:hidden;
+}
+.r-hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% -10%,rgba(157,125,252,.18),transparent 65%);
+  pointer-events:none;
+}
+.r-hero-top{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:20px}
+.r-hero-date{
+  font-size:.78rem;color:var(--muted2);font-weight:600;
+  background:rgba(255,255,255,.06);border:1px solid var(--border);
+  border-radius:50px;padding:4px 14px;
+}
+.r-glyph{font-size:5.5rem;line-height:1;margin-bottom:6px;display:block;
+  filter:drop-shadow(0 0 24px rgba(157,125,252,.6));
+  animation:glyph-float 4s ease-in-out infinite;
+}
+@keyframes glyph-float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.04)}}
+.r-sign-name{
+  font-size:2rem;font-weight:900;letter-spacing:-.03em;
+  background:linear-gradient(130deg,#c4b8ff,#f0a8f8);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:4px;
+}
+.r-sign-en{font-size:.88rem;color:var(--muted);font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:20px}
+
+/* Overall stars */
+.r-overall-stars{
+  display:flex;gap:6px;justify-content:center;margin-bottom:8px;
+}
+.star-icon{font-size:1.8rem;animation:star-pop .3s ease both}
+@keyframes star-pop{from{transform:scale(0) rotate(-30deg)}to{transform:scale(1) rotate(0deg)}}
+.r-overall-score{font-size:1rem;font-weight:700;color:var(--gold);margin-bottom:14px}
+.r-overall-msg{
+  font-size:1rem;color:var(--muted2);line-height:1.75;
+  max-width:480px;margin:0 auto 24px;
+}
+
+/* Today's word */
+.r-word{
+  display:inline-block;
+  background:linear-gradient(135deg,rgba(246,201,78,.12),rgba(251,146,60,.08));
+  border:1px solid rgba(246,201,78,.25);
+  border-radius:14px;padding:12px 28px;
+  font-size:.95rem;font-weight:700;color:var(--gold);
+  letter-spacing:.04em;
+}
+
+/* Fortune grid */
+.fortune-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.f-card{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:20px;padding:22px 20px;
+  position:relative;overflow:hidden;transition:transform .2s;
+}
+.f-card:hover{transform:translateY(-3px)}
+.f-card::before{content:'';position:absolute;inset:0;opacity:.06;pointer-events:none}
+.f-card.love::before{background:radial-gradient(circle at 100% 0%,#f472b6,transparent 70%)}
+.f-card.work::before{background:radial-gradient(circle at 100% 0%,#60a5fa,transparent 70%)}
+.f-card.money::before{background:radial-gradient(circle at 100% 0%,#34d399,transparent 70%)}
+.f-card.spirit::before{background:radial-gradient(circle at 100% 0%,#a78bfa,transparent 70%)}
+.fc-head{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
+}
+.fc-label{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em}
+.fc-icon{font-size:1.1rem}
+.fc-stars{display:flex;gap:2px}
+.fc-star{font-size:.95rem}
+.fc-star.on{filter:drop-shadow(0 0 3px currentColor)}
+.fc-msg{font-size:.86rem;color:var(--muted2);line-height:1.7}
+
+/* Lucky section */
+.lucky-section{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:20px;padding:24px 22px;margin-bottom:16px;
+}
+.lucky-title{
+  font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:16px;
+  display:flex;align-items:center;gap:8px;
+}
+.lucky-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.lucky-item{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:14px;padding:16px 10px;text-align:center;
+}
+.lucky-em{font-size:1.5rem;margin-bottom:6px}
+.lucky-label{font-size:.67rem;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.lucky-val{font-size:.9rem;font-weight:700;color:var(--text);line-height:1.3}
+.lucky-color-dot{
+  width:28px;height:28px;border-radius:50%;margin:0 auto 6px;
+  border:2px solid rgba(255,255,255,.15);
+  box-shadow:0 0 12px var(--dot-color,#fff);
+}
+
+/* Daily message */
+.daily-msg{
+  background:linear-gradient(135deg,rgba(157,125,252,.08),rgba(212,110,234,.05));
+  border:1px solid rgba(157,125,252,.2);
+  border-radius:20px;padding:22px 24px;margin-bottom:16px;
+  position:relative;overflow:hidden;
+}
+.daily-msg::before{
+  content:'"';position:absolute;top:-10px;left:14px;
+  font-size:5rem;color:rgba(157,125,252,.12);font-family:Georgia,serif;line-height:1;
+}
+.dm-head{font-size:.75rem;font-weight:700;color:var(--p);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.dm-text{font-size:.95rem;color:var(--muted2);line-height:1.8;font-style:italic;padding-left:4px}
+
+/* Star colors */
+.s5{color:var(--gold)}
+.s4{color:#c4b5fd}
+.s3{color:#7dd3fc}
+.s2{color:#94a3b8}
+.s1{color:#4b5563}
+
+/* Back btn */
+.back-btn{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.05);border:1px solid var(--border);
+  color:var(--muted2);border-radius:12px;padding:11px 22px;
+  font-size:.88rem;font-weight:600;cursor:pointer;
+  width:fit-content;margin-bottom:28px;
+  transition:all .2s;
+}
+.back-btn:hover{border-color:var(--border2);color:var(--text);background:rgba(255,255,255,.08)}
+
+/* Divider */
+.div-line{height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);margin:28px 0}
+
+@media(max-width:600px){
+  .sign-grid{grid-template-columns:repeat(4,1fr)}
+  .fortune-grid{grid-template-columns:1fr}
+  .lucky-grid{grid-template-columns:repeat(3,1fr)}
+  header{padding:36px 0 26px}
+  .r-hero{padding:30px 18px 24px}
+}
+@media(max-width:420px){
+  .sign-grid{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+<div class="nebula"><div class="nb nb1"></div><div class="nb nb2"></div><div class="nb nb3"></div></div>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="h-date" id="hDate">📅 Loading...</div>
+    <h1>✨ 星座占い</h1>
+    <div class="h-sub">今日の運勢を星々が告げる<br>あなたの星座を選んでください</div>
+  </header>
+
+  <!-- SIGN SELECTOR -->
+  <div class="selector-title">🔮 星座を選ぶ</div>
+  <div class="sign-grid" id="signGrid"></div>
+
+  <!-- RESULT -->
+  <div id="result">
+    <button class="back-btn" onclick="closeResult()">← 星座を選び直す</button>
+
+    <!-- Hero -->
+    <div class="r-hero">
+      <div class="r-hero-top">
+        <div class="r-hero-date" id="rDate"></div>
+      </div>
+      <span class="r-glyph" id="rGlyph"></span>
+      <div class="r-sign-name" id="rName"></div>
+      <div class="r-sign-en" id="rEn"></div>
+      <div class="r-overall-stars" id="rStars"></div>
+      <div class="r-overall-score" id="rScore"></div>
+      <div class="r-overall-msg" id="rMsg"></div>
+      <div class="r-word" id="rWord"></div>
+    </div>
+
+    <!-- Fortune grid -->
+    <div class="fortune-grid">
+      <div class="f-card love">
+        <div class="fc-head">
+          <div class="fc-label"><span class="fc-icon">💗</span>恋愛運</div>
+          <div class="fc-stars" id="loveStars"></div>
+        </div>
+        <div class="fc-msg" id="loveMsg"></div>
+      </div>
+      <div class="f-card work">
+        <div class="fc-head">
+          <div class="fc-label"><span class="fc-icon">💼</span>仕事運</div>
+          <div class="fc-stars" id="workStars"></div>
+        </div>
+        <div class="fc-msg" id="workMsg"></div>
+      </div>
+      <div class="f-card money">
+        <div class="fc-head">
+          <div class="fc-label"><span class="fc-icon">💰</span>金運</div>
+          <div class="fc-stars" id="moneyStars"></div>
+        </div>
+        <div class="fc-msg" id="moneyMsg"></div>
+      </div>
+      <div class="f-card spirit">
+        <div class="fc-head">
+          <div class="fc-label"><span class="fc-icon">🌿</span>健康運</div>
+          <div class="fc-stars" id="spiritStars"></div>
+        </div>
+        <div class="fc-msg" id="spiritMsg"></div>
+      </div>
+    </div>
+
+    <!-- Lucky -->
+    <div class="lucky-section">
+      <div class="lucky-title">⭐ Today's Lucky</div>
+      <div class="lucky-grid">
+        <div class="lucky-item">
+          <div class="lucky-em" id="lItem">🎁</div>
+          <div class="lucky-label">ラッキーアイテム</div>
+          <div class="lucky-val" id="lItemVal"></div>
+        </div>
+        <div class="lucky-item">
+          <div class="lucky-color-dot" id="lColorDot"></div>
+          <div class="lucky-label">ラッキーカラー</div>
+          <div class="lucky-val" id="lColorVal"></div>
+        </div>
+        <div class="lucky-item">
+          <div class="lucky-em">🔢</div>
+          <div class="lucky-label">ラッキーナンバー</div>
+          <div class="lucky-val" id="lNumVal" style="font-size:1.5rem;color:var(--gold)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily message -->
+    <div class="daily-msg">
+      <div class="dm-head">💫 今日のメッセージ</div>
+      <div class="dm-text" id="dailyMsg"></div>
+    </div>
+
+  </div><!-- /result -->
+
+</div><!-- /wrap -->
+
+<script>
+/* ══════════════════════════════════════════════
+   STARFIELD
+══════════════════════════════════════════════ */
+(function(){
+  const c=document.getElementById('stars-canvas');
+  const ctx=c.getContext('2d');
+  let stars=[];
+  function resize(){c.width=innerWidth;c.height=innerHeight;initStars()}
+  function initStars(){
+    stars=[];
+    const n=Math.floor(c.width*c.height/5000);
+    for(let i=0;i<n;i++){
+      stars.push({
+        x:Math.random()*c.width,y:Math.random()*c.height,
+        r:Math.random()*1.5+.2,
+        a:Math.random(),da:(Math.random()-.5)*.005+.002,
+        speed:Math.random()*.06+.02,phase:Math.random()*Math.PI*2
+      });
+    }
+  }
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    t+=.016;
+    stars.forEach(s=>{
+      s.a+=s.da;
+      if(s.a>1){s.a=1;s.da=-Math.abs(s.da)}
+      if(s.a<.05){s.a=.05;s.da=Math.abs(s.da)}
+      const tw=Math.sin(t*s.speed+s.phase)*.4+.6;
+      ctx.beginPath();
+      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(200,210,255,${s.a*tw})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);
+  resize();draw();
+})();
+
+/* ══════════════════════════════════════════════
+   DATA
+══════════════════════════════════════════════ */
+const SIGNS=[
+  {glyph:'♈',name:'牡羊座',en:'Aries',dates:'3/21〜4/19',el:'火',planet:'火星'},
+  {glyph:'♉',name:'牡牛座',en:'Taurus',dates:'4/20〜5/20',el:'地',planet:'金星'},
+  {glyph:'♊',name:'双子座',en:'Gemini',dates:'5/21〜6/20',el:'風',planet:'水星'},
+  {glyph:'♋',name:'蟹座',en:'Cancer',dates:'6/21〜7/22',el:'水',planet:'月'},
+  {glyph:'♌',name:'獅子座',en:'Leo',dates:'7/23〜8/22',el:'火',planet:'太陽'},
+  {glyph:'♍',name:'乙女座',en:'Virgo',dates:'8/23〜9/22',el:'地',planet:'水星'},
+  {glyph:'♎',name:'天秤座',en:'Libra',dates:'9/23〜10/22',el:'風',planet:'金星'},
+  {glyph:'♏',name:'蠍座',en:'Scorpio',dates:'10/23〜11/21',el:'水',planet:'冥王星'},
+  {glyph:'♐',name:'射手座',en:'Sagittarius',dates:'11/22〜12/21',el:'火',planet:'木星'},
+  {glyph:'♑',name:'山羊座',en:'Capricorn',dates:'12/22〜1/19',el:'地',planet:'土星'},
+  {glyph:'♒',name:'水瓶座',en:'Aquarius',dates:'1/20〜2/18',el:'風',planet:'天王星'},
+  {glyph:'♓',name:'魚座',en:'Pisces',dates:'2/19〜3/20',el:'水',planet:'海王星'},
+];
+
+const MSGS_OVERALL=[
+  ['今日は新しい出会いや発見が待っています。積極的に行動することで、思いがけないチャンスが舞い込むでしょう。','今日はエネルギーが溢れる一日。あなたの熱意が周囲を動かし、大きな成果をもたらす可能性があります。','直感を信じて動きましょう。今日はあなたの内なる声が正しい方向に導いてくれます。'],
+  ['今日は少しペースを落とし、立ち止まって考える時間を持ちましょう。焦らず着実に進めることが成功への近道です。','今日は周囲との調和を大切に。人間関係を丁寧に育てることで、あなたの基盤がより強固になります。','慎重さが幸運の鍵。情報収集をしっかり行い、準備万端で臨めば良い結果が期待できます。'],
+  ['今日は平穏な一日。特別な出来事はないかもしれませんが、日常の小さな幸せに気づく力があなたにはあります。','物事が予想通りに進まなくても焦らないで。遠回りに見えても、それが最善のルートかもしれません。','今日は休息も大切な仕事のうち。心と体を整えることで、明日以降の運気上昇につながります。'],
+  ['星の力があなたに味方しています。自信を持って行動すれば、望む結果に近づけるでしょう。','今日は人からのサポートが鍵。素直に助けを求めることで、物事がスムーズに動き出します。','今日はコミュニケーションの日。積極的に発言し、意見を交換することで新しいアイデアが生まれます。'],
+  ['今日は特別な運気の高まりを感じる一日。普段できないことに挑戦するには絶好のタイミングです。','あなたの魅力が最大限に輝く一日。自信を持って笑顔で過ごせば、良いことが次々と起こるでしょう。','今日はあなたが主役。周囲から注目を集め、存在感を発揮できる素晴らしい一日になりそうです。'],
+];
+
+const MSGS_LOVE=[
+  ['気になる人との距離が縮まるチャンスがあります。勇気を持って一歩踏み出してみましょう。','パートナーとの絆がさらに深まる一日。二人の時間を大切にすることで、愛情が深まります。','今日は自分を素直に表現して。ありのままのあなたが、誰かの心を動かすかもしれません。'],
+  ['恋愛は急がず自然な流れに任せましょう。焦りは禁物ですが、ご縁はすぐそこまで来ています。','今日は思いがけない出会いがあるかも。新しい場所や集まりに積極的に参加してみて。','パートナーとの小さなすれ違いは、話し合いで解決できます。誠実さを忘れずに。'],
+  ['恋愛面は安定した一日。特別な変化はないかもしれませんが、日常の中に愛を見つけましょう。','今日は恋愛より自分磨きに集中する日。内面を豊かにすることが、最大の恋愛準備です。','相手の気持ちを尊重することで、関係がより良くなります。押しすぎに注意して。'],
+  ['恋愛運が上昇中！積極的なアプローチが吉。勇気ある一言が関係を大きく動かすかも。','素敵な縁が近づいています。笑顔を忘れずに、オープンな心で人と接してみましょう。','パートナーとのデートや特別な会話が、二人の仲をぐっと深めてくれるでしょう。'],
+  ['今日の恋愛運は絶好調！気になる人への告白や、パートナーへのサプライズが大成功しそう。','運命的な出会いが期待できる一日。外出先での出来事が、恋のきっかけになるかもしれません。','愛情が溢れる一日。あなたの温かさが周囲を引き付け、恋愛面で嬉しいことが起こりそう。'],
+];
+
+const MSGS_WORK=[
+  ['仕事面でのひらめきが光る一日。アイデアを積極的にアウトプットすることで評価が上がります。','チームでの協力が結果を生みます。一人で抱え込まず、周囲と連携して取り組みましょう。','集中力が高まる一日。難しい課題にも冷静に向き合えば、必ず糸口が見つかります。'],
+  ['今日は丁寧さを意識して。スピードより精度を大切にすることで、信頼が積み上がります。','コミュニケーション不足が課題かも。積極的に報告・連絡・相談を心がけましょう。','今日は計画を見直す良いタイミング。優先順位を整理し直すことで、効率が上がります。'],
+  ['仕事は普通のペース。特別な成果は期待しにくいですが、地道な積み重ねが大切な一日です。','今日は無理せずコツコツと。焦って進めるより、着実な一歩が長期的な成功につながります。','ルーティンワークが捗る一日。普段は後回しにしている作業を片付けるチャンスです。'],
+  ['仕事運が好調！上司や同僚から良い評価をもらえそう。自信を持って仕事に臨みましょう。','新しいプロジェクトや役割を任される可能性あり。積極的に手を挙げることが吉です。','今日は交渉や商談がうまくいく日。言葉に力があるので、大切な話し合いに最適。'],
+  ['仕事運が絶好調！今日の頑張りが大きな成果に直結します。全力で取り組みましょう。','キャリアの転換点になる可能性があります。勇気ある決断が未来を大きく変えるでしょう。','あなたのスキルと実力が最大限に発揮される一日。周囲から一目置かれる存在になりそう。'],
+];
+
+const MSGS_MONEY=[
+  ['予想外の収入があるかも。ただし衝動買いには注意して、賢くお金を使いましょう。','今日は節約意識を高めて。小さな積み重ねが大きな財産を生み出します。','金銭的なチャンスが巡ってきそう。情報収集を怠らず、良い機会を逃さないように。'],
+  ['お金の使い方を見直す良い日。必要なものと欲しいものを区別して計画的に。','今日は大きな出費は避けましょう。慎重に判断することで、後悔のない選択ができます。','収支のバランスが大切な日。家計管理をしっかり行えば、将来の安心につながります。'],
+  ['金運は普通。特別な変化はありませんが、日常的なお金の管理が大切です。','今日は大きな金銭的動きはなさそう。焦らずじっくりと財務計画を考えましょう。','節約と投資のバランスを意識して。今日の一手が将来の豊かさを左右します。'],
+  ['金運上昇中！副収入や思わぬプレゼントが舞い込んでくる可能性があります。','買い物運が良い一日。欲しかったものを手に入れるのに最適なタイミングかもしれません。','金銭的なチャンスを活かせる一日。賢い投資や有益な取引が期待できます。'],
+  ['今日の金運は絶好調！宝くじや懸賞、臨時収入などの嬉しいサプライズがあるかも。','財運に恵まれた一日。価値あるものへの投資が将来の大きなリターンにつながります。','お金の巡りが良い日。予想以上の利益や、価値ある出会いがもたらされるでしょう。'],
+];
+
+const MSGS_SPIRIT=[
+  ['エネルギーが高まっています。体を動かすことで、さらに活力が湧いてくるでしょう。','心身のバランスが整う一日。好きな食べ物やリラックスタイムを積極的に取り入れて。','今日は体の声に耳を傾けて。疲れを感じたら無理せず休むことが大切です。'],
+  ['少し疲れが溜まっているかも。今日は早めに休息を取ることをおすすめします。','睡眠の質が下がっているかもしれません。就寝前のスマホ使用を控え、ゆっくり眠りましょう。','今日は体より心のケアを優先して。好きなことに時間を使うことで、心が元気になります。'],
+  ['健康面は安定しています。バランスの良い食事と適度な運動を心がけましょう。','規則正しい生活が健康の鍵。今日は生活リズムを整えることを意識してみて。','今日は平和な心で過ごせそう。ストレスを溜めずに、穏やかな一日を大切に。'],
+  ['今日は活力が溢れています！スポーツや体を使う活動が特に良い結果をもたらします。','心も体も絶好調の一日。前向きな気持ちが健康をさらに促進してくれます。','免疫力が高まっている感覚があります。積極的に外に出て、新鮮な空気を吸いましょう。'],
+  ['健康運が最高潮！どんな活動でも全力で取り組めるエネルギーが満ちています。','体が軽く、気持ちも明るい一日。この活力を活かして、新しいことに挑戦してみて。','心身共にベストコンディション！好きなことに没頭することで、さらに幸せが広がります。'],
+];
+
+const WORDS=[
+  '調和','変化','勇気','感謝','前進','創造','直感','絆','成長','希望',
+  '挑戦','自由','平和','情熱','信念','知恵','優雅','誠実','輝き','縁',
+  '革新','探求','癒し','豊穣','光明','決断','慈愛','進化','再生','奇跡',
+];
+
+const LUCKY_ITEMS=[
+  {e:'🌸',name:'桜のアクセサリー'},{e:'📚',name:'お気に入りの本'},
+  {e:'☕',name:'温かいコーヒー'},{e:'🌿',name:'観葉植物'},
+  {e:'💎',name:'クリスタル'},{e:'🕯️',name:'アロマキャンドル'},
+  {e:'🎵',name:'好きな音楽'},{e:'📓',name:'新しいノート'},
+  {e:'🍀',name:'四つ葉のクローバー'},{e:'🌙',name:'月モチーフグッズ'},
+  {e:'⭐',name:'スターモチーフ'},{e:'🦋',name:'蝶々柄のもの'},
+  {e:'🌊',name:'海や水のグッズ'},{e:'🔮',name:'水晶球'},
+  {e:'🌺',name:'花のアクセサリー'},{e:'🍵',name:'緑茶やハーブティー'},
+  {e:'🎨',name:'カラフルな文具'},{e:'🪐',name:'宇宙モチーフ'},
+  {e:'🌈',name:'虹色のアイテム'},{e:'🪴',name:'多肉植物'},
+  {e:'📿',name:'天然石ブレスレット'},{e:'🧸',name:'ぬいぐるみ'},
+  {e:'🕊️',name:'白いアイテム'},{e:'🍋',name:'柑橘系の香り'},
+  {e:'🪞',name:'手鏡'},{e:'🎀',name:'リボンモチーフ'},
+  {e:'🌟',name:'ゴールドアクセサリー'},{e:'🍃',name:'ミントアイテム'},
+  {e:'📎',name:'シルバーアクセサリー'},{e:'🧿',name:'お守り'},
+];
+
+const LUCKY_COLORS=[
+  {name:'ロイヤルパープル',hex:'#7c3aed'},{name:'ローズゴールド',hex:'#e8908a'},
+  {name:'サファイアブルー',hex:'#1d4ed8'},{name:'エメラルドグリーン',hex:'#059669'},
+  {name:'サンライズオレンジ',hex:'#ea580c'},{name:'ミスティコーラル',hex:'#fb7185'},
+  {name:'ムーンシルバー',hex:'#94a3b8'},{name:'サンフラワー',hex:'#eab308'},
+  {name:'スカイラベンダー',hex:'#8b5cf6'},{name:'ティールグリーン',hex:'#0d9488'},
+  {name:'チェリーレッド',hex:'#dc2626'},{name:'パールホワイト',hex:'#e2e8f0'},
+  {name:'コスモスピンク',hex:'#ec4899'},{name:'インディゴ',hex:'#4338ca'},
+  {name:'ミントグリーン',hex:'#6ee7b7'},{name:'シナモン',hex:'#d97706'},
+  {name:'オーシャンブルー',hex:'#0ea5e9'},{name:'マゼンタ',hex:'#d946ef'},
+  {name:'スレートグレー',hex:'#64748b'},{name:'ゴールデン',hex:'#f59e0b'},
+  {name:'ターコイズ',hex:'#14b8a6'},{name:'バーガンディ',hex:'#9f1239'},
+];
+
+const DAILY_MSGS=[
+  'あなたの可能性は星の数ほど広がっています。今日という日を精一杯生きることが、明日の輝きにつながります。',
+  '困難は成長のための贈り物。乗り越えた先に、より強くなったあなたが待っています。',
+  '小さな親切や思いやりが、大きな幸せの輪を生み出します。今日も周囲への愛を忘れずに。',
+  '焦らなくて大丈夫。宇宙のリズムに従えば、必要なものは必要な時に手に入ります。',
+  '今日あなたが選ぶ言葉と行動が、明日の現実を作ります。前向きな意思を持ち続けて。',
+  '失敗を恐れないで。完璧じゃなくても、挑戦し続けるあなたが美しい。',
+  'あなたの笑顔は世界を明るくする力があります。今日もたくさん笑って過ごしてください。',
+  '信じる力が奇跡を呼び込みます。自分自身を信頼して、今日という日を歩んでいきましょう。',
+  '感謝の気持ちは最大の引き寄せの力。今日も小さなことへの感謝を忘れずに。',
+  '休息は怠けではありません。しっかり休むことで、次の飛躍への準備ができます。',
+  'あなたが輝けば、周りも輝く。自分の光を隠さずに、今日も堂々と前を向いて。',
+  '変化を恐れないで。新しい扉の向こうには、素晴らしい世界が広がっています。',
+];
+
+/* ══════════════════════════════════════════════
+   SEEDED RNG (Mulberry32)
+══════════════════════════════════════════════ */
+function createRng(seed){
+  let s=seed>>>0;
+  return ()=>{
+    s+=0x6d2b79f5;
+    let t=s;
+    t=Math.imul(t^t>>>15,t|1);
+    t^=t+Math.imul(t^t>>>7,t|61);
+    return ((t^t>>>14)>>>0)/0xffffffff;
+  };
+}
+
+function dateSeed(){
+  const d=new Date();
+  return d.getFullYear()*10000+((d.getMonth()+1)*100)+d.getDate();
+}
+
+function pick(rng,arr){return arr[Math.floor(rng()*arr.length)]}
+function pickN(rng,arr,n){
+  const cp=[...arr];const out=[];
+  for(let i=0;i<n&&cp.length;i++){
+    const idx=Math.floor(rng()*cp.length);
+    out.push(cp.splice(idx,1)[0]);
+  }
+  return out;
+}
+
+/* ══════════════════════════════════════════════
+   DATE DISPLAY
+══════════════════════════════════════════════ */
+const WEEKDAYS=['日','月','火','水','木','金','土'];
+const now=new Date();
+const dateStr=`${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${WEEKDAYS[now.getDay()]}）`;
+document.getElementById('hDate').innerHTML=`📅 ${dateStr}`;
+
+/* ══════════════════════════════════════════════
+   BUILD SIGN GRID
+══════════════════════════════════════════════ */
+const grid=document.getElementById('signGrid');
+SIGNS.forEach((s,i)=>{
+  const btn=document.createElement('button');
+  btn.className='sign-btn';
+  btn.innerHTML=`<div class="sign-glyph">${s.glyph}</div><div class="sign-name">${s.name}</div><div class="sign-date">${s.dates}</div>`;
+  btn.style.animationDelay=(i*.03)+'s';
+  btn.style.animation='fade-up .5s ease both';
+  btn.onclick=()=>showFortune(i,btn);
+  grid.appendChild(btn);
+});
+
+/* ══════════════════════════════════════════════
+   SHOW FORTUNE
+══════════════════════════════════════════════ */
+function starsHtml(n,size=''){
+  const colors=['','#4b5563','#94a3b8','#7dd3fc','#c4b5fd','#fbbf24'];
+  let h='';
+  for(let i=1;i<=5;i++){
+    const on=i<=n;
+    h+=`<span class="fc-star${on?' on':''}" style="${on?'color:'+colors[n]:'color:#2d3748'}">${on?'★':'☆'}</span>`;
+  }
+  return h;
+}
+
+function bigStarsHtml(n){
+  const colors=['','#4b5563','#94a3b8','#7dd3fc','#c4b5fd','#fbbf24'];
+  const labels=['','★','★★','★★★','★★★★','★★★★★'];
+  return{
+    html:[...Array(5)].map((_,i)=>{
+      const on=i<n;
+      const delay=i*.08+'s';
+      return `<span class="star-icon" style="color:${on?colors[n]:'#1f2937'};animation-delay:${delay}">${on?'★':'☆'}</span>`;
+    }).join(''),
+    label:labels[n]+`（${n}/5）`,
+  };
+}
+
+function showFortune(idx,btn){
+  // Active state
+  document.querySelectorAll('.sign-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const sign=SIGNS[idx];
+  const seed=dateSeed()*31+idx*7919;
+  const rng=createRng(seed);
+
+  // Generate scores (1-5)
+  const scores={
+    overall:Math.floor(rng()*5)+1,
+    love:Math.floor(rng()*5)+1,
+    work:Math.floor(rng()*5)+1,
+    money:Math.floor(rng()*5)+1,
+    spirit:Math.floor(rng()*5)+1,
+  };
+
+  // Pick messages based on score (index 0-4 → score 1-5)
+  const omsg=pick(rng,MSGS_OVERALL[scores.overall-1]);
+  const lmsg=pick(rng,MSGS_LOVE[scores.love-1]);
+  const wmsg=pick(rng,MSGS_WORK[scores.work-1]);
+  const mmsg=pick(rng,MSGS_MONEY[scores.money-1]);
+  const smsg=pick(rng,MSGS_SPIRIT[scores.spirit-1]);
+  const word=pick(rng,WORDS);
+  const item=pick(rng,LUCKY_ITEMS);
+  const color=pick(rng,LUCKY_COLORS);
+  const num=Math.floor(rng()*99)+1;
+  const dmsg=pick(rng,DAILY_MSGS);
+
+  // Render hero
+  document.getElementById('rDate').textContent=dateStr;
+  document.getElementById('rGlyph').textContent=sign.glyph;
+  document.getElementById('rName').textContent=sign.name;
+  document.getElementById('rEn').textContent=sign.en+' ／ '+sign.planet+'支配';
+
+  const ob=bigStarsHtml(scores.overall);
+  document.getElementById('rStars').innerHTML=ob.html;
+  document.getElementById('rScore').textContent='総合運 '+ob.label;
+  document.getElementById('rMsg').textContent=omsg;
+  document.getElementById('rWord').textContent='今日のキーワード：「'+word+'」';
+
+  // Fortune cards
+  document.getElementById('loveStars').innerHTML=starsHtml(scores.love);
+  document.getElementById('loveMsg').textContent=lmsg;
+  document.getElementById('workStars').innerHTML=starsHtml(scores.work);
+  document.getElementById('workMsg').textContent=wmsg;
+  document.getElementById('moneyStars').innerHTML=starsHtml(scores.money);
+  document.getElementById('moneyMsg').textContent=mmsg;
+  document.getElementById('spiritStars').innerHTML=starsHtml(scores.spirit);
+  document.getElementById('spiritMsg').textContent=smsg;
+
+  // Lucky
+  document.getElementById('lItem').textContent=item.e;
+  document.getElementById('lItemVal').textContent=item.name;
+  const dot=document.getElementById('lColorDot');
+  dot.style.background=color.hex;
+  dot.style.setProperty('--dot-color',color.hex+'80');
+  document.getElementById('lColorVal').textContent=color.name;
+  document.getElementById('lNumVal').textContent=num;
+
+  // Daily message
+  document.getElementById('dailyMsg').textContent=dmsg;
+
+  // Show result
+  const res=document.getElementById('result');
+  res.classList.remove('show');
+  void res.offsetWidth;
+  res.classList.add('show');
+
+  // Scroll
+  setTimeout(()=>{
+    res.scrollIntoView({behavior:'smooth',block:'start'});
+  },50);
+}
+
+function closeResult(){
+  const res=document.getElementById('result');
+  res.classList.remove('show');
+  document.querySelectorAll('.sign-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('signGrid').scrollIntoView({behavior:'smooth',block:'center'});
+}
+</script>
+</body>
+</html>
