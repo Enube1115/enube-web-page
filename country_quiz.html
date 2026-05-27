@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌍 国当てクイズ</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --card: #111827;
+    --card2: #1a2235;
+    --accent: #3b82f6;
+    --accent2: #8b5cf6;
+    --gold: #f59e0b;
+    --green: #10b981;
+    --red: #ef4444;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --border: #1e293b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  /* Stars background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 70%, rgba(255,255,255,.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 90%, rgba(255,255,255,.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 60%, rgba(255,255,255,.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 35% 50%, rgba(255,255,255,.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 65% 85%, rgba(255,255,255,.4) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; width: 100%; max-width: 700px; padding: 20px; }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 30px 0 20px;
+  }
+  .header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -1px;
+  }
+  .header p { color: var(--muted); margin-top: 6px; font-size: .95rem; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 8px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .9rem;
+    font-weight: 600;
+  }
+  .stat-chip .icon { font-size: 1.1rem; }
+  .stat-chip .val { color: var(--accent); }
+  .stat-chip.streak .val { color: var(--gold); }
+  .stat-chip.correct .val { color: var(--green); }
+
+  /* Difficulty selector */
+  .difficulty-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .diff-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 7px 18px;
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    transition: all .2s;
+  }
+  .diff-btn:hover { border-color: var(--accent); color: var(--text); }
+  .diff-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .diff-btn.easy.active { background: var(--green); border-color: var(--green); }
+  .diff-btn.hard.active { background: var(--red); border-color: var(--red); }
+
+  /* Question card */
+  .q-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .q-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+  }
+  .q-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: .78rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .q-number { color: var(--accent); font-weight: 700; }
+
+  /* Flag display */
+  .flag-display {
+    font-size: 6rem;
+    text-align: center;
+    padding: 10px 0 20px;
+    line-height: 1;
+    filter: drop-shadow(0 4px 20px rgba(59,130,246,.3));
+    animation: floatFlag 3s ease-in-out infinite;
+  }
+  @keyframes floatFlag {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* Capital question */
+  .capital-question {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 20px 0;
+    color: var(--text);
+  }
+  .capital-city {
+    font-size: 2.2rem;
+    color: var(--gold);
+    display: block;
+    margin-top: 8px;
+  }
+
+  /* Shape SVG */
+  .shape-container {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0 20px;
+  }
+  .shape-container svg {
+    width: 180px;
+    height: 140px;
+    filter: drop-shadow(0 4px 20px rgba(139,92,246,.4));
+  }
+
+  /* Hint question */
+  .hint-list {
+    list-style: none;
+    padding: 10px 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .hint-list li {
+    background: var(--card2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    font-size: .95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hint-num {
+    background: var(--accent2);
+    color: #fff;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .q-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    background: var(--border);
+    border-radius: 4px;
+    height: 4px;
+    margin-top: 16px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    border-radius: 4px;
+    transition: width .5s ease;
+  }
+
+  /* Answer grid */
+  .answer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .ans-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 16px 14px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 64px;
+    line-height: 1.3;
+  }
+  .ans-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(59,130,246,.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(59,130,246,.2);
+  }
+  .ans-btn.correct {
+    background: rgba(16,185,129,.15);
+    border-color: var(--green);
+    color: var(--green);
+    animation: pulse-green .4s ease;
+  }
+  .ans-btn.wrong {
+    background: rgba(239,68,68,.1);
+    border-color: var(--red);
+    color: var(--red);
+    animation: shake .3s ease;
+  }
+  @keyframes pulse-green {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  /* Next button */
+  .next-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: none;
+    transition: opacity .2s, transform .2s;
+    letter-spacing: .5px;
+  }
+  .next-btn:hover { opacity: .9; transform: translateY(-1px); }
+  .next-btn.show { display: block; animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+  /* Result card */
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-emoji { font-size: 4rem; margin-bottom: 12px; }
+  .result-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+  .result-score {
+    font-size: 3.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--gold), #f97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 12px 0;
+  }
+  .result-stats {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin: 16px 0 24px;
+    flex-wrap: wrap;
+  }
+  .result-stat {
+    background: var(--card2);
+    border-radius: 12px;
+    padding: 12px 20px;
+    min-width: 110px;
+  }
+  .result-stat .rs-val { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+  .result-stat .rs-label { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+  .restart-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 14px 40px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .2s, opacity .2s;
+  }
+  .restart-btn:hover { transform: scale(1.04); opacity: .9; }
+
+  /* Feedback toast */
+  .feedback {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 10px 24px;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .feedback.show { transform: translateX(-50%) translateY(0); }
+  .feedback.ok { border-color: var(--green); color: var(--green); }
+  .feedback.ng { border-color: var(--red); color: var(--red); }
+
+  /* Region badge */
+  .region-badge {
+    display: inline-block;
+    background: rgba(59,130,246,.1);
+    border: 1px solid rgba(59,130,246,.3);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: .75rem;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .hidden { display: none !important; }
+
+  /* Confetti */
+  .confetti-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    overflow: hidden;
+  }
+  .confetti-piece {
+    position: absolute;
+    width: 10px; height: 10px;
+    top: -20px;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  @media (max-width: 480px) {
+    .answer-grid { grid-template-columns: 1fr; }
+    .header h1 { font-size: 1.7rem; }
+    .flag-display { font-size: 5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🌍 国当てクイズ</h1>
+    <p>世界の国々を当てよう！</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-chip">
+      <span class="icon">🏆</span>
+      <span>スコア</span>
+      <span class="val" id="scoreDisplay">0</span>
+    </div>
+    <div class="stat-chip streak">
+      <span class="icon">🔥</span>
+      <span>連続正解</span>
+      <span class="val" id="streakDisplay">0</span>
+    </div>
+    <div class="stat-chip correct">
+      <span class="icon">✅</span>
+      <span class="val" id="correctDisplay">0</span>/<span class="val" id="totalDisplay">0</span>
+    </div>
+    <div class="stat-chip">
+      <span class="icon">📋</span>
+      <span>問題</span>
+      <span class="val" id="qNumDisplay">1</span>/10
+    </div>
+  </div>
+
+  <!-- Difficulty -->
+  <div class="difficulty-row">
+    <button class="diff-btn easy" data-diff="easy" onclick="setDifficulty('easy')">😊 かんたん</button>
+    <button class="diff-btn active" data-diff="medium" onclick="setDifficulty('medium')">🎯 ふつう</button>
+    <button class="diff-btn hard" data-diff="hard" onclick="setDifficulty('hard')">🔥 むずかしい</button>
+  </div>
+
+  <!-- Quiz area -->
+  <div id="quizArea">
+    <div class="q-card" id="questionCard">
+      <div id="qTypeBadge" class="q-type-badge"></div>
+      <div id="questionContent"></div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar" style="width:10%"></div>
+      </div>
+    </div>
+    <div class="answer-grid" id="answerGrid"></div>
+    <button class="next-btn" id="nextBtn" onclick="nextQuestion()">次の問題へ →</button>
+  </div>
+
+  <!-- Result area -->
+  <div id="resultArea" class="hidden">
+    <div class="result-card">
+      <div class="result-emoji" id="resultEmoji"></div>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-score" id="resultScore"></div>
+      <div class="result-stats">
+        <div class="result-stat">
+          <div class="rs-val" id="rs-correct"></div>
+          <div class="rs-label">正解数</div>
+        </div>
+        <div class="result-stat">
+          <div class="rs-val" id="rs-streak"></div>
+          <div class="rs-label">最大連続</div>
+        </div>
+        <div class="result-stat">
+          <div class="rs-val" id="rs-acc"></div>
+          <div class="rs-label">正解率</div>
+        </div>
+      </div>
+      <button class="restart-btn" onclick="restart()">🔄 もう一度</button>
+    </div>
+  </div>
+</div>
+
+<div class="feedback" id="feedback"></div>
+<div class="confetti-container" id="confettiContainer"></div>
+
+<script>
+// ===== COUNTRY DATA =====
+const COUNTRIES = [
+  // Asia
+  { name:"日本", flag:"🇯🇵", capital:"東京", region:"アジア", hints:["島国","富士山","桜が有名","アニメの聖地"], shape:"japan" },
+  { name:"中国", flag:"🇨🇳", capital:"北京", region:"アジア", hints:["世界最大の人口","万里の長城","漢字の発祥地","シルクロードの起点"] },
+  { name:"韓国", flag:"🇰🇷", capital:"ソウル", region:"アジア", hints:["キムチが有名","K-POPの本場","朝鮮半島南部","38度線で分断"] },
+  { name:"インド", flag:"🇮🇳", capital:"ニューデリー", region:"アジア", hints:["カレーの発祥地","タージマハル","ヒンドゥー教が多い","IT産業が盛ん"] },
+  { name:"タイ", flag:"🇹🇭", capital:"バンコク", region:"アジア", hints:["微笑みの国","仏教寺院が多い","トムヤムクン","王国制"] },
+  { name:"ベトナム", flag:"🇻🇳", capital:"ハノイ", region:"アジア", hints:["フォーが有名","S字型の国土","アオザイが民族衣装","コーヒー大国"] },
+  { name:"インドネシア", flag:"🇮🇩", capital:"ジャカルタ", region:"アジア", hints:["世界最大の島嶼国","バリ島が有名","イスラム教徒が多い","1万7千島以上"] },
+  { name:"フィリピン", flag:"🇵🇭", capital:"マニラ", region:"アジア", hints:["7000以上の島","英語が公用語","カトリックが多い","太平洋の真珠"] },
+  { name:"マレーシア", flag:"🇲🇾", capital:"クアラルンプール", region:"アジア", hints:["ペトロナスタワー","熱帯雨林","多民族国家","ドリアンが有名"] },
+  { name:"サウジアラビア", flag:"🇸🇦", capital:"リヤド", region:"アジア", hints:["石油大国","イスラム教の聖地","砂漠が広大","メッカがある"] },
+  { name:"トルコ", flag:"🇹🇷", capital:"アンカラ", region:"アジア", hints:["アジアとヨーロッパをまたぐ","イスタンブール","ケバブが有名","地中海に面する"] },
+  { name:"イスラエル", flag:"🇮🇱", capital:"エルサレム", region:"アジア", hints:["聖地エルサレム","ユダヤ教の国","死海がある","IT先進国"] },
+  { name:"アラブ首長国連邦", flag:"🇦🇪", capital:"アブダビ", region:"アジア", hints:["ドバイが有名","石油産出国","砂漠の摩天楼","7つの首長国"] },
+  { name:"イラン", flag:"🇮🇷", capital:"テヘラン", region:"アジア", hints:["ペルシャの後継","イスラム共和国","絨毯が有名","石油埋蔵量が多い"] },
+  { name:"パキスタン", flag:"🇵🇰", capital:"イスラマバード", region:"アジア", hints:["カラコルム山脈","イスラム教国","インドの隣","クリケットが人気"] },
+  { name:"カンボジア", flag:"🇰🇭", capital:"プノンペン", region:"アジア", hints:["アンコールワット","クメール文明","メコン川","国旗に建造物"] },
+  { name:"ミャンマー", flag:"🇲🇲", capital:"ネピドー", region:"アジア", hints:["旧ビルマ","仏塔が多い","ヒスイの産地","インド洋に面する"] },
+  { name:"モンゴル", flag:"🇲🇳", capital:"ウランバートル", region:"アジア", hints:["遊牧民の国","チンギス・ハン","ゲルに住む","内陸国","広大な草原"] },
+  { name:"ネパール", flag:"🇳🇵", capital:"カトマンズ", region:"アジア", hints:["エベレストがある","国旗が四角形でない","ヒマラヤ山脈","内陸国"] },
+  { name:"スリランカ", flag:"🇱🇰", capital:"コロンボ", region:"アジア", hints:["インドの南の島国","紅茶が有名","仏教国","セイロン島"] },
+
+  // Europe
+  { name:"フランス", flag:"🇫🇷", capital:"パリ", region:"ヨーロッパ", hints:["エッフェル塔","ワインが有名","芸術の都","世界最多の観光客数"] },
+  { name:"ドイツ", flag:"🇩🇪", capital:"ベルリン", region:"ヨーロッパ", hints:["ビールと自動車","ベルリンの壁","EU最大経済国","クリスマスマーケット"] },
+  { name:"イギリス", flag:"🇬🇧", capital:"ロンドン", region:"ヨーロッパ", hints:["ビッグベン","紅茶文化","王室がある","島国"] },
+  { name:"イタリア", flag:"🇮🇹", capital:"ローマ", region:"ヨーロッパ", hints:["ピザとパスタ","コロッセオ","ファッションの都","ブーツ型の国土"] },
+  { name:"スペイン", flag:"🇪🇸", capital:"マドリード", region:"ヨーロッパ", hints:["フラメンコ","サグラダファミリア","闘牛","地中海と大西洋に面する"] },
+  { name:"ポルトガル", flag:"🇵🇹", capital:"リスボン", region:"ヨーロッパ", hints:["大航海時代","ファドの発祥地","ポートワイン","イベリア半島の西端"] },
+  { name:"オランダ", flag:"🇳🇱", capital:"アムステルダム", region:"ヨーロッパ", hints:["チューリップ","風車","ゴッホの故郷","干拓地が多い"] },
+  { name:"ベルギー", flag:"🇧🇪", capital:"ブリュッセル", region:"ヨーロッパ", hints:["チョコレートとワッフル","EU本部","小便小僧","多言語国家"] },
+  { name:"スイス", flag:"🇨🇭", capital:"ベルン", region:"ヨーロッパ", hints:["アルプス山脈","永世中立国","時計が有名","チーズの名産"] },
+  { name:"オーストリア", flag:"🇦🇹", capital:"ウィーン", region:"ヨーロッパ", hints:["音楽の都","モーツァルトの故郷","ハプスブルク家","スキーが人気"] },
+  { name:"スウェーデン", flag:"🇸🇪", capital:"ストックホルム", region:"ヨーロッパ", hints:["IKEA","ノーベル賞","北欧福祉国家","バイキングの子孫"] },
+  { name:"ノルウェー", flag:"🇳🇴", capital:"オスロ", region:"ヨーロッパ", hints:["フィヨルド","オーロラ","石油産出国","スキー発祥地"] },
+  { name:"デンマーク", flag:"🇩🇰", capital:"コペンハーゲン", region:"ヨーロッパ", hints:["人魚姫の故郷","LEGO","デザイン王国","世界最古の国旗"] },
+  { name:"フィンランド", flag:"🇫🇮", capital:"ヘルシンキ", region:"ヨーロッパ", hints:["サンタの故郷","森と湖","サウナ発祥地","ムーミン"] },
+  { name:"ポーランド", flag:"🇵🇱", capital:"ワルシャワ", region:"ヨーロッパ", hints:["コペルニクスの故郷","ピエロギ","中欧の大国","琥珀の産地"] },
+  { name:"ロシア", flag:"🇷🇺", capital:"モスクワ", region:"ヨーロッパ", hints:["世界最大の国","赤の広場","マトリョーシカ","極寒の地"] },
+  { name:"ウクライナ", flag:"🇺🇦", capital:"キーウ", region:"ヨーロッパ", hints:["ひまわり畑","東欧最大面積","ボルシチ発祥","チェルノブイリ"] },
+  { name:"チェコ", flag:"🇨🇿", capital:"プラハ", region:"ヨーロッパ", hints:["黄金の都プラハ","ピルスナーの発祥","中欧の宝石","ビール消費量世界一"] },
+  { name:"ハンガリー", flag:"🇭🇺", capital:"ブダペスト", region:"ヨーロッパ", hints:["温泉大国","ドナウ川沿い","グヤーシュ","ルービックキューブの発明"] },
+  { name:"ギリシャ", flag:"🇬🇷", capital:"アテネ", region:"ヨーロッパ", hints:["古代文明発祥","パルテノン神殿","地中海料理","オリンピック発祥地"] },
+  { name:"クロアチア", flag:"🇭🇷", capital:"ザグレブ", region:"ヨーロッパ", hints:["アドリア海の宝石","プリトヴィッツェ湖群","ネクタイ発祥","ドブロブニク"] },
+  { name:"ルーマニア", flag:"🇷🇴", capital:"ブカレスト", region:"ヨーロッパ", hints:["ドラキュラ伝説","カルパティア山脈","東欧の仏光","トランシルヴァニア"] },
+
+  // Africa
+  { name:"エジプト", flag:"🇪🇬", capital:"カイロ", region:"アフリカ", hints:["ピラミッド","スフィンクス","ナイル川","古代文明"] },
+  { name:"南アフリカ", flag:"🇿🇦", capital:"プレトリア", region:"アフリカ", hints:["マンデラの故郷","ダイヤモンド産地","喜望峰","レインボーネーション"] },
+  { name:"ナイジェリア", flag:"🇳🇬", capital:"アブジャ", region:"アフリカ", hints:["アフリカ最大人口","石油産出国","ナイジャー川","西アフリカ"] },
+  { name:"ケニア", flag:"🇰🇪", capital:"ナイロビ", region:"アフリカ", hints:["マラソン大国","サバンナ","マサイ族","キリマンジャロの麓"] },
+  { name:"エチオピア", flag:"🇪🇹", capital:"アディスアベバ", region:"アフリカ", hints:["コーヒー発祥地","古代の王国","内陸国","AU本部がある"] },
+  { name:"モロッコ", flag:"🇲🇦", capital:"ラバト", region:"アフリカ", hints:["マラケシュ","砂漠と海","アルガンオイル","北アフリカ"] },
+  { name:"タンザニア", flag:"🇹🇿", capital:"ドドマ", region:"アフリカ", hints:["キリマンジャロ","セレンゲティ","ザンジバル島","東アフリカ"] },
+  { name:"ガーナ", flag:"🇬🇭", capital:"アクラ", region:"アフリカ", hints:["カカオ大国","初の独立サハラ以南","金の産地","西アフリカ"] },
+  { name:"マダガスカル", flag:"🇲🇬", capital:"アンタナナリボ", region:"アフリカ", hints:["島国","固有種が多い","インド洋","バオバブの木"] },
+  { name:"セネガル", flag:"🇸🇳", capital:"ダカール", region:"アフリカ", hints:["アフリカ最西端","ダカールラリー","西アフリカ","イスラム文化"] },
+  { name:"カメルーン", flag:"🇨🇲", capital:"ヤウンデ", region:"アフリカ", hints:["アフリカのミニチュア","多様な気候","中央アフリカ","ゴリラが生息"] },
+  { name:"ウガンダ", flag:"🇺🇬", capital:"カンパラ", region:"アフリカ", hints:["アフリカの真珠","山岳ゴリラ","ビクトリア湖","赤道直下"] },
+  { name:"ザンビア", flag:"🇿🇲", capital:"ルサカ", region:"アフリカ", hints:["ビクトリア瀑布","銅産出国","内陸国","南部アフリカ"] },
+  { name:"チュニジア", flag:"🇹🇳", capital:"チュニス", region:"アフリカ", hints:["北アフリカ","地中海沿岸","カルタゴ遺跡","アラブの春発祥"] },
+  { name:"アルジェリア", flag:"🇩🇿", capital:"アルジェ", region:"アフリカ", hints:["アフリカ最大面積","サハラ砂漠","石油大国","北アフリカ"] },
+
+  // Americas
+  { name:"アメリカ", flag:"🇺🇸", capital:"ワシントンD.C.", region:"アメリカ", hints:["自由の女神","ハリウッド","世界最大の経済大国","50州"] },
+  { name:"カナダ", flag:"🇨🇦", capital:"オタワ", region:"アメリカ", hints:["メープルリーフ","多文化主義","北米最大面積","ナイアガラ"] },
+  { name:"メキシコ", flag:"🇲🇽", capital:"メキシコシティ", region:"アメリカ", hints:["タコスとテキーラ","マヤ・アステカ文明","ラテンアメリカ北部","石油産出国"] },
+  { name:"ブラジル", flag:"🇧🇷", capital:"ブラジリア", region:"アメリカ", hints:["サッカー王国","アマゾン川","カーニバル","南米最大"] },
+  { name:"アルゼンチン", flag:"🇦🇷", capital:"ブエノスアイレス", region:"アメリカ", hints:["タンゴ発祥","パンパ草原","マテ茶","南米南端"] },
+  { name:"チリ", flag:"🇨🇱", capital:"サンティアゴ", region:"アメリカ", hints:["南北に細長い国","アンデス山脈","パタゴニア","ワインの名産"] },
+  { name:"コロンビア", flag:"🇨🇴", capital:"ボゴタ", region:"アメリカ", hints:["コーヒーの名産","南米北部","カーニバル","エスコバルの故郷"] },
+  { name:"ペルー", flag:"🇵🇪", capital:"リマ", region:"アメリカ", hints:["マチュピチュ","インカ帝国","アマゾン源流","コンドル"] },
+  { name:"ベネズエラ", flag:"🇻🇪", capital:"カラカス", region:"アメリカ", hints:["エンジェルフォール","石油埋蔵量世界一","カリブ海沿岸","南米北端"] },
+  { name:"エクアドル", flag:"🇪🇨", capital:"キト", region:"アメリカ", hints:["赤道が通る","ガラパゴス諸島","アンデス山脈","バナナ大国"] },
+  { name:"ボリビア", flag:"🇧🇴", capital:"スクレ", region:"アメリカ", hints:["ウユニ塩湖","内陸国","アンデスの高地","チチカカ湖"] },
+  { name:"ウルグアイ", flag:"🇺🇾", capital:"モンテビデオ", region:"アメリカ", hints:["南米最小国の一つ","牛肉の名産","カーニバル","進歩的な政策"] },
+  { name:"パラグアイ", flag:"🇵🇾", capital:"アスンシオン", region:"アメリカ", hints:["内陸国","マテ茶の消費","南アメリカ","イタイプダム"] },
+  { name:"キューバ", flag:"🇨🇺", capital:"ハバナ", region:"アメリカ", hints:["チェ・ゲバラ","葉巻の産地","社会主義国","カリブ海の真珠"] },
+  { name:"ジャマイカ", flag:"🇯🇲", capital:"キングストン", region:"アメリカ", hints:["レゲエ発祥","ウサイン・ボルト","カリブ海","コーヒーの名産"] },
+
+  // Oceania
+  { name:"オーストラリア", flag:"🇦🇺", capital:"キャンベラ", region:"オセアニア", hints:["コアラとカンガルー","大陸全体が一国","南半球","グレートバリアリーフ"] },
+  { name:"ニュージーランド", flag:"🇳🇿", capital:"ウェリントン", region:"オセアニア", hints:["ラグビーのオールブラックス","キウイフルーツ","南太平洋","ロードオブザリング撮影地"] },
+  { name:"フィジー", flag:"🇫🇯", capital:"スバ", region:"オセアニア", hints:["南太平洋の楽園","サンゴ礁","リゾートアイランド","ラグビーが人気"] },
+  { name:"パプアニューギニア", flag:"🇵🇬", capital:"ポートモレスビー", region:"オセアニア", hints:["多様な民族","熱帯雨林","南太平洋","極楽鳥が生息"] },
+  { name:"サモア", flag:"🇼🇸", capital:"アピア", region:"オセアニア", hints:["南太平洋の小国","タトゥー文化","ポリネシア","クリスマス島に近い"] },
+  { name:"トンガ", flag:"🇹🇴", capital:"ヌクアロファ", region:"オセアニア", hints:["太平洋の王国","ポリネシア","ラグビーが強い","海底火山噴火2022年"] },
+];
+
+// SVG shapes for some countries
+const SHAPES = {
+  japan: `<svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round">
+      <!-- Hokkaido -->
+      <path d="M 90 10 L 110 8 L 140 15 L 155 25 L 145 35 L 130 38 L 110 35 L 95 28 Z" fill="rgba(96,165,250,0.2)"/>
+      <!-- Honshu -->
+      <path d="M 70 40 L 95 35 L 115 38 L 125 50 L 120 65 L 110 80 L 95 90 L 80 95 L 65 85 L 55 70 L 50 55 L 58 45 Z" fill="rgba(96,165,250,0.2)"/>
+      <!-- Shikoku -->
+      <path d="M 78 98 L 95 95 L 105 100 L 100 110 L 85 112 L 75 105 Z" fill="rgba(96,165,250,0.2)"/>
+      <!-- Kyushu -->
+      <path d="M 55 88 L 68 85 L 72 95 L 68 110 L 55 115 L 45 108 L 42 95 L 48 88 Z" fill="rgba(96,165,250,0.2)"/>
+    </g>
+  </svg>`,
+};
+
+// ===== GAME STATE =====
+let allCountries = [...COUNTRIES];
+let difficulty = 'medium';
+let currentQuestion = 0;
+let totalQuestions = 10;
+let score = 0;
+let streak = 0;
+let maxStreak = 0;
+let correctCount = 0;
+let answered = false;
+let questionList = [];
+let questionTypes = ['flag','capital','hint'];
+
+// ===== DIFFICULTY =====
+function setDifficulty(d) {
+  difficulty = d;
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-diff="${d}"]`).classList.add('active');
+  restart();
+}
+
+// ===== SHUFFLE =====
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ===== BUILD QUESTION LIST =====
+function buildQuestions() {
+  let pool = shuffle(COUNTRIES);
+  questionList = [];
+  const types = shuffle([...questionTypes, ...questionTypes, 'flag', 'flag', 'capital']);
+  for (let i = 0; i < totalQuestions; i++) {
+    const country = pool[i % pool.length];
+    const type = types[i % types.length];
+    questionList.push({ country, type });
+  }
+}
+
+// ===== GET WRONG OPTIONS =====
+function getWrongOptions(correct, count) {
+  let pool = COUNTRIES.filter(c => c.name !== correct.name);
+  if (difficulty === 'hard') {
+    // Same region first
+    const same = pool.filter(c => c.region === correct.region);
+    const other = pool.filter(c => c.region !== correct.region);
+    pool = shuffle([...same, ...other]);
+  } else if (difficulty === 'easy') {
+    // Different regions
+    pool = shuffle(pool.filter(c => c.region !== correct.region));
+    if (pool.length < count) pool = shuffle(COUNTRIES.filter(c => c.name !== correct.name));
+  } else {
+    pool = shuffle(pool);
+  }
+  return pool.slice(0, count);
+}
+
+// ===== RENDER QUESTION =====
+function renderQuestion() {
+  if (currentQuestion >= totalQuestions) {
+    showResult();
+    return;
+  }
+  answered = false;
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.classList.remove('show');
+
+  const { country, type } = questionList[currentQuestion];
+  const wrongOptions = getWrongOptions(country, 3);
+  const options = shuffle([country, ...wrongOptions]);
+
+  // Progress
+  const progress = ((currentQuestion + 1) / totalQuestions) * 100;
+  document.getElementById('progressBar').style.width = progress + '%';
+  document.getElementById('qNumDisplay').textContent = currentQuestion + 1;
+
+  // Type badge
+  const typeInfo = {
+    flag: { icon: '🚩', label: '国旗クイズ' },
+    capital: { icon: '🏛️', label: '首都クイズ' },
+    hint: { icon: '💡', label: 'ヒントクイズ' },
+    shape: { icon: '🗺️', label: '国の形クイズ' },
+  };
+  const ti = typeInfo[type] || typeInfo.hint;
+  document.getElementById('qTypeBadge').innerHTML =
+    `<span>${ti.icon}</span>${ti.label} <span class="region-badge">${country.region}</span>`;
+
+  // Question content
+  const qc = document.getElementById('questionContent');
+  let html = '';
+  if (type === 'flag') {
+    html = `<div class="flag-display">${country.flag}</div>
+            <div class="q-text">この国旗の国はどこ？</div>`;
+  } else if (type === 'capital') {
+    html = `<div class="capital-question">首都が<span class="capital-city">${country.capital}</span>の国はどこ？</div>`;
+  } else if (type === 'shape' && SHAPES[country.name]) {
+    html = `<div class="shape-container">${SHAPES[country.name]}</div>
+            <div class="q-text">この形の国はどこ？</div>`;
+  } else {
+    // Hints
+    const hintCount = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 2 : 1;
+    const hints = shuffle(country.hints).slice(0, hintCount);
+    html = `<ul class="hint-list">${hints.map((h, i) =>
+      `<li><span class="hint-num">${i + 1}</span>${h}</li>`
+    ).join('')}</ul>
+    <div class="q-text">ヒントからどこの国？</div>`;
+  }
+  qc.innerHTML = html;
+
+  // Answer buttons
+  const grid = document.getElementById('answerGrid');
+  grid.innerHTML = '';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'ans-btn';
+    btn.innerHTML = `${opt.flag} ${opt.name}`;
+    btn.dataset.name = opt.name;
+    btn.onclick = () => selectAnswer(btn, opt.name === country.name, country.name);
+    grid.appendChild(btn);
+  });
+}
+
+// ===== SELECT ANSWER =====
+function selectAnswer(btn, isCorrect, correctName) {
+  if (answered) return;
+  answered = true;
+
+  // Disable all buttons
+  document.querySelectorAll('.ans-btn').forEach(b => {
+    b.disabled = true;
+    if (b.dataset.name === correctName) b.classList.add('correct');
+  });
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    streak++;
+    correctCount++;
+    if (streak > maxStreak) maxStreak = streak;
+    const points = difficulty === 'easy' ? 5 : difficulty === 'medium' ? 10 : 20;
+    const bonus = streak >= 3 ? Math.floor(streak / 3) * 5 : 0;
+    score += points + bonus;
+    showFeedback(streak >= 3 ? `🔥 ${streak}連続！ +${points + bonus}pt` : `✅ 正解！ +${points}pt`, 'ok');
+    if (streak === 3 || streak === 5 || streak === 10) launchConfetti();
+  } else {
+    btn.classList.add('wrong');
+    streak = 0;
+    showFeedback('❌ 不正解...', 'ng');
+  }
+
+  updateStats();
+  document.getElementById('nextBtn').classList.add('show');
+}
+
+// ===== NEXT QUESTION =====
+function nextQuestion() {
+  currentQuestion++;
+  renderQuestion();
+}
+
+// ===== UPDATE STATS =====
+function updateStats() {
+  document.getElementById('scoreDisplay').textContent = score;
+  document.getElementById('streakDisplay').textContent = streak;
+  document.getElementById('correctDisplay').textContent = correctCount;
+  document.getElementById('totalDisplay').textContent = currentQuestion + 1;
+}
+
+// ===== SHOW RESULT =====
+function showResult() {
+  document.getElementById('quizArea').classList.add('hidden');
+  const resultArea = document.getElementById('resultArea');
+  resultArea.classList.remove('hidden');
+
+  const acc = Math.round((correctCount / totalQuestions) * 100);
+  let emoji, title;
+  if (acc >= 90) { emoji = '🏆'; title = '素晴らしい！地理マスター！'; }
+  else if (acc >= 70) { emoji = '🌟'; title = 'すごい！よく知ってるね！'; }
+  else if (acc >= 50) { emoji = '👍'; title = 'いい調子！もう少し！'; }
+  else { emoji = '📚'; title = 'もっと世界を知ろう！'; }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultScore').textContent = score + ' pt';
+  document.getElementById('rs-correct').textContent = `${correctCount}/${totalQuestions}`;
+  document.getElementById('rs-streak').textContent = maxStreak;
+  document.getElementById('rs-acc').textContent = acc + '%';
+
+  if (acc >= 70) launchConfetti();
+}
+
+// ===== RESTART =====
+function restart() {
+  score = 0; streak = 0; maxStreak = 0; correctCount = 0; currentQuestion = 0;
+  answered = false;
+  updateStats();
+  document.getElementById('qNumDisplay').textContent = 1;
+  document.getElementById('totalDisplay').textContent = 0;
+  document.getElementById('quizArea').classList.remove('hidden');
+  document.getElementById('resultArea').classList.add('hidden');
+  buildQuestions();
+  renderQuestion();
+}
+
+// ===== FEEDBACK TOAST =====
+function showFeedback(msg, type) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = `feedback ${type}`;
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ===== CONFETTI =====
+function launchConfetti() {
+  const container = document.getElementById('confettiContainer');
+  const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#f97316'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.cssText = `
+      left: ${Math.random() * 100}%;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+      width: ${6 + Math.random() * 8}px;
+      height: ${6 + Math.random() * 8}px;
+      animation-duration: ${1.5 + Math.random() * 2}s;
+      animation-delay: ${Math.random() * 0.5}s;
+    `;
+    container.appendChild(piece);
+    setTimeout(() => piece.remove(), 3500);
+  }
+}
+
+// ===== INIT =====
+buildQuestions();
+renderQuestion();
+updateStats();
+</script>
+</body>
+</html>
