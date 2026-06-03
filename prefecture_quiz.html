@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>都道府県クイズ</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0d1b2a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* ── Screens ─────────────────────────────────────── */
+        .screen { display: none; width: 100%; flex-direction: column; align-items: center; }
+        .screen.active { display: flex; }
+
+        /* ── START ───────────────────────────────────────── */
+        #start-screen {
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+            text-align: center;
+            background: radial-gradient(ellipse at 50% 0%, rgba(58,123,213,0.18) 0%, transparent 70%);
+        }
+        .start-icon { font-size: 72px; margin-bottom: 20px; filter: drop-shadow(0 0 30px rgba(58,123,213,0.5)); }
+        .start-title { font-size: 34px; font-weight: 800; letter-spacing: 0.12em; margin-bottom: 6px; }
+        .start-sub { font-size: 15px; color: #607d8b; margin-bottom: 52px; }
+        .start-btn {
+            background: linear-gradient(135deg, #3a7bd5 0%, #5c35b0 100%);
+            color: #fff;
+            border: none;
+            padding: 17px 64px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 0.12em;
+            box-shadow: 0 6px 32px rgba(58,123,213,0.5);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .start-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 40px rgba(58,123,213,0.65); }
+        .start-btn:active { transform: translateY(0); }
+        .hs-badge {
+            margin-top: 32px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 8px 20px;
+            font-size: 14px;
+            color: #90a4ae;
+        }
+        .hs-badge .hs-val { color: #ffd54f; font-weight: 700; }
+
+        /* ── QUIZ ────────────────────────────────────────── */
+        #quiz-screen { padding: 14px 12px 28px; }
+
+        .hud {
+            width: 100%;
+            max-width: 660px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .pill {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 5px 13px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .pill b { font-size: 16px; font-weight: 800; }
+        .pill.c b { color: #66bb6a; }
+        .pill.w b { color: #ef5350; }
+        .pill.a b { color: #ffd54f; }
+        .prog-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+        .prog-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3a7bd5, #7c4dff);
+            border-radius: 3px;
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+        .q-num { font-size: 12px; color: #546e7a; white-space: nowrap; }
+
+        /* Question card */
+        .q-card {
+            width: 100%;
+            max-width: 660px;
+            margin-bottom: 14px;
+            background: linear-gradient(135deg, rgba(58,123,213,0.15), rgba(124,77,255,0.12));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 18px;
+            padding: 20px 100px 20px 28px;
+            position: relative;
+            overflow: hidden;
+        }
+        .q-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20px;
+            width: 140px;
+            height: 200%;
+            background: rgba(255,255,255,0.02);
+            transform: rotate(15deg);
+        }
+        .q-eyebrow { font-size: 11px; letter-spacing: 0.12em; color: #546e7a; text-transform: uppercase; margin-bottom: 4px; }
+        .q-main { font-size: 38px; font-weight: 900; letter-spacing: 0.06em; line-height: 1.1; }
+        .q-sub { font-size: 14px; color: #78909c; margin-top: 3px; min-height: 19px; }
+        .q-feedback {
+            position: absolute;
+            right: 22px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            opacity: 0;
+            transition: opacity 0.18s;
+            text-align: center;
+            line-height: 1.3;
+        }
+        .q-feedback.show { opacity: 1; }
+        .q-feedback.ok  { color: #66bb6a; }
+        .q-feedback.ng  { color: #ef5350; }
+
+        /* Map */
+        .map-wrap { position: relative; width: 100%; max-width: 660px; }
+        #japan-map { width: 100%; height: auto; display: block; }
+
+        /* Prefecture states */
+        .prefecture {
+            cursor: pointer;
+            stroke: rgba(255,255,255,0.55);
+            stroke-width: 1;
+            transition: fill 0.2s, filter 0.15s;
+        }
+        /* Browse hover */
+        .prefecture:hover {
+            stroke: #fff;
+            stroke-width: 1.8;
+            filter: brightness(1.35) drop-shadow(0 0 4px rgba(255,255,255,0.3));
+        }
+        /* Region colors (browse / after quiz) */
+        .hokkaido { fill: #3a7bd5; }
+        .tohoku   { fill: #27ae60; }
+        .kanto    { fill: #b8860b; }
+        .chubu    { fill: #8e44ad; }
+        .kinki    { fill: #c0392b; }
+        .chugoku  { fill: #16a085; }
+        .shikoku  { fill: #d35400; }
+        .kyushu   { fill: #c2185b; }
+        .okinawa  { fill: #0097a7; }
+
+        /* Quiz mode — flatten all colors */
+        body.quiz .prefecture          { fill: #243c59 !important; stroke: rgba(255,255,255,0.35); }
+        body.quiz .prefecture:hover    { fill: #3b5a82 !important; stroke: rgba(255,255,255,0.7); filter: none; }
+        body.quiz .prefecture.ok       { fill: #2e7d32 !important; filter: brightness(1.6) drop-shadow(0 0 8px #4caf50); }
+        body.quiz .prefecture.ng       { fill: #b71c1c !important; filter: brightness(1.4) drop-shadow(0 0 8px #f44336); }
+        body.quiz .prefecture.reveal   { fill: #1b5e20 !important; filter: brightness(1.5) drop-shadow(0 0 10px #69f0ae); }
+
+        /* Tooltip */
+        #tooltip {
+            position: fixed;
+            background: rgba(5,20,35,0.92);
+            color: #fff;
+            padding: 7px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(4px);
+        }
+
+        /* ── RESULT ──────────────────────────────────────── */
+        #result-screen {
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .r-card {
+            background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 28px;
+            padding: 42px 44px 36px;
+            max-width: 460px;
+            width: 100%;
+            text-align: center;
+            animation: popIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.75) translateY(20px); opacity: 0; }
+            to   { transform: scale(1) translateY(0);       opacity: 1; }
+        }
+        .r-grade {
+            font-size: 80px;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .r-grade.S { color: #ffd54f; text-shadow: 0 0 32px rgba(255,213,79,0.7); }
+        .r-grade.A { color: #aed581; text-shadow: 0 0 28px rgba(174,213,129,0.6); }
+        .r-grade.B { color: #4fc3f7; text-shadow: 0 0 28px rgba(79,195,247,0.5); }
+        .r-grade.C { color: #f48fb1; }
+        .r-grade.D { color: #ef9a9a; }
+        .r-msg { font-size: 15px; color: #78909c; margin-bottom: 30px; }
+        .r-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .r-stat {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 14px 6px;
+        }
+        .r-stat-val { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+        .r-stat-lbl { font-size: 11px; color: #607d8b; letter-spacing: 0.05em; }
+        .r-stat.c .r-stat-val { color: #66bb6a; }
+        .r-stat.w .r-stat-val { color: #ef5350; }
+        .r-stat.a .r-stat-val { color: #ffd54f; }
+        .r-wrong-lbl { font-size: 12px; color: #546e7a; text-align: left; margin-bottom: 10px; }
+        .r-wrong-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 28px; }
+        .r-tag {
+            background: rgba(244,67,54,0.12);
+            border: 1px solid rgba(244,67,54,0.28);
+            border-radius: 8px;
+            padding: 4px 11px;
+            font-size: 13px;
+            color: #ef9a9a;
+        }
+        .r-perfect {
+            font-size: 14px;
+            color: #ffd54f;
+            margin-bottom: 28px;
+            letter-spacing: 0.06em;
+        }
+        .r-actions { display: flex; gap: 12px; justify-content: center; }
+        .r-btn {
+            border: none;
+            padding: 12px 30px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 0.06em;
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .r-btn:hover { transform: translateY(-2px); }
+        .r-btn.primary {
+            background: linear-gradient(135deg, #3a7bd5, #5c35b0);
+            color: #fff;
+            box-shadow: 0 4px 22px rgba(58,123,213,0.45);
+        }
+        .r-btn.primary:hover { box-shadow: 0 8px 32px rgba(58,123,213,0.6); }
+        .r-btn.ghost {
+            background: rgba(255,255,255,0.07);
+            color: #b0bec5;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        /* ── Legend (result screen) ──────────────────────── */
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 14px;
+            margin-top: 14px;
+            justify-content: center;
+            font-size: 12px;
+            color: #546e7a;
+        }
+        .l-dot {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 2px;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════ START ══════════════════ -->
+<div id="start-screen" class="screen active">
+    <div class="start-icon">🗾</div>
+    <div class="start-title">都道府県クイズ</div>
+    <div class="start-sub">地図をクリックして47都道府県を当てよう！</div>
+    <button class="start-btn" onclick="startQuiz()">スタート</button>
+    <div class="hs-badge" id="hs-badge" style="display:none">
+        ベストスコア <span class="hs-val" id="hs-val"></span> / 47
+    </div>
+</div>
+
+<!-- ══════════════════ QUIZ ══════════════════ -->
+<div id="quiz-screen" class="screen">
+    <!-- HUD -->
+    <div class="hud">
+        <div class="pill c">✓ <b id="h-ok">0</b></div>
+        <div class="pill w">✗ <b id="h-ng">0</b></div>
+        <div class="pill a">正解率 <b id="h-acc">—</b></div>
+        <div class="prog-wrap"><div class="prog-bar" id="prog"></div></div>
+        <div class="q-num" id="q-num">1 / 47</div>
+    </div>
+
+    <!-- Question -->
+    <div class="q-card">
+        <div class="q-eyebrow">どこにある都道府県？</div>
+        <div class="q-main" id="q-main">—</div>
+        <div class="q-sub"  id="q-sub"></div>
+        <div class="q-feedback" id="q-fb"></div>
+    </div>
+
+    <!-- Map -->
+    <div class="map-wrap">
+        <svg id="japan-map" viewBox="0 0 700 870" xmlns="http://www.w3.org/2000/svg">
+            <rect width="700" height="870" fill="#1a3a5c"/>
+
+            <!-- HOKKAIDO -->
+            <polygon class="prefecture hokkaido" data-id="1" data-name="北海道" data-roman="Hokkaido"
+                points="315,22 370,15 425,13 480,16 535,12 592,22 642,35 680,54 700,82 700,116 696,152 678,172 652,186 620,194 582,198 545,193 510,184 475,173 442,164 408,157 374,146 348,132 326,116 310,94 306,66 310,43"/>
+
+            <!-- TOHOKU -->
+            <polygon class="prefecture tohoku" data-id="2" data-name="青森" data-roman="Aomori"
+                points="365,158 390,152 424,158 455,167 474,186 480,212 478,244 462,264 436,272 404,268 378,255 360,238 348,218 348,196 356,176"/>
+            <polygon class="prefecture tohoku" data-id="5" data-name="秋田" data-roman="Akita"
+                points="328,188 354,178 368,180 372,198 374,244 368,276 358,312 338,320 316,303 308,272 312,236 320,208"/>
+            <polygon class="prefecture tohoku" data-id="3" data-name="岩手" data-roman="Iwate"
+                points="436,270 482,258 500,350 462,360 440,320 432,294"/>
+            <polygon class="prefecture tohoku" data-id="4" data-name="宮城" data-roman="Miyagi"
+                points="358,312 440,312 462,360 404,380 358,364"/>
+            <polygon class="prefecture tohoku" data-id="6" data-name="山形" data-roman="Yamagata"
+                points="312,303 340,320 358,366 340,386 310,384 294,362 290,332"/>
+            <polygon class="prefecture tohoku" data-id="7" data-name="福島" data-roman="Fukushima"
+                points="288,380 362,376 440,378 462,360 466,434 286,437"/>
+
+            <!-- KANTO -->
+            <polygon class="prefecture kanto" data-id="8"  data-name="茨城"   data-roman="Ibaraki"
+                points="440,378 492,382 498,454 440,457"/>
+            <polygon class="prefecture kanto" data-id="9"  data-name="栃木"   data-roman="Tochigi"
+                points="376,378 442,378 440,424 374,424"/>
+            <polygon class="prefecture kanto" data-id="10" data-name="群馬"   data-roman="Gunma"
+                points="324,372 378,378 376,424 320,420"/>
+            <polygon class="prefecture kanto" data-id="11" data-name="埼玉"   data-roman="Saitama"
+                points="372,420 442,424 440,457 368,454"/>
+            <polygon class="prefecture kanto" data-id="12" data-name="千葉"   data-roman="Chiba"
+                points="438,454 498,454 502,504 432,507"/>
+            <polygon class="prefecture kanto" data-id="13" data-name="東京"   data-roman="Tokyo"
+                points="364,452 440,457 438,477 360,474"/>
+            <polygon class="prefecture kanto" data-id="14" data-name="神奈川" data-roman="Kanagawa"
+                points="348,472 440,477 436,512 344,508"/>
+
+            <!-- CHUBU -->
+            <polygon class="prefecture chubu" data-id="15" data-name="新潟"   data-roman="Niigata"
+                points="266,330 322,326 346,342 356,362 350,376 330,384 308,397 284,402 262,392 250,370 254,347"/>
+            <polygon class="prefecture chubu" data-id="16" data-name="富山"   data-roman="Toyama"
+                points="250,390 282,390 306,394 320,428 298,434 260,434 244,424"/>
+            <polygon class="prefecture chubu" data-id="17" data-name="石川"   data-roman="Ishikawa"
+                points="220,368 252,368 266,390 258,428 242,450 218,440 204,418 210,393"/>
+            <polygon class="prefecture chubu" data-id="18" data-name="福井"   data-roman="Fukui"
+                points="218,440 260,442 264,470 220,472"/>
+            <polygon class="prefecture chubu" data-id="19" data-name="山梨"   data-roman="Yamanashi"
+                points="334,452 380,457 376,482 330,480"/>
+            <polygon class="prefecture chubu" data-id="20" data-name="長野"   data-roman="Nagano"
+                points="286,410 346,414 342,454 338,482 286,474 278,442"/>
+            <polygon class="prefecture chubu" data-id="21" data-name="岐阜"   data-roman="Gifu"
+                points="263,454 308,454 318,498 260,500"/>
+            <polygon class="prefecture chubu" data-id="22" data-name="静岡"   data-roman="Shizuoka"
+                points="326,477 408,482 410,524 322,522"/>
+            <polygon class="prefecture chubu" data-id="23" data-name="愛知"   data-roman="Aichi"
+                points="280,494 340,497 340,530 276,530"/>
+
+            <!-- KINKI -->
+            <polygon class="prefecture kinki" data-id="25" data-name="滋賀"   data-roman="Shiga"
+                points="226,464 272,467 278,507 223,504"/>
+            <polygon class="prefecture kinki" data-id="26" data-name="京都"   data-roman="Kyoto"
+                points="190,460 228,462 228,507 186,504"/>
+            <polygon class="prefecture kinki" data-id="24" data-name="三重"   data-roman="Mie"
+                points="260,502 296,502 300,570 256,564"/>
+            <polygon class="prefecture kinki" data-id="29" data-name="奈良"   data-roman="Nara"
+                points="230,502 272,507 268,552 226,548"/>
+            <polygon class="prefecture kinki" data-id="27" data-name="大阪"   data-roman="Osaka"
+                points="208,502 232,502 232,537 206,534"/>
+            <polygon class="prefecture kinki" data-id="28" data-name="兵庫"   data-roman="Hyogo"
+                points="152,487 212,490 218,537 149,534"/>
+            <polygon class="prefecture kinki" data-id="30" data-name="和歌山" data-roman="Wakayama"
+                points="216,547 268,552 263,597 212,592"/>
+
+            <!-- CHUGOKU -->
+            <polygon class="prefecture chugoku" data-id="31" data-name="鳥取" data-roman="Tottori"
+                points="168,447 240,450 240,490 166,487"/>
+            <polygon class="prefecture chugoku" data-id="32" data-name="島根" data-roman="Shimane"
+                points="90,447 170,450 168,487 88,484"/>
+            <polygon class="prefecture chugoku" data-id="33" data-name="岡山" data-roman="Okayama"
+                points="164,487 238,490 236,532 161,530"/>
+            <polygon class="prefecture chugoku" data-id="34" data-name="広島" data-roman="Hiroshima"
+                points="92,487 166,490 164,530 89,528"/>
+            <polygon class="prefecture chugoku" data-id="35" data-name="山口" data-roman="Yamaguchi"
+                points="52,492 95,492 95,547 48,542"/>
+
+            <!-- SHIKOKU -->
+            <polygon class="prefecture shikoku" data-id="37" data-name="香川" data-roman="Kagawa"
+                points="192,520 236,520 236,544 190,542"/>
+            <polygon class="prefecture shikoku" data-id="36" data-name="徳島" data-roman="Tokushima"
+                points="234,542 278,544 276,580 230,577"/>
+            <polygon class="prefecture shikoku" data-id="38" data-name="愛媛" data-roman="Ehime"
+                points="144,532 196,532 196,580 141,577"/>
+            <polygon class="prefecture shikoku" data-id="39" data-name="高知" data-roman="Kochi"
+                points="164,577 278,580 275,615 160,612"/>
+
+            <!-- KYUSHU -->
+            <polygon class="prefecture kyushu" data-id="40" data-name="福岡"   data-roman="Fukuoka"
+                points="52,540 148,542 148,582 49,580"/>
+            <polygon class="prefecture kyushu" data-id="41" data-name="佐賀"   data-roman="Saga"
+                points="28,560 66,560 66,590 26,587"/>
+            <polygon class="prefecture kyushu" data-id="42" data-name="長崎"   data-roman="Nagasaki"
+                points="2,553 32,556 30,622 0,618"/>
+            <polygon class="prefecture kyushu" data-id="44" data-name="大分"   data-roman="Oita"
+                points="128,550 190,552 194,600 124,597"/>
+            <polygon class="prefecture kyushu" data-id="43" data-name="熊本"   data-roman="Kumamoto"
+                points="62,580 148,582 152,628 59,624"/>
+            <polygon class="prefecture kyushu" data-id="45" data-name="宮崎"   data-roman="Miyazaki"
+                points="124,594 194,597 192,650 120,647"/>
+            <polygon class="prefecture kyushu" data-id="46" data-name="鹿児島" data-roman="Kagoshima"
+                points="59,622 156,625 160,690 55,687"/>
+
+            <!-- OKINAWA -->
+            <line x1="90" y1="752" x2="90" y2="728" stroke="#2a4a6a" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <polygon class="prefecture okinawa" data-id="47" data-name="沖縄" data-roman="Okinawa"
+                points="28,757 157,760 160,792 25,790"/>
+        </svg>
+    </div>
+</div>
+
+<!-- ══════════════════ RESULT ══════════════════ -->
+<div id="result-screen" class="screen">
+    <div class="r-card">
+        <div class="r-grade" id="r-grade"></div>
+        <div class="r-msg"   id="r-msg"></div>
+        <div class="r-stats">
+            <div class="r-stat c">
+                <div class="r-stat-val" id="r-ok"></div>
+                <div class="r-stat-lbl">正解</div>
+            </div>
+            <div class="r-stat w">
+                <div class="r-stat-val" id="r-ng"></div>
+                <div class="r-stat-lbl">不正解</div>
+            </div>
+            <div class="r-stat a">
+                <div class="r-stat-val" id="r-acc"></div>
+                <div class="r-stat-lbl">正解率</div>
+            </div>
+        </div>
+        <div id="r-wrong-section">
+            <div class="r-wrong-lbl">間違えた都道府県</div>
+            <div class="r-wrong-tags" id="r-wrong-tags"></div>
+        </div>
+        <div class="r-perfect" id="r-perfect" style="display:none">全問正解！完璧です！</div>
+        <div class="r-actions">
+            <button class="r-btn primary" onclick="startQuiz()">もう一度</button>
+            <button class="r-btn ghost"   onclick="goStart()">トップへ</button>
+        </div>
+    </div>
+    <div class="legend" id="result-legend">
+        <span><span class="l-dot" style="background:#3a7bd5"></span>北海道</span>
+        <span><span class="l-dot" style="background:#27ae60"></span>東北</span>
+        <span><span class="l-dot" style="background:#b8860b"></span>関東</span>
+        <span><span class="l-dot" style="background:#8e44ad"></span>中部</span>
+        <span><span class="l-dot" style="background:#c0392b"></span>近畿</span>
+        <span><span class="l-dot" style="background:#16a085"></span>中国</span>
+        <span><span class="l-dot" style="background:#d35400"></span>四国</span>
+        <span><span class="l-dot" style="background:#c2185b"></span>九州</span>
+        <span><span class="l-dot" style="background:#0097a7"></span>沖縄</span>
+    </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const TOTAL = 47;
+const LS_KEY = 'pref_quiz_hs';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let queue        = [];
+let idx          = 0;
+let okCount      = 0;
+let ngCount      = 0;
+let missedNames  = [];
+let busy         = false;
+let highscore    = parseInt(localStorage.getItem(LS_KEY) || '0', 10);
+
+const prefEls = Array.from(document.querySelectorAll('.prefecture'));
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function grade(acc) {
+    if (acc >= 95) return { g: 'S', msg: '完璧！地理の達人だ！' };
+    if (acc >= 80) return { g: 'A', msg: 'すばらしい実力！' };
+    if (acc >= 65) return { g: 'B', msg: 'なかなかの健闘！あと一歩！' };
+    if (acc >= 50) return { g: 'C', msg: 'もう少し練習しよう！' };
+    return             { g: 'D', msg: '地図を見直して再挑戦！' };
+}
+
+// ── Quiz flow ──────────────────────────────────────────────────────────────
+function startQuiz() {
+    queue       = shuffle(prefEls);
+    idx         = 0;
+    okCount     = 0;
+    ngCount     = 0;
+    missedNames = [];
+    busy        = false;
+
+    document.body.classList.add('quiz');
+    show('quiz-screen');
+    updateHUD();
+    ask();
+}
+
+function ask() {
+    if (idx >= TOTAL) { finish(); return; }
+
+    const t = queue[idx];
+    document.getElementById('q-main').textContent = t.dataset.name;
+    document.getElementById('q-sub').textContent  = t.dataset.roman;
+    document.getElementById('q-num').textContent  = `${idx + 1} / ${TOTAL}`;
+    document.getElementById('prog').style.width   = `${(idx / TOTAL) * 100}%`;
+
+    const fb = document.getElementById('q-fb');
+    fb.className  = 'q-feedback';
+    fb.textContent = '';
+    busy = false;
+}
+
+function updateHUD() {
+    document.getElementById('h-ok').textContent  = okCount;
+    document.getElementById('h-ng').textContent  = ngCount;
+    const done = okCount + ngCount;
+    document.getElementById('h-acc').textContent = done ? Math.round(okCount / done * 100) + '%' : '—';
+}
+
+function answer(clicked) {
+    if (busy) return;
+    busy = true;
+
+    const target   = queue[idx];
+    const correct  = clicked === target;
+    const fb       = document.getElementById('q-fb');
+
+    if (correct) {
+        okCount++;
+        fb.textContent = '正解！';
+        fb.className   = 'q-feedback ok show';
+        clicked.classList.add('ok');
+        setTimeout(() => {
+            clicked.classList.remove('ok');
+            idx++;
+            updateHUD();
+            ask();
+        }, 650);
+    } else {
+        ngCount++;
+        missedNames.push(target.dataset.name);
+        fb.textContent = `不正解…\n→ ${target.dataset.name}`;
+        fb.className   = 'q-feedback ng show';
+        clicked.classList.add('ng');
+        target.classList.add('reveal');
+        setTimeout(() => {
+            clicked.classList.remove('ng');
+            target.classList.remove('reveal');
+            idx++;
+            updateHUD();
+            ask();
+        }, 1200);
+    }
+}
+
+function finish() {
+    document.body.classList.remove('quiz');
+    document.getElementById('prog').style.width = '100%';
+
+    const acc = Math.round(okCount / TOTAL * 100);
+    if (okCount > highscore) {
+        highscore = okCount;
+        localStorage.setItem(LS_KEY, highscore);
+    }
+
+    const { g, msg } = grade(acc);
+    const gradeEl = document.getElementById('r-grade');
+    gradeEl.textContent = g;
+    gradeEl.className   = `r-grade ${g}`;
+    document.getElementById('r-msg').textContent  = msg;
+    document.getElementById('r-ok').textContent   = okCount;
+    document.getElementById('r-ng').textContent   = ngCount;
+    document.getElementById('r-acc').textContent  = acc + '%';
+
+    const tagsEl   = document.getElementById('r-wrong-tags');
+    const secEl    = document.getElementById('r-wrong-section');
+    const perfEl   = document.getElementById('r-perfect');
+    tagsEl.innerHTML = '';
+
+    if (missedNames.length === 0) {
+        secEl.style.display  = 'none';
+        perfEl.style.display = '';
+    } else {
+        secEl.style.display  = '';
+        perfEl.style.display = 'none';
+        missedNames.forEach(name => {
+            const tag = document.createElement('span');
+            tag.className   = 'r-tag';
+            tag.textContent = name;
+            tagsEl.appendChild(tag);
+        });
+    }
+
+    show('result-screen');
+}
+
+function goStart() {
+    document.body.classList.remove('quiz');
+
+    const hsVal = document.getElementById('hs-val');
+    const hsBadge = document.getElementById('hs-badge');
+    if (highscore > 0) {
+        hsVal.textContent  = highscore;
+        hsBadge.style.display = '';
+    }
+    show('start-screen');
+}
+
+// ── Tooltip & click binding ────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+
+prefEls.forEach(el => {
+    el.addEventListener('mouseenter', () => {
+        if (!document.body.classList.contains('quiz')) {
+            tooltip.textContent = `${el.dataset.name}（${el.dataset.roman}）`;
+            tooltip.style.display = 'block';
+        }
+    });
+    el.addEventListener('mousemove', e => {
+        tooltip.style.left = (e.clientX + 16) + 'px';
+        tooltip.style.top  = (e.clientY - 38) + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+    });
+    el.addEventListener('click', () => {
+        if (document.body.classList.contains('quiz')) answer(el);
+    });
+});
+
+// ── Init high score ────────────────────────────────────────────────────────
+if (highscore > 0) {
+    document.getElementById('hs-val').textContent   = highscore;
+    document.getElementById('hs-badge').style.display = '';
+}
+</script>
+</body>
+</html>
