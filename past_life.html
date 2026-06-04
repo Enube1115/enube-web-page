@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>前世診断 — Past Life Oracle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Noto+Serif+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --void:  #07041a;
+      --deep:  #0d0825;
+      --vio:   #7c3aed;
+      --vio2:  #a78bfa;
+      --cyan:  #06b6d4;
+      --gold:  #f59e0b;
+      --goldt: #fbbf24;
+      --text:  rgba(255,255,255,.88);
+      --mute:  rgba(255,255,255,.45);
+      --card:  rgba(255,255,255,.04);
+      --bord:  rgba(255,255,255,.08);
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--void);
+      font-family: 'Noto Serif JP', serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 20px 80px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── nebula bg ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 10%  5%,  rgba(124,58,237,.22) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 90% 95%,  rgba(6,182,212,.18)  0%, transparent 55%),
+        radial-gradient(ellipse 40% 50% at 80% 10%,  rgba(245,158,11,.12) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 20% 90%,  rgba(124,58,237,.14) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── floating orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(60px);
+      pointer-events: none;
+      z-index: 0;
+      animation: orbFloat ease-in-out infinite;
+    }
+    .orb-1 { width:380px; height:380px; background:rgba(124,58,237,.18); top:-80px;  left:-100px; animation-duration:14s; }
+    .orb-2 { width:300px; height:300px; background:rgba(6,182,212,.14);  bottom:-60px; right:-80px; animation-duration:18s; animation-delay:-6s; }
+    .orb-3 { width:240px; height:240px; background:rgba(245,158,11,.10); top:45%;   right:5%;   animation-duration:22s; animation-delay:-10s; }
+
+    @keyframes orbFloat {
+      0%,100% { transform: translateY(0)   scale(1); }
+      50%      { transform: translateY(-28px) scale(1.06); }
+    }
+
+    canvas#stars {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── layout ── */
+    .wrap {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 680px;
+      padding-top: 56px;
+    }
+
+    /* ── header ── */
+    header { text-align: center; margin-bottom: 52px; }
+
+    .crystal-wrap {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    .crystal {
+      font-size: 4rem;
+      display: block;
+      filter: drop-shadow(0 0 20px rgba(124,58,237,.8)) drop-shadow(0 0 40px rgba(6,182,212,.4));
+      animation: crystalPulse 3s ease-in-out infinite;
+    }
+    @keyframes crystalPulse {
+      0%,100% { filter: drop-shadow(0 0 20px rgba(124,58,237,.8)) drop-shadow(0 0 40px rgba(6,182,212,.4)); transform: scale(1); }
+      50%      { filter: drop-shadow(0 0 30px rgba(124,58,237,1))  drop-shadow(0 0 60px rgba(6,182,212,.6)); transform: scale(1.06); }
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(124,58,237,.4);
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      animation: ringExpand 3s ease-in-out infinite;
+    }
+    .ring-1 { width: 80px;  height: 80px;  animation-delay: 0s; }
+    .ring-2 { width: 110px; height: 110px; animation-delay: .6s; border-color: rgba(6,182,212,.25); }
+    .ring-3 { width: 140px; height: 140px; animation-delay: 1.2s; border-color: rgba(245,158,11,.15); }
+
+    @keyframes ringExpand {
+      0%   { opacity: 0.8; transform: translate(-50%,-50%) scale(.9); }
+      50%  { opacity: 0.4; transform: translate(-50%,-50%) scale(1.05); }
+      100% { opacity: 0.8; transform: translate(-50%,-50%) scale(.9); }
+    }
+
+    h1 {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: clamp(1.6rem, 5vw, 2.6rem);
+      font-weight: 700;
+      letter-spacing: 6px;
+      background: linear-gradient(135deg, #f59e0b 0%, #fde68a 40%, #a78bfa 70%, #7c3aed 100%);
+      background-size: 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: titleShimmer 6s linear infinite;
+      margin-bottom: 6px;
+    }
+    @keyframes titleShimmer { to { background-position: 200%; } }
+
+    .sub {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: .72rem;
+      color: var(--mute);
+      letter-spacing: 6px;
+      margin-bottom: 14px;
+    }
+
+    .desc {
+      font-size: .88rem;
+      color: rgba(255,255,255,.5);
+      letter-spacing: 2px;
+      font-weight: 300;
+    }
+
+    /* ── divider ── */
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 0 auto 40px;
+      max-width: 300px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,58,237,.5), transparent);
+    }
+    .divider span { font-size: .75rem; color: rgba(124,58,237,.7); letter-spacing: 3px; }
+
+    /* ── input card ── */
+    .input-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(124,58,237,.2);
+      border-radius: 12px;
+      padding: 40px 36px 44px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(124,58,237,.08), inset 0 1px 0 rgba(255,255,255,.05);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+    .input-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,58,237,.6), rgba(6,182,212,.4), transparent);
+    }
+
+    .input-label {
+      font-size: .78rem;
+      color: var(--vio2);
+      letter-spacing: 4px;
+      margin-bottom: 24px;
+    }
+
+    .date-selects {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .sel-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .sel-lbl {
+      font-size: .66rem;
+      color: var(--mute);
+      letter-spacing: 2px;
+    }
+    .sel-wrap select {
+      appearance: none;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(124,58,237,.3);
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'Noto Serif JP', serif;
+      font-size: .92rem;
+      padding: 10px 32px 10px 14px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .sel-wrap select:focus {
+      border-color: rgba(124,58,237,.7);
+      box-shadow: 0 0 14px rgba(124,58,237,.25);
+    }
+    .sel-wrap::after {
+      content: '▾';
+      position: absolute; bottom: 10px; right: 10px;
+      font-size: .7rem;
+      color: var(--vio2);
+      pointer-events: none;
+    }
+
+    .oracle-btn {
+      position: relative;
+      padding: 18px 64px;
+      background: linear-gradient(135deg, #4c1d95, #7c3aed, #6d28d9);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 4px;
+      cursor: pointer;
+      box-shadow: 0 6px 28px rgba(124,58,237,.5), 0 0 0 1px rgba(167,139,250,.2);
+      transition: transform .18s, box-shadow .18s;
+      overflow: hidden;
+    }
+    .oracle-btn::before {
+      content: '';
+      position: absolute; top: 0; left: -120%;
+      width: 80%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+      transform: skewX(-20deg);
+      transition: left .45s;
+    }
+    .oracle-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(124,58,237,.65), 0 0 0 1px rgba(167,139,250,.4); }
+    .oracle-btn:hover::before { left: 150%; }
+    .oracle-btn:active { transform: translateY(0); }
+    .oracle-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    /* ── scanning animation ── */
+    .scan-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      z-index: 100;
+      background: rgba(7,4,26,.85);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .scan-overlay.active { display: flex; }
+
+    .scan-circle {
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: var(--vio);
+      border-right-color: var(--cyan);
+      animation: scanSpin 1s linear infinite;
+      position: relative;
+    }
+    .scan-circle::before {
+      content: '🔮';
+      font-size: 2.5rem;
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      filter: drop-shadow(0 0 16px rgba(124,58,237,.9));
+    }
+    @keyframes scanSpin { to { transform: rotate(360deg); } }
+
+    .scan-txt {
+      font-size: .85rem;
+      color: var(--vio2);
+      letter-spacing: 4px;
+      animation: scanBlink 1.2s ease-in-out infinite;
+    }
+    @keyframes scanBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── result card ── */
+    .result-card {
+      display: none;
+      opacity: 0;
+      transform: translateY(24px) scale(.97);
+    }
+    .result-card.open {
+      display: block;
+      animation: resultAppear .7s cubic-bezier(.22,.68,0,1.15) forwards;
+    }
+    @keyframes resultAppear {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .result-inner {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(124,58,237,.2);
+      border-radius: 12px;
+      padding: 42px 36px 48px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 80px rgba(124,58,237,.1);
+    }
+    .result-inner::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-color, #7c3aed), rgba(6,182,212,.4), transparent);
+    }
+
+    /* glow overlay matching accent */
+    .result-glow {
+      position: absolute; inset: 0;
+      border-radius: 12px;
+      pointer-events: none;
+      background: radial-gradient(ellipse 80% 40% at 50% 0%, var(--accent-color, rgba(124,58,237,.15)), transparent 60%);
+    }
+
+    .result-badge {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .past-era {
+      display: inline-block;
+      font-size: .7rem;
+      color: var(--goldt);
+      border: 1px solid rgba(245,158,11,.35);
+      border-radius: 20px;
+      padding: 4px 16px;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+    .past-symbol {
+      display: block;
+      font-size: 3.2rem;
+      margin: 12px 0;
+      filter: drop-shadow(0 0 14px var(--accent-color, rgba(124,58,237,.8)));
+    }
+    .past-name {
+      font-size: clamp(1.4rem, 5vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: #fff;
+      text-shadow: 0 0 30px var(--accent-color, rgba(124,58,237,.8));
+      margin-bottom: 4px;
+    }
+    .past-name-en {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: .72rem;
+      color: var(--mute);
+      letter-spacing: 3px;
+    }
+    .past-period {
+      display: inline-block;
+      font-size: .75rem;
+      color: rgba(167,139,250,.7);
+      letter-spacing: 2px;
+      margin-top: 8px;
+    }
+
+    /* horizontal rule */
+    .hr {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,58,237,.35), rgba(6,182,212,.2), transparent);
+      margin: 26px 0;
+    }
+
+    /* ── info grid ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 500px) {
+      .info-grid { grid-template-columns: 1fr; }
+      .result-inner { padding: 32px 20px 38px; }
+      .input-card { padding: 32px 20px 36px; }
+    }
+
+    .info-block {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--bord);
+      border-radius: 8px;
+      padding: 18px 16px;
+      opacity: 0;
+      transform: translateY(14px);
+      animation: blockIn .5s ease forwards;
+    }
+    .info-block.full { grid-column: 1 / -1; }
+    .info-block:nth-child(1) { animation-delay: .45s; }
+    .info-block:nth-child(2) { animation-delay: .6s; }
+    .info-block:nth-child(3) { animation-delay: .75s; }
+    .info-block:nth-child(4) { animation-delay: .9s; }
+
+    @keyframes blockIn { to { opacity: 1; transform: translateY(0); } }
+
+    .block-head {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px;
+    }
+    .block-icon { font-size: 1.1rem; }
+    .block-lbl {
+      font-size: .66rem;
+      letter-spacing: 3px;
+      color: var(--vio2);
+    }
+
+    .block-body {
+      font-size: .85rem;
+      line-height: 1.75;
+      color: rgba(255,255,255,.78);
+    }
+
+    .trait-list {
+      display: flex; flex-wrap: wrap; gap: 7px;
+      margin-top: 2px;
+    }
+    .trait {
+      font-size: .74rem;
+      padding: 4px 12px;
+      background: rgba(124,58,237,.12);
+      border: 1px solid rgba(124,58,237,.25);
+      border-radius: 20px;
+      color: var(--vio2);
+    }
+
+    .message-box {
+      font-size: .88rem;
+      line-height: 1.85;
+      color: rgba(255,255,255,.82);
+      font-style: italic;
+      text-align: center;
+      padding: 6px 4px;
+      position: relative;
+    }
+    .message-box::before, .message-box::after {
+      font-style: normal;
+      color: var(--gold);
+      font-size: 1.1rem;
+    }
+    .message-box::before { content: '❝ '; }
+    .message-box::after  { content: ' ❞'; }
+
+    /* ── reset ── */
+    .reset-area {
+      text-align: center;
+      opacity: 0;
+      animation: blockIn .5s ease 1.15s forwards;
+    }
+    .reset-btn {
+      background: transparent;
+      border: 1px solid rgba(124,58,237,.35);
+      border-radius: 6px;
+      color: rgba(255,255,255,.5);
+      font-family: 'Noto Serif JP', serif;
+      font-size: .8rem;
+      letter-spacing: 3px;
+      padding: 11px 32px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .reset-btn:hover {
+      border-color: rgba(124,58,237,.7);
+      color: rgba(255,255,255,.85);
+      background: rgba(124,58,237,.08);
+      box-shadow: 0 0 20px rgba(124,58,237,.2);
+    }
+
+    /* ── number badge ── */
+    .plife-num {
+      position: absolute; bottom: 18px; right: 22px;
+      font-family: 'Cinzel Decorative', serif;
+      font-size: .68rem;
+      color: rgba(255,255,255,.15);
+      letter-spacing: 2px;
+    }
+
+    footer {
+      position: relative; z-index: 1;
+      margin-top: 60px;
+      font-size: .7rem;
+      color: rgba(255,255,255,.15);
+      letter-spacing: 2px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- scanning overlay -->
+<div class="scan-overlay" id="scanOverlay">
+  <div class="scan-circle"></div>
+  <p class="scan-txt">前世を解読中…</p>
+</div>
+
+<div class="wrap">
+
+  <header>
+    <div class="crystal-wrap">
+      <div class="ring ring-1"></div>
+      <div class="ring ring-2"></div>
+      <div class="ring ring-3"></div>
+      <span class="crystal">🔮</span>
+    </div>
+    <h1>前世診断</h1>
+    <p class="sub">PAST LIFE ORACLE</p>
+    <p class="desc">生年月日を入力して、あなたの前世を紐解く</p>
+  </header>
+
+  <div class="divider"><span>✦ ✦ ✦</span></div>
+
+  <div class="input-card" id="inputCard">
+    <p class="input-lbl" style="font-size:.78rem;color:#a78bfa;letter-spacing:4px;margin-bottom:24px;">生 年 月 日 を 入 力</p>
+    <div class="date-selects" id="dateSelects"></div>
+    <button class="oracle-btn" id="oracleBtn" onclick="divine()">前世を覗く</button>
+  </div>
+
+  <div class="result-card" id="resultCard"></div>
+
+</div>
+
+<footer>© 2025 Past Life Oracle — 35+ 前世パターン対応</footer>
+
+<script>
+/* ═══════════ STAR CANVAS ═══════════ */
+(function initStars() {
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    c.width  = window.innerWidth;
+    c.height = window.innerHeight;
+    stars = Array.from({ length: 160 }, () => ({
+      x: Math.random() * c.width,
+      y: Math.random() * c.height,
+      r: Math.random() * 1.4 + 0.2,
+      a: Math.random(),
+      speed: .003 + Math.random() * .006,
+      phase: Math.random() * Math.PI * 2,
+    }));
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, c.width, c.height);
+    stars.forEach(s => {
+      const alpha = .3 + .6 * (Math.sin(t * s.speed + s.phase) * .5 + .5);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(draw);
+})();
+
+/* ═══════════ PAST LIFE DATA ═══════════ */
+const PAST_LIVES = [
+  {
+    name: '古代エジプトの神官',        nameEn: 'Egyptian High Priest',
+    era: '古代エジプト文明',           period: '紀元前 3000 年頃',
+    symbol: '𓂀', hue: '#f59e0b',
+    role: '神殿の祭儀を司り、星の運行を読み解き、ファラオと神々の橋渡しをした神聖な存在。',
+    traits: ['深い洞察力','神秘への親和性','孤高の精神','高い精神性'],
+    message: '星の配置にあなたの使命が刻まれている。今世でも見えないものを感じ取る力を磨き続けよ。',
+  },
+  {
+    name: '中世ヨーロッパの騎士',       nameEn: 'Medieval Knight',
+    era: '中世ヨーロッパ',             period: '1100〜1300 年代',
+    symbol: '⚔️', hue: '#60a5fa',
+    role: '王国と民を守るため剣を振るい、騎士道精神に従い生きた名誉ある戦士。',
+    traits: ['揺るぎない正義感','忠義と誠実さ','勇敢な行動力','礼節の精神'],
+    message: '剣よりも志が人を動かす。あなたの正義感は今世でも誰かを守る光となるだろう。',
+  },
+  {
+    name: '平安時代の歌人',             nameEn: 'Heian Court Poet',
+    era: '平安時代 ／ 日本',           period: '900〜1100 年代',
+    symbol: '🌸', hue: '#f9a8d4',
+    role: '宮廷に仕え、四季の移ろいと人の心を三十一文字の歌に昇華させた風雅の達人。',
+    traits: ['繊細な感受性','詩的な表現力','美への鋭い眼差し','内省的な知性'],
+    message: '言葉は時代を超える魂の橋。あなたの感性を信じ、心の声を詩にせよ。',
+  },
+  {
+    name: '古代ギリシャの哲学者',        nameEn: 'Greek Philosopher',
+    era: '古代ギリシャ文明',           period: '紀元前 400〜500 年代',
+    symbol: '🏛️', hue: '#34d399',
+    role: '知恵と真理を求めて対話を重ね、若者たちに思考する術を教えた知の巨人。',
+    traits: ['尽きせぬ探究心','論理的な思考','言葉の力','魂の自由'],
+    message: '答えより問いを愛せよ。知への渇望は、今世で世界を照らす灯となる。',
+  },
+  {
+    name: '大航海時代の船乗り',          nameEn: 'Age of Exploration Navigator',
+    era: '大航海時代 ／ ヨーロッパ',   period: '1400〜1600 年代',
+    symbol: '🧭', hue: '#22d3ee',
+    role: '海図のない大洋へ乗り出し、星と直感を頼りに新世界を切り拓いた冒険の魂。',
+    traits: ['果てなき冒険心','自由への渇望','逆境への耐性','直感の鋭さ'],
+    message: '未知の地平線はいつも新しい自分への扉だった。今世でも枠を超えることを恐れるな。',
+  },
+  {
+    name: '江戸時代の剣士',             nameEn: 'Edo Swordsman',
+    era: '江戸時代 ／ 日本',           period: '1600〜1800 年代',
+    symbol: '🗡️', hue: '#94a3b8',
+    role: '生涯をかけて剣の道を極め、精神修行と一体となった武の道を生きた剣客。',
+    traits: ['鉄の精神力','孤高の静けさ','実直な生き方','研ぎ澄まされた集中力'],
+    message: '鋼は炎で鍛えられる。苦難こそがあなたを真の強さへと導く師だ。',
+  },
+  {
+    name: '古代ローマの将軍',            nameEn: 'Roman General',
+    era: '古代ローマ帝国',             period: '紀元前 100 年〜紀元後 200 年',
+    symbol: '🦅', hue: '#ef4444',
+    role: '何万もの兵を率いて戦場を制し、帝国の版図を広げた戦略と統率の頂点に立つ者。',
+    traits: ['圧倒的な統率力','戦略的思考','権威と威厳','不屈の野心'],
+    message: '一人の力は有限だが、人の心を束ねる者は無限を掴める。今世もリーダーシップを発揮せよ。',
+  },
+  {
+    name: 'ルネサンス期の画家',          nameEn: 'Renaissance Painter',
+    era: 'ルネサンス ／ イタリア',     period: '1400〜1600 年代',
+    symbol: '🎨', hue: '#fb923c',
+    role: '神の栄光と人間の美を同時に追い求め、絵筆で永遠を描こうとした芸術の求道者。',
+    traits: ['創造性の爆発','完璧主義な気質','美への情熱','哲学的な眼差し'],
+    message: '美とは魂の最も純粋な言語。創ることをやめるな。それがあなたの祈りだ。',
+  },
+  {
+    name: '中世の錬金術師',             nameEn: 'Medieval Alchemist',
+    era: '中世ヨーロッパ',             period: '1200〜1500 年代',
+    symbol: '⚗️', hue: '#a78bfa',
+    role: '鉛を黄金に変える夢を追い、物質と精神の変容の秘密を探り続けた異端の賢者。',
+    traits: ['終わらぬ探究心','神秘への傾倒','変革を恐れない胆力','秘密主義'],
+    message: 'すべての物質の中に神秘が宿る。探求を止めれば、魂は眠りにつく。',
+  },
+  {
+    name: '古代中国の宮廷詩人',          nameEn: 'Tang Dynasty Court Poet',
+    era: '唐代 ／ 中国',              period: '600〜900 年代',
+    symbol: '🖋️', hue: '#6ee7b7',
+    role: '月と酒と友を愛し、宇宙の真理を五言七言に紡ぎ込んだ不世出の詩魂。',
+    traits: ['深い情感','侘び寂びの美学','孤独を愛する心','精緻な言語感覚'],
+    message: '桜一輪の中に宇宙がある。細部を愛でる目を持つ者だけが、真の美に触れられる。',
+  },
+  {
+    name: 'バイキングの探検家',           nameEn: 'Viking Explorer',
+    era: 'ヴァイキング時代 ／ 北欧',   period: '800〜1100 年代',
+    symbol: '⚡', hue: '#fcd34d',
+    role: '長船を駆って荒波を越え、アイスランドから北米まで到達した豪胆な海の民。',
+    traits: ['豪快な行動力','恐れを知らぬ勇気','仲間への絶対的義理','自然との一体感'],
+    message: '恐れを友とせよ。勇気とは恐れを感じないことではなく、恐れを超えて進むことだ。',
+  },
+  {
+    name: 'インドの瞑想僧',              nameEn: 'Indian Meditation Monk',
+    era: '古代〜中世 ／ インド',       period: '紀元前 500 年〜500 年代',
+    symbol: '🪷', hue: '#c084fc',
+    role: '森の中で孤独な瞑想に沈み、悟りと解脱の真理を求め続けた魂の探求者。',
+    traits: ['深い精神性','絶対的な忍耐','執着からの自由','慈悲の心'],
+    message: '静寂の中に最大の答えが眠る。内なる声に耳を傾ければ、迷いは霧のように晴れる。',
+  },
+  {
+    name: 'マヤ文明の天文学者',           nameEn: 'Maya Astronomer-Priest',
+    era: 'マヤ文明 ／ 中米',          period: '300〜900 年代',
+    symbol: '🌀', hue: '#2dd4bf',
+    role: '精密なカレンダーと天体観測で時間の秘密を解き明かし、神と人の間に立った知者。',
+    traits: ['知識への貪欲さ','超長期的な視野','神秘との共存','数学的直観'],
+    message: '宇宙のリズムとあなたの鼓動は繋がっている。直感を信じよ、それは星の言葉だ。',
+  },
+  {
+    name: 'シルクロードの商人',           nameEn: 'Silk Road Merchant',
+    era: 'シルクロード時代',           period: '200〜1400 年代',
+    symbol: '🐪', hue: '#fdba74',
+    role: '砂漠と山岳を越え、東西の文明をつなぐ生きた橋となった多文化の渡り鳥。',
+    traits: ['卓越した社交性','文化的な柔軟性','リスクを取る勇気','人を見抜く目'],
+    message: 'すべての出会いは宝石。今世でもあなたの縁を結ぶ才能を大切に。',
+  },
+  {
+    name: '中世の魔法使い',              nameEn: 'Medieval Sorcerer',
+    era: '中世ヨーロッパ',             period: '1000〜1400 年代',
+    symbol: '✨', hue: '#818cf8',
+    role: '禁断の書に隠された真理を解き明かし、言葉と意志の力で現実を書き換えようとした者。',
+    traits: ['強烈な直観力','異端の独自性','想像力の圧倒的な豊かさ','境界を超える意志'],
+    message: '現実とは信念の結晶。あなたの想像は、実は未来の設計図だ。',
+  },
+  {
+    name: 'クレオパトラの近衛',           nameEn: 'Queen\'s Inner Circle',
+    era: '古代エジプト末期',           period: '紀元前 50 年頃',
+    symbol: '👁️', hue: '#fcd34d',
+    role: '絶世の女王の側で権力の渦に身を置き、政治と美の狭間を生き抜いた機知の持ち主。',
+    traits: ['鋭い政治的感覚','優雅な存在感','場を読む能力','秘密を守る強さ'],
+    message: '美と権力の狭間で知恵を磨いたあなたへ。今世でもその洞察力を活かせ。',
+  },
+  {
+    name: '江戸の忍者',                  nameEn: 'Edo Ninja',
+    era: '江戸時代 ／ 日本',           period: '1600〜1800 年代',
+    symbol: '🌑', hue: '#475569',
+    role: '影に生き、主君のために諜報と暗躍を重ね、決して表舞台に立つことなく任務を果たした者。',
+    traits: ['超高い集中力','冷静沈着な判断力','存在感を消す能力','鋼の意志'],
+    message: '見えない者こそ、最も鋭く世界を観察できる。静かな力を今世でも。',
+  },
+  {
+    name: 'フランス革命期の詩人',         nameEn: 'Revolutionary Poet',
+    era: 'フランス革命時代',           period: '1789〜1800 年代',
+    symbol: '🔥', hue: '#f87171',
+    role: '圧政に怒り、詩と演説で民衆の魂に火を灯した情熱の申し子。',
+    traits: ['燃える理想主義','カリスマ的な表現力','正義への激情','時代を動かす言葉'],
+    message: '魂が震えるほどの情熱は、世界を変える種火になる。今世も信念を燃やし続けよ。',
+  },
+  {
+    name: 'デルフォイの巫女',             nameEn: 'Oracle of Delphi',
+    era: '古代ギリシャ',               period: '紀元前 800〜300 年',
+    symbol: '🌙', hue: '#e2e8f0',
+    role: '神殿の聖域でアポロンの神託を受け、王や英雄の運命を告げた神聖な予言者。',
+    traits: ['圧倒的な霊感','二世界の感知力','神秘的な存在感','真実を見通す目'],
+    message: 'あなたは二つの世界の橋渡し。夢や直感は過去世からの伝言だ。',
+  },
+  {
+    name: 'モンゴル帝国の武将',           nameEn: 'Mongol War General',
+    era: 'モンゴル帝国',               period: '1200〜1300 年代',
+    symbol: '🏹', hue: '#a3e635',
+    role: '大陸を駆け巡り、チンギス・ハーンの下で敵軍を打ち破った帝国最強の将。',
+    traits: ['豪胆な決断力','圧倒的な先読み能力','戦略的な大局観','忠誠と征服への渇望'],
+    message: '勝利は戦場ではなく、準備の中で決まる。今世でも先を読む力を磨け。',
+  },
+  {
+    name: '奈良時代の仏師',              nameEn: 'Nara Buddhist Sculptor',
+    era: '奈良時代 ／ 日本',           period: '700〜800 年代',
+    symbol: '🪷', hue: '#93c5fd',
+    role: '木と金属を彫り続け、信仰と美が溶け合う仏像に命を吹き込んだ職人の魂。',
+    traits: ['極限の忍耐力','芸術と信仰の一体化','細部への執着','沈黙の中の雄弁'],
+    message: '無言の美こそが最も深く語る。あなたの手から生み出すものに、魂を込め続けよ。',
+  },
+  {
+    name: '古代ペルシャの賢者',           nameEn: 'Persian Sage & Astronomer',
+    era: 'アケメネス朝ペルシャ',        period: '紀元前 600〜200 年',
+    symbol: '🌟', hue: '#fbbf24',
+    role: 'ゾロアスター教の炎を守りながら星の動きを記録し、時代の真理を問い続けた叡智の人。',
+    traits: ['宇宙規模の叡智','精密な観察眼','二元論的な世界観','変わらぬ精神の炎'],
+    message: '天体は嘘をつかない。自然のリズムに従う者だけが、真の叡智を得る。',
+  },
+  {
+    name: 'アステカの太陽神官',           nameEn: 'Aztec Sun Priest',
+    era: 'アステカ文明 ／ メキシコ',   period: '1300〜1500 年代',
+    symbol: '☀️', hue: '#fb923c',
+    role: '太陽を再生させるための儀式を執り行い、文明の存続を一身に背負った神聖な器。',
+    traits: ['強烈な信仰心','献身と犠牲の精神','宇宙との接続感','神秘的な権威'],
+    message: '太陽は毎朝再生する。どんな暗夜の後にも、あなたの光は必ず戻ってくる。',
+  },
+  {
+    name: '中世の吟遊詩人',              nameEn: 'Medieval Troubadour',
+    era: '中世 ／ 南フランス',         period: '1100〜1300 年代',
+    symbol: '🎵', hue: '#f0abfc',
+    role: '城から城へ旅しながら恋と英雄を歌い、音楽と詩で時代の魂を揺さぶった自由の使者。',
+    traits: ['情熱的なロマンチスト','自由への飽くなき渇望','人を魅了する表現力','美を発見する感性'],
+    message: '愛を歌い、旅を愛し、今を生きた。今世でも心の赴くままに踊れ。',
+  },
+  {
+    name: '古代インドの医師',             nameEn: 'Ayurvedic Healer',
+    era: '古代インド文明',             period: '紀元前 500〜紀元後 500 年',
+    symbol: '🌿', hue: '#4ade80',
+    role: '草木の力と体内のエネルギーを読み解き、心と体の調和で病を癒した生命の守護者。',
+    traits: ['深い共感力','癒しの直観','自然との対話','静かな知恵'],
+    message: '癒しとは薬ではなく、愛の形。あなたの存在そのものが誰かの光となっている。',
+  },
+  {
+    name: '北欧の盾の乙女',              nameEn: 'Norse Shieldmaiden',
+    era: 'ヴァイキング時代 ／ 北欧',   period: '800〜1100 年代',
+    symbol: '🛡️', hue: '#7dd3fc',
+    role: '男性と並んで剣を取り、戦場を駆けた誇り高き女戦士。強さと誇りの化身。',
+    traits: ['鋼の強さと自立心','圧倒的な誇り','仲間を守る献身','自分を曲げない芯'],
+    message: 'あなたの強さは誰かを守るためにある。今世も恐れずに戦場（人生）に立て。',
+  },
+  {
+    name: '古代ケルトのドルイド',          nameEn: 'Celtic Druid',
+    era: 'ケルト文明 ／ ブリテン島',   period: '紀元前 200〜紀元後 400 年',
+    symbol: '🌳', hue: '#86efac',
+    role: '聖なる森の中で神々と交わり、暦と法と知恵を司った民族の精神的支柱。',
+    traits: ['自然との深い調和','予言の力','神聖な知識の守護者','変化への適応力'],
+    message: '木々と風がまだあなたの名を覚えている。大地に根ざすとき、最大の力が宿る。',
+  },
+  {
+    name: '江戸時代の俳人',              nameEn: 'Edo Haiku Master',
+    era: '江戸時代 ／ 日本',           period: '1600〜1800 年代',
+    symbol: '🍂', hue: '#fca5a5',
+    role: '松尾芭蕉の系譜を継ぎ、一瞬の自然の美を十七音に刻み込んだ風雅の化身。',
+    traits: ['余白を愛する心','精緻な観察眼','侘び寂びの美学','旅と孤独を愛する魂'],
+    message: '五七五の余白に宇宙を詰め込んだ。今世でもその豊かな余白を大切に。',
+  },
+  {
+    name: '古代ローマの建築家',           nameEn: 'Roman Architect',
+    era: '古代ローマ帝国',             period: '紀元前 100〜紀元後 300 年',
+    symbol: '🏛️', hue: '#a8a29e',
+    role: 'アーチと円蓋の革命を起こし、2000 年後も立ち続ける建造物を大理石に刻んだ完璧主義者。',
+    traits: ['完璧主義な精神','構造的・論理的思考','権威への自然な傾倒','永遠を刻む意志'],
+    message: '石は崩れても設計の精神は時を超える。あなたの創造力は永遠だ。',
+  },
+  {
+    name: '中世の修道院長',              nameEn: 'Medieval Abbot',
+    era: '中世ヨーロッパ',             period: '900〜1200 年代',
+    symbol: '📿', hue: '#d4d4d8',
+    role: '共同体を率い、祈りと労働と学びが循環する聖域を守り続けた精神の灯台。',
+    traits: ['奉仕の精神','深い謙虚さ','組織を束ねる智恵','魂を導く言葉'],
+    message: '奉仕の中に真の自由がある。誰かのために使う時間が、あなたを輝かせる。',
+  },
+  {
+    name: '19世紀の大陸探検家',           nameEn: '19th Century Explorer',
+    era: '探検の時代 ／ ヨーロッパ',   period: '1800〜1900 年代',
+    symbol: '🗺️', hue: '#4ade80',
+    role: 'アフリカや南米の密林に踏み込み、人類未踏の地に足跡を残した好奇心の化身。',
+    traits: ['飽くなき好奇心','開拓者の精神','孤独に耐える強さ','地図を書き換える夢'],
+    message: '地図に描かれていない場所にこそ、真の宝が眠る。未知を恐れずに進め。',
+  },
+  {
+    name: '古代中国の陰陽師',             nameEn: 'Chinese Onmyoji',
+    era: '前漢〜唐時代 ／ 中国',       period: '紀元前 200〜900 年代',
+    symbol: '☯️', hue: '#c4b5fd',
+    role: '陰と陽のバランスを読み解き、天命と人の運命を操る技を極めた宮廷の神秘家。',
+    traits: ['直観の天才','二元を超えた調和感覚','霊的な感受性','内なる平衡'],
+    message: '光と影は一つのもの。相反するものを受け入れる時、あなたは最も強くなる。',
+  },
+  {
+    name: 'メソポタミアの神殿書記',        nameEn: 'Mesopotamian Temple Scribe',
+    era: 'シュメール文明',             period: '紀元前 3000〜500 年',
+    symbol: '📜', hue: '#fef08a',
+    role: '楔形文字を粘土板に刻み、神の言葉と王の命令を永遠に記録した文明の記憶装置。',
+    traits: ['知識への奉仕','秩序と精密さへの執着','記録という使命感','時代を超える視野'],
+    message: '記録された知識は永遠に生き続ける。学び続けることが、あなたの魂の呼吸だ。',
+  },
+  {
+    name: 'アフリカの部族のシャーマン',     nameEn: 'African Tribal Shaman',
+    era: '様々な時代 ／ アフリカ大陸', period: '古代〜近代',
+    symbol: '🌍', hue: '#fb923c',
+    role: '祖霊と生者の間に立ち、共同体の癒しと導きを担い、大地のリズムを体に刻んだ長老。',
+    traits: ['大地に根ざした智恵','霊的な共感能力','共同体への絶対的貢献','自然と一体の存在感'],
+    message: '大地のように大きく、水のように柔らかく。あなたの魂は共同体の柱だった。',
+  },
+  {
+    name: '幕末の志士',                  nameEn: 'Meiji Restoration Patriot',
+    era: '幕末〜明治維新 ／ 日本',     period: '1850〜1870 年代',
+    symbol: '🌊', hue: '#38bdf8',
+    role: '命を賭けて時代の波に立ち向かい、新しい日本の夜明けを信じ戦い続けた理想の炎。',
+    traits: ['燃えるような理想主義','不退転の勇気','時代を変えようとする改革心','義のための犠牲'],
+    message: '時代の波を受け止め、未来に投げかけた種よ。今世でもその炎を絶やすな。',
+  },
+  {
+    name: '古代ギリシャの彫刻家',          nameEn: 'Greek Sculptor',
+    era: '古代ギリシャ文明',           period: '紀元前 500〜200 年',
+    symbol: '🗿', hue: '#e5e7eb',
+    role: '大理石に完全なる美を刻み、神々の姿を通して人間の理想形を表現した美の求道者。',
+    traits: ['完璧な美への執念','形の中に魂を宿す力','知性と感覚の両立','忍耐と情熱の融合'],
+    message: '美は永遠を映す鏡。あなたの眼が捉えた美しさは、今世でも誰かを救う。',
+  },
+];
+
+/* ═══════════ ALGORITHM ═══════════ */
+function calcIndex(y, m, d) {
+  // Numerological mapping: combines year + month + day non-trivially
+  const v = (y * 31 + m * 17 + d * 13 + Math.floor(y / 100) * 7);
+  return ((v % PAST_LIVES.length) + PAST_LIVES.length) % PAST_LIVES.length;
+}
+
+/* ═══════════ BUILD SELECTS ═══════════ */
+(function buildSelects() {
+  const wrap = document.getElementById('dateSelects');
+
+  // Year
+  const yrWrap = document.createElement('div');
+  yrWrap.className = 'sel-wrap';
+  const yrLbl = document.createElement('div'); yrLbl.className = 'sel-lbl'; yrLbl.textContent = '年';
+  const yrSel = document.createElement('select'); yrSel.id = 'selY';
+  yrSel.innerHTML = '<option value="">----</option>';
+  for (let y = 2010; y >= 1920; y--) {
+    yrSel.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+  yrWrap.append(yrLbl, yrSel);
+
+  // Month
+  const moWrap = document.createElement('div'); moWrap.className = 'sel-wrap';
+  const moLbl = document.createElement('div'); moLbl.className = 'sel-lbl'; moLbl.textContent = '月';
+  const moSel = document.createElement('select'); moSel.id = 'selM';
+  moSel.innerHTML = '<option value="">--</option>';
+  for (let m = 1; m <= 12; m++) moSel.innerHTML += `<option value="${m}">${m}</option>`;
+  moWrap.append(moLbl, moSel);
+
+  // Day
+  const dyWrap = document.createElement('div'); dyWrap.className = 'sel-wrap';
+  const dyLbl = document.createElement('div'); dyLbl.className = 'sel-lbl'; dyLbl.textContent = '日';
+  const dySel = document.createElement('select'); dySel.id = 'selD';
+  dySel.innerHTML = '<option value="">--</option>';
+  for (let d = 1; d <= 31; d++) dySel.innerHTML += `<option value="${d}">${d}</option>`;
+  dyWrap.append(dyLbl, dySel);
+
+  wrap.append(yrWrap, moWrap, dyWrap);
+})();
+
+/* ═══════════ DIVINE ═══════════ */
+function divine() {
+  const y = parseInt(document.getElementById('selY').value);
+  const m = parseInt(document.getElementById('selM').value);
+  const d = parseInt(document.getElementById('selD').value);
+
+  if (!y || !m || !d) {
+    shake(document.getElementById('inputCard'));
+    return;
+  }
+
+  const btn = document.getElementById('oracleBtn');
+  btn.disabled = true;
+
+  // Show scanning overlay
+  const overlay = document.getElementById('scanOverlay');
+  overlay.classList.add('active');
+
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    btn.disabled = false;
+
+    const idx = calcIndex(y, m, d);
+    renderResult(PAST_LIVES[idx], idx + 1, y, m, d);
+  }, 2000);
+}
+
+function shake(el) {
+  el.style.animation = 'none';
+  el.offsetWidth;
+  el.style.animation = 'shake .4s ease';
+  setTimeout(() => el.style.animation = '', 400);
+
+  // inject shake keyframe once
+  if (!document.getElementById('shakeKF')) {
+    const s = document.createElement('style');
+    s.id = 'shakeKF';
+    s.textContent = `@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}`;
+    document.head.appendChild(s);
+  }
+}
+
+function renderResult(pl, num, y, m, d) {
+  const card = document.getElementById('resultCard');
+
+  // Build inner HTML
+  const traitsHtml = pl.traits.map(t => `<span class="trait">${t}</span>`).join('');
+  const hexAlpha   = pl.hue + '28';
+  const hexBorder  = pl.hue + '40';
+
+  card.innerHTML = `
+    <div class="result-inner" style="--accent-color:${pl.hue}">
+      <div class="result-glow"></div>
+
+      <div class="result-badge">
+        <div class="past-era">${pl.era}</div>
+        <span class="past-symbol">${pl.symbol}</span>
+        <div class="past-name">${pl.name}</div>
+        <div class="past-name-en">${pl.nameEn}</div>
+        <div class="past-period">${pl.period}</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="info-grid">
+        <div class="info-block" style="border-color:${hexBorder};background:${hexAlpha}">
+          <div class="block-head">
+            <span class="block-icon">💼</span>
+            <span class="block-lbl">前世の役職</span>
+          </div>
+          <div class="block-body">${pl.role}</div>
+        </div>
+
+        <div class="info-block" style="border-color:${hexBorder};background:${hexAlpha}">
+          <div class="block-head">
+            <span class="block-icon">⏳</span>
+            <span class="block-lbl">前世の時代</span>
+          </div>
+          <div class="block-body">
+            <strong style="color:#fff;letter-spacing:1px">${pl.era}</strong><br>
+            <span style="font-size:.78rem;color:rgba(255,255,255,.5)">${pl.period}</span>
+          </div>
+        </div>
+
+        <div class="info-block" style="border-color:${hexBorder};background:${hexAlpha}">
+          <div class="block-head">
+            <span class="block-icon">🧬</span>
+            <span class="block-lbl">前世の性格・気質</span>
+          </div>
+          <div class="block-body">
+            <div class="trait-list">${traitsHtml}</div>
+          </div>
+        </div>
+
+        <div class="info-block full" style="border-color:${hexBorder};background:${hexAlpha}">
+          <div class="block-head">
+            <span class="block-icon">🔮</span>
+            <span class="block-lbl">前世からのメッセージ</span>
+          </div>
+          <div class="block-body">
+            <div class="message-box">${pl.message}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reset-area">
+        <button class="reset-btn" onclick="resetForm()">別の生年月日で診断する</button>
+      </div>
+
+      <div class="plife-num">PATTERN ${String(num).padStart(2,'0')} / ${PAST_LIVES.length}</div>
+    </div>
+  `;
+
+  // style traits to use accent color
+  card.querySelectorAll('.trait').forEach(t => {
+    t.style.background = hexAlpha;
+    t.style.borderColor = hexBorder;
+    t.style.color = pl.hue;
+  });
+
+  document.getElementById('inputCard').style.display = 'none';
+  card.classList.remove('open');
+  void card.offsetWidth;
+  card.classList.add('open');
+
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
+
+function resetForm() {
+  document.getElementById('inputCard').style.display = 'block';
+  const card = document.getElementById('resultCard');
+  card.classList.remove('open');
+  card.innerHTML = '';
+  setTimeout(() => document.getElementById('inputCard').scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+}
+</script>
+</body>
+</html>
