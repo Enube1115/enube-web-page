@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ランダム旅行プランナー 🗾</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Playfair+Display:wght@400;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      font-family: 'Noto Sans JP', sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    .stars {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .star {
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+      animation: twinkle 3s infinite alternate;
+    }
+
+    @keyframes twinkle {
+      from { opacity: 0.2; transform: scale(1); }
+      to   { opacity: 1;   transform: scale(1.4); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 780px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    header .emoji {
+      font-size: 3.6rem;
+      display: block;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 0 16px rgba(255,200,80,0.7));
+      animation: float 4s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-10px); }
+    }
+
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, #f9d423, #ff4e50, #f9d423);
+      background-size: 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 4s linear infinite;
+      letter-spacing: 2px;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 0%; }
+      100% { background-position: 200%; }
+    }
+
+    header p {
+      margin-top: 10px;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.95rem;
+      font-weight: 300;
+      letter-spacing: 1px;
+    }
+
+    .btn-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .spin-btn {
+      position: relative;
+      padding: 18px 52px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      font-family: 'Noto Sans JP', sans-serif;
+      letter-spacing: 2px;
+      color: #fff;
+      background: linear-gradient(135deg, #f9d423 0%, #ff4e50 100%);
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 8px 32px rgba(249,212,35,0.35), 0 2px 8px rgba(0,0,0,0.3);
+      transition: transform 0.15s, box-shadow 0.15s;
+      overflow: hidden;
+    }
+
+    .spin-btn::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%);
+      transform: scale(0);
+      transition: transform 0.5s ease;
+    }
+
+    .spin-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(249,212,35,0.45); }
+    .spin-btn:hover::before { transform: scale(1); }
+    .spin-btn:active { transform: translateY(0); }
+    .spin-btn.spinning { animation: btnPulse 0.6s ease; }
+
+    @keyframes btnPulse {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(0.94); }
+      70%  { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+
+    .card {
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 36px 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .pref-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.08);
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .dest-name {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 700;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #fff 0%, #f9d423 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .dest-emoji {
+      font-size: 2.8rem;
+      flex-shrink: 0;
+    }
+
+    .region-tag {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.45);
+      margin-top: 2px;
+      letter-spacing: 1px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 520px) {
+      .grid { grid-template-columns: 1fr; }
+      .card { padding: 24px 22px; }
+    }
+
+    .info-block {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 18px 20px;
+      transition: transform 0.2s;
+    }
+
+    .info-block:hover { transform: translateY(-2px); }
+
+    .info-block.full { grid-column: 1 / -1; }
+
+    .block-title {
+      font-size: 0.72rem;
+      letter-spacing: 2px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .block-title span { font-size: 1rem; }
+
+    .block-content {
+      font-size: 0.97rem;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.88);
+      font-weight: 400;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .tag {
+      font-size: 0.82rem;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .tag-spot {
+      background: rgba(100,200,255,0.15);
+      border: 1px solid rgba(100,200,255,0.3);
+      color: #8de0ff;
+    }
+
+    .tag-food {
+      background: rgba(255,160,80,0.15);
+      border: 1px solid rgba(255,160,80,0.3);
+      color: #ffbc7a;
+    }
+
+    .tag-season {
+      background: rgba(120,230,120,0.15);
+      border: 1px solid rgba(120,230,120,0.3);
+      color: #8fefaa;
+    }
+
+    .season-icons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .s-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(120,230,120,0.12);
+      border: 1px solid rgba(120,230,120,0.25);
+      color: #a8f5be;
+    }
+
+    .tip-box {
+      margin-top: 18px;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, rgba(249,212,35,0.1), rgba(255,78,80,0.1));
+      border: 1px solid rgba(249,212,35,0.2);
+      border-radius: 14px;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.7;
+    }
+
+    .tip-box strong { color: #f9d423; }
+
+    .history {
+      margin-top: 32px;
+    }
+
+    .history h3 {
+      font-size: 0.78rem;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .history-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .history-item {
+      font-size: 0.78rem;
+      padding: 4px 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      color: rgba(255,255,255,0.5);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover {
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.85);
+    }
+
+    footer {
+      margin-top: 48px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.2);
+      text-align: center;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<div class="container">
+  <header>
+    <span class="emoji">✈️</span>
+    <h1>Japan Travel Roulette</h1>
+    <p>ランダム旅行プランナー ／ 47都道府県対応</p>
+  </header>
+
+  <div class="btn-wrap">
+    <button class="spin-btn" id="spinBtn" onclick="spin()">
+      🎲 旅先をランダム決定！
+    </button>
+  </div>
+
+  <div class="card" id="card">
+    <div class="card-header">
+      <div class="dest-emoji" id="destEmoji"></div>
+      <div>
+        <div class="pref-badge" id="prefBadge"></div>
+        <div class="dest-name" id="destName"></div>
+        <div class="region-tag" id="regionTag"></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="info-block full">
+        <div class="block-title"><span>🗺️</span> 観光スポット</div>
+        <div class="tag-list" id="spots"></div>
+      </div>
+      <div class="info-block">
+        <div class="block-title"><span>🍜</span> ご当地グルメ</div>
+        <div class="tag-list" id="foods"></div>
+      </div>
+      <div class="info-block">
+        <div class="block-title"><span>🌸</span> おすすめシーズン</div>
+        <div class="season-icons" id="seasons"></div>
+      </div>
+    </div>
+
+    <div class="tip-box" id="tipBox"></div>
+  </div>
+
+  <div class="history" id="historyBox" style="display:none">
+    <h3>🕒 最近の旅先履歴</h3>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<footer>© 2025 Japan Travel Roulette — 全47都道府県対応</footer>
+
+<script>
+const PREFECTURES = [
+  {
+    pref: "北海道", region: "北海道地方", emoji: "🦀",
+    spots: ["札幌時計台","小樽運河","富良野ラベンダー畑","知床半島","函館夜景","旭山動物園","洞爺湖"],
+    foods: ["海鮮丼","ジンギスカン","スープカレー","ザンギ","バターコーン味噌ラーメン","白い恋人"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "冬（1〜2月）", icon: "❄️" }],
+    tip: "富良野のラベンダーは7月上旬が見頃。流氷は2月頃に網走・知床で観測できます。"
+  },
+  {
+    pref: "青森県", region: "東北地方", emoji: "🍎",
+    spots: ["弘前城","奥入瀬渓流","十和田湖","三内丸山遺跡","八甲田山","恐山","青森ねぶた祭"],
+    foods: ["りんご","せんべい汁","津軽そば","イカ焼き","八戸前沖さば","馬肉料理"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "弘前城の桜まつりは4月下旬〜5月上旬。青森ねぶた祭は8月2〜7日に開催されます。"
+  },
+  {
+    pref: "岩手県", region: "東北地方", emoji: "🌾",
+    spots: ["中尊寺金色堂","厳美渓","龍泉洞","花巻温泉","盛岡城跡","猊鼻渓","浄土ヶ浜"],
+    foods: ["わんこそば","盛岡じゃじゃ麺","盛岡冷麺","南部せんべい","前沢牛","うに"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "浄土ヶ浜は夏の海水浴と遊覧船が人気。中尊寺の紅葉は10月下旬〜11月上旬が見頃です。"
+  },
+  {
+    pref: "宮城県", region: "東北地方", emoji: "🦢",
+    spots: ["松島","仙台城跡（青葉城）","秋保温泉","仙台七夕まつり","鳴子温泉","金華山","石ノ森萬画館"],
+    foods: ["牛タン","ずんだ餅","仙台みそ","笹かまぼこ","はらこ飯","三陸産カキ"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "松島は日本三景のひとつ。仙台七夕まつりは8月6〜8日に開催され、全国から観光客が訪れます。"
+  },
+  {
+    pref: "秋田県", region: "東北地方", emoji: "🌾",
+    spots: ["男鹿半島（なまはげ）","田沢湖","角館武家屋敷","白神山地","乳頭温泉郷","横手かまくら","八郎潟"],
+    foods: ["きりたんぽ鍋","稲庭うどん","いぶりがっこ","秋田比内地鶏","横手やきそば","じゅんさい"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "冬（2月）", icon: "❄️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "横手かまくら祭りは2月15〜16日。乳頭温泉郷は秘湯として名高く、雪見露天風呂が最高です。"
+  },
+  {
+    pref: "山形県", region: "東北地方", emoji: "🍒",
+    spots: ["山寺（立石寺）","蔵王温泉（樹氷）","出羽三山","最上川","銀山温泉","鶴岡","天童（将棋の里）"],
+    foods: ["山形牛","芋煮","だし","玉こんにゃく","ラーメン（辛みそ）","山形さくらんぼ","米沢牛"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（6〜7月）", icon: "☀️" }, { label: "冬（2月）", icon: "❄️" }],
+    tip: "蔵王の樹氷（スノーモンスター）は1〜2月が見頃。銀山温泉の雪景色は幻想的です。"
+  },
+  {
+    pref: "福島県", region: "東北地方", emoji: "🍑",
+    spots: ["会津若松城","磐梯山","猪苗代湖","五色沼","大内宿","鶴ヶ城","塔のへつり"],
+    foods: ["喜多方ラーメン","ソースカツ丼","こづゆ","馬刺し","棒タラ煮","赤べこ饅頭","白河ラーメン"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "五色沼は秋の紅葉と組み合わさり特に美しい。大内宿は雪が積もった冬も風情があります。"
+  },
+  {
+    pref: "茨城県", region: "関東地方", emoji: "🌹",
+    spots: ["偕楽園（梅）","国営ひたち海浜公園","袋田の滝","筑波山","水戸城跡","大洗磯前神社","鹿島神宮"],
+    foods: ["納豆","あんこう鍋","常陸牛","干しいも","れんこん料理","地酒","シラス丼"],
+    seasons: [{ label: "春（2〜3月）", icon: "🌸" }, { label: "春（4〜5月）", icon: "🌸" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "ひたち海浜公園のネモフィラは4〜5月、コキアの紅葉は10月が最高。偕楽園の梅は2〜3月。"
+  },
+  {
+    pref: "栃木県", region: "関東地方", emoji: "🌿",
+    spots: ["日光東照宮","華厳ノ滝","中禅寺湖","那須高原","足利フラワーパーク","鬼怒川温泉","益子焼"],
+    foods: ["餃子（宇都宮）","レモン牛乳","しもつかれ","佐野ラーメン","いちご（とちおとめ）","日光ゆば"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "日光の紅葉は10月中旬〜11月上旬が見頃。足利フラワーパークの藤は4月下旬〜5月上旬が圧巻。"
+  },
+  {
+    pref: "群馬県", region: "関東地方", emoji: "♨️",
+    spots: ["草津温泉","伊香保温泉","富岡製糸場","赤城山","吹割の滝","榛名山","尾瀬"],
+    foods: ["水沢うどん","おっきりこみ","上州牛","焼きまんじゅう","下仁田ネギ料理","高崎パスタ"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "冬（12〜2月）", icon: "❄️" }],
+    tip: "草津温泉は湯畑が有名。尾瀬のニッコウキスゲは7月が見頃で、高山植物も楽しめます。"
+  },
+  {
+    pref: "埼玉県", region: "関東地方", emoji: "🌺",
+    spots: ["秩父（芝桜）","川越小江戸","さいたま水族館","鷲宮神社","長瀞ライン下り","吉見百穴","狭山湖"],
+    foods: ["冷汁うどん","蕎麦（秩父）","いがまんじゅう","草加せんべい","深谷ネギ","チーズIN肉みそカツ"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "秋（11月）", icon: "🍂" }, { label: "夏（8月）", icon: "☀️" }],
+    tip: "秩父の芝桜は4月下旬〜5月中旬。川越は年中楽しめますが、菊まつりの10月もおすすめです。"
+  },
+  {
+    pref: "千葉県", region: "関東地方", emoji: "🌊",
+    spots: ["東京ディズニーリゾート","鴨川シーワールド","成田山新勝寺","九十九里浜","館山城","犬吠埼灯台","佐倉城址公園"],
+    foods: ["勝浦タンタンメン","落花生","醤油（銚子）","房総アジ刺し","なめろう","伊勢海老","イワシ料理"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "冬（1月）", icon: "❄️" }],
+    tip: "犬吠埼は元旦の初日の出の名所。房総半島の菜の花は1月から楽しめます。"
+  },
+  {
+    pref: "東京都", region: "関東地方", emoji: "🗼",
+    spots: ["東京スカイツリー","浅草・浅草寺","新宿御苑","渋谷スクランブル交差点","上野公園","お台場","高尾山"],
+    foods: ["もんじゃ焼き","深川めし","江戸前寿司","東京ラーメン（醤油）","もんじゃ焼き","東京バナナ","雷おこし"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }, { label: "冬（12月）", icon: "❄️" }],
+    tip: "上野公園の桜は3月下旬〜4月上旬。高尾山の紅葉は11月中旬〜下旬が美しい。"
+  },
+  {
+    pref: "神奈川県", region: "関東地方", emoji: "⛩️",
+    spots: ["鎌倉大仏","江ノ島","横浜中華街","箱根温泉","みなとみらい","三浦海岸","葉山"],
+    foods: ["シウマイ（崎陽軒）","横浜家系ラーメン","鎌倉野菜","江ノ島しらす丼","三崎マグロ","海軍カレー"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "箱根からの富士山の眺めは絶景。江ノ島の夕日も一見の価値あり。鎌倉の紫陽花は6月。"
+  },
+  {
+    pref: "新潟県", region: "中部地方", emoji: "🍚",
+    spots: ["佐渡島","妙高高原","越後湯沢","弥彦神社","上越・直江津","新潟市歴史博物館","松之山温泉"],
+    foods: ["コシヒカリ","へぎそば","のどぐろ","栃尾のあぶらげ","笹団子","たれかつ丼","新潟ラーメン"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "冬（2〜3月）", icon: "❄️" }],
+    tip: "越後湯沢はスキーリゾートとして人気。春の棚田百選「星峠の棚田」も必見です。"
+  },
+  {
+    pref: "富山県", region: "中部地方", emoji: "🦀",
+    spots: ["立山黒部アルペンルート","黒部峡谷（トロッコ）","高岡大仏","富山城","雨晴海岸","五箇山合掌造り","チューリップ公園"],
+    foods: ["富山ブラックラーメン","ます寿司","白エビ","ホタルイカ","氷見牛","かぶら寿司"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "立山黒部アルペンルートの雪の大谷は4〜5月が見頃。ホタルイカは3〜5月が旬です。"
+  },
+  {
+    pref: "石川県", region: "中部地方", emoji: "🦀",
+    spots: ["兼六園","金沢城公園","ひがし茶屋街","能登半島","輪島朝市","白米千枚田","加賀温泉"],
+    foods: ["加能ガニ","のどぐろ","治部煮","金沢カレー","八目鰻蒲焼","金箔ソフト","柴舟小出のかぶら寿司"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "兼六園は日本三名園のひとつ。冬の雪吊り（11月中旬）は兼六園の風物詩です。"
+  },
+  {
+    pref: "福井県", region: "中部地方", emoji: "🦕",
+    spots: ["東尋坊","永平寺","恐竜博物館","三方五湖","越前大野城","一乗谷朝倉氏遺跡","越前海岸水仙"],
+    foods: ["越前がに","へしこ","越前そば","ソースカツ丼（福井）","鯖のなれずし","水ようかん","羽二重餅"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "冬（1〜2月）", icon: "❄️" }],
+    tip: "越前がには11〜3月が解禁期間。東尋坊の夕日は絶景で、サンセットクルーズも人気です。"
+  },
+  {
+    pref: "山梨県", region: "中部地方", emoji: "🗻",
+    spots: ["富士山（富士五湖）","河口湖","昇仙峡","武田神社","清里高原","石和温泉","西沢渓谷"],
+    foods: ["ほうとう","甲州ワイン","信玄餅","甲州牛","鳥もつ煮","桃スイーツ","甲州梅酒"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10〜11月）", icon: "🍂" }, { label: "冬（12〜2月）", icon: "❄️" }],
+    tip: "富士山の世界遺産登録エリアと富士五湖は四季を通じて人気。ぶどう・桃の収穫体験は夏〜秋。"
+  },
+  {
+    pref: "長野県", region: "中部地方", emoji: "🏔️",
+    spots: ["上高地","松本城","善光寺","諏訪湖","白馬村","小布施","妻籠宿・馬籠宿"],
+    foods: ["信州蕎麦","おやき","山賊焼き","馬刺し","野沢菜漬け","信州サーモン","栗ご飯（小布施）"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }, { label: "冬（12〜3月）", icon: "❄️" }],
+    tip: "上高地は4月下旬〜11月のみ開通。白馬は冬のスキー・夏のトレッキング両方人気。"
+  },
+  {
+    pref: "岐阜県", region: "中部地方", emoji: "🏯",
+    spots: ["白川郷合掌造り","下呂温泉","岐阜城","高山古い町並み","飛騨民俗村","郡上八幡","関ケ原古戦場"],
+    foods: ["飛騨牛","高山ラーメン","みたらし団子","朴葉味噌","五平餅","鶏ちゃん","栗きんとん"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7月）", icon: "☀️" }, { label: "秋（10〜11月）", icon: "🍂" }, { label: "冬（1〜2月）", icon: "❄️" }],
+    tip: "白川郷の雪化粧は1〜2月が幻想的。高山祭（春は4月、秋は10月）は日本三大美祭のひとつ。"
+  },
+  {
+    pref: "静岡県", region: "中部地方", emoji: "🍵",
+    spots: ["富士山（静岡側）","伊豆半島","三保の松原","熱海温泉","寸又峡","浜名湖","久能山東照宮"],
+    foods: ["静岡おでん","桜エビ","しらす丼","ウナギ（浜名湖）","富士宮やきそば","わさび料理","茶そば"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "三保の松原から見る富士山は絶景。伊豆半島の熱川・下田は年間通じて温暖で訪問しやすい。"
+  },
+  {
+    pref: "愛知県", region: "中部地方", emoji: "🏯",
+    spots: ["名古屋城","熱田神宮","犬山城","レゴランド","明治村","伊良湖岬","常滑焼の里"],
+    foods: ["ひつまぶし","名古屋コーチン","味噌カツ","あんかけスパ","小倉トースト","手羽先","きしめん"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "名古屋飯の食べ歩きがとにかく楽しい。犬山城は日本最古の天守閣で国宝に指定されています。"
+  },
+  {
+    pref: "三重県", region: "近畿地方", emoji: "⛩️",
+    spots: ["伊勢神宮","鳥羽水族館","志摩スペイン村","熊野古道","長島温泉","二見興玉神社（夫婦岩）","赤目四十八滝"],
+    foods: ["伊勢うどん","手こね寿司","松阪牛","牡蠣（的矢）","伊勢海老","赤福","なが餅"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "お伊勢参りは年中人気。夫婦岩の日の出は夏至前後がベスト。松阪牛は県内どこでも堪能できます。"
+  },
+  {
+    pref: "滋賀県", region: "近畿地方", emoji: "🏯",
+    spots: ["彦根城","琵琶湖","比叡山延暦寺","竹生島","近江八幡水郷","メタセコイア並木","信楽（たぬき）"],
+    foods: ["ふなずし","近江牛","鮒料理","赤こんにゃく","丁字麩のからし和え","湖魚の佃煮","信楽焼"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "メタセコイア並木の紅葉は11月下旬が絶景。琵琶湖の花火大会は8月上旬。"
+  },
+  {
+    pref: "京都府", region: "近畿地方", emoji: "⛩️",
+    spots: ["金閣寺","嵐山・嵯峨野","伏見稲荷大社","祇園","清水寺","龍安寺（石庭）","天橋立"],
+    foods: ["京料理（懐石）","湯豆腐","おばんざい","抹茶スイーツ","鱧料理","漬物","京ラーメン"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }, { label: "冬（12月）", icon: "❄️" }],
+    tip: "嵐山の紅葉・桜は超人気。祇園祭は7月全体。冬の金閣寺の雪景色も幻想的です。"
+  },
+  {
+    pref: "大阪府", region: "近畿地方", emoji: "🐙",
+    spots: ["大阪城","道頓堀","USJ","通天閣","心斎橋","海遊館","難波"],
+    foods: ["たこ焼き","お好み焼き","串カツ","箱寿司","かすうどん","551の豚まん","づぼらや（ふぐ）"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "道頓堀の食い倒れ巡りは必須。大阪城の桜は3月下旬〜4月上旬。住吉大社の初詣は日本一の人出。"
+  },
+  {
+    pref: "兵庫県", region: "近畿地方", emoji: "🏯",
+    spots: ["姫路城","有馬温泉","神戸港（ポートタワー）","淡路島","北野異人館","城崎温泉","竹田城跡"],
+    foods: ["神戸牛","明石焼き","播磨の米料理","たこ飯","淡路島バーガー","神戸スイーツ","いかなごのくぎ煮"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10〜11月）", icon: "🍂" }],
+    tip: "竹田城跡の雲海は10月〜11月の早朝が見頃。城崎温泉は但馬牛とカニも楽しめます。"
+  },
+  {
+    pref: "奈良県", region: "近畿地方", emoji: "🦌",
+    spots: ["東大寺（大仏）","奈良公園（鹿）","法隆寺","春日大社","飛鳥地方","吉野山","明日香村"],
+    foods: ["柿の葉寿司","奈良漬け","飛鳥鍋（牛乳）","三輪そうめん","吉野葛料理","大和野菜","柿スイーツ"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "吉野山の桜は4月上旬〜中旬で「下千本〜上千本」の段階的な開花が楽しめます。"
+  },
+  {
+    pref: "和歌山県", region: "近畿地方", emoji: "🍊",
+    spots: ["高野山","那智の滝","串本（橋杭岩）","白浜（アドベンチャーワールド）","熊野大社","勝浦温泉","友ヶ島"],
+    foods: ["めはり寿司","マグロ丼（勝浦）","クエ鍋","みかん","熊野地鶏","金山寺みそ","紀州梅干し"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "高野山の紅葉は10月下旬〜11月上旬。那智の滝は熊野古道とセットで訪れたい聖地です。"
+  },
+  {
+    pref: "鳥取県", region: "中国地方", emoji: "🏜️",
+    spots: ["鳥取砂丘","大山","三朝温泉","水木しげるロード","鳥取城跡","白兎海岸","はわい温泉"],
+    foods: ["松葉ガニ","鳥取和牛","二十世紀梨","トウフちくわ","すなば珈琲","弓ヶ浜ちくわ","たくあん"],
+    seasons: [{ label: "春（4〜5月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "冬（12〜1月）", icon: "❄️" }],
+    tip: "砂丘は朝夕の斜光が美しく、風紋が鮮明に見えます。松葉ガニは11〜3月が解禁。"
+  },
+  {
+    pref: "島根県", region: "中国地方", emoji: "⛩️",
+    spots: ["出雲大社","松江城","石見銀山","宍道湖","足立美術館","隠岐諸島","三瓶山"],
+    foods: ["出雲そば","のどぐろ","しじみ汁","若布の酢の物","割子そば","奥出雲牛","松江和菓子"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "足立美術館の日本庭園は世界一に選ばれたことも。出雲大社は縁結びの神様として有名です。"
+  },
+  {
+    pref: "岡山県", region: "中国地方", emoji: "🍑",
+    spots: ["後楽園","倉敷美観地区","吉備津神社","犬島","鷲羽山","湯郷温泉","岡山城"],
+    foods: ["祭ずし","ままかり","デミカツ丼","岡山ばら寿司","桃スイーツ","マスカット","白桃"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "後楽園は日本三名園。倉敷美観地区の白壁は年中映えます。桃・マスカットの旬は7〜8月。"
+  },
+  {
+    pref: "広島県", region: "中国地方", emoji: "🕊️",
+    spots: ["厳島神社（宮島）","原爆ドーム","尾道","しまなみ海道","三段峡","鞆の浦","帝釈峡"],
+    foods: ["お好み焼き（広島風）","牡蠣","あなごめし","レモン料理","広島ラーメン","もみじ饅頭","汁なし担々麺"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "宮島の大鳥居は干潮時に歩いて近づけます。しまなみ海道のサイクリングは春・秋がベスト。"
+  },
+  {
+    pref: "山口県", region: "中国地方", emoji: "🐡",
+    spots: ["錦帯橋","秋吉台（秋芳洞）","角島大橋","萩城下町","下関・唐戸市場","元乃隅神社","津和野"],
+    foods: ["ふく料理（ふぐ）","瓦そば","岩国寿司","けんちょう","外郎（ういろう）","安倍川餅","萩の夏みかん"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10〜11月）", icon: "🍂" }],
+    tip: "角島大橋は日本屈指のドライブスポット。元乃隅神社の100基以上の鳥居は圧巻です。"
+  },
+  {
+    pref: "徳島県", region: "四国地方", emoji: "💃",
+    spots: ["阿波踊り会館","祖谷のかずら橋","鳴門の渦潮","大歩危・小歩危","阿南の海岸","剣山","眉山"],
+    foods: ["阿波尾鶏","徳島ラーメン","鯛めし","すだち料理","鳴門金時（さつまいも）","半田そうめん","ボイル鳴門ワカメ"],
+    seasons: [{ label: "夏（8月）", icon: "☀️" }, { label: "春（4〜5月）", icon: "🌸" }, { label: "秋（10月）", icon: "🍂" }],
+    tip: "阿波踊りは8月12〜15日に最高潮。鳴門の渦潮は春と秋の大潮時が最も迫力があります。"
+  },
+  {
+    pref: "香川県", region: "四国地方", emoji: "🍜",
+    spots: ["金刀比羅宮","直島（現代アート）","栗林公園","屋島","丸亀城","父母ヶ浜","瀬戸大橋"],
+    foods: ["讃岐うどん","骨付き鳥（丸亀）","あんもち雑煮","醤油豆","ハモ料理","さぬき和牛","金比羅うどん"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "父母ヶ浜の「天空の鏡」写真は日没後のタイミングが重要。直島は現代アートの島として国際的に有名。"
+  },
+  {
+    pref: "愛媛県", region: "四国地方", emoji: "🍊",
+    spots: ["道後温泉","松山城","しまなみ海道","宇和島城","大洲城","四国カルスト","別子銅山"],
+    foods: ["鯛めし","じゃこ天","みかん（愛媛）","今治焼き鳥","宇和島鯛めし","じゃこカツ","いよかんゼリー"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11〜12月）", icon: "🍂" }],
+    tip: "道後温泉は日本最古の温泉のひとつ。みかんの収穫は11〜12月。しまなみ海道は自転車旅行の聖地。"
+  },
+  {
+    pref: "高知県", region: "四国地方", emoji: "🐳",
+    spots: ["桂浜","高知城","室戸岬","四万十川","仁淀川","足摺岬","高知よさこい祭り"],
+    foods: ["かつおのたたき","土佐ジロー（卵）","皿鉢料理","アイスクリン","文旦","鰹節","芋けんぴ"],
+    seasons: [{ label: "夏（7〜8月）", icon: "☀️" }, { label: "春（4〜5月）", icon: "🌸" }, { label: "秋（9〜10月）", icon: "🍂" }],
+    tip: "よさこい祭りは8月9〜12日。四万十川でのカヌーは夏がベスト。鰹のたたきは一年中食べられます。"
+  },
+  {
+    pref: "福岡県", region: "九州地方", emoji: "🍜",
+    spots: ["太宰府天満宮","福岡タワー","大濠公園","九州国立博物館","マリンワールド海の中道","糸島","志賀島"],
+    foods: ["博多ラーメン（豚骨）","もつ鍋","水炊き","明太子","博多餃子","イカの活造り","ゴマサバ"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "糸島の海岸線はカフェや映えスポットが多数。太宰府天満宮は梅で有名で、3月が見頃。"
+  },
+  {
+    pref: "佐賀県", region: "九州地方", emoji: "🎈",
+    spots: ["有田焼窯元","嬉野温泉","唐津城","佐賀インターナショナルバルーンフェスタ","吉野ヶ里遺跡","七ツ釜","虹の松原"],
+    foods: ["佐賀牛","呼子のイカ","佐賀海苔","唐津くんち料理","シシリアンライス","温泉湯豆腐","チャンポン"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "佐賀バルーンフェスタは毎年10月下旬〜11月上旬。呼子の活イカは朝市でも楽しめます。"
+  },
+  {
+    pref: "長崎県", region: "九州地方", emoji: "🕍",
+    spots: ["軍艦島","グラバー園","稲佐山夜景","平和公園","出島","雲仙温泉","五島列島"],
+    foods: ["長崎ちゃんぽん","皿うどん","トルコライス","角煮まん","カステラ","佐世保バーガー","長崎和牛"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "冬（1〜2月）", icon: "❄️" }],
+    tip: "長崎ランタンフェスティバルは旧正月（1〜2月）に開催。稲佐山の夜景は日本新三大夜景のひとつ。"
+  },
+  {
+    pref: "熊本県", region: "九州地方", emoji: "🐻",
+    spots: ["熊本城","阿蘇山","天草（イルカ）","黒川温泉","球磨川","水前寺成趣園","通潤橋"],
+    foods: ["馬刺し","太平燕（タイピーエン）","熊本ラーメン","天草の海鮮","いきなり団子","高菜料理","辛子蓮根"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10〜11月）", icon: "🍂" }],
+    tip: "阿蘇のカルデラは世界最大級。くまモンに出会えるスポットも多数。黒川温泉は露天風呂めぐりが人気。"
+  },
+  {
+    pref: "大分県", region: "九州地方", emoji: "♨️",
+    spots: ["別府温泉（地獄めぐり）","由布院","国東半島","耶馬溪","高崎山","九重夢大吊橋","臼杵石仏"],
+    foods: ["とり天","だんご汁","りゅうきゅう","城下カレイ","ブリの刺身","ほたるいか","関サバ・関アジ"],
+    seasons: [{ label: "春（4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（10〜11月）", icon: "🍂" }],
+    tip: "由布院は朝霧が幻想的で春・秋がおすすめ。九重の紅葉は10月中旬〜下旬が見頃。"
+  },
+  {
+    pref: "宮崎県", region: "九州地方", emoji: "🌴",
+    spots: ["高千穂峡","青島神社","日南海岸（鬼の洗濯板）","宮崎神宮","都井岬（野生馬）","綾渓谷","高原温泉"],
+    foods: ["チキン南蛮","宮崎牛","冷や汁","日向夏料理","地鶏の炭火焼","マンゴースイーツ","辛麺"],
+    seasons: [{ label: "夏（7〜8月）", icon: "☀️" }, { label: "春（4〜5月）", icon: "🌸" }, { label: "秋（10〜11月）", icon: "🍂" }],
+    tip: "高千穂峡のボート漕ぎは早朝予約必須。宮崎マンゴーの旬は5〜7月、希少で絶品。"
+  },
+  {
+    pref: "鹿児島県", region: "九州地方", emoji: "🌋",
+    spots: ["桜島","屋久島（縄文杉）","知覧特攻平和会館","指宿温泉（砂蒸し）","霧島神宮","奄美大島","西大山駅（最南端）"],
+    foods: ["黒豚しゃぶしゃぶ","さつまいも料理","かごしま黒牛","きびなご料理","芋焼酎","さつま揚げ","鶏飯（奄美）"],
+    seasons: [{ label: "春（3〜4月）", icon: "🌸" }, { label: "夏（7〜8月）", icon: "☀️" }, { label: "秋（11月）", icon: "🍂" }],
+    tip: "屋久島の縄文杉トレッキングは体力が必要。桜島の灰に注意しつつ、フェリーで訪れる体験も独特。"
+  },
+  {
+    pref: "沖縄県", region: "沖縄地方", emoji: "🌺",
+    spots: ["首里城","美ら海水族館","竹富島","久高島","古宇利島","波照間島","やんばる国立公園"],
+    foods: ["沖縄そば","ゴーヤーチャンプルー","ラフテー","タコライス","サーターアンダーギー","ブルーシールアイス","海ぶどう"],
+    seasons: [{ label: "夏（6〜9月）", icon: "☀️" }, { label: "春（3〜5月）", icon: "🌸" }, { label: "冬（12〜2月）", icon: "🌊" }],
+    tip: "梅雨は5〜6月ですが、7〜9月の海は最高。台風シーズン（8〜9月）は注意。冬でも泳げる日があります。"
+  }
+];
+
+const SEASON_MAP = {
+  "春（2〜3月）": "🌼", "春（3月）": "🌸", "春（3〜4月）": "🌸", "春（4月）": "🌸",
+  "春（4〜5月）": "🌸", "春（4月下旬）": "🌸", "春（3〜5月）": "🌸", "春（2月）": "🌼",
+  "夏（6〜7月）": "🌻", "夏（7月）": "☀️", "夏（7〜8月）": "☀️", "夏（8月）": "☀️",
+  "夏（6〜9月）": "🌊", "夏（7〜9月）": "☀️",
+  "秋（9〜10月）": "🍂", "秋（10月）": "🍂", "秋（10〜11月）": "🍂", "秋（11月）": "🍁",
+  "秋（11〜12月）": "🍁",
+  "冬（12月）": "❄️", "冬（12〜2月）": "❄️", "冬（1月）": "❄️", "冬（1〜2月）": "❄️",
+  "冬（2月）": "❄️", "冬（2〜3月）": "❄️", "冬（12〜3月）": "❄️"
+};
+
+let history = [];
+let currentIndex = -1;
+
+function makeStars() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 80; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    star.style.cssText = `
+      width:${size}px; height:${size}px;
+      top:${Math.random()*100}%; left:${Math.random()*100}%;
+      animation-delay:${Math.random()*3}s;
+      animation-duration:${2+Math.random()*3}s;
+    `;
+    container.appendChild(star);
+  }
+}
+
+function spin() {
+  let idx;
+  do { idx = Math.floor(Math.random() * PREFECTURES.length); } while (idx === currentIndex && PREFECTURES.length > 1);
+  currentIndex = idx;
+  showCard(PREFECTURES[idx]);
+
+  const btn = document.getElementById('spinBtn');
+  btn.classList.remove('spinning');
+  void btn.offsetWidth;
+  btn.classList.add('spinning');
+}
+
+function showCard(data) {
+  const card = document.getElementById('card');
+  card.classList.remove('visible');
+
+  setTimeout(() => {
+    document.getElementById('prefBadge').textContent = data.pref;
+    document.getElementById('destEmoji').textContent = data.emoji;
+    document.getElementById('destName').textContent = data.pref;
+    document.getElementById('regionTag').textContent = data.region;
+
+    const spotsEl = document.getElementById('spots');
+    spotsEl.innerHTML = data.spots.map(s => `<span class="tag tag-spot">${s}</span>`).join('');
+
+    const foodsEl = document.getElementById('foods');
+    foodsEl.innerHTML = data.foods.map(f => `<span class="tag tag-food">${f}</span>`).join('');
+
+    const seasonsEl = document.getElementById('seasons');
+    seasonsEl.innerHTML = data.seasons.map(s => {
+      const icon = SEASON_MAP[s.label] || s.icon || '🌿';
+      return `<div class="s-chip">${icon} ${s.label}</div>`;
+    }).join('');
+
+    document.getElementById('tipBox').innerHTML = `<strong>💡 旅のヒント：</strong>${data.tip}`;
+
+    card.classList.add('visible');
+  }, 200);
+
+  addHistory(data.pref, data.emoji);
+}
+
+function addHistory(name, emoji) {
+  if (history.find(h => h.name === name)) return;
+  history.unshift({ name, emoji });
+  if (history.length > 8) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const box = document.getElementById('historyBox');
+  const list = document.getElementById('historyList');
+  if (history.length === 0) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  list.innerHTML = history.map(h =>
+    `<span class="history-item" onclick="showByName('${h.name}')">${h.emoji} ${h.name}</span>`
+  ).join('');
+}
+
+function showByName(name) {
+  const data = PREFECTURES.find(p => p.pref === name);
+  if (data) showCard(data);
+}
+
+makeStars();
+</script>
+</body>
+</html>
