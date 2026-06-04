@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>もぐらたたき 🐭</title>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      user-select: none; -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --sky-t: #3ab0f5;
+      --sky-b: #a8dcf8;
+      --g1: #5cb862;
+      --g2: #3e8e44;
+      --g3: #2d6e32;
+      --dirt: #7a5230;
+      --hole-c: #1a0900;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(180deg, var(--sky-t) 0%, var(--sky-b) 52%, var(--g1) 52%, var(--g2) 78%, var(--g3) 100%);
+      position: relative;
+    }
+
+    /* ── clouds ── */
+    .cloud {
+      position: fixed; pointer-events: none; z-index: 0;
+      opacity: .88;
+      animation: cloudDrift linear infinite;
+    }
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+    }
+    .cloud { width: 100px; height: 36px; background: #fff; border-radius: 20px; }
+    .cloud::before { width: 54px; height: 54px; top: -28px; left: 14px; }
+    .cloud::after  { width: 38px; height: 38px; top: -18px; right: 14px; }
+    @keyframes cloudDrift {
+      from { transform: translateX(-160px); }
+      to   { transform: translateX(calc(100vw + 160px)); }
+    }
+
+    /* ── grass hills decoration ── */
+    .hills {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      pointer-events: none; z-index: 0;
+    }
+    .hills svg { width: 100%; height: 80px; display: block; }
+
+    /* ── main wrapper ── */
+    .wrap {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 560px;
+      padding: 0 12px 20px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* ── HUD ── */
+    .hud {
+      width: 100%;
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 4px 8px;
+    }
+
+    .hud-box {
+      background: rgba(255,255,255,.85);
+      border-radius: 14px;
+      padding: 8px 14px;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.9);
+    }
+    .hud-lbl { font-size: .62rem; font-weight: 700; color: #666; letter-spacing: 1px; margin-bottom: 2px; }
+    .hud-val { font-size: 1.5rem; font-weight: 900; color: #333; line-height: 1; }
+    .hud-val.score-anim { animation: scorePop .25s ease; }
+    @keyframes scorePop {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.35); color: #e8521a; }
+      100% { transform: scale(1); }
+    }
+
+    /* Timer */
+    .timer-wrap {
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .timer-ring {
+      position: relative;
+      width: 68px; height: 68px;
+    }
+    .timer-ring svg { position: absolute; top: 0; left: 0; transform: rotate(-90deg); }
+    .ring-bg  { fill: none; stroke: rgba(0,0,0,.1); stroke-width: 5; }
+    .ring-fg  { fill: none; stroke: #4caf50; stroke-width: 5; stroke-linecap: round;
+                stroke-dasharray: 188; stroke-dashoffset: 0; transition: stroke-dashoffset .9s linear, stroke .3s; }
+    .timer-num {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.35rem; font-weight: 900; color: #333;
+    }
+    .diff-badge {
+      font-size: .6rem; font-weight: 800;
+      padding: 2px 8px; border-radius: 20px;
+      color: #fff; margin-top: 3px;
+    }
+
+    /* ── game field ── */
+    .field {
+      width: 100%;
+      background: linear-gradient(180deg, rgba(255,255,255,.08) 0%, transparent 30%);
+      border-radius: 20px;
+      padding: 10px 6px 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    /* ── hole ── */
+    .hole-cell {
+      display: flex; flex-direction: column; align-items: center;
+      position: relative;
+    }
+
+    .hole-stage {
+      position: relative;
+      width: clamp(88px, 28vw, 140px);
+      height: clamp(88px, 28vw, 140px);
+    }
+
+    /* ground mound */
+    .mound {
+      position: absolute; bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 100%; height: 46%;
+      background: radial-gradient(ellipse at 50% 80%, #6a9e4c, #3d7028);
+      border-radius: 50% 50% 20% 20%;
+    }
+
+    /* hole opening */
+    .hole-open {
+      position: absolute; bottom: 10%; left: 50%;
+      transform: translateX(-50%);
+      width: 64%; height: 30%;
+      background: radial-gradient(ellipse at 50% 60%, #0a0400 30%, #2d1400 100%);
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,.6) inset;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    /* mole clip region — sits inside hole-open */
+    .mole-clip {
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 120%; height: 400%;
+      display: flex; align-items: flex-end; justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ── mole ── */
+    .mole {
+      position: relative;
+      width: clamp(48px, 15vw, 80px);
+      height: clamp(56px, 17vw, 92px);
+      transform: translateY(110%);
+      transition: transform 0.18s cubic-bezier(0.22, 1.4, 0.5, 1);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .mole.up     { transform: translateY(10%); }
+    .mole.bonked { transform: translateY(50%) scaleY(.7) scaleX(1.15); transition: transform .1s ease; pointer-events: none; }
+
+    /* mole body parts */
+    .m-ear {
+      position: absolute;
+      width: 26%; height: 26%;
+      background: var(--body-c, #9a5828);
+      border-radius: 50%;
+      top: -6%; z-index: 0;
+    }
+    .m-ear::after {
+      content: ''; position: absolute; inset: 18% 20%;
+      background: #e09080; border-radius: 50%;
+    }
+    .m-ear.l { left: 10%; }
+    .m-ear.r { right: 10%; }
+
+    .m-body {
+      position: absolute; inset: 4% 0 0;
+      background: radial-gradient(ellipse at 42% 38%, var(--face-c, #c8784a) 0%, var(--body-c, #9a5828) 65%);
+      border-radius: 50% 50% 44% 44%;
+      z-index: 1;
+    }
+
+    /* eyes */
+    .m-eye {
+      position: absolute;
+      width: 16%; height: 14%;
+      background: #100600;
+      border-radius: 50%;
+      top: 28%;
+    }
+    .m-eye::after {
+      content: ''; position: absolute;
+      width: 40%; height: 40%;
+      background: rgba(255,255,255,.6);
+      border-radius: 50%;
+      top: 15%; left: 20%;
+    }
+    .m-eye.l { left: 22%; }
+    .m-eye.r { right: 22%; }
+
+    /* snout */
+    .m-snout {
+      position: absolute;
+      width: 42%; height: 26%;
+      background: var(--snout-c, #d8946a);
+      border-radius: 50%;
+      bottom: 24%; left: 50%; transform: translateX(-50%);
+    }
+    .m-nose {
+      position: absolute;
+      width: 38%; height: 44%;
+      background: #c04070;
+      border-radius: 50%;
+      top: 8%; left: 31%;
+    }
+
+    /* hands */
+    .m-hand {
+      position: absolute;
+      width: 18%; height: 14%;
+      background: var(--body-c, #9a5828);
+      border-radius: 50%;
+      bottom: 8%; z-index: 2;
+    }
+    .m-hand.l { left: -2%; transform: rotate(-20deg); }
+    .m-hand.r { right: -2%; transform: rotate(20deg); }
+
+    /* golden mole */
+    .mole.gold {
+      --body-c: #d4a020;
+      --face-c: #f0c840;
+      --snout-c: #f5d870;
+    }
+    .mole.gold .m-crown {
+      display: block;
+    }
+    .m-crown {
+      display: none;
+      position: absolute;
+      top: -12%; left: 50%; transform: translateX(-50%);
+      font-size: clamp(.7rem, 2.2vw, 1rem);
+      z-index: 3;
+    }
+
+    /* bomb mole */
+    .mole.bomb {
+      --body-c: #333;
+      --face-c: #555;
+      --snout-c: #444;
+    }
+    .mole.bomb .m-nose { background: #f00; }
+    .mole.bomb .m-eye  { background: #f55; }
+    .mole.bomb .m-fuse { display: block; }
+    .m-fuse {
+      display: none;
+      position: absolute;
+      top: -14%; left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(.75rem, 2.3vw, 1.1rem);
+      z-index: 3;
+      animation: fuseFlicker .3s infinite alternate;
+    }
+    @keyframes fuseFlicker { from { opacity:1; } to { opacity:.4; } }
+
+    /* hole rim on top of mole */
+    .hole-rim {
+      position: absolute; bottom: 8%; left: 50%;
+      transform: translateX(-50%);
+      width: 72%; height: 22%;
+      background: radial-gradient(ellipse at 50% 30%, #5a8a40 0%, #2d6020 100%);
+      border-radius: 50%;
+      box-shadow: 0 3px 8px rgba(0,0,0,.35);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    /* ── particles / popups ── */
+    .popup {
+      position: fixed;
+      pointer-events: none;
+      font-weight: 900;
+      font-size: 1.4rem;
+      z-index: 200;
+      animation: popFloat .7s ease forwards;
+    }
+    @keyframes popFloat {
+      0%   { opacity: 1; transform: translateY(0)    scale(1.2); }
+      60%  { opacity: 1; transform: translateY(-34px) scale(1); }
+      100% { opacity: 0; transform: translateY(-56px) scale(.8); }
+    }
+
+    .star-burst {
+      position: fixed;
+      pointer-events: none;
+      z-index: 199;
+      font-size: 1.1rem;
+      animation: starFly .6s ease-out forwards;
+    }
+    @keyframes starFly {
+      from { opacity: 1; transform: translate(0,0) scale(1); }
+      to   { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.4); }
+    }
+
+    /* combo */
+    .combo-banner {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      font-size: 2.2rem; font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 20px #ff8c00, 2px 2px 0 #c05000;
+      z-index: 300;
+      pointer-events: none;
+      animation: comboPop .7s cubic-bezier(.18,1.4,.5,1) forwards;
+    }
+    @keyframes comboPop {
+      0%   { transform: translate(-50%,-50%) scale(0); opacity: 0; }
+      40%  { transform: translate(-50%,-50%) scale(1.15); opacity: 1; }
+      70%  { transform: translate(-50%,-50%) scale(.95); opacity: 1; }
+      100% { transform: translate(-50%,-50%) scale(1); opacity: 0; }
+    }
+
+    /* screen flash on bomb */
+    .bomb-flash {
+      position: fixed; inset: 0;
+      background: rgba(255,50,0,.4);
+      pointer-events: none;
+      z-index: 400;
+      animation: flashFade .35s ease forwards;
+    }
+    @keyframes flashFade { to { opacity: 0; } }
+
+    /* ── overlay screens ── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 500;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+    }
+    .screen.hidden { display: none; }
+
+    .panel {
+      background: linear-gradient(160deg, #fffbe8, #fff);
+      border-radius: 24px;
+      padding: 36px 32px 40px;
+      text-align: center;
+      width: clamp(300px, 88vw, 440px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 0 0 3px rgba(255,255,255,.6);
+      position: relative;
+      overflow: hidden;
+    }
+    .panel::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 6px;
+      background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+    }
+
+    .panel-title {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 900;
+      color: #333;
+      margin-bottom: 6px;
+      letter-spacing: 2px;
+    }
+    .panel-sub {
+      font-size: .85rem; color: #888; margin-bottom: 28px; letter-spacing: 1px;
+    }
+
+    /* difficulty buttons */
+    .diff-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin-bottom: 10px;
+    }
+    .diff-btn {
+      border: 3px solid transparent;
+      border-radius: 14px;
+      padding: 14px 8px;
+      cursor: pointer;
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      font-weight: 800;
+      font-size: .88rem;
+      transition: transform .15s, box-shadow .15s;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .diff-btn:hover { transform: translateY(-3px); }
+    .diff-btn .d-icon { font-size: 1.8rem; }
+    .diff-btn .d-name { letter-spacing: 1px; }
+    .diff-btn .d-desc { font-size: .68rem; opacity: .7; }
+
+    .diff-btn.easy   { background: #e8f8e8; color: #2d7d32; border-color: #a5d6a7; box-shadow: 0 4px 14px rgba(76,175,80,.2); }
+    .diff-btn.normal { background: #fff8e1; color: #e65100; border-color: #ffcc80; box-shadow: 0 4px 14px rgba(255,152,0,.2); }
+    .diff-btn.hard   { background: #fce4ec; color: #b71c1c; border-color: #ef9a9a; box-shadow: 0 4px 14px rgba(244,67,54,.2); }
+    .diff-btn.easy:hover   { box-shadow: 0 8px 24px rgba(76,175,80,.35); }
+    .diff-btn.normal:hover { box-shadow: 0 8px 24px rgba(255,152,0,.35); }
+    .diff-btn.hard:hover   { box-shadow: 0 8px 24px rgba(244,67,54,.35); }
+
+    /* game over */
+    .result-score {
+      font-size: clamp(2.4rem, 8vw, 3.6rem);
+      font-weight: 900;
+      color: #e8521a;
+      line-height: 1;
+      margin: 10px 0 4px;
+      text-shadow: 2px 3px 0 rgba(232,82,26,.2);
+    }
+    .result-label { font-size: .82rem; color: #888; letter-spacing: 2px; margin-bottom: 8px; }
+    .hi-row {
+      background: #fff8e1;
+      border-radius: 12px;
+      padding: 10px 20px;
+      margin: 14px 0 24px;
+      display: inline-flex; align-items: center; gap: 10px;
+      font-size: .9rem; font-weight: 700; color: #e65100;
+    }
+    .new-badge {
+      background: #ff5722; color: #fff;
+      font-size: .62rem; font-weight: 800; letter-spacing: 1px;
+      padding: 2px 7px; border-radius: 20px;
+      animation: newPulse .6s ease infinite alternate;
+    }
+    @keyframes newPulse { to { transform: scale(1.1); } }
+
+    .result-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    .btn {
+      padding: 14px 30px;
+      border: none; border-radius: 50px;
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      font-size: 1rem; font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      letter-spacing: 1px;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn.primary {
+      background: linear-gradient(135deg, #ff8c42, #ff5722);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(255,87,34,.4);
+    }
+    .btn.secondary {
+      background: #f5f5f5; color: #555;
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    }
+    .btn.primary:hover { box-shadow: 0 10px 28px rgba(255,87,34,.5); }
+
+    /* hi score per difficulty in panel */
+    .hi-trio {
+      display: flex; gap: 8px; justify-content: center;
+      margin-bottom: 20px;
+    }
+    .hi-chip {
+      font-size: .72rem; font-weight: 700;
+      padding: 4px 10px; border-radius: 20px;
+    }
+    .hi-chip.easy   { background: #e8f8e8; color: #2d7d32; }
+    .hi-chip.normal { background: #fff8e1; color: #e65100; }
+    .hi-chip.hard   { background: #fce4ec; color: #b71c1c; }
+
+    /* responsive */
+    @media (max-width: 400px) {
+      .panel { padding: 28px 20px 32px; }
+      .diff-btn { padding: 10px 4px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Clouds -->
+<div class="cloud" style="top:8%; animation-duration:22s; animation-delay:0s; transform:scale(.9)"></div>
+<div class="cloud" style="top:14%; animation-duration:30s; animation-delay:-8s; transform:scale(.65)"></div>
+<div class="cloud" style="top:5%;  animation-duration:26s; animation-delay:-15s; transform:scale(1.1)"></div>
+<div class="cloud" style="top:20%; animation-duration:35s; animation-delay:-4s;  transform:scale(.75)"></div>
+
+<div class="wrap">
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-box">
+      <div class="hud-lbl">スコア</div>
+      <div class="hud-val" id="scoreDisp">0</div>
+    </div>
+
+    <div class="timer-wrap">
+      <div class="timer-ring">
+        <svg width="68" height="68" viewBox="0 0 68 68">
+          <circle class="ring-bg" cx="34" cy="34" r="30"/>
+          <circle class="ring-fg" id="timerRing" cx="34" cy="34" r="30"/>
+        </svg>
+        <div class="timer-num" id="timerNum">60</div>
+      </div>
+      <div class="diff-badge" id="diffBadge">---</div>
+    </div>
+
+    <div class="hud-box">
+      <div class="hud-lbl">ハイスコア</div>
+      <div class="hud-val" id="hiDisp">0</div>
+    </div>
+  </div>
+
+  <!-- Game Field -->
+  <div class="field">
+    <div class="grid" id="grid"></div>
+  </div>
+
+</div>
+
+<!-- Menu Screen -->
+<div class="screen" id="menuScreen">
+  <div class="panel">
+    <div class="panel-title">🐭 もぐらたたき</div>
+    <div class="panel-sub">WHACK-A-MOLE</div>
+    <div class="hi-trio">
+      <span class="hi-chip easy"  id="hi-easy">かんたん: 0</span>
+      <span class="hi-chip normal" id="hi-normal">ふつう: 0</span>
+      <span class="hi-chip hard"  id="hi-hard">むずかしい: 0</span>
+    </div>
+    <div class="diff-grid">
+      <button class="diff-btn easy"   onclick="startGame('easy')">
+        <span class="d-icon">😊</span>
+        <span class="d-name">かんたん</span>
+        <span class="d-desc">ゆっくり</span>
+      </button>
+      <button class="diff-btn normal" onclick="startGame('normal')">
+        <span class="d-icon">😤</span>
+        <span class="d-name">ふつう</span>
+        <span class="d-desc">標準</span>
+      </button>
+      <button class="diff-btn hard"   onclick="startGame('hard')">
+        <span class="d-icon">😈</span>
+        <span class="d-name">むずかしい</span>
+        <span class="d-desc">高速</span>
+      </button>
+    </div>
+    <p style="font-size:.72rem;color:#aaa;margin-top:12px;">🌟 金モグラ +30点 ／ 💣 爆弾 -15点</p>
+  </div>
+</div>
+
+<!-- Game Over Screen -->
+<div class="screen hidden" id="overScreen">
+  <div class="panel">
+    <div class="panel-title">⏰ ゲームオーバー</div>
+    <div class="result-label">最終スコア</div>
+    <div class="result-score" id="finalScore">0</div>
+    <div class="hi-row">
+      🏆 ハイスコア: <span id="finalHi">0</span>
+      <span class="new-badge hidden" id="newBadge">NEW!</span>
+    </div>
+    <div class="result-btns">
+      <button class="btn primary" id="replayBtn" onclick="replayGame()">もう一度</button>
+      <button class="btn secondary" onclick="goMenu()">メニューへ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════ CONFIG ═══════════ */
+const DIFF = {
+  easy:   { label:'かんたん', color:'#4caf50', spawnMs:[1100,1500], durationMs:[1800,2200], bombChance:0,    goldChance:.12, max:2 },
+  normal: { label:'ふつう',   color:'#ff9800', spawnMs:[700,1000],  durationMs:[1200,1500], bombChance:.07,  goldChance:.1,  max:3 },
+  hard:   { label:'むずかしい',color:'#f44336', spawnMs:[380,650],  durationMs:[700,1000],  bombChance:.13,  goldChance:.08, max:4 },
+};
+const TOTAL_TIME = 60;
+const CIRCUMFERENCE = 2 * Math.PI * 30; // ring r=30
+
+/* ═══════════ STATE ═══════════ */
+let score = 0, timeLeft = TOTAL_TIME, combo = 0;
+let diff = 'normal', gameActive = false;
+let timerInterval = null, spawnTimeout = null;
+let activeMoles = 0;
+
+const holes = Array.from({ length: 9 }, (_, i) => ({
+  i, el: null, moleEl: null, active: false, hideTimeout: null
+}));
+
+/* ═══════════ BUILD GRID ═══════════ */
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  holes.forEach(h => {
+    const cell = document.createElement('div');
+    cell.className = 'hole-cell';
+    cell.innerHTML = `
+      <div class="hole-stage">
+        <div class="mound"></div>
+        <div class="hole-open">
+          <div class="mole-clip">
+            <div class="mole" data-hole="${h.i}"></div>
+          </div>
+        </div>
+        <div class="hole-rim"></div>
+      </div>`;
+    grid.appendChild(cell);
+    h.el   = cell;
+    h.moleEl = cell.querySelector('.mole');
+    buildMoleArt(h.moleEl);
+    h.moleEl.addEventListener('click',     () => hitMole(h));
+    h.moleEl.addEventListener('touchstart', e => { e.preventDefault(); hitMole(h); }, { passive:false });
+  });
+}
+
+function buildMoleArt(el) {
+  el.innerHTML = `
+    <div class="m-ear l"></div>
+    <div class="m-ear r"></div>
+    <div class="m-crown">👑</div>
+    <div class="m-fuse">💥</div>
+    <div class="m-body">
+      <div class="m-eye l"></div>
+      <div class="m-eye r"></div>
+      <div class="m-snout"><div class="m-nose"></div></div>
+      <div class="m-hand l"></div>
+      <div class="m-hand r"></div>
+    </div>`;
+}
+
+/* ═══════════ SPAWN ═══════════ */
+function scheduleSpawn() {
+  if (!gameActive) return;
+  const cfg = DIFF[diff];
+  const delay = rand(cfg.spawnMs[0], cfg.spawnMs[1]);
+  spawnTimeout = setTimeout(() => {
+    if (gameActive) { spawnMole(); scheduleSpawn(); }
+  }, delay);
+}
+
+function spawnMole() {
+  const cfg = DIFF[diff];
+  if (activeMoles >= cfg.max) return;
+  const free = holes.filter(h => !h.active);
+  if (!free.length) return;
+
+  const hole = free[Math.floor(Math.random() * free.length)];
+  const r = Math.random();
+  const type = r < cfg.bombChance ? 'bomb' : r < cfg.bombChance + cfg.goldChance ? 'gold' : 'normal';
+
+  hole.active = true;
+  hole.type   = type;
+  activeMoles++;
+
+  const m = hole.moleEl;
+  m.className = 'mole ' + type;
+  buildMoleArt(m); // rebuild DOM art (clears old class effects)
+  m.className = 'mole ' + type; // re-apply after rebuild
+
+  // Trigger up
+  requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('up')));
+
+  const dur = rand(DIFF[diff].durationMs[0], DIFF[diff].durationMs[1]);
+  hole.hideTimeout = setTimeout(() => deactivate(hole, false), dur);
+}
+
+function deactivate(hole, wasHit) {
+  clearTimeout(hole.hideTimeout);
+  if (!hole.active) return;
+  hole.active = false;
+  activeMoles = Math.max(0, activeMoles - 1);
+  const m = hole.moleEl;
+  if (!wasHit) m.classList.remove('up');
+  setTimeout(() => {
+    if (!hole.active) {
+      m.classList.remove('up', 'bonked');
+    }
+  }, 300);
+}
+
+/* ═══════════ HIT ═══════════ */
+function hitMole(hole) {
+  if (!gameActive || !hole.active) return;
+  const type = hole.type;
+
+  hole.moleEl.classList.add('bonked');
+  deactivate(hole, true);
+
+  const rect = hole.moleEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top  + rect.height / 2;
+
+  if (type === 'bomb') {
+    addScore(-15, cx, cy, '#f44336', '💣 -15');
+    combo = 0;
+    flashBomb();
+  } else {
+    const pts = type === 'gold' ? 30 : 10;
+    combo++;
+    addScore(pts, cx, cy, type === 'gold' ? '#ffc107' : '#4caf50', `+${pts}`);
+    if (combo > 0 && combo % 5 === 0) showCombo(combo);
+    burstStars(cx, cy, type === 'gold' ? '⭐' : '✨', 6);
+  }
+}
+
+function addScore(pts, x, y, color, label) {
+  score = Math.max(0, score + pts);
+  updateScoreDisplay();
+
+  const el = document.createElement('div');
+  el.className = 'popup';
+  el.textContent = label;
+  el.style.cssText = `left:${x}px; top:${y - 20}px; color:${color}; transform:translateX(-50%)`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 750);
+}
+
+function updateScoreDisplay() {
+  const el = document.getElementById('scoreDisp');
+  el.textContent = score;
+  el.classList.remove('score-anim');
+  void el.offsetWidth;
+  el.classList.add('score-anim');
+}
+
+function burstStars(cx, cy, emoji, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const dist  = 40 + Math.random() * 30;
+    const el = document.createElement('div');
+    el.className = 'star-burst';
+    el.textContent = emoji;
+    el.style.cssText = `
+      left:${cx}px; top:${cy}px;
+      --dx:${Math.cos(angle) * dist}px;
+      --dy:${Math.sin(angle) * dist}px;
+      animation-delay:${i * 30}ms;
+      transform: translateX(-50%) translateY(-50%);
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 700);
+  }
+}
+
+function showCombo(n) {
+  const el = document.createElement('div');
+  el.className = 'combo-banner';
+  el.textContent = `${n} コンボ！🔥`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 720);
+}
+
+function flashBomb() {
+  const el = document.createElement('div');
+  el.className = 'bomb-flash';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 380);
+}
+
+/* ═══════════ TIMER ═══════════ */
+function updateTimer() {
+  timeLeft--;
+  document.getElementById('timerNum').textContent = timeLeft;
+
+  const pct = timeLeft / TOTAL_TIME;
+  const offset = CIRCUMFERENCE * (1 - pct);
+  const ring = document.getElementById('timerRing');
+  ring.style.strokeDashoffset = offset;
+
+  // color: green → yellow → red
+  if (pct > .5)       ring.style.stroke = '#4caf50';
+  else if (pct > .25) ring.style.stroke = '#ffc107';
+  else                ring.style.stroke = '#f44336';
+
+  if (timeLeft <= 0) endGame();
+}
+
+/* ═══════════ GAME FLOW ═══════════ */
+function startGame(d) {
+  diff       = d;
+  score      = 0;
+  timeLeft   = TOTAL_TIME;
+  combo      = 0;
+  activeMoles = 0;
+  gameActive = true;
+
+  buildGrid();
+  updateScoreDisplay();
+
+  // Badge
+  const badge = document.getElementById('diffBadge');
+  badge.textContent = DIFF[diff].label;
+  badge.style.background = DIFF[diff].color;
+
+  // Hi score display
+  document.getElementById('hiDisp').textContent = getHi(diff);
+
+  // Timer ring reset
+  const ring = document.getElementById('timerRing');
+  ring.style.strokeDashoffset = 0;
+  ring.style.stroke = '#4caf50';
+  document.getElementById('timerNum').textContent = TOTAL_TIME;
+
+  hide('menuScreen');
+  hide('overScreen');
+
+  timerInterval = setInterval(updateTimer, 1000);
+  scheduleSpawn();
+}
+
+function endGame() {
+  gameActive = false;
+  clearInterval(timerInterval);
+  clearTimeout(spawnTimeout);
+  holes.forEach(h => { clearTimeout(h.hideTimeout); h.active = false; activeMoles = 0; });
+
+  const prev = getHi(diff);
+  const isNew = score > prev;
+  if (isNew) saveHi(diff, score);
+
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('finalHi').textContent    = isNew ? score : prev;
+
+  const badge = document.getElementById('newBadge');
+  badge.classList.toggle('hidden', !isNew);
+
+  document.getElementById('replayBtn').textContent = 'もう一度（' + DIFF[diff].label + '）';
+  show('overScreen');
+  updateHiChips();
+}
+
+function replayGame() { startGame(diff); }
+
+function goMenu() {
+  hide('overScreen');
+  show('menuScreen');
+  updateHiChips();
+}
+
+/* ═══════════ HI SCORE ═══════════ */
+function getHi(d)     { return parseInt(localStorage.getItem('mole_hi_' + d) || '0'); }
+function saveHi(d, s) { localStorage.setItem('mole_hi_' + d, s); }
+
+function updateHiChips() {
+  ['easy','normal','hard'].forEach(d => {
+    const labels = { easy:'かんたん', normal:'ふつう', hard:'むずかしい' };
+    document.getElementById('hi-' + d).textContent = labels[d] + ': ' + getHi(d);
+  });
+}
+
+/* ═══════════ UTILS ═══════════ */
+function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function show(id)   { document.getElementById(id).classList.remove('hidden'); }
+function hide(id)   { document.getElementById(id).classList.add('hidden'); }
+
+/* ═══════════ INIT ═══════════ */
+buildGrid();
+updateHiChips();
+show('menuScreen');
+</script>
+</body>
+</html>
