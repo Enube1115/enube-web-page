@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今日のチャレンジ 🎯</title>
+  <style>
+    :root {
+      --bg:   #0b0b1e;
+      --mid:  #13132a;
+      --c1:   #ff6b35;
+      --c2:   #4a90d9;
+      --c3:   #e879a0;
+      --c4:   #a855f7;
+      --c5:   #22c55e;
+      --gold: #fbbf24;
+      --text: #e8e8f4;
+      --muted:#7878a0;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+
+    body {
+      min-height:100vh;
+      background: linear-gradient(160deg,#0b0b1e 0%,#16102e 50%,#0b1622 100%);
+      font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif;
+      color:var(--text);
+      padding-bottom:60px;
+    }
+
+    /* ── CONFETTI CANVAS ── */
+    #cv { position:fixed; inset:0; pointer-events:none; z-index:200; }
+
+    /* ── COMPLETE OVERLAY ── */
+    .overlay {
+      position:fixed; inset:0; z-index:150;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.65);
+      backdrop-filter:blur(12px);
+      opacity:0; pointer-events:none;
+      transition:opacity .4s;
+    }
+    .overlay.show { opacity:1; pointer-events:all; }
+    .ov-box {
+      text-align:center; padding:40px 48px;
+      background:rgba(16,12,36,.96);
+      border:1px solid rgba(251,191,36,.35);
+      border-radius:28px;
+      transform:scale(.85);
+      transition:transform .45s cubic-bezier(.18,1.3,.4,1);
+    }
+    .overlay.show .ov-box { transform:scale(1); }
+    .ov-emoji { font-size:3.2rem; margin-bottom:12px; display:block;
+                animation:wobble 1s ease-in-out infinite alternate; }
+    @keyframes wobble { from{transform:rotate(-6deg)} to{transform:rotate(6deg)} }
+    .ov-box h2 {
+      font-size:2rem; font-weight:900; margin-bottom:10px;
+      background:linear-gradient(135deg,#fbbf24,#f59e0b);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .ov-box p { color:var(--muted); font-size:.95rem; line-height:1.8; margin-bottom:22px; }
+    .ov-btn {
+      padding:12px 36px; border:none; border-radius:24px;
+      background:linear-gradient(135deg,#fbbf24,#f59e0b);
+      color:#1a0e00; font-size:1rem; font-weight:700;
+      cursor:pointer; font-family:inherit;
+      transition:transform .15s;
+    }
+    .ov-btn:hover { transform:translateY(-2px); }
+
+    /* ── LAYOUT ── */
+    .wrap { max-width:700px; margin:0 auto; padding:0 16px; }
+
+    /* ── HEADER ── */
+    .hd { text-align:center; padding:40px 0 20px; }
+    .hd h1 {
+      font-size:2rem; font-weight:900; letter-spacing:.08em;
+      background:linear-gradient(135deg,#fbbf24,#f59e0b,#fbbf24);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      filter:drop-shadow(0 0 16px rgba(251,191,36,.4));
+      margin-bottom:8px;
+    }
+    .hd-date { font-size:.85rem; color:var(--muted); letter-spacing:.1em; }
+
+    /* ── STREAK AREA ── */
+    .streak-area {
+      display:flex; justify-content:center; gap:14px;
+      margin-bottom:26px; flex-wrap:wrap;
+    }
+    .sbadge {
+      display:flex; align-items:center; gap:10px;
+      border-radius:20px; padding:12px 22px;
+    }
+    .sbadge.fire {
+      background:rgba(255,107,53,.13);
+      border:1px solid rgba(255,107,53,.32);
+    }
+    .sbadge.crown {
+      background:rgba(251,191,36,.1);
+      border:1px solid rgba(251,191,36,.28);
+    }
+    .sbadge-icon { font-size:1.5rem; }
+    .sbadge-num { font-size:1.8rem; font-weight:900; }
+    .sbadge.fire .sbadge-num { color:var(--c1); }
+    .sbadge.crown .sbadge-num { color:var(--gold); }
+    .sbadge-lbl { font-size:.73rem; color:var(--muted); line-height:1.5; }
+
+    /* ── PROGRESS RING ── */
+    .prog-area {
+      display:flex; align-items:center; justify-content:center;
+      gap:22px; margin-bottom:30px;
+    }
+    .ring-wrap { position:relative; width:88px; height:88px; flex-shrink:0; }
+    .ring-wrap svg { transform:rotate(-90deg); }
+    .ring-bg   { fill:none; stroke:rgba(255,255,255,.08); stroke-width:6; }
+    .ring-fill { fill:none; stroke-width:6; stroke-linecap:round;
+                 stroke-dasharray:238.76; stroke-dashoffset:238.76;
+                 transition:stroke-dashoffset .7s ease, stroke .4s ease; }
+    .ring-inner {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+    }
+    .ring-n { font-size:1.6rem; font-weight:900; color:var(--gold); line-height:1; }
+    .ring-d { font-size:.7rem; color:var(--muted); }
+    .prog-msg .pm-title { font-size:1rem; font-weight:700; margin-bottom:4px; }
+    .prog-msg .pm-sub   { font-size:.82rem; color:var(--muted); line-height:1.6; }
+
+    /* ── STREAK MSG ── */
+    .streak-msg {
+      text-align:center; margin-bottom:22px;
+      font-size:.88rem; color:var(--muted); letter-spacing:.04em;
+    }
+
+    /* ── MISSION CARDS ── */
+    .cards {
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:13px;
+      margin-bottom:28px;
+    }
+    /* last card centered when odd */
+    .cards > .mc:last-child:nth-child(odd) {
+      grid-column: 1/-1;
+      justify-self:center;
+      width:calc(50% - 7px);
+    }
+
+    .mc {
+      border-radius:20px; padding:20px 18px;
+      position:relative; overflow:hidden;
+      transition:transform .2s, box-shadow .2s, opacity .3s;
+      animation:cin .5s ease both;
+    }
+    .mc:nth-child(1){animation-delay:.04s}
+    .mc:nth-child(2){animation-delay:.09s}
+    .mc:nth-child(3){animation-delay:.14s}
+    .mc:nth-child(4){animation-delay:.19s}
+    .mc:nth-child(5){animation-delay:.24s}
+    @keyframes cin {
+      from{opacity:0;transform:translateY(18px) scale(.95)}
+      to  {opacity:1;transform:translateY(0)   scale(1)}
+    }
+    .mc:hover:not(.done) { transform:translateY(-3px); }
+
+    /* Category colors */
+    .mc1 { background:linear-gradient(135deg,rgba(255,107,53,.17),rgba(255,107,53,.05)); border:1px solid rgba(255,107,53,.28); box-shadow:0 4px 18px rgba(255,107,53,.07); }
+    .mc2 { background:linear-gradient(135deg,rgba(74,144,217,.17),rgba(74,144,217,.05)); border:1px solid rgba(74,144,217,.28); box-shadow:0 4px 18px rgba(74,144,217,.07); }
+    .mc3 { background:linear-gradient(135deg,rgba(232,121,160,.17),rgba(232,121,160,.05)); border:1px solid rgba(232,121,160,.28); box-shadow:0 4px 18px rgba(232,121,160,.07); }
+    .mc4 { background:linear-gradient(135deg,rgba(168,85,247,.17),rgba(168,85,247,.05)); border:1px solid rgba(168,85,247,.28); box-shadow:0 4px 18px rgba(168,85,247,.07); }
+    .mc5 { background:linear-gradient(135deg,rgba(34,197,94,.17),rgba(34,197,94,.05));  border:1px solid rgba(34,197,94,.28);  box-shadow:0 4px 18px rgba(34,197,94,.07); }
+
+    /* Done state */
+    .mc.done { opacity:.65; }
+    .mc.done::after {
+      content:''; position:absolute; inset:0;
+      background:rgba(0,0,0,.18); border-radius:inherit; pointer-events:none;
+    }
+    .done-check {
+      position:absolute; top:12px; right:14px;
+      font-size:1.2rem;
+      opacity:0; transform:scale(0);
+      transition:all .3s cubic-bezier(.18,1.5,.4,1);
+      z-index:1;
+    }
+    .mc.done .done-check { opacity:1; transform:scale(1); }
+
+    .mc-icon { font-size:2rem; display:block; margin-bottom:7px; }
+    .mc-cat  { font-size:.72rem; font-weight:700; letter-spacing:.12em; margin-bottom:8px; }
+    .mc1 .mc-cat{color:var(--c1)} .mc2 .mc-cat{color:var(--c2)}
+    .mc3 .mc-cat{color:var(--c3)} .mc4 .mc-cat{color:var(--c4)}
+    .mc5 .mc-cat{color:var(--c5)}
+    .mc-text { font-size:.92rem; line-height:1.7; margin-bottom:16px; min-height:46px; }
+
+    .done-btn {
+      width:100%; padding:9px; border-radius:12px;
+      border:none; font-size:.87rem; font-weight:700;
+      cursor:pointer; transition:all .2s; font-family:inherit;
+    }
+    .mc1 .done-btn{background:rgba(255,107,53,.22);color:var(--c1);border:1px solid rgba(255,107,53,.38)}
+    .mc2 .done-btn{background:rgba(74,144,217,.22);color:var(--c2);border:1px solid rgba(74,144,217,.38)}
+    .mc3 .done-btn{background:rgba(232,121,160,.22);color:var(--c3);border:1px solid rgba(232,121,160,.38)}
+    .mc4 .done-btn{background:rgba(168,85,247,.22);color:var(--c4);border:1px solid rgba(168,85,247,.38)}
+    .mc5 .done-btn{background:rgba(34,197,94,.22);color:var(--c5);border:1px solid rgba(34,197,94,.38)}
+    .done-btn:hover { filter:brightness(1.2); transform:translateY(-1px); }
+    .done-btn.undone-mode {
+      background:rgba(255,255,255,.07) !important;
+      color:var(--muted) !important;
+      border:1px solid rgba(255,255,255,.14) !important;
+    }
+
+    /* ── CALENDAR STRIP ── */
+    .cal-section { margin-bottom:28px; }
+    .cal-title { font-size:.8rem; color:var(--muted); letter-spacing:.1em; text-align:center; margin-bottom:12px; }
+    .cal-strip { display:flex; justify-content:center; gap:9px; }
+    .cal-day   { display:flex; flex-direction:column; align-items:center; gap:5px; }
+    .cal-dlbl  { font-size:.65rem; color:var(--muted); }
+    .cal-dot   {
+      width:38px; height:38px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.72rem; font-weight:700;
+      border:2px solid transparent;
+    }
+    .cal-day.full    .cal-dot { background:rgba(34,197,94,.22);   border-color:#22c55e; color:#22c55e; }
+    .cal-day.partial .cal-dot { background:rgba(251,191,36,.18);  border-color:#fbbf24; color:#fbbf24; }
+    .cal-day.empty   .cal-dot { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:var(--muted); }
+    .cal-day.today   .cal-dlbl { color:#fff; font-weight:700; }
+    .cal-day.today   .cal-dot  { outline:2px solid rgba(255,255,255,.3); outline-offset:2px; }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display:flex; gap:12px; flex-wrap:wrap;
+      margin-bottom:24px;
+    }
+    .stat-c {
+      flex:1; min-width:90px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px; padding:14px 10px; text-align:center;
+    }
+    .stat-i { font-size:1.5rem; margin-bottom:5px; }
+    .stat-n { font-size:1.6rem; font-weight:900; color:var(--gold); margin-bottom:2px; }
+    .stat-l { font-size:.7rem; color:var(--muted); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(251,191,36,.25); border-radius:2px; }
+
+    @media(max-width:480px){
+      .cards { grid-template-columns:1fr; }
+      .cards > .mc:last-child:nth-child(odd) { grid-column:auto; justify-self:stretch; width:100%; }
+      .hd h1 { font-size:1.7rem; }
+      .ov-box { padding:30px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+
+<div class="overlay" id="overlay">
+  <div class="ov-box">
+    <span class="ov-emoji">🏆</span>
+    <h2>完璧な1日！</h2>
+    <p id="ov-msg">全5チャレンジを達成しました！<br>この積み重ねが、最強の習慣を作ります。</p>
+    <button class="ov-btn" onclick="closeOv()">やったぁ！</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header class="hd">
+    <h1>🎯 今日のチャレンジ</h1>
+    <div class="hd-date" id="hd-date"></div>
+  </header>
+
+  <div class="streak-area">
+    <div class="sbadge fire">
+      <span class="sbadge-icon">🔥</span>
+      <div>
+        <div class="sbadge-num" id="s-streak">0</div>
+        <div class="sbadge-lbl">連続達成<br>日数</div>
+      </div>
+    </div>
+    <div class="sbadge crown">
+      <span class="sbadge-icon">👑</span>
+      <div>
+        <div class="sbadge-num" id="s-best">0</div>
+        <div class="sbadge-lbl">最高<br>記録</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="prog-area">
+    <div class="ring-wrap">
+      <svg width="88" height="88" viewBox="0 0 88 88">
+        <circle class="ring-bg" cx="44" cy="44" r="38"/>
+        <circle class="ring-fill" id="ring" cx="44" cy="44" r="38" stroke="#fbbf24"/>
+      </svg>
+      <div class="ring-inner">
+        <span class="ring-n" id="ring-n">0</span>
+        <span class="ring-d">/ 5</span>
+      </div>
+    </div>
+    <div class="prog-msg">
+      <div class="pm-title" id="pm-t">今日も頑張ろう！</div>
+      <div class="pm-sub"  id="pm-s">チャレンジをクリアしていこう</div>
+    </div>
+  </div>
+
+  <div class="streak-msg" id="streak-msg"></div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="cal-section">
+    <div class="cal-title">過去7日間の記録</div>
+    <div class="cal-strip" id="cal"></div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-c">
+      <div class="stat-i">🎯</div>
+      <div class="stat-n" id="st-total">0</div>
+      <div class="stat-l">累計達成</div>
+    </div>
+    <div class="stat-c">
+      <div class="stat-i">📅</div>
+      <div class="stat-n" id="st-days">0</div>
+      <div class="stat-l">挑戦日数</div>
+    </div>
+    <div class="stat-c">
+      <div class="stat-i">⭐</div>
+      <div class="stat-n" id="st-perf">0</div>
+      <div class="stat-l">パーフェクト日</div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+/* =============================================================
+   MISSION DATA  (5 categories × 22 = 110 missions)
+   ============================================================= */
+const CATS = [
+  {
+    id:1, name:'運動', icon:'🏃', cls:'mc1',
+    missions:[
+      'スクワット15回に挑戦しよう',
+      '腕立て伏せを10回やってみよう',
+      'プランクを30秒キープしよう',
+      '外を10分間散歩しよう',
+      'ストレッチを5分間じっくりやろう',
+      '背筋を20回やってみよう',
+      '腹筋10回に挑戦しよう',
+      '階段を積極的に使ってみよう',
+      '水を2リットル飲もう',
+      'ラジオ体操を1回やってみよう',
+      '1分間その場でジャンプしよう',
+      '肩回しを前後各10回やろう',
+      '片足立ちを左右30秒ずつ',
+      'ふくらはぎのストレッチを各30秒',
+      '空気椅子を20秒キープしよう',
+      '昼休みか帰り道に一駅分歩いてみよう',
+      '就寝前にヨガのポーズを1つやろう',
+      '深呼吸を10回ゆっくりやろう',
+      '通勤中に大股で歩く練習をしよう',
+      '手首・足首を10回ずつ回そう',
+      '窓を開けて外の空気を吸いながら体を伸ばそう',
+      '仕事中は1時間に1回立ち上がろう',
+    ]
+  },
+  {
+    id:2, name:'勉強', icon:'📚', cls:'mc2',
+    missions:[
+      '今日のニュースを1本じっくり読もう',
+      '新しい言葉や単語を3つ覚えよう',
+      '読みかけの本を10ページ読もう',
+      '学べるYouTube動画を1本見よう',
+      '気になっていたことをウェブで調べよう',
+      '今日学んだことをメモに残そう',
+      '語学アプリを10分間やってみよう',
+      '知らなかった言葉の意味を調べよう',
+      '計算問題を5問解こう',
+      '地図で知らない国や都市を1つ覚えよう',
+      '英語で日記を2〜3文書いてみよう',
+      '今週のTODOを整理してみよう',
+      '科学・歴史・文化のトリビアを1つ調べよう',
+      'ポッドキャストで学べる番組を聴こう',
+      '気になる偉人の名言を1つ調べよう',
+      '今日の仕事や学校で学んだことを振り返ろう',
+      'オンライン講座を15分受講しよう',
+      '今月読んだ本や記事の感想を1行書こう',
+      '手書きでノートを取る習慣をつけよう',
+      '気になる記事をブックマークして読もう',
+      '今日の出来事を3行で日記にまとめよう',
+      '自分の専門分野の最新情報を調べよう',
+    ]
+  },
+  {
+    id:3, name:'人間関係', icon:'🤝', cls:'mc3',
+    missions:[
+      '家族に「ありがとう」を伝えよう',
+      '久しぶりの友人にメッセージを送ろう',
+      '誰かの良いところを1つ言葉で伝えよう',
+      '職場の人に「お疲れ様」と笑顔で伝えよう',
+      '誰かのために小さな親切をしよう',
+      '人の話を最後まで遮らずに聞こう',
+      'SNSで誰かの投稿に励ましのコメントをしよう',
+      '昔の友人に近況を尋ねるメッセージを送ろう',
+      '誰かを笑わせるような一言を考えよう',
+      '感謝の気持ちを手紙に書こう（送らなくてもOK）',
+      '家族や友人の誕生日を確認しよう',
+      '今日会った人に対して親切な行動を1つしよう',
+      '誰かの悩みをじっくり聞いてあげよう',
+      'お世話になっている人に感謝を伝えよう',
+      '見知らぬ人に笑顔で挨拶しよう',
+      '職場や学校で自分から新しい会話を始めよう',
+      '「ごめんなさい」が必要な相手に謝ろう',
+      '家族や友人の近況を聞いてみよう',
+      '自分の気持ちを正直に誰かに話してみよう',
+      '誰かをお茶や食事に誘ってみよう',
+      'グループLINEで近況を報告しよう',
+      '会話の中で相手の名前を呼んで話しかけよう',
+    ]
+  },
+  {
+    id:4, name:'創造', icon:'🎨', cls:'mc4',
+    missions:[
+      '今日の気分を落書きで表現しよう',
+      '今日の気持ちを俳句にしてみよう',
+      '好きな音楽を1曲じっくり聴こう',
+      '1枚だけこだわって写真を撮ってみよう',
+      '普段と違う料理や味付けを試してみよう',
+      '今日のことを日記に書いてみよう',
+      '頭に浮かんだアイデアを紙に書き出そう',
+      '好きな本・映画・音楽の感想を書こう',
+      '利き手でない方の手で字を書いてみよう',
+      '窓から見える景色をスケッチしてみよう',
+      '詩を一編書いてみよう',
+      '今日の気分に合うプレイリストを作ろう',
+      '誰かへのメッセージカードを作ろう',
+      '新しいレシピに挑戦してみよう',
+      '自分オリジナルのキャラクターを考えよう',
+      '好きな色の組み合わせを3つ考えよう',
+      '部屋をちょっとだけ模様替えしてみよう',
+      '読んだ本の表紙を真似して描いてみよう',
+      '今日の1シーンを1コマ漫画で描こう',
+      '誰かへのサプライズを考えよう',
+      '架空の旅行プランを作ってみよう',
+      '家にあるものでDIYを1つ試してみよう',
+    ]
+  },
+  {
+    id:5, name:'マインドフルネス', icon:'🧘', cls:'mc5',
+    missions:[
+      '5分間の瞑想をしてみよう',
+      '今日感謝できることを3つ書き出そう',
+      '1時間スマホを置いてみよう',
+      '寝る前に今日の良かったことを3つ思い出そう',
+      '自分を褒める言葉を声に出して3つ言おう',
+      '今この瞬間に集中する練習をしよう',
+      'ぼーっとする時間を10分取ろう',
+      '窓から空を1分間だけ眺めよう',
+      '怒りや悲しみを紙に書き出して手放そう',
+      '好きな香りを嗅いでリラックスしよう',
+      '温かいお茶を1杯ゆっくり飲もう',
+      '自然の音（雨・風・鳥）を聴く時間を作ろう',
+      '今日食べたものをゆっくり味わって食べよう',
+      '自分の呼吸に10回だけ集中しよう',
+      '「今日の自分」に短い手紙を書こう',
+      '目を閉じて1分間静かにしていよう',
+      '自分の長所を5つ書き出してみよう',
+      'SNSを1時間オフにして過ごしてみよう',
+      '今日の空が何色かを確認しよう',
+      '今日1日を振り返り「ありがとう」と言おう',
+      '自分に優しくするための何かを1つしよう',
+      '今日の自分を採点してみよう（点数より理由が大切）',
+    ]
+  },
+];
+
+/* =============================================================
+   DATE UTILITIES
+   ============================================================= */
+function dateKey(d) {
+  d = d || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function dateFromKey(k) {
+  const [y,m,d] = k.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+const DAY_NAMES = ['日','月','火','水','木','金','土'];
+
+/* =============================================================
+   SEEDED RANDOM — deterministic from date
+   ============================================================= */
+function seededRand(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 0xFFFFFFFF;
+  };
+}
+function getDayMissions(key) {
+  const n = parseInt(key.replace(/-/g, ''));
+  const r = seededRand(n);
+  return CATS.map(c => Math.floor(r() * c.missions.length));
+}
+
+/* =============================================================
+   STORAGE
+   key: 'dc'
+   value: { "2024-01-15": [false,true,false,true,false], ... }
+   ============================================================= */
+const STORE_KEY = 'dc';
+function load()   { try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch{ return {}; } }
+function save(d)  { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
+
+/* =============================================================
+   STATS
+   ============================================================= */
+function calcStreak(data) {
+  let streak = 0;
+  const today = dateKey();
+  const todayDone = data[today] || [];
+  const todayFull = todayDone.filter(Boolean).length === 5;
+
+  let d = new Date();
+  if (!todayFull) d.setDate(d.getDate() - 1);
+
+  while (true) {
+    const k = dateKey(d);
+    const dd = data[k] || [];
+    if (dd.filter(Boolean).length === 5) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else break;
+  }
+  return streak;
+}
+
+function calcBestStreak(data) {
+  const keys = Object.keys(data).sort();
+  let best = 0, cur = 0, prev = null;
+  for (const k of keys) {
+    const full = (data[k] || []).filter(Boolean).length === 5;
+    if (full) {
+      if (prev) {
+        const diff = (dateFromKey(k) - dateFromKey(prev)) / 86400000;
+        cur = diff === 1 ? cur + 1 : 1;
+      } else cur = 1;
+      best = Math.max(best, cur);
+      prev = k;
+    } else {
+      cur = 0; prev = k;
+    }
+  }
+  return best;
+}
+
+function calcStats(data) {
+  let total = 0, days = 0, perfect = 0;
+  for (const arr of Object.values(data)) {
+    const done = arr.filter(Boolean).length;
+    if (done > 0) days++;
+    if (done === 5) perfect++;
+    total += done;
+  }
+  return { total, days, perfect };
+}
+
+/* =============================================================
+   RING
+   ============================================================= */
+const CIRC = 238.76;
+const RING_COLORS = ['#6b7280','#fbbf24','#fbbf24','#f59e0b','#f59e0b','#22c55e'];
+function updateRing(done) {
+  const ring = document.getElementById('ring');
+  const rn   = document.getElementById('ring-n');
+  ring.style.strokeDashoffset = CIRC * (1 - done/5);
+  ring.style.stroke = RING_COLORS[done];
+  rn.textContent = done;
+}
+
+/* =============================================================
+   PROGRESS MESSAGE
+   ============================================================= */
+const PM = [
+  {t:'今日も頑張ろう！',   s:'チャレンジをクリアしていこう'},
+  {t:'いいスタート！',     s:'最初の一歩が一番大事'},
+  {t:'調子いいね！',       s:'この勢いで続けよう'},
+  {t:'もう少し！',         s:'あと2つでコンプリート'},
+  {t:'あと1つ！',          s:'最後まで諦めないで'},
+  {t:'完璧な1日！🎉',      s:'全チャレンジ達成おめでとう'},
+];
+const STREAK_MSGS = [
+  '今日から習慣を始めよう ✨',
+  '素晴らしいスタート！継続が力だ 💪',
+  '続けること自体が才能 🔥',
+  '3日坊主を超えた！本物の習慣形成中 ⚡',
+  '一週間突破！すでに習慣になりつつある 🏅',
+  '10日達成！このペース最高 🚀',
+  '2週間！もう止められない強さがある 💎',
+  '3週間！完全に習慣化されている 🌟',
+  '1ヶ月達成！伝説のチャレンジャー 👑',
+];
+function streakMsg(n) {
+  if (n >= 30) return STREAK_MSGS[8];
+  if (n >= 21) return STREAK_MSGS[7];
+  if (n >= 14) return STREAK_MSGS[6];
+  if (n >= 10) return STREAK_MSGS[5];
+  if (n >= 7)  return STREAK_MSGS[4];
+  if (n >= 3)  return STREAK_MSGS[3];
+  if (n >= 2)  return STREAK_MSGS[2];
+  if (n === 1) return STREAK_MSGS[1];
+  return STREAK_MSGS[0];
+}
+
+/* =============================================================
+   RENDER CARDS
+   ============================================================= */
+function renderCards(mIdx, done) {
+  const grid = document.getElementById('cards');
+  grid.innerHTML = '';
+  CATS.forEach((cat, i) => {
+    const isDone = done[i];
+    const card = document.createElement('div');
+    card.className = `mc mc${cat.id}${isDone ? ' done' : ''}`;
+    card.innerHTML = `
+      <span class="done-check">✅</span>
+      <span class="mc-icon">${cat.icon}</span>
+      <div class="mc-cat">${cat.name}</div>
+      <div class="mc-text">${cat.missions[mIdx[i]]}</div>
+      <button class="done-btn${isDone ? ' undone-mode' : ''}"
+              onclick="toggle(${i})">${isDone ? '✓ 達成済み（取消）' : '✦ 達成！'}</button>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+/* =============================================================
+   CALENDAR
+   ============================================================= */
+function renderCalendar(data) {
+  const cal  = document.getElementById('cal');
+  cal.innerHTML = '';
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(today, -i);
+    const k = dateKey(d);
+    const arr = data[k] || [];
+    const n = arr.filter(Boolean).length;
+    let cls = 'empty';
+    if (n === 5) cls = 'full';
+    else if (n >= 3) cls = 'partial';
+    const isToday = i === 0;
+    const dayEl = document.createElement('div');
+    dayEl.className = `cal-day ${cls}${isToday ? ' today' : ''}`;
+    dayEl.innerHTML = `
+      <div class="cal-dlbl">${DAY_NAMES[d.getDay()]}</div>
+      <div class="cal-dot">${n > 0 ? n : '—'}</div>
+    `;
+    cal.appendChild(dayEl);
+  }
+}
+
+/* =============================================================
+   MAIN RENDER
+   ============================================================= */
+function render() {
+  const data  = load();
+  const today = dateKey();
+  const mIdx  = getDayMissions(today);
+  const done  = data[today] || [false,false,false,false,false];
+  const doneN = done.filter(Boolean).length;
+  const streak = calcStreak(data);
+  const best   = calcBestStreak(data);
+  const stats  = calcStats(data);
+
+  // Header date
+  const now = new Date();
+  document.getElementById('hd-date').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${DAY_NAMES[now.getDay()]}）`;
+
+  // Streak badges
+  document.getElementById('s-streak').textContent = streak;
+  document.getElementById('s-best').textContent   = best;
+
+  // Ring & message
+  updateRing(doneN);
+  const pm = PM[doneN] || PM[5];
+  document.getElementById('pm-t').textContent = pm.t;
+  document.getElementById('pm-s').textContent = pm.s;
+
+  // Streak message
+  document.getElementById('streak-msg').textContent = streakMsg(streak);
+
+  // Cards
+  renderCards(mIdx, done);
+
+  // Calendar
+  renderCalendar(data);
+
+  // Stats
+  document.getElementById('st-total').textContent = stats.total;
+  document.getElementById('st-days').textContent  = stats.days;
+  document.getElementById('st-perf').textContent  = stats.perfect;
+}
+
+/* =============================================================
+   TOGGLE MISSION
+   ============================================================= */
+let justCompleted = false;
+
+function toggle(i) {
+  const data  = load();
+  const today = dateKey();
+  const done  = (data[today] || [false,false,false,false,false]).slice();
+  done[i] = !done[i];
+  data[today] = done;
+  save(data);
+
+  const doneN = done.filter(Boolean).length;
+
+  // Quick update ring
+  updateRing(doneN);
+
+  // Update card visually
+  const cards = document.querySelectorAll('.mc');
+  const card  = cards[i];
+  const btn   = card.querySelector('.done-btn');
+  if (done[i]) {
+    card.classList.add('done');
+    btn.classList.add('undone-mode');
+    btn.textContent = '✓ 達成済み（取消）';
+  } else {
+    card.classList.remove('done');
+    btn.classList.remove('undone-mode');
+    btn.textContent = '✦ 達成！';
+  }
+
+  // Progress message
+  const pm = PM[doneN] || PM[5];
+  document.getElementById('pm-t').textContent = pm.t;
+  document.getElementById('pm-s').textContent = pm.s;
+  document.getElementById('ring-n').textContent = doneN;
+
+  // Streak (might have changed)
+  const streak = calcStreak(data);
+  const best   = calcBestStreak(data);
+  document.getElementById('s-streak').textContent = streak;
+  document.getElementById('s-best').textContent   = best;
+  document.getElementById('streak-msg').textContent = streakMsg(streak);
+
+  // Stats
+  const stats = calcStats(data);
+  document.getElementById('st-total').textContent = stats.total;
+  document.getElementById('st-days').textContent  = stats.days;
+  document.getElementById('st-perf').textContent  = stats.perfect;
+
+  // Calendar
+  renderCalendar(data);
+
+  // All done celebration
+  if (doneN === 5 && !justCompleted) {
+    justCompleted = true;
+    setTimeout(() => {
+      const streak2 = calcStreak(data);
+      document.getElementById('ov-msg').innerHTML =
+        `全5チャレンジを達成しました！<br>${streak2 > 1 ? `🔥 ${streak2}日連続達成中！` : '素晴らしい1日でした！'}`;
+      document.getElementById('overlay').classList.add('show');
+      launchConfetti();
+    }, 400);
+  }
+  if (doneN < 5) justCompleted = false;
+}
+
+function closeOv() {
+  document.getElementById('overlay').classList.remove('show');
+}
+
+/* =============================================================
+   CONFETTI
+   ============================================================= */
+function launchConfetti() {
+  const cv = document.getElementById('cv');
+  const cx = cv.getContext('2d');
+  cv.width  = innerWidth;
+  cv.height = innerHeight;
+
+  const colors = ['#fbbf24','#f59e0b','#22c55e','#4a90d9','#e879a0','#a855f7','#ff6b35','#fff'];
+  const pts = Array.from({length:130}, () => ({
+    x: cv.width  * (.3 + Math.random()*.4),
+    y: cv.height * .4,
+    vx: (Math.random()-.5) * 18,
+    vy: (Math.random()-.5) * 18 - 6,
+    color: colors[Math.floor(Math.random()*colors.length)],
+    w: Math.random()*9+4,
+    h: Math.random()*5+3,
+    rot: Math.random()*Math.PI*2,
+    rv: (Math.random()-.5)*.25,
+    a: 1,
+  }));
+
+  function frame() {
+    cx.clearRect(0,0,cv.width,cv.height);
+    let alive = false;
+    pts.forEach(p => {
+      if (p.a <= 0) return;
+      alive = true;
+      p.x += p.vx; p.y += p.vy;
+      p.vy += .35; p.vx *= .99;
+      p.rot += p.rv;
+      p.a -= .013;
+      cx.save();
+      cx.translate(p.x,p.y); cx.rotate(p.rot);
+      cx.globalAlpha = Math.max(0,p.a);
+      cx.fillStyle = p.color;
+      cx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      cx.restore();
+    });
+    if (alive) requestAnimationFrame(frame);
+    else cx.clearRect(0,0,cv.width,cv.height);
+  }
+  frame();
+}
+
+/* =============================================================
+   BOOT
+   ============================================================= */
+// Ensure today has an entry (don't overwrite existing)
+(function() {
+  const data  = load();
+  const today = dateKey();
+  if (!data[today]) { data[today] = [false,false,false,false,false]; save(data); }
+})();
+
+render();
+</script>
+</body>
+</html>
