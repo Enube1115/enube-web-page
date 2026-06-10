@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>夢占い ✦ 夢解読</title>
+  <style>
+    :root {
+      --deep: #07071c;
+      --mid:  #110d2c;
+      --surface: rgba(255,255,255,0.04);
+      --border:  rgba(180,150,255,0.18);
+      --a1: #c8a8f0;   /* lavender */
+      --a2: #80d4d0;   /* teal     */
+      --a3: #f5d48a;   /* gold     */
+      --a4: #f0a0c8;   /* rose     */
+      --text:  #e8e0ff;
+      --muted: #7870a8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+
+    body {
+      min-height:100vh;
+      background: radial-gradient(ellipse at 25% 10%, #1a0e38 0%, #07071c 55%, #0a1224 100%);
+      font-family:'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',Georgia,serif;
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    /* ── CANVAS ── */
+    #cv { position:fixed; inset:0; pointer-events:none; z-index:0; }
+
+    /* ── AURORA ── */
+    .aurora { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+    .aurora::before {
+      content:''; position:absolute;
+      width:70%; height:55%;
+      background:radial-gradient(ellipse,rgba(120,60,220,.14) 0%,transparent 70%);
+      top:-15%; left:15%;
+      animation:aura 14s ease-in-out infinite alternate;
+    }
+    .aurora::after {
+      content:''; position:absolute;
+      width:55%; height:45%;
+      background:radial-gradient(ellipse,rgba(30,110,190,.11) 0%,transparent 70%);
+      bottom:-5%; right:8%;
+      animation:aura 18s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes aura {
+      from { transform:translate(0,0) scale(1); }
+      to   { transform:translate(4%,7%) scale(1.12); }
+    }
+
+    /* ── LAYOUT ── */
+    .wrap {
+      position:relative; z-index:1;
+      max-width:740px; margin:0 auto;
+      padding:0 18px 120px;
+    }
+
+    /* ── HEADER ── */
+    .hd {
+      text-align:center;
+      padding:50px 0 28px;
+    }
+    .moon {
+      font-size:3.6rem; display:block; margin-bottom:10px;
+      animation:mpulse 4s ease-in-out infinite;
+      filter:drop-shadow(0 0 18px rgba(245,212,140,.6));
+    }
+    @keyframes mpulse {
+      0%,100%{ transform:scale(1);     filter:drop-shadow(0 0 14px rgba(245,212,140,.5)); }
+      50%    { transform:scale(1.07);  filter:drop-shadow(0 0 30px rgba(245,212,140,.85)); }
+    }
+    .hd h1 {
+      font-size:2.5rem; font-weight:700; letter-spacing:.22em;
+      background:linear-gradient(130deg,#f5d48a 0%,#c8a8f0 50%,#80d4d0 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      margin-bottom:10px;
+    }
+    .hd p { color:var(--muted); font-size:.88rem; line-height:1.9; letter-spacing:.08em; }
+    .deco  { display:flex; justify-content:center; gap:10px; margin:14px 0; font-size:1rem; opacity:.5; }
+
+    /* ── INFO BOX ── */
+    .info {
+      background:rgba(200,168,240,.05);
+      border:1px solid rgba(200,168,240,.16);
+      border-radius:16px; padding:16px 20px;
+      margin-bottom:26px;
+      font-size:.86rem; color:var(--muted); line-height:1.85;
+      text-align:center;
+    }
+    .info b { color:var(--a1); }
+
+    /* ── TABS ── */
+    .tabs-wrap {
+      position:sticky; top:0; z-index:20;
+      background:linear-gradient(to bottom,rgba(7,7,28,.95) 80%,transparent);
+      padding:12px 0 8px;
+    }
+    .tabs {
+      display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+    }
+    .tab {
+      padding:6px 15px; border-radius:20px;
+      border:1px solid var(--border);
+      background:var(--surface);
+      color:var(--muted); font-size:.8rem; cursor:pointer;
+      transition:all .2s; font-family:inherit; white-space:nowrap;
+    }
+    .tab:hover  { border-color:var(--a1); color:var(--a1); }
+    .tab.on {
+      background:rgba(200,168,240,.16);
+      border-color:var(--a1); color:var(--a1);
+      box-shadow:0 0 10px rgba(200,168,240,.22);
+    }
+
+    /* ── KEYWORD SECTIONS ── */
+    .ks { display:none; padding-top:4px; }
+    .ks.on { display:block; }
+    .kg { display:flex; flex-wrap:wrap; gap:9px; padding:10px 0 6px; }
+
+    .kw {
+      display:flex; align-items:center; gap:5px;
+      padding:7px 15px; border-radius:30px;
+      border:1px solid rgba(180,150,255,.18);
+      background:rgba(255,255,255,.04);
+      color:#b8b0d8; font-size:.88rem; cursor:pointer;
+      user-select:none; transition:all .22s;
+      font-family:inherit;
+    }
+    .kw:hover { border-color:rgba(200,168,240,.48); color:var(--a1); box-shadow:0 0 10px rgba(200,168,240,.18); }
+    .kw.on {
+      background:rgba(200,168,240,.17);
+      border-color:var(--a1); color:var(--a1);
+      box-shadow:0 0 14px rgba(200,168,240,.32);
+      animation:kpop .25s ease;
+    }
+    @keyframes kpop {
+      0%  { transform:scale(.94); }
+      60% { transform:scale(1.08); }
+      100%{ transform:scale(1); }
+    }
+
+    /* ── BOTTOM BAR ── */
+    .bar {
+      position:fixed; bottom:0; left:0; right:0; z-index:50;
+      padding:12px 18px;
+      background:rgba(7,7,28,.94);
+      backdrop-filter:blur(22px);
+      border-top:1px solid rgba(200,168,240,.18);
+      display:flex; align-items:center; gap:12px;
+    }
+    .bar-chips {
+      flex:1; display:flex; gap:6px; flex-wrap:wrap; min-height:28px;
+    }
+    .schip {
+      background:rgba(200,168,240,.13);
+      border:1px solid rgba(200,168,240,.32);
+      border-radius:20px; padding:3px 10px;
+      font-size:.77rem; color:var(--a1);
+      display:flex; align-items:center; gap:4px;
+    }
+    .schip .x { cursor:pointer; opacity:.55; font-size:.72rem; transition:opacity .15s; }
+    .schip .x:hover { opacity:1; }
+    .bar-empty { color:var(--muted); font-size:.82rem; font-family:inherit; }
+    .bar-count {
+      font-size:.78rem; color:var(--muted); white-space:nowrap; align-self:center;
+    }
+
+    .go-btn {
+      position:relative; overflow:hidden;
+      padding:11px 22px; border:none; border-radius:30px;
+      background:linear-gradient(135deg,#7c3aed,#5b21b6);
+      color:#f0ecff; font-size:.92rem; font-weight:700;
+      cursor:pointer; white-space:nowrap;
+      box-shadow:0 4px 20px rgba(124,58,237,.5);
+      transition:transform .18s,box-shadow .18s;
+      font-family:inherit;
+    }
+    .go-btn::after {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+      transform:translateX(-120%); transition:transform .5s;
+    }
+    .go-btn:hover::after { transform:translateX(120%); }
+    .go-btn:hover { transform:translateY(-2px); box-shadow:0 6px 26px rgba(124,58,237,.7); }
+    .go-btn:disabled { opacity:.4; cursor:default; transform:none; }
+
+    /* ── RESULT PANEL ── */
+    .rp { display:none; margin-top:34px; }
+    .rp.on { display:block; animation:rfade .65s ease both; }
+    @keyframes rfade {
+      from { opacity:0; transform:translateY(22px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    .rh { text-align:center; margin-bottom:24px; }
+    .rh-icon { font-size:2.8rem; display:block; margin-bottom:10px; animation:mpulse 3s ease-in-out infinite; }
+    .rh h2 {
+      font-size:1.7rem; letter-spacing:.15em;
+      background:linear-gradient(130deg,#f5d48a,#c8a8f0);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      margin-bottom:6px;
+    }
+    .rh-sub { font-size:.8rem; color:var(--muted); letter-spacing:.12em; }
+
+    .rc {
+      background:rgba(200,168,240,.055);
+      border:1px solid rgba(200,168,240,.18);
+      border-radius:20px; padding:22px 24px;
+      margin-bottom:14px; position:relative; overflow:hidden;
+    }
+    .rc::before {
+      content:''; position:absolute; top:-40%; right:-15%;
+      width:55%; height:110%;
+      background:radial-gradient(circle,rgba(200,168,240,.07) 0%,transparent 65%);
+      pointer-events:none;
+    }
+    .rc-title {
+      font-size:.95rem; color:var(--a1); letter-spacing:.1em;
+      margin-bottom:14px; display:flex; align-items:center; gap:8px;
+    }
+    .rc p { font-size:.94rem; line-height:2.0; color:#ccc8e8; white-space:pre-line; }
+
+    .kri { display:flex; flex-direction:column; gap:12px; }
+    .kri-item {
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:14px; padding:16px 18px;
+    }
+    .kri-label { font-size:.98rem; color:var(--a3); margin-bottom:7px; display:flex; align-items:center; gap:6px; }
+    .kri-body  { font-size:.86rem; color:#b0a8cc; line-height:1.9; }
+
+    .lucky-row { display:flex; gap:12px; flex-wrap:wrap; }
+    .lucky-item {
+      flex:1; min-width:100px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:14px; padding:14px 12px; text-align:center;
+    }
+    .ll  { font-size:.74rem; color:var(--muted); letter-spacing:.1em; margin-bottom:8px; }
+    .lv  { font-size:1.05rem; font-weight:700; }
+    .ldot {
+      width:22px; height:22px; border-radius:50%;
+      margin:0 auto 6px;
+    }
+
+    .reset-btn {
+      display:block; margin:22px auto 0;
+      padding:11px 32px; border-radius:30px;
+      border:1px solid rgba(200,168,240,.28);
+      background:transparent; color:var(--muted);
+      font-size:.9rem; cursor:pointer; transition:all .2s;
+      font-family:inherit;
+    }
+    .reset-btn:hover { border-color:var(--a1); color:var(--a1); }
+
+    /* ── SCROLL ── */
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(200,168,240,.28); border-radius:2px; }
+
+    @media(max-width:500px){
+      .hd h1  { font-size:1.85rem; }
+      .rc     { padding:18px 16px; }
+      .go-btn { padding:10px 16px; font-size:.86rem; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+<div class="aurora"></div>
+
+<div class="wrap">
+
+  <header class="hd">
+    <span class="moon">🌙</span>
+    <h1>夢 占 い</h1>
+    <div class="deco">✦ ✧ ✦ ✧ ✦</div>
+    <p>夢の中に登場したものを選んでください<br>潜在意識からの深いメッセージを解き明かします</p>
+  </header>
+
+  <div class="info">
+    夢に現れたキーワードを <b>1〜5個</b> 選んで「🔮 夢を解読する」を押してください。<br>
+    複数選択すると、その組み合わせからより深い読み解きをお届けします。
+  </div>
+
+  <div class="tabs-wrap">
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-c="nature">🌿 自然</button>
+      <button class="tab" data-c="animal">🦋 動物</button>
+      <button class="tab" data-c="person">👤 人物</button>
+      <button class="tab" data-c="place">🏛 場所</button>
+      <button class="tab" data-c="action">⚡ 状況</button>
+      <button class="tab" data-c="object">🔑 物</button>
+      <button class="tab" data-c="light">✨ 光・色</button>
+    </div>
+  </div>
+
+  <div class="ks on" id="s-nature"><div class="kg" id="g-nature"></div></div>
+  <div class="ks"    id="s-animal"><div class="kg" id="g-animal"></div></div>
+  <div class="ks"    id="s-person"><div class="kg" id="g-person"></div></div>
+  <div class="ks"    id="s-place" ><div class="kg" id="g-place"></div></div>
+  <div class="ks"    id="s-action"><div class="kg" id="g-action"></div></div>
+  <div class="ks"    id="s-object"><div class="kg" id="g-object"></div></div>
+  <div class="ks"    id="s-light" ><div class="kg" id="g-light"></div></div>
+
+  <div class="rp" id="rp"></div>
+
+</div>
+
+<div class="bar">
+  <div class="bar-chips" id="chips">
+    <span class="bar-empty" id="be">キーワードを選んでください</span>
+  </div>
+  <span class="bar-count" id="cnt"></span>
+  <button class="go-btn" id="gobtn" onclick="fortune()" disabled>🔮 夢を解読する</button>
+</div>
+
+<script>
+/* =============================================================
+   KEYWORD DATA  (74 keywords across 7 categories)
+   ============================================================= */
+const KW = {
+  nature:[
+    {id:'sea',    i:'🌊',l:'海',    t:['emotion','deep','vast','unconscious'],
+     m:'海は深層心理・感情の広大な世界を象徴します。穏やかな海なら内なる平和、荒れた海は感情の混乱や変化のサイン。大きなチャンスや新しい段階への移行を告げることもあります。'},
+    {id:'mtn',    i:'⛰️',l:'山',    t:['goal','challenge','rise'],
+     m:'山は目標、試練、乗り越えるべき課題を象徴します。登っているなら着実な前進の証。頂上に立てれば大きな成功の予兆、山を眺めるだけなら目標を意識し始めているサインです。'},
+    {id:'forest', i:'🌲',l:'森',    t:['mystery','unconscious','explore'],
+     m:'森は潜在意識の深み・神秘・内なる探求を表します。迷い込む夢は自己探求の始まり。森を抜けた先に光があれば困難の先にある希望を示し、深い自己発見の旅に出ていることを告げます。'},
+    {id:'sky',    i:'🌤️',l:'空',    t:['freedom','hope','vast'],
+     m:'空は自由、可能性、精神の解放を象徴します。澄んだ青空は希望と明るい未来、曇り空は不安や迷いを示します。空を飛ぶなら更に大きな解放感のサインです。'},
+    {id:'star',   i:'⭐',l:'星',    t:['wish','hope','guide'],
+     m:'星は願望・希望・人生の指針を表します。輝く星は夢や目標が実現に近づいているサイン。流れ星は一瞬のチャンスを逃さないよう促しています。複数の星は多様な可能性の象徴です。'},
+    {id:'moon',   i:'🌙',l:'月',    t:['intuition','cycle','unconscious','feminine'],
+     m:'月は直感、潜在意識、変化のサイクルを象徴します。満月は達成・完成、新月は新しい始まりを示します。月明かりはあなたの心の奥にある真実を優しく照らし出しています。'},
+    {id:'sun',    i:'☀️',l:'太陽',  t:['energy','life','consciousness','positive'],
+     m:'太陽は生命力・エネルギー・意識を象徴します。太陽が輝く夢は活力と自信の高まり、日の出は再生や新しい始まりのサイン。人生における輝かしい転換期が訪れることを告げています。'},
+    {id:'rain',   i:'🌧️',l:'雨',    t:['cleanse','emotion','renewal'],
+     m:'雨は感情の浄化と再生を象徴します。悲しいイメージを持たれがちですが、雨は心の重荷を洗い流す吉兆のサイン。嵐の後に晴れ間が来るように、試練の後には必ず希望が訪れます。'},
+    {id:'snow',   i:'❄️',l:'雪',    t:['pure','quiet','new'],
+     m:'雪は純粋さ、静けさ、新しい白紙の状態を象徴します。雪が降る夢は新たな始まりや清らかな気持ちの訪れを示します。ただし凍えるような冷たさは感情の凍結を表すことも。'},
+    {id:'river',  i:'🏞️',l:'川',    t:['flow','time','emotion'],
+     m:'川は時の流れと感情の流動を象徴します。清らかな川は順調な人生の流れ、濁った川は停滞や障害を示します。川を渡る夢は人生の転換点に立っているサインです。'},
+    {id:'flower', i:'🌸',l:'花',    t:['beauty','love','growth','positive'],
+     m:'花は美しさ、愛情、成長を象徴します。花が咲く夢は人間関係の開花や恋愛の発展を示します。特に桜は一期一会の美しさ、白い花は純粋な愛情・感謝を表します。'},
+    {id:'fire',   i:'🔥',l:'火',    t:['passion','transform','energy'],
+     m:'火は情熱・変革・破壊と再生を象徴します。小さな炎は情熱や創造力の高まり、大きな炎は劇的な変化のサイン。制御された火は強いエネルギーを建設的に使えている証です。'},
+    {id:'cloud',  i:'☁️',l:'雲',    t:['uncertain','dream','vague'],
+     m:'雲は不確かさや幻想的な可能性を象徴します。白い雲は穏やかな希望、黒雲は困難の訪れを示します。雲の切れ間から光が差すなら、問題解決が近い予兆です。'},
+    {id:'wind',   i:'🌬️',l:'風',    t:['change','message','spirit'],
+     m:'風は変化、精神的なメッセージ、目に見えない力を象徴します。爽やかな風は新鮮な変化や吉報の予兆。嵐のような強風は激しい変化が迫っていることを告げています。'},
+  ],
+  animal:[
+    {id:'dog',   i:'🐕',l:'犬',      t:['loyalty','friendship','trust'],
+     m:'犬は忠誠心・友情・信頼を象徴します。犬が懐く夢は信頼できる友人や協力者の存在を示します。吠える犬は誰かへの警戒心の表れ。全般的に友人関係の吉兆サインです。'},
+    {id:'cat',   i:'🐈',l:'猫',      t:['intuition','independence','mystery','feminine'],
+     m:'猫は直感・独立心・神秘を象徴します。猫が懐く夢は直感力の高まりと女性性の開花。黒猫は神秘的なメッセージ、白猫は純粋な幸運の訪れを示します。'},
+    {id:'bird',  i:'🐦',l:'鳥',      t:['freedom','hope','spirit','message'],
+     m:'鳥は自由・精神の飛翔・吉報を象徴します。高く舞う鳥は志の高まりと解放を示し、鳥の歌声は喜びのメッセージ。巣に戻る鳥は安心の場所への帰還を表します。'},
+    {id:'snake', i:'🐍',l:'蛇',      t:['transform','wisdom','heal','warning'],
+     m:'蛇は変容・智慧・治癒を象徴します。脱皮する蛇は大きな変容と再生のサイン。白蛇は特に強力な幸運と守護の象徴です。攻撃的な蛇は直面すべき課題への警告です。'},
+    {id:'horse', i:'🐎',l:'馬',      t:['power','freedom','journey','progress'],
+     m:'馬は力・自由・前進を象徴します。颯爽と駆ける馬は人生の加速と新たな段階への移行を示します。白馬は高貴な目標の実現を示し、騎乗は物事をコントロールできている証です。'},
+    {id:'dragon',i:'🐉',l:'龍',      t:['power','fortune','divine','transform'],
+     m:'龍は日本において強大な力・守護・幸運の象徴です。龍が空を舞う夢は最高の運気の到来を示します。天に昇る龍は栄誉と成功の予兆であり、夢占いでも最上級の吉兆とされます。'},
+    {id:'btfly', i:'🦋',l:'蝶',      t:['transform','beauty','renewal','soul'],
+     m:'蝶は変容・再生・魂の解放を象徴します。蝶になる夢は美しい変化と新たな自分への脱皮。様々な色の蝶が舞う夢は喜びと自由の訪れ。白い蝶は故人からのメッセージとも言われます。'},
+    {id:'fish',  i:'🐟',l:'魚',      t:['abundance','unconscious','fertility'],
+     m:'魚は豊かさ・潜在意識・生命力を象徴します。大漁の夢は大きな幸運や収穫のサイン。美しい魚が泳ぐ夢は感情の豊かさと精神的な充実を示します。金魚は願望成就の吉兆です。'},
+    {id:'tiger', i:'🐯',l:'虎',      t:['strength','instinct','ambition','power'],
+     m:'虎は強さ・本能・野心を象徴します。虎と友好的な夢は自分の強さを認識し力強く前進できるサイン。虎に追われる夢は抑圧された感情や本能と向き合うよう告げています。'},
+    {id:'spider',i:'🕷️',l:'クモ',    t:['fate','create','weave'],
+     m:'クモは運命・創造・網の織り手を象徴します。巣を張る夢は計画や人間関係の構築のサイン。クモの巣に捕まる夢は複雑な状況への注意を促しています。'},
+    {id:'wolf',  i:'🐺',l:'狼',      t:['instinct','wild','pack'],
+     m:'狼は野性的な本能・群れの力・自由への渇望を象徴します。遠吠えする狼は孤独感や自由への叫び。群れで走る狼は仲間との強い絆を示し、白い狼は精神的な守護者のメッセージです。'},
+    {id:'deer',  i:'🦌',l:'鹿',      t:['grace','gentle','guide','divine'],
+     m:'鹿は優雅さ・優しさ・神聖なる導きを象徴します。鹿と出会う夢は精神的な導きや恵みの訪れを示します。神使として知られる鹿の夢は、守護された安心感のサインです。'},
+    {id:'owl',   i:'🦉',l:'フクロウ', t:['wisdom','insight','night','truth'],
+     m:'フクロウは智慧・洞察力・夜の守護者を象徴します。フクロウが現れる夢は深い智慧や直感力の高まりのサイン。暗闇の中でも正しい道を見つける力が備わっていることを示します。'},
+  ],
+  person:[
+    {id:'baby',   i:'👶',l:'赤ちゃん',   t:['new','pure','create','start'],
+     m:'赤ちゃんは新しい始まり・純粋さ・創造性を象徴します。赤ちゃんが笑う夢は新たなプロジェクトや関係の誕生を示し、抱く夢は何か大切なものを育てていることの表れです。'},
+    {id:'elder',  i:'👴',l:'老人',       t:['wisdom','time','lesson'],
+     m:'老人は智慧・時の経過・人生の教訓を象徴します。老人に導かれる夢は先人からの大切なメッセージ。夢の中の老人はしばしばあなた自身の内なる智慧や守護霊からのサインともいわれます。'},
+    {id:'stranger',i:'🧑',l:'知らない人', t:['unknown','shadow','new'],
+     m:'知らない人は自己の未知の側面・影の自己を象徴することがあります。友好的なら新しい出会いの予兆、脅威的ならば直面すべき恐れがあることのサインです。'},
+    {id:'ex',     i:'💔',l:'昔の恋人',   t:['past','emotion','lesson'],
+     m:'昔の恋人は過去の感情や未解決の経験を象徴します。必ずしも復縁を意味するわけではなく、その関係から学んだことを今に活かすというメッセージ。過去を整理し前へ進む時です。'},
+    {id:'family', i:'👨‍👩‍👧',l:'家族',      t:['bond','safe','roots'],
+     m:'家族は安心・絆・自分のルーツを象徴します。家族と楽しい夢は強い絆と守られている感覚。家族と争う夢は家族関係の改善を促すメッセージかもしれません。'},
+    {id:'friend', i:'👫',l:'友人',       t:['social','support','connection'],
+     m:'友人は社会的なつながりとサポートを象徴します。友人と楽しく過ごす夢は人間関係の充実と幸福。友人が悲しんでいる夢は、その人が助けを必要としているサインかもしれません。'},
+    {id:'celeb',  i:'🌟',l:'有名人',     t:['aspiration','ideal','power'],
+     m:'有名人は自分が理想とする資質や能力への憧れを象徴します。その人物が持つ才能や生き方が、あなたが発揮すべきものを映し出しています。内なる可能性に気づくサインです。'},
+    {id:'shadow', i:'🌑',l:'影の自分',   t:['shadow','unconscious','hidden'],
+     m:'影の自分は抑圧された感情・認めたくない側面・心の深部を象徴します。この夢は自己と向き合い、隠れた力を統合するよう促しています。受け入れることで大きな成長が待っています。'},
+  ],
+  place:[
+    {id:'home',   i:'🏠',l:'家',      t:['self','safe','identity','roots'],
+     m:'家はあなた自身の内面世界と自己イメージを象徴します。美しい家は自己肯定感の高まり、荒廃した家は心身の疲弊のサイン。知らない部屋の発見は未知の可能性との出会いを示します。'},
+    {id:'school', i:'🏫',l:'学校',    t:['learn','grow','test'],
+     m:'学校は学び・成長・試練を象徴します。試験を受ける夢は現実のプレッシャーや自己評価への不安。卒業する夢は大きな成長の完了と次の段階への準備ができているサインです。'},
+    {id:'hospital',i:'🏥',l:'病院',   t:['heal','recover','health'],
+     m:'病院は癒し・回復・健康への意識を象徴します。治療を受ける夢は心身の回復過程にあるサイン。医師として働く夢は自分が誰かを癒す力を持っていることを示します。'},
+    {id:'shrine', i:'⛩️',l:'神社・寺', t:['spiritual','divine','prayer'],
+     m:'神社・寺は精神的な守護・先祖との繋がり・聖なる空間を象徴します。参拝する夢は守護されている安心感と精神的な浄化を示します。願いが聞き届けられるサインです。'},
+    {id:'bridge', i:'🌉',l:'橋',      t:['transition','change','crossing'],
+     m:'橋は移行・転換期・対岸への渡りを象徴します。橋を渡る夢は人生の重要な変化を乗り越えているサイン。橋が崩れる夢は変化への恐れがあることを示します。'},
+    {id:'cave',   i:'🪨',l:'洞窟',    t:['unconscious','explore','hidden'],
+     m:'洞窟は無意識の深み・隠された真実・内なる探求を象徴します。洞窟を探索する夢は深い自己発見の旅。光を求めて洞窟を出る夢は困難を乗り越えた後の大きな気づきを示します。'},
+    {id:'abroad', i:'✈️',l:'異国の地', t:['adventure','change','new','expand'],
+     m:'異国の地は新しい経験・冒険・変化への渇望を象徴します。海外を旅する夢は視野の拡大と自己変革の時期。未知の文化との出会いは自分の新たな側面の発見です。'},
+    {id:'ruins',  i:'🏚️',l:'廃墟',    t:['past','end','memory'],
+     m:'廃墟は過去の遺産・終わりと始まり・手放しの必要性を象徴します。廃墟の中に宝を見つける夢は過去の経験の中に貴重な学びがある予兆。整理し前へ進む時が来ています。'},
+    {id:'seabed', i:'🌊',l:'海底',    t:['deep','unconscious','hidden','vast'],
+     m:'海底は潜在意識の最も深い層・隠された感情・魂の核心を象徴します。海底を探索する夢は深い自己探求と潜在能力の発見を示し、宝が眠る海底は内なる豊かさのサインです。'},
+  ],
+  action:[
+    {id:'fly',    i:'🦅',l:'飛ぶ',       t:['freedom','release','high','transcend'],
+     m:'空を飛ぶ夢は自由・解放・高い目標の象徴で、夢占いで最も吉兆なサインの一つです。制限から解き放たれた感覚は、現実でも新たな可能性が開かれていることを示します。'},
+    {id:'fall',   i:'⬇️',l:'落ちる',     t:['anxiety','lose_control','pressure'],
+     m:'落ちる夢は不安・コントロールの喪失・プレッシャーを象徴します。高い場所から落ちる夢は非常に多く見られ、着地後に無事なら課題を乗り越える力があることを示します。'},
+    {id:'chase',  i:'🏃',l:'追われる',   t:['stress','escape','confront'],
+     m:'追われる夢はストレス・逃避したい状況・直面すべき問題の存在を象徴します。追ってくるものの正体が問題の根源を示しています。振り返って立ち向かえれば課題解決が近い証です。'},
+    {id:'lost',   i:'🧭',l:'迷子になる', t:['direction','lost','self_discover'],
+     m:'迷子になる夢は人生の方向性の喪失・選択の岐路に立つ状況を象徴します。しかし迷うことは自己発見の途中にある証。迷いながらも歩き続ければ、やがて新たな道が開けます。'},
+    {id:'swim',   i:'🏊',l:'泳ぐ',       t:['emotion','overcome','flow'],
+     m:'泳ぐ夢は感情と向き合い状況を乗り越える力を象徴します。うまく泳げているなら困難を順調に乗り越えているサイン。溺れそうな夢は感情に押し流されている状態への警告です。'},
+    {id:'fight',  i:'⚔️',l:'戦う',       t:['conflict','courage','inner_battle'],
+     m:'戦う夢は内面の葛藤・勇気・自己実現への戦いを象徴します。勝つ夢は乗り越える力があることを示します。負けても逃げずに戦った事実が重要で、内なる統合が近いサインです。'},
+    {id:'death',  i:'💀',l:'死',          t:['end','transform','rebirth'],
+     m:'死の夢は終わりではなく大きな変容と再生を象徴します。夢での死は現実の死を意味せず、むしろ古い自分が終わり新たな自分へと生まれ変わる吉兆のサインです。'},
+    {id:'wedding',i:'💒',l:'結婚式',     t:['union','commit','new_phase'],
+     m:'結婚式の夢は統合・コミットメント・新たなパートナーシップを象徴します。自分が結婚する夢は人生の新たな段階の始まり、または内なる男性性と女性性の統合を示します。'},
+    {id:'cry',    i:'😢',l:'泣く',       t:['emotion','release','heal'],
+     m:'泣く夢は感情の解放と癒しを象徴します。思い切り泣くことで日常で抑圧していた感情が解放されます。泣いた後に晴れやかな感覚があれば、心の深い浄化が進んでいます。'},
+    {id:'heal',   i:'✨',l:'癒される',   t:['heal','peace','restore'],
+     m:'癒される夢は心身の回復と再生のサインです。傷が癒える夢は精神的な回復プロセスの反映。自然の中で癒される夢は本能的な安らぎと内なる平和の訪れを示します。'},
+  ],
+  object:[
+    {id:'key',    i:'🗝️',l:'鍵',        t:['opportunity','unlock','solution'],
+     m:'鍵は可能性・扉を開く力・解決策を象徴します。鍵を見つける夢は長く探していた答えや新たな機会の到来。鍵を渡される夢は信頼と重要な役割を任されることを示しています。'},
+    {id:'mirror', i:'🪞',l:'鏡',        t:['self','truth','reflection'],
+     m:'鏡は自己認識・真実・内なる反省を象徴します。鏡に映る自分を見る夢は本当の自分の姿と向き合う時期。鏡が割れる夢は自己イメージの変容や見ていなかった真実の露出を示します。'},
+    {id:'water',  i:'💧',l:'水',         t:['emotion','cleanse','life'],
+     m:'水は感情・浄化・生命力を象徴します。清らかな水は感情の浄化と精神的な透明さ、濁った水は感情の混乱を示します。水を飲む夢は知識や感情的な栄養を取り込んでいるサインです。'},
+    {id:'blood',  i:'🩸',l:'血',         t:['life','passion','bond','vitality'],
+     m:'血は生命力・情熱・深い絆を象徴します。傷から血が流れる夢は心の傷の癒しが進んでいるサイン、または強烈な感情の表現。生命エネルギーが高まっていることも示します。'},
+    {id:'jewel',  i:'💎',l:'宝石・宝',   t:['value','talent','inner_wealth'],
+     m:'宝石や宝は自分の内なる価値・才能・隠れた豊かさを象徴します。宝を発見する夢は自分の才能や価値への気づき。宝石の輝きはあなたの可能性が光り始めているサインです。'},
+    {id:'clock',  i:'⏰',l:'時計',        t:['time','pressure','awareness'],
+     m:'時計は時間への意識・焦り・期限を象徴します。時計が止まる夢は特別な瞬間への気づき。時計を追いかける夢は時間的プレッシャーや、今この瞬間を大切にするよう促す警告です。'},
+    {id:'book',   i:'📖',l:'本・手紙',   t:['knowledge','message','wisdom'],
+     m:'本や手紙は知識・重要なメッセージ・知恵を象徴します。本を読む夢は学びと成長の欲求。手紙を受け取る夢は重要な情報や感情的なメッセージが届く予兆です。'},
+    {id:'phone',  i:'📱',l:'電話',        t:['communication','connect','message'],
+     m:'電話は人とのつながりとコミュニケーションを象徴します。電話がかかってくる夢はその人物からのメッセージや再会の予兆。繋がらない電話は伝えたいことが届かない焦りを反映しています。'},
+    {id:'vehicle',i:'🚗',l:'乗り物',      t:['journey','direction','control'],
+     m:'乗り物は人生の旅路と進む方向を象徴します。スムーズに運転できる夢は人生をコントロールできている証。ブレーキが効かない夢は状況への制御を失いつつある警告です。'},
+    {id:'money',  i:'💰',l:'お金',        t:['value','security','abundance'],
+     m:'お金は物質的な豊かさ・自己価値・安心感を象徴します。お金を拾う夢は幸運と豊かさの到来。お金を失う夢はエネルギーの消耗や価値観の変化のサインです。'},
+    {id:'sword',  i:'⚔️',l:'剣・刀',      t:['truth','power','protect','decide'],
+     m:'剣や刀は真実を切り開く力・決断・保護を象徴します。剣を持つ夢は決断力と自己防衛力の高まりのサイン。剣が光る夢は真実の探求と正義感の目覚めを示します。'},
+    {id:'door',   i:'🚪',l:'扉・ドア',   t:['opportunity','transition','choice'],
+     m:'扉は機会・選択・人生の転換点を象徴します。扉を開く夢は新たな可能性への踏み出しのサイン。閉じた扉の前に立つ夢は選択を迫られている状況の反映。勇気を持って扉を開きましょう。'},
+  ],
+  light:[
+    {id:'wlight', i:'🌟',l:'白い光',    t:['divine','sacred','protection','awaken'],
+     m:'白い光は覚醒・神聖さ・高次の存在からの保護を象徴します。光に包まれる夢は強い守護と精神的な覚醒のサイン。白い光のトンネルは大きな変容や深い癒しの体験を示します。'},
+    {id:'red',    i:'🔴',l:'赤',         t:['passion','energy','love','power'],
+     m:'赤は情熱・エネルギー・愛・強い感情的な力を象徴します。赤い夢は強いエネルギーの高まりのサイン。赤いバラは愛の開花、赤い夕焼けは情熱的な出来事の予兆です。'},
+    {id:'blue',   i:'🔵',l:'青・水色',   t:['calm','intuition','heal','spirit'],
+     m:'青は冷静さ・直感・癒し・精神的な深みを象徴します。青い空や海の夢は精神的な平和と直感力の高まり。深い青は深い洞察力、明るい水色は軽やかな自由を示します。'},
+    {id:'dark',   i:'🌑',l:'黒い闇',    t:['unknown','mystery','potential'],
+     m:'黒い闇は未知・神秘・無限の可能性を象徴します。暗闇は恐ろしいイメージを持たれますが、あらゆる可能性を内包する創造の場でもあります。光を求めて歩き続けることが重要です。'},
+    {id:'gold',   i:'✨',l:'金色の光',  t:['fortune','divine','success','blessing'],
+     m:'金色の光は最高の幸運・神の祝福・成功の象徴です。夢の中で金色の光に包まれることは宇宙からの強力な応援サイン。豊かさと栄光の訪れを告げています。'},
+    {id:'rainbow',i:'🌈',l:'虹',         t:['hope','harmony','after_storm'],
+     m:'虹は希望・調和・試練の後の喜びを象徴します。嵐の後に現れる虹のように、困難を乗り越えた後に美しい未来が待っていることを告げています。夢に虹が現れるのは強い吉兆です。'},
+    {id:'purple', i:'💜',l:'紫の光',    t:['spiritual','intuition','high_vibration'],
+     m:'紫は高い精神性・直感・神秘的なエネルギーを象徴します。紫の光に包まれる夢は霊的な覚醒や直感力の大幅な高まりのサイン。自分の内なる力と宇宙との繋がりが強まっています。'},
+    {id:'moonlit',i:'🌕',l:'月明かり',  t:['intuition','romance','guide','soft'],
+     m:'月明かりは柔らかな直感・ロマンス・優しい導きを象徴します。月光に照らされる夢は潜在意識からの穏やかなメッセージ。月明かりの下を歩く夢は静かながらも確かな前進を示します。'},
+  ],
+};
+
+/* =============================================================
+   SPECIAL COMBINATIONS (15)
+   ============================================================= */
+const COMBOS = [
+  {k:['moon','sea'],   title:'月と海の神秘',
+   msg:'深層心理が最も活性化されている夢です。あなたの潜在意識が重要なメッセージを送り出そうとしています。感情の奥深くにある本当の望みに耳を傾けてください。直感に従うことで、今まで見えなかった道が開けていきます。'},
+  {k:['dragon','sun'], title:'龍と太陽の覚醒',
+   msg:'これ以上ない吉兆の組み合わせです。強大な力と生命エネルギーが重なり合い、突破口が開こうとしています。長い間温めてきた目標や夢が、ついに現実の形を取り始める時が来ました。大いなる飛躍の時です。'},
+  {k:['btfly','flower'],title:'蝶と花の輪舞',
+   msg:'美しい変容の時が訪れています。あなたの内側で新しい自分がゆっくりと花開いています。恋愛や人間関係においても喜ばしい展開が期待できます。蝶のように軽やかに新しい世界へ飛び出してください。'},
+  {k:['fly','star'],   title:'星へ向かって飛翔',
+   msg:'高い志と自由の融合です。あなたは今、自分の限界を超えて夢の実現へと向かっています。星を目指して飛ぶこの夢は、目標が手の届く場所にあることを示しています。信じる力を持って進み続けてください。'},
+  {k:['key','home'],   title:'心の扉を開く鍵',
+   msg:'あなた自身の心の奥深くに、新たな扉が開こうとしています。長い間閉ざされていた感情や才能、可能性の扉を開く鍵を手にしています。自分の内側にあるものを信じ、勇気を持ってその扉を開きましょう。'},
+  {k:['death','btfly'],title:'完全なる再生',
+   msg:'これは夢占いで最も神聖な変容のサインです。古い自分は完全に終わりを迎え、まったく新しい自分として生まれ変わろうとしています。この変化は痛みを伴うかもしれませんが、その先には想像を超えた美しい新生活が待っています。'},
+  {k:['moon','mirror'],title:'潜在意識の鏡',
+   msg:'夢の中の自分と向き合う時が来ました。月と鏡が重なることで、普段は見えない潜在意識の真実が明らかになります。今は自己反省と内省の大切な時期です。本当の気持ちに正直になることが、次のステップへの鍵です。'},
+  {k:['dragon','water'],title:'龍の浄化の渦',
+   msg:'強大な浄化のエネルギーがあなたを包んでいます。古い傷、古いパターン、古い思い込みが洗い流されていきます。龍の水はすべてを一新する力を持ちます。この流れに身を任せることでより高い次元の自分へと進化できます。'},
+  {k:['rainbow','rain'],title:'嵐の後の恵み',
+   msg:'試練の時代が終わりを告げ、希望の光が差し込んでいます。辛かった経験・困難な時期を経て今のあなたは格段に強くなりました。美しい未来がすぐそこまで来ています。苦労した分だけ大きな喜びが待っています。'},
+  {k:['snake','moon'],  title:'蛇と月の変容',
+   msg:'深い直感と神秘的な変容のサインです。蛇の脱皮と月の満ち欠けが重なり、あなたの内側で大きなサイクルが完了しようとしています。古いものを手放し、新しい智慧と共に次の段階へと進む準備が整っています。'},
+  {k:['fire','tiger'],  title:'情熱と本能の爆発',
+   msg:'あなたの内側に眠っていた情熱と本能的なエネルギーが目を覚ましています。やりたいこと、なりたい自分、達成したい目標に向けて全力で突き進む時が来ました。この燃えるようなエネルギーを建設的な方向に向けてください。'},
+  {k:['gold','wlight'], title:'黄金の神聖な光',
+   msg:'高次の存在から最高の祝福を受けている夢です。宇宙的な豊かさと神聖なエネルギーに包まれています。この時期のあなたは特別な守護の下にあります。大きな目標や願望を持ち、恐れずに前進してください。必ず成就します。'},
+  {k:['baby','flower'], title:'新しい愛の誕生',
+   msg:'純粋な愛と新しいものの始まりを告げる夢です。赤ちゃんの無邪気さと花の美しさが重なり、新たな恋愛や友情、または創造的なプロジェクトが誕生するサインです。心を開いてその出会いや機会を受け入れてください。'},
+  {k:['bridge','fly'],  title:'転換と飛翔',
+   msg:'大きな人生の転換点を飛び越える夢です。今まで渡れなかった橋を飛んで超えるように、かつての障壁は今のあなたには障壁ではありません。新しい世界への移行が、今こそ軽やかに行われています。'},
+  {k:['cave','gold'],   title:'洞窟の黄金',
+   msg:'暗闇の奥に秘められた宝を掘り当てる夢です。長い探求の旅の末に、深い自己理解と輝く真実に辿り着こうとしています。もうすぐ長い試練の時期が終わります。内側の輝きを信じて、光の方向へ進んでください。'},
+];
+
+/* =============================================================
+   THEME MAP
+   ============================================================= */
+const THEMES = {
+  freedom:      {title:'解放と自由',      intro:'あなたの夢は自由と解放を強く求めています。現実の制限から飛び出し、本当の自分として生きたいという魂の叫びが聞こえます。今こそ自分を縛っていた枷を外す時です。',       extra:'あなたの内側に秘められた自由へのエネルギーが、この夢を通して強く表現されています。今自分に課している制限や思い込みを手放す時が来ています。'},
+  transform:    {title:'大いなる変容',    intro:'深い変容のエネルギーがあなたを包んでいます。古い自分を手放し、新たな姿へと生まれ変わる準備が整っています。変化を恐れず、流れに身を任せましょう。',         extra:'変化は一時的な痛みを伴うかもしれませんが、その先には想像もしなかった美しい新世界が待っています。変容を受け入れることで大きな成長が訪れます。'},
+  emotion:      {title:'感情の波',        intro:'感情の世界が豊かに広がっています。今は感情に蓋をせず、素直に感じることが大切な時期です。心の声に正直に、感情の流れに逆らわないでください。',           extra:'今のあなたには、この感情を十分に感じ切ることが必要です。感情は抑圧するものではなく、流してあげるもの。泣きたい時は泣き、喜びたい時は全力で喜んでください。'},
+  intuition:    {title:'直感の目覚め',    intro:'潜在意識と直感が高まっています。論理ではなく、心の声に従う時がやってきました。内なる声が今、あなたに大切なことを告げようとしています。',               extra:'今、あなたの直感は驚くほど研ぎ澄まされています。第六感が告げることを信じ、論理より心の声を優先させてみてください。'},
+  fortune:      {title:'幸運の訪れ',      intro:'明るい吉兆のエネルギーに包まれています。願い事や目標が実現に近づいているサインです。積極的に行動することで幸運をさらに引き寄せましょう。',             extra:'宇宙があなたに向けて扉を開こうとしています。行動することで幸運が加速します。チャンスを掴む準備をしておいてください。'},
+  inner_battle: {title:'内なる戦い',      intro:'内側での葛藤や成長の痛みが表れています。しかしこれは成長の証。乗り越えた先に大きな飛躍が待っています。自分自身と向き合う勇気を持ってください。',       extra:'内なる葛藤は成長の証です。戦っているということはそれだけ真剣に自分と向き合っているということ。乗り越えた先に大きな成熟が待っています。'},
+  spiritual:    {title:'精神的な覚醒',    intro:'高次の存在からメッセージを受け取っています。精神的な気づきと覚醒の時期に入っています。瞑想や静かな時間を大切にしてください。',                         extra:'あなたの魂は今、高い次元のエネルギーと共鳴しています。瞑想や自然の中での過ごし方が、このメッセージを更に深く受け取るのに役立つでしょう。'},
+  new_start:    {title:'新しい始まり',    intro:'新たなサイクルの始まりを告げる夢です。これまでの経験を活かし、新鮮な気持ちで新しい道を歩み始めましょう。未来は白紙のキャンバスです。',               extra:'新しいサイクルの始まりです。過去は過去として感謝しつつ、新鮮な気持ちで前へ進みましょう。あなたには今、新しいものを生み出す力があります。'},
+  love:         {title:'愛の開花',        intro:'愛と人間関係のエネルギーが高まっています。心を開き、愛を与え愛を受け取ることで、豊かな関係が育まれます。誰かとの絆が深まる予感があります。',             extra:'自分自身をまず愛することが、外からの愛を受け取る準備を整えます。心を開いて縁を大切にしてください。'},
+  power:        {title:'力の目覚め',      intro:'内なる力とエネルギーが目を覚ましています。自信を持って行動すれば、大きな成果を生み出せます。あなたにはその力があります。',                             extra:'眠っていた力が目を覚ます時です。周囲を気にせず、自分の信じる道を力強く歩んでいきましょう。今のあなたには、それができる力があります。'},
+};
+const TAGMAP = {
+  freedom:'freedom',release:'freedom',transcend:'freedom',vast:'freedom',
+  transform:'transform',rebirth:'transform',renewal:'transform',
+  emotion:'emotion',deep:'emotion',unconscious:'emotion',cleanse:'emotion',
+  intuition:'intuition',guide:'intuition',spirit:'intuition',cycle:'intuition',
+  hope:'fortune',positive:'fortune',fortune:'fortune',abundance:'fortune',divine:'fortune',
+  inner_battle:'inner_battle',conflict:'inner_battle',anxiety:'inner_battle',
+  spiritual:'spiritual',sacred:'spiritual',awaken:'spiritual',high_vibration:'spiritual',
+  new:'new_start',start:'new_start',pure:'new_start',expand:'new_start',
+  love:'love',bond:'love',beauty:'love',grace:'love',feminine:'love',
+  power:'power',strength:'power',energy:'power',ambition:'power',
+};
+
+/* =============================================================
+   LUCKY DATA
+   ============================================================= */
+const LCOLORS = [
+  {n:'月白',  hex:'#ddd8ff', e:'🌕'},{n:'ラベンダー',hex:'#c8a8f0',e:'💜'},
+  {n:'翡翠',  hex:'#80d4c8', e:'💎'},{n:'黄金',      hex:'#f5d48a',e:'✨'},
+  {n:'薔薇',  hex:'#f0a0c8', e:'🌸'},{n:'深藍',      hex:'#6080d8',e:'🔵'},
+  {n:'珊瑚',  hex:'#ff8878', e:'🍊'},{n:'白銀',      hex:'#d8d8e8',e:'🌟'},
+];
+const LMSGS = [
+  '今日は直感に従って行動してみましょう。',
+  '心を開いて、新しい出会いを楽しんで。',
+  '自分を信じることが最大の武器です。',
+  '小さな幸せに感謝することで、大きな幸運を引き寄せます。',
+  '今日は思い切った一歩を踏み出す日です。',
+  '穏やかな心で過ごすと、良いことが引き寄せられます。',
+  '過去を手放し、今この瞬間に集中しましょう。',
+  '誰かへの優しさが、あなたに幸運をもたらします。',
+  '創造性を発揮する絶好の機会が来ています。',
+  '遠い夢ではなく、目の前の一歩に集中してみましょう。',
+];
+
+/* =============================================================
+   STATE
+   ============================================================= */
+let sel = new Set();
+
+/* =============================================================
+   INIT
+   ============================================================= */
+function initKW() {
+  Object.entries(KW).forEach(([cat, items]) => {
+    const g = document.getElementById('g-' + cat);
+    items.forEach(kw => {
+      const b = document.createElement('button');
+      b.className = 'kw';
+      b.dataset.id = kw.id;
+      b.innerHTML = `<span>${kw.i}</span>${kw.l}`;
+      b.onclick = () => toggle(kw.id, b);
+      g.appendChild(b);
+    });
+  });
+}
+
+function findKW(id) {
+  for (const items of Object.values(KW)) {
+    const f = items.find(k => k.id === id);
+    if (f) return f;
+  }
+  return null;
+}
+
+/* =============================================================
+   TOGGLE
+   ============================================================= */
+function toggle(id, btn) {
+  if (sel.has(id)) {
+    sel.delete(id);
+    btn.classList.remove('on');
+  } else {
+    if (sel.size >= 5) return;
+    sel.add(id);
+    btn.classList.add('on');
+  }
+  updateBar();
+}
+
+/* =============================================================
+   BAR
+   ============================================================= */
+function updateBar() {
+  const chips = document.getElementById('chips');
+  const be    = document.getElementById('be');
+  const cnt   = document.getElementById('cnt');
+  const gbtn  = document.getElementById('gobtn');
+
+  chips.querySelectorAll('.schip').forEach(e => e.remove());
+  if (sel.size === 0) {
+    be.style.display = '';
+    cnt.textContent  = '';
+    gbtn.disabled = true;
+  } else {
+    be.style.display = 'none';
+    cnt.textContent  = `${sel.size}/5`;
+    gbtn.disabled = false;
+    sel.forEach(id => {
+      const kw = findKW(id);
+      if (!kw) return;
+      const c = document.createElement('div');
+      c.className = 'schip';
+      c.innerHTML = `${kw.i} ${kw.l} <span class="x" onclick="remove_('${id}')">✕</span>`;
+      chips.appendChild(c);
+    });
+  }
+}
+
+function remove_(id) {
+  sel.delete(id);
+  document.querySelectorAll(`.kw[data-id="${id}"]`).forEach(b => b.classList.remove('on'));
+  updateBar();
+}
+
+/* =============================================================
+   TABS
+   ============================================================= */
+document.getElementById('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab');
+  if (!btn) return;
+  const c = btn.dataset.c;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.ks').forEach(s => s.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('s-' + c).classList.add('on');
+});
+
+/* =============================================================
+   FORTUNE
+   ============================================================= */
+function fortune() {
+  if (!sel.size) return;
+  const ids = [...sel];
+  const kws = ids.map(findKW).filter(Boolean);
+
+  // Special combo check
+  let combo = null;
+  for (const c of COMBOS) {
+    if (c.k.every(k => ids.includes(k))) { combo = c; break; }
+  }
+
+  // Theme detection
+  const tc = {};
+  kws.forEach(kw => (kw.t || []).forEach(t => tc[t] = (tc[t] || 0) + 1));
+  const topTag = Object.entries(tc).sort((a,b) => b[1]-a[1])[0]?.[0] || 'freedom';
+  const themeKey = TAGMAP[topTag] || 'freedom';
+  const theme = THEMES[themeKey];
+
+  // Lucky
+  const code = ids.join('').split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+  const lc = LCOLORS[code % LCOLORS.length];
+  const ln = (code % 9) + 1;
+  const lm = LMSGS[code % LMSGS.length];
+
+  const titleText = combo ? combo.title : theme.title;
+  const mainMsg   = combo ? combo.msg   : theme.intro + '\n\n' + theme.extra;
+
+  const panel = document.getElementById('rp');
+  panel.className = 'rp';
+  panel.innerHTML = `
+    <div class="rh">
+      <span class="rh-icon">🔮</span>
+      <h2>${titleText}</h2>
+      <div class="rh-sub">あなたの夢の解読結果</div>
+    </div>
+
+    <div class="rc">
+      <div class="rc-title">🌙 夢全体のメッセージ</div>
+      <p>${mainMsg}</p>
+    </div>
+
+    <div class="rc">
+      <div class="rc-title">✦ キーワード別の意味</div>
+      <div class="kri">
+        ${kws.map(k => `
+          <div class="kri-item">
+            <div class="kri-label">${k.i} ${k.l}</div>
+            <div class="kri-body">${k.m}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="rc">
+      <div class="rc-title">🍀 今日のラッキー</div>
+      <div class="lucky-row">
+        <div class="lucky-item">
+          <div class="ll">ラッキーカラー</div>
+          <div class="ldot" style="background:${lc.hex};box-shadow:0 0 10px ${lc.hex}88"></div>
+          <div class="lv" style="color:${lc.hex}">${lc.e} ${lc.n}</div>
+        </div>
+        <div class="lucky-item">
+          <div class="ll">ラッキーナンバー</div>
+          <div class="lv" style="color:var(--a3);font-size:2.2rem;margin-top:6px">${ln}</div>
+        </div>
+        <div class="lucky-item" style="flex:2;min-width:170px">
+          <div class="ll">今日のメッセージ</div>
+          <div class="lv" style="color:var(--text);font-size:.86rem;font-weight:400;line-height:1.8;margin-top:6px">${lm}</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetAll()">✦ もう一度占う</button>
+  `;
+
+  void panel.offsetWidth;
+  panel.classList.add('on');
+  setTimeout(() => {
+    window.scrollTo({ top: panel.offsetTop - 16, behavior: 'smooth' });
+  }, 80);
+}
+
+/* =============================================================
+   RESET
+   ============================================================= */
+function resetAll() {
+  sel.clear();
+  document.querySelectorAll('.kw').forEach(b => b.classList.remove('on'));
+  updateBar();
+  const p = document.getElementById('rp');
+  p.classList.remove('on');
+  p.innerHTML = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* =============================================================
+   CANVAS — dreamscape (stars + drifting orbs)
+   ============================================================= */
+(function() {
+  const cv = document.getElementById('cv');
+  const cx = cv.getContext('2d');
+  let W, H, stars = [], orbs = [];
+
+  function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+
+  function init() {
+    stars = Array.from({length:240}, () => ({
+      x: Math.random()*W, y: Math.random()*H,
+      r: Math.random()*1.4+.2,
+      a: Math.random()*.65+.08,
+      tw: Math.random()*Math.PI*2,
+      sp: Math.random()*.014+.005,
+      warm: Math.random() > .75,
+    }));
+    orbs = Array.from({length:7}, () => ({
+      x: Math.random()*W, y: Math.random()*H,
+      r: Math.random()*130+55,
+      dx:(Math.random()-.5)*.28, dy:(Math.random()-.5)*.18,
+      hue:[260,200,280,310,30,190][Math.floor(Math.random()*6)],
+      a: Math.random()*.055+.018,
+    }));
+  }
+
+  function frame() {
+    cx.clearRect(0,0,W,H);
+
+    // Orbs
+    orbs.forEach(o => {
+      const g = cx.createRadialGradient(o.x,o.y,0,o.x,o.y,o.r);
+      g.addColorStop(0, `hsla(${o.hue},70%,65%,${o.a})`);
+      g.addColorStop(1, 'transparent');
+      cx.fillStyle = g;
+      cx.beginPath(); cx.arc(o.x,o.y,o.r,0,Math.PI*2); cx.fill();
+      o.x += o.dx; o.y += o.dy;
+      if (o.x < -o.r) o.x = W+o.r; if (o.x > W+o.r) o.x = -o.r;
+      if (o.y < -o.r) o.y = H+o.r; if (o.y > H+o.r) o.y = -o.r;
+    });
+
+    // Stars
+    stars.forEach(s => {
+      s.tw += s.sp;
+      const a = s.a * (.58+.42*Math.sin(s.tw));
+      cx.beginPath(); cx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      cx.fillStyle = s.warm
+        ? `rgba(255,230,155,${a})`
+        : `rgba(185,165,255,${a})`;
+      cx.fill();
+    });
+
+    requestAnimationFrame(frame);
+  }
+
+  resize(); init(); frame();
+  window.addEventListener('resize', () => { resize(); init(); });
+})();
+
+/* =============================================================
+   BOOT
+   ============================================================= */
+initKW();
+</script>
+</body>
+</html>
