@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>名言ガチャ ✦</title>
+  <style>
+    :root {
+      --gold: #FFD700;
+      --gold-dark: #FFA500;
+      --bg: #08081a;
+      --glass: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,215,0,0.18);
+      --text: #e8e8f4;
+      --muted: #7878a0;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      min-height:100vh;
+      background: radial-gradient(ellipse at 30% 20%, #14103a 0%, #08081a 50%, #0e0820 100%);
+      font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+    #starfield { position:fixed; inset:0; pointer-events:none; z-index:0; }
+
+    .wrap {
+      position:relative; z-index:1;
+      max-width:720px; margin:0 auto;
+      padding:24px 20px 60px;
+      display:flex; flex-direction:column; align-items:center; gap:22px;
+    }
+
+    /* ── HEADER ── */
+    .header { text-align:center; }
+    .header h1 {
+      font-size:2.6rem; font-weight:900; letter-spacing:.12em;
+      background: linear-gradient(135deg,#ffe066,#ffae00,#ffe066);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      filter: drop-shadow(0 0 18px rgba(255,180,0,.5));
+    }
+    .header p { color:var(--muted); font-size:.88rem; margin-top:6px; letter-spacing:.06em; }
+
+    /* ── STATS ── */
+    .stats { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+    .chip {
+      background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+      border-radius:20px; padding:5px 14px; font-size:.82rem; color:var(--muted);
+    }
+    .chip b { color:var(--gold); }
+
+    /* ── QUOTE CARD ── */
+    .card {
+      width:100%; min-height:300px;
+      background:rgba(255,255,255,.04);
+      backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+      border:1px solid var(--glass-border);
+      border-radius:24px; padding:38px 36px 32px;
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+      text-align:center; position:relative;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,215,0,.1);
+    }
+    .card.reveal { animation: reveal .55s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes reveal {
+      from { opacity:0; transform:scale(.94) translateY(14px); }
+      to   { opacity:1; transform:scale(1)  translateY(0);     }
+    }
+
+    .q-mark {
+      font-size:6rem; line-height:.7; font-family:Georgia,serif;
+      color:rgba(255,215,0,.12); position:absolute; top:14px; left:22px;
+      user-select:none; pointer-events:none;
+    }
+    .category {
+      display:inline-block;
+      background:rgba(255,215,0,.1); border:1px solid rgba(255,215,0,.28);
+      border-radius:20px; padding:3px 12px; font-size:.75rem; color:var(--gold);
+      margin-bottom:16px;
+    }
+    .q-text {
+      font-size:1.18rem; line-height:1.9; color:#f0f0fa; font-weight:400;
+      margin-bottom:22px; position:relative; z-index:1;
+    }
+    .divider {
+      width:56px; height:2px;
+      background:linear-gradient(to right,transparent,var(--gold),transparent);
+      margin:0 auto 18px;
+    }
+    .q-author { font-size:1.2rem; font-weight:800; color:var(--gold); margin-bottom:4px; }
+    .q-years  { font-size:.8rem; color:var(--muted); margin-bottom:10px; }
+    .q-desc   { font-size:.82rem; color:var(--muted); max-width:480px; line-height:1.65; }
+
+    .fav-btn {
+      position:absolute; top:14px; right:16px;
+      background:none; border:none; font-size:1.4rem; cursor:pointer;
+      transition:transform .2s;
+      filter: drop-shadow(0 0 4px rgba(255,71,87,0));
+    }
+    .fav-btn:hover { transform:scale(1.25); }
+    .fav-btn.on {
+      animation:heartpop .35s ease;
+      filter:drop-shadow(0 0 6px rgba(255,71,87,.6));
+    }
+    @keyframes heartpop {
+      0%  { transform:scale(1);    }
+      50% { transform:scale(1.45); }
+      100%{ transform:scale(1);    }
+    }
+
+    .idle { color:var(--muted); text-align:center; }
+    .idle-icon { font-size:3.5rem; display:block; margin-bottom:14px; animation:float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+    /* ── GACHA BUTTON ── */
+    .gacha-btn {
+      position:relative; overflow:hidden;
+      padding:17px 64px; font-size:1.25rem; font-weight:900; letter-spacing:.1em;
+      color:#120a00;
+      background:linear-gradient(135deg,#FFD700,#FF9500);
+      border:none; border-radius:50px; cursor:pointer;
+      box-shadow:0 4px 22px rgba(255,150,0,.5), 0 0 50px rgba(255,215,0,.15);
+      transition:transform .18s, box-shadow .18s;
+    }
+    .gacha-btn::after {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);
+      transform:translateX(-120%); transition:transform .5s;
+    }
+    .gacha-btn:hover::after { transform:translateX(120%); }
+    .gacha-btn:hover {
+      transform:translateY(-3px);
+      box-shadow:0 10px 32px rgba(255,150,0,.7), 0 0 70px rgba(255,215,0,.25);
+    }
+    .gacha-btn:active { transform:translateY(0); }
+    .gacha-btn:disabled { opacity:.7; cursor:default; }
+    .gacha-btn.go { animation:gachaspin .52s ease; }
+    @keyframes gachaspin {
+      0%   { transform:rotateY(0deg)   scale(1);   }
+      40%  { transform:rotateY(90deg)  scale(.82); }
+      100% { transform:rotateY(0deg)   scale(1);   }
+    }
+
+    .dots { display:none; gap:6px; }
+    .dots span {
+      width:8px; height:8px; border-radius:50%;
+      background:#120a00; display:inline-block;
+      animation:bounce .9s infinite ease;
+    }
+    .dots span:nth-child(2) { animation-delay:.18s; }
+    .dots span:nth-child(3) { animation-delay:.36s; }
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-7px)} }
+
+    /* ── SUB BUTTONS ── */
+    .sub-btns { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+    .sub-btn {
+      padding:10px 24px; font-size:.9rem; border-radius:50px; cursor:pointer;
+      border:1px solid; transition:all .2s;
+    }
+    .sub-btn.red {
+      background:rgba(255,71,87,.12); color:#ff6b7a;
+      border-color:rgba(255,71,87,.3);
+    }
+    .sub-btn.red:hover { background:rgba(255,71,87,.25); transform:translateY(-2px); }
+
+    /* ── FAVORITES OVERLAY ── */
+    .overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.72);
+      backdrop-filter:blur(10px); z-index:200;
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; pointer-events:none; transition:opacity .3s;
+    }
+    .overlay.open { opacity:1; pointer-events:all; }
+    .panel {
+      background:#10102a; border:1px solid rgba(255,215,0,.2); border-radius:24px;
+      width:92%; max-width:580px; max-height:80vh; overflow-y:auto; padding:28px;
+      transform:translateY(18px); transition:transform .3s;
+    }
+    .overlay.open .panel { transform:translateY(0); }
+    .panel-head {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:22px;
+    }
+    .panel-head h2 { font-size:1.2rem; color:var(--gold); }
+    .close-btn {
+      background:none; border:none; color:var(--muted); font-size:1.3rem;
+      cursor:pointer; padding:4px 8px; transition:color .2s;
+    }
+    .close-btn:hover { color:#fff; }
+
+    .fav-item {
+      background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+      border-radius:14px; padding:18px 40px 18px 18px; margin-bottom:13px; position:relative;
+    }
+    .fav-item .fi-text  { font-size:.92rem; line-height:1.75; margin-bottom:8px; }
+    .fav-item .fi-author{ font-size:.82rem; color:var(--gold); font-weight:700; }
+    .fav-item .fi-years { font-size:.76rem; color:var(--muted); }
+    .del-btn {
+      position:absolute; top:10px; right:10px;
+      background:none; border:none; color:var(--muted); cursor:pointer;
+      font-size:.95rem; transition:color .2s;
+    }
+    .del-btn:hover { color:#ff4757; }
+
+    .empty { text-align:center; color:var(--muted); padding:36px 0; }
+    .empty span { font-size:2.8rem; display:block; margin-bottom:12px; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,215,0,.3); border-radius:3px; }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:520px){
+      .header h1 { font-size:1.9rem; }
+      .card { padding:30px 18px 26px; }
+      .q-text { font-size:1.05rem; }
+      .gacha-btn { padding:15px 44px; font-size:1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div class="wrap">
+
+  <div class="header">
+    <h1>✦ 名言ガチャ ✦</h1>
+    <p>偉人たちの言葉があなたの心に降り注ぐ</p>
+  </div>
+
+  <div class="stats">
+    <div class="chip">全 <b id="s-total">0</b> 名言</div>
+    <div class="chip">引いた回数 <b id="s-draws">0</b> 回</div>
+    <div class="chip">お気に入り <b id="s-favs">0</b> 件</div>
+  </div>
+
+  <div class="card" id="card">
+    <div class="idle" id="idle">
+      <span class="idle-icon">💫</span>
+      ボタンを押して名言を引こう！
+    </div>
+  </div>
+
+  <button class="gacha-btn" id="gacha-btn" onclick="draw()">
+    <span id="btn-label">✦ ガチャを引く！</span>
+    <span class="dots" id="dots">
+      <span></span><span></span><span></span>
+    </span>
+  </button>
+
+  <div class="sub-btns">
+    <button class="sub-btn red" onclick="openFavs()">❤️ お気に入り一覧</button>
+  </div>
+
+</div>
+
+<!-- Favorites overlay -->
+<div class="overlay" id="overlay" onclick="outsideClose(event)">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>❤️ お気に入り名言</h2>
+      <button class="close-btn" onclick="closeFavs()">✕</button>
+    </div>
+    <div id="fav-list"></div>
+  </div>
+</div>
+
+<script>
+/* ========================================================
+   DATA  (110+ quotes)
+   ======================================================== */
+const Q = [
+  // ─── 科学者 ───
+  { t:"想像力は知識よりも重要だ。知識には限りがあるが、想像力は世界を包み込む。", a:"アルベルト・アインシュタイン", b:1879, d:1955, c:"科学者", desc:"ドイツ生まれの物理学者。特殊・一般相対性理論を提唱しノーベル物理学賞を受賞した20世紀最大の科学者。" },
+  { t:"一度も失敗したことがない人は、何も新しいことに挑戦したことがない人だ。", a:"アルベルト・アインシュタイン", b:1879, d:1955, c:"科学者", desc:"ドイツ生まれの物理学者。特殊・一般相対性理論を提唱しノーベル物理学賞を受賞した20世紀最大の科学者。" },
+  { t:"偉大な精神は、常に平凡な人間からの激しい反対に直面してきた。", a:"アルベルト・アインシュタイン", b:1879, d:1955, c:"科学者", desc:"ドイツ生まれの物理学者。時代に先駆けすぎた発想は当初なかなか受け入れられなかった歴史がある。" },
+  { t:"私がより遠くを見ることができたのは、巨人たちの肩の上に立っていたからだ。", a:"アイザック・ニュートン", b:1643, d:1727, c:"科学者", desc:"英国の物理学者・数学者。万有引力の法則を発見し、微積分を独自に開発した近代科学の父。" },
+  { t:"人生で恐れるべきものは何もない。理解すべきものがあるだけだ。", a:"マリー・キュリー", b:1867, d:1934, c:"科学者", desc:"ポーランド生まれの物理学者・化学者。ノーベル賞を物理学と化学で2度受賞した唯一の人物。" },
+  { t:"幸運は準備された心に宿る。", a:"ルイ・パスツール", b:1822, d:1895, c:"科学者", desc:"フランスの微生物学者。ワクチン開発や低温殺菌法（パスチャリゼーション）など近代医学の礎を築く。" },
+  { t:"天才とは1%のひらめきと99%の努力だ。", a:"トーマス・エジソン", b:1847, d:1931, c:"科学者", desc:"アメリカの発明家。電球・蓄音機・映写機など1,000を超える特許を取得した「発明王」。" },
+  { t:"宇宙は、私たちが思うよりも奇妙で、思えるよりもさらに奇妙だ。", a:"J・B・S・ホールデン", b:1892, d:1964, c:"科学者", desc:"英国の遺伝学者・生化学者。進化生物学の数理的基礎を築いた先駆者で、科学普及にも貢献した。" },
+  { t:"宇宙は自分自身を認識しようとしている。私たちはその道具だ。", a:"カール・セーガン", b:1934, d:1996, c:"科学者", desc:"アメリカの天文学者・作家。宇宙科学の普及に貢献し、TVシリーズ『COSMOS』で世界を魅了した。" },
+  { t:"知性とは変化に適応する能力だ。", a:"スティーヴン・ホーキング", b:1942, d:2018, c:"科学者", desc:"英国の物理学者。ALSと闘いながらブラックホール理論などを研究し続けた、車椅子の宇宙物理学者。" },
+  { t:"生き残る種は最も強いものでも最も賢いものでもない。最も変化に適応できるものだ。", a:"チャールズ・ダーウィン", b:1809, d:1882, c:"科学者", desc:"英国の自然科学者。自然選択による進化論を提唱し、生物学の常識を根底から覆した革命的科学者。" },
+  { t:"学ぶことをやめた日から、老いは始まる。", a:"ヘンリー・フォード", b:1863, d:1947, c:"実業家", desc:"フォード・モーター創業者。ベルトコンベア大量生産方式を確立し、自動車を大衆に普及させた。" },
+  { t:"疑うことこそが科学的思考の基盤だ。", a:"リチャード・ファインマン", b:1918, d:1988, c:"科学者", desc:"アメリカの物理学者。量子電磁力学を確立しノーベル物理学賞受賞。科学教育への情熱でも世界的に知られる。" },
+  { t:"芸術は長く、人生は短い。", a:"ヒポクラテス", b:-460, d:-370, c:"科学者", desc:"古代ギリシャの医師。「医学の父」として医の倫理を確立。ヒポクラテスの誓いは今も医師の行動指針となる。" },
+
+  // ─── 哲学者 ───
+  { t:"自分が無知であることを知っている。それが私の知恵だ。", a:"ソクラテス", b:-469, d:-399, c:"哲学者", desc:"古代ギリシャの哲学者。問答法で真理を追求し、プラトンを通じて西洋哲学の礎を築いた「哲学の父」。" },
+  { t:"私たちは繰り返し行う行為の産物だ。だから優秀さとは行為ではなく習慣だ。", a:"アリストテレス", b:-384, d:-322, c:"哲学者", desc:"古代ギリシャの哲学者。プラトンの弟子で論理学・倫理学・自然科学など多分野に大きな足跡を残した。" },
+  { t:"賢者は語るべきことがあるから話す。愚者は語らなければならないから話す。", a:"プラトン", b:-428, d:-348, c:"哲学者", desc:"古代ギリシャの哲学者。ソクラテスの弟子で、永遠不変のイデアの世界を説いた哲学の大巨人。" },
+  { t:"我思う、ゆえに我あり。", a:"ルネ・デカルト", b:1596, d:1650, c:"哲学者", desc:"フランスの哲学者・数学者。あらゆるものを疑う方法的懐疑から出発した近代哲学の父。" },
+  { t:"人間は考える葦である。", a:"ブレーズ・パスカル", b:1623, d:1662, c:"哲学者", desc:"フランスの数学者・物理学者・哲学者。人間の偉大さと悲惨さを鋭く見つめ、神への信仰を深く問うた。" },
+  { t:"神は死んだ。そして私たちが神を殺したのだ。", a:"フリードリヒ・ニーチェ", b:1844, d:1900, c:"哲学者", desc:"ドイツの哲学者。超人思想や永劫回帰を提唱し、ニヒリズムを乗り越えようとした20世紀思想の先駆者。" },
+  { t:"深淵をのぞく時、深淵もまたあなたをのぞいている。", a:"フリードリヒ・ニーチェ", b:1844, d:1900, c:"哲学者", desc:"ドイツの哲学者。超人思想や永劫回帰を提唱し、ニヒリズムを乗り越えようとした20世紀思想の先駆者。" },
+  { t:"語りえないことについては、沈黙しなければならない。", a:"ルートヴィヒ・ウィトゲンシュタイン", b:1889, d:1951, c:"哲学者", desc:"オーストリアの哲学者。言語と論理の限界を追求し、分析哲学の発展に革命的な影響を与えた。" },
+  { t:"人間は自由の刑に処されている。", a:"ジャン＝ポール・サルトル", b:1905, d:1980, c:"哲学者", desc:"フランスの哲学者・作家。実存主義の旗手として「実存は本質に先立つ」と自由と責任の概念を探求した。" },
+  { t:"地獄とは他者のことだ。", a:"ジャン＝ポール・サルトル", b:1905, d:1980, c:"哲学者", desc:"フランスの哲学者・作家。他者の視線による苦しみを鋭く指摘した戯曲『出口なし』の一節。" },
+  { t:"完璧は善の敵だ。", a:"ヴォルテール", b:1694, d:1778, c:"哲学者", desc:"フランスの啓蒙思想家・作家。寛容と自由を主張し続け、フランス革命の思想的先駆者となった知の巨人。" },
+  { t:"二つのものが私の心を畏敬の念で満たす。頭上の星空と、内なる道徳律だ。", a:"イマヌエル・カント", b:1724, d:1804, c:"哲学者", desc:"ドイツの哲学者。『純粋理性批判』などで「批判哲学」を体系化した近代哲学の集大成者。" },
+  { t:"人間は自由なものとして生まれたが、いたるところで鎖につながれている。", a:"ジャン＝ジャック・ルソー", b:1712, d:1778, c:"哲学者", desc:"フランスの哲学者・作家。社会契約論を提唱しフランス革命に多大な影響を与えた啓蒙時代の巨人。" },
+  { t:"世界の問題は、愚か者と狂信者は常に自分に確信を持ち、賢者は疑念に満ちていることだ。", a:"バートランド・ラッセル", b:1872, d:1970, c:"哲学者", desc:"英国の哲学者・数学者。分析哲学の創始者の一人でノーベル文学賞も受賞した20世紀の知の巨人。" },
+  { t:"変化こそが唯一の不変だ。", a:"ヘラクレイトス", b:-535, d:-475, c:"哲学者", desc:"古代ギリシャの哲学者。「万物は流転する」という言葉で変化と対立の哲学を説いた「暗黒の哲人」。" },
+  { t:"女は生まれるものではない、なるものだ。", a:"シモーヌ・ド・ボーヴォワール", b:1908, d:1986, c:"哲学者", desc:"フランスの哲学者・作家。フェミニズム思想の先駆者として女性の自由と解放を訴え続けた。" },
+  { t:"反証可能性こそが科学の基準だ。", a:"カール・ポパー", b:1902, d:1994, c:"哲学者", desc:"オーストリアの哲学者。科学哲学の分野で「反証可能性」という科学の境界基準を確立した。" },
+  { t:"知識は力なり。", a:"フランシス・ベーコン", b:1561, d:1626, c:"哲学者", desc:"英国の哲学者・政治家。経験論哲学の先駆者として帰納法による科学的方法の確立に貢献した。" },
+  { t:"恐れはいつも、知らないことから生まれる。", a:"ラルフ・ウォルドー・エマーソン", b:1803, d:1882, c:"哲学者", desc:"アメリカの思想家・詩人。超絶主義の提唱者として自然との調和と個人の精神的自立を説いた。" },
+  { t:"言葉は思考の化石だ。", a:"ラルフ・ウォルドー・エマーソン", b:1803, d:1882, c:"哲学者", desc:"アメリカの思想家・詩人。超絶主義の提唱者として自然との調和と個人の精神的自立を説いた。" },
+  { t:"幸福になるために真剣に取り組まなければならない。", a:"アルベール・カミュ", b:1913, d:1960, c:"哲学者", desc:"フランスの作家・哲学者。不条理の哲学を展開し、42歳の若さでノーベル文学賞を受賞した実存主義者。" },
+  { t:"必要は発明の母だ。", a:"プラトン（諸説あり）", b:-428, d:-348, c:"哲学者", desc:"古代ギリシャの哲学者。後世にプラトンに帰属される格言として広く伝わった言葉。" },
+
+  // ─── 指導者 ───
+  { t:"あなたが見たいと思う変化に、あなた自身がなりなさい。", a:"マハトマ・ガンジー", b:1869, d:1948, c:"指導者", desc:"インドの指導者。非暴力・不服従の原則でインド独立を指導し「国民の父」と呼ばれる。" },
+  { t:"弱者は許すことができない。許しとは強者の属性だ。", a:"マハトマ・ガンジー", b:1869, d:1948, c:"指導者", desc:"インドの指導者。非暴力・不服従の原則でインド独立を指導し「国民の父」と呼ばれる。" },
+  { t:"不可能に見えることは、達成されるまでは常に不可能に見える。", a:"ネルソン・マンデラ", b:1918, d:2013, c:"指導者", desc:"南アフリカの指導者。27年間の獄中生活を経てアパルトヘイト廃止と民主化を実現した。" },
+  { t:"国があなたのために何をしてくれるかを問うな。あなたが国のために何ができるかを問え。", a:"ジョン・F・ケネディ", b:1917, d:1963, c:"指導者", desc:"アメリカ第35代大統領。キューバ危機を回避し宇宙開発を推進した、希望の象徴的指導者。" },
+  { t:"恐れるべきものは、恐れそのものだけだ。", a:"フランクリン・D・ルーズベルト", b:1882, d:1945, c:"指導者", desc:"アメリカ第32代大統領。ニューディール政策で大恐慌を乗り越え、第二次大戦で自由世界を指導した。" },
+  { t:"成功とは、失敗から失敗へと情熱を失わずに歩み続けることだ。", a:"ウィンストン・チャーチル", b:1874, d:1965, c:"指導者", desc:"英国首相・政治家。第二次大戦でヒトラーに対抗し英国を勝利に導いた、不屈の精神の象徴。" },
+  { t:"I have a dream（私には夢がある）。", a:"マーティン・ルーサー・キング・ジュニア", b:1929, d:1968, c:"指導者", desc:"アメリカ公民権運動の指導者。非暴力の抵抗でアフリカ系アメリカ人の権利拡大を力強く推進した。" },
+  { t:"来た、見た、勝った。", a:"ガイウス・ユリウス・カエサル", b:-100, d:-44, c:"指導者", desc:"古代ローマの将軍・政治家。ガリアを征服しローマ共和政から帝政への転換を推進した「英雄」。" },
+  { t:"不可能とは、小さな心の言葉だ。", a:"ナポレオン・ボナパルト", b:1769, d:1821, c:"指導者", desc:"フランスの皇帝・軍事的天才。ヨーロッパを席巻し近代法典「ナポレオン法典」を制定した。" },
+  { t:"時間は最も賢明な相談相手だ。", a:"ペリクレス", b:-495, d:-429, c:"指導者", desc:"古代アテネの政治家。アテネの黄金期を指導し民主主義とパルテノン神殿を後世に遺した。" },
+  { t:"行動こそが偉大さを証明する唯一の方法だ。", a:"ベンジャミン・フランクリン", b:1706, d:1790, c:"指導者", desc:"アメリカ建国の父の一人。政治家・科学者・発明家として活躍し、雷が電気であることを実証した。" },
+  { t:"一流の人間は問題を議論し、二流の人間は出来事を議論し、三流の人間は他人を議論する。", a:"エレノア・ルーズベルト", b:1884, d:1962, c:"指導者", desc:"アメリカのファーストレディ・人権活動家。国連人権委員会議長として世界人権宣言の起草を主導した。" },
+  { t:"征服するよりも自分を征服することの方が難しい。", a:"アレクサンダー大王", b:-356, d:-323, c:"指導者", desc:"マケドニアの王・征服者。ペルシャからインドまで空前の大帝国を築いた古代最大の英雄。" },
+
+  // ─── 実業家 ───
+  { t:"ハングリーであれ、愚かであれ。", a:"スティーブ・ジョブズ", b:1955, d:2011, c:"実業家", desc:"Apple共同創業者。iMac・iPod・iPhone・iPadで世界を変えたテクノロジーの革命家。" },
+  { t:"点と点が線になる。後ろを振り返ってみると、点と点がつながっていることに気づく。", a:"スティーブ・ジョブズ", b:1955, d:2011, c:"実業家", desc:"Apple共同創業者。スタンフォード大学の卒業式スピーチで語った、人生設計の逆説的な真理。" },
+  { t:"大きな仕事をなしとげる唯一の方法は、自分がしていることを愛することだ。", a:"スティーブ・ジョブズ", b:1955, d:2011, c:"実業家", desc:"Apple共同創業者。iMac・iPod・iPhone・iPadで世界を変えたテクノロジーの革命家。" },
+  { t:"ルール1：絶対に損をするな。ルール2：ルール1を忘れるな。", a:"ウォーレン・バフェット", b:1930, d:null, c:"実業家", desc:"アメリカの投資家・実業家。「オマハの賢人」と呼ばれ、長期価値投資で世界屈指の資産家になった。" },
+  { t:"失敗は選択肢の一つだ。失敗していないなら、十分な革新をしていない。", a:"イーロン・マスク", b:1971, d:null, c:"実業家", desc:"Tesla・SpaceX・Xなど多数の革新的企業を率いる起業家。電気自動車と宇宙開発の最前線に立つ。" },
+  { t:"完璧を待つより、素早く動いてどんどん改善する方がいい。", a:"マーク・ザッカーバーグ", b:1984, d:null, c:"実業家", desc:"Meta（Facebook）創業者。世界最大のSNSを構築し、仮想空間「メタバース」への挑戦を続けている。" },
+  { t:"できると信じる者だけが、本当にできる。", a:"ウォルト・ディズニー", b:1901, d:1966, c:"実業家", desc:"Disney創業者。ミッキーマウスを生み出し、映画・テーマパークで世界中に夢の帝国を築いた。" },
+  { t:"「できる」と思う人も「できない」と思う人も、どちらも正しい。", a:"ヘンリー・フォード", b:1863, d:1947, c:"実業家", desc:"フォード・モーター創業者。大量生産方式を確立し、自動車を大衆化した産業革命の象徴的人物。" },
+  { t:"人を動かすことができる唯一の方法は、相手が望むものを与えることだ。", a:"デール・カーネギー", b:1888, d:1955, c:"実業家", desc:"アメリカの作家・講師。『人を動かす』は世界で最も読まれた自己啓発書の一つとして今も読み継がれる。" },
+
+  // ─── 作家・芸術家 ───
+  { t:"この世界は舞台であり、男も女もみな役者に過ぎない。", a:"ウィリアム・シェイクスピア", b:1564, d:1616, c:"作家・芸術家", desc:"英国の劇作家・詩人。『ハムレット』『ロミオとジュリエット』など人類普遍の傑作を次々と生み出した。" },
+  { t:"学ぶことは心を疲弊させない。", a:"レオナルド・ダ・ヴィンチ", b:1452, d:1519, c:"作家・芸術家", desc:"イタリアの万能人。『モナリザ』などの傑作を描きながら解剖学・建築・工学にも通じた史上最大の天才。" },
+  { t:"すべての子どもは芸術家だ。問題は大人になっても芸術家でいられるかどうかだ。", a:"パブロ・ピカソ", b:1881, d:1973, c:"作家・芸術家", desc:"スペインの画家。キュビズムを創始し20世紀美術に革命をもたらした現代美術の絶対的巨匠。" },
+  { t:"美は世界を救う。", a:"フョードル・ドストエフスキー", b:1821, d:1881, c:"作家・芸術家", desc:"ロシアの文豪。『罪と罰』『カラマーゾフの兄弟』など人間の深層心理を描いた世界最高峰の小説家。" },
+  { t:"前進する秘訣は、まず始めることだ。", a:"マーク・トウェイン", b:1835, d:1910, c:"作家・芸術家", desc:"アメリカの作家・ユーモリスト。『トム・ソーヤーの冒険』など風刺と笑いで米国文学の礎を築いた。" },
+  { t:"鳥は卵の中から脱け出ようとする。卵は世界だ。", a:"ヘルマン・ヘッセ", b:1877, d:1962, c:"作家・芸術家", desc:"ドイツの作家。『デミアン』『シッダールタ』などで個の覚醒と精神の旅路を美しく描き、ノーベル文学賞受賞。" },
+  { t:"楽園は図書館の形をしていると、ずっと思い描いてきた。", a:"ホルヘ・ルイス・ボルヘス", b:1899, d:1986, c:"作家・芸術家", desc:"アルゼンチンの作家。幻想と知を融合させた短編小説で世界文学に多大な影響を与えた「語り部の語り部」。" },
+  { t:"最大の危険は、目標が高すぎて達成できないことではなく、目標が低すぎて達成されてしまうことだ。", a:"ミケランジェロ", b:1475, d:1564, c:"作家・芸術家", desc:"イタリアの彫刻家・画家。システィーナ礼拝堂の天井画やダビデ像などルネサンスの最高峰を極めた。" },
+  { t:"本を焼く者は、やがて人も焼くだろう。", a:"ハインリヒ・ハイネ", b:1797, d:1856, c:"作家・芸術家", desc:"ドイツの詩人・作家。ロマン主義詩人として活躍し、1世紀後のナチスの焚書を予言したとも語られる。" },
+  { t:"思い切って行動すれば、神も助けてくれる。", a:"ヨハン・ヴォルフガング・フォン・ゲーテ", b:1749, d:1832, c:"作家・芸術家", desc:"ドイツの文豪。『ファウスト』『若きウェルテルの悩み』を著した詩人・小説家・自然科学者。" },
+  { t:"音楽の唯一の目的は神の栄光と心の喜びだ。", a:"ヨハン・ゼバスティアン・バッハ", b:1685, d:1750, c:"作家・芸術家", desc:"バロック音楽の巨匠。対位法の傑作を多数作曲し「音楽の父」として後世に崇められ続けている。" },
+  { t:"音楽は男の精神から炎を打ち出す。女の目から涙を引き出す。", a:"ルートヴィヒ・ヴァン・ベートーヴェン", b:1770, d:1827, c:"作家・芸術家", desc:"ドイツの作曲家。聴力を失いながらも第九交響曲を作曲した楽聖。音楽史に不滅の足跡を残した。" },
+  { t:"すべての偉大な文学は一つの問いへの答えだ：どう生きるべきか。", a:"レフ・トルストイ", b:1828, d:1910, c:"作家・芸術家", desc:"ロシアの文豪。『戦争と平和』『アンナ・カレーニナ』で人間の本質と道徳を圧倒的なスケールで描いた。" },
+  { t:"大切なことは目に見えない。", a:"アントワーヌ・ド・サン＝テグジュペリ", b:1900, d:1944, c:"作家・芸術家", desc:"フランスの作家・飛行家。『星の王子さま』で愛と友情の大切さを世界中の心に届けた。" },
+  { t:"運命は弱い者の言い訳だ。", a:"オスカー・ワイルド", b:1854, d:1900, c:"作家・芸術家", desc:"アイルランドの作家・詩人。唯美主義を体現し、機知に富んだ言葉で社会の偽善を痛快に風刺した。" },
+  { t:"夢を見ることは可能なことへの第一歩だ。", a:"ミゲル・デ・セルバンテス", b:1547, d:1616, c:"作家・芸術家", desc:"スペインの作家。『ドン・キホーテ』を著し近代小説の礎を築いた、スペイン文学の最高峰。" },
+  { t:"地獄の最も暗い場所は、道徳的危機の時代に中立を守った者のために予約されている。", a:"ダンテ・アリギエーリ", b:1265, d:1321, c:"作家・芸術家", desc:"イタリアの詩人。『神曲』で地獄・煉獄・天国を描き、イタリア語文学の父と仰がれる。" },
+  { t:"愛してほしければ、まず愛せよ。", a:"パブロ・ネルーダ", b:1904, d:1973, c:"作家・芸術家", desc:"チリの詩人。情熱的な愛の詩で知られ、ノーベル文学賞を受賞したラテンアメリカ文学の巨人。" },
+  { t:"人間が不満を感じる唯一の動物なのは、何者にでもなれるからだ。", a:"ウィリアム・ハズリット", b:1778, d:1830, c:"作家・芸術家", desc:"英国の随筆家・批評家。鋭い洞察に満ちたエッセイで19世紀英国文学に独自の影響を与えた。" },
+  { t:"詩は魂の日記だ。", a:"アルフレッド・ド・ミュッセ", b:1810, d:1857, c:"作家・芸術家", desc:"フランスのロマン主義詩人・劇作家。情熱的な愛の詩で19世紀フランス文学の花形として輝いた。" },
+  { t:"良心は国籍を持たない。", a:"ハリエット・ビーチャー・ストウ", b:1811, d:1896, c:"作家・芸術家", desc:"アメリカの作家。『アンクル・トムの小屋』で奴隷制度の残酷さを訴えアメリカ南北戦争の一因となった。" },
+  { t:"人間は生きているかぎり、悩み続ける存在だ。", a:"フランツ・カフカ", b:1883, d:1924, c:"作家・芸術家", desc:"チェコの小説家。『変身』『審判』など不条理な世界を描き、「カフカ的」という形容詞を言語に生んだ。" },
+
+  // ─── 東洋思想 ───
+  { t:"どんな遠い旅も、一歩から始まる。", a:"孔子", b:-551, d:-479, c:"東洋思想", desc:"中国の思想家・儒教の創始者。仁・礼・義を説き、東アジア文化に2500年以上にわたる絶大な影響を与えた。" },
+  { t:"学んで思わざれば則ち罔し、思いて学ばざれば則ち殆し。", a:"孔子", b:-551, d:-479, c:"東洋思想", desc:"中国の思想家・儒教の創始者。学ぶことと考えることの両立の大切さを説いた名言。" },
+  { t:"仁者は山を楽しみ、智者は水を楽しむ。", a:"孔子", b:-551, d:-479, c:"東洋思想", desc:"中国の思想家・儒教の創始者。徳や知性の違いが自然への向き合い方にも現れると説いた。" },
+  { t:"千里の道も一歩から始まる。", a:"老子", b:-604, d:-531, c:"東洋思想", desc:"中国の思想家・道教の始祖。『道徳経』で無為自然の道（タオ）を説いた、謎多き神秘の哲人。" },
+  { t:"知足者富（足るを知る者は富む）。", a:"老子", b:-604, d:-531, c:"東洋思想", desc:"中国の思想家・道教の始祖。物質的豊かさより精神的充足を重んじる東洋の知恵を説いた。" },
+  { t:"彼を知り己を知れば百戦殆からず。", a:"孫子", b:-544, d:-496, c:"東洋思想", desc:"古代中国の軍事思想家。『孫子兵法』はビジネス・外交・スポーツに今も活用される不朽の戦略書。" },
+  { t:"静けさの中に答えがある。", a:"ブッダ（釈迦牟尼）", b:-563, d:-483, c:"東洋思想", desc:"仏教の開祖。苦しみからの解脱と悟りの道を説き、世界三大宗教の一つを生み出した。" },
+
+  // ─── 宗教・精神 ───
+  { t:"愛の反対は憎しみではなく、無関心だ。", a:"マザー・テレサ", b:1910, d:1997, c:"宗教・精神", desc:"カトリック修道女。インドのコルカタで貧しい人々のために生涯を捧げ続け、ノーベル平和賞を受賞した。" },
+  { t:"私の宗教はとてもシンプルです。私の宗教は親切です。", a:"ダライ・ラマ14世", b:1935, d:null, c:"宗教・精神", desc:"チベット仏教の最高指導者。非暴力と慈悲の教えを世界に広め、ノーベル平和賞を受賞した。" },
+  { t:"汝の隣人を愛せよ。", a:"イエス・キリスト", b:-4, d:30, c:"宗教・精神", desc:"キリスト教の創始者。愛と赦しを説いた教えは世界最大の宗教へと発展し、今も人々の心を照らし続ける。" },
+
+  // ─── 日本の偉人 ───
+  { t:"天は人の上に人を造らず、人の下に人を造らず。", a:"福沢諭吉", b:1835, d:1901, c:"日本の偉人", desc:"明治時代の思想家・教育者。慶應義塾を創設し、文明開化と独立自尊の精神を広めた近代日本の礎。" },
+  { t:"一生懸命だと知恵が出る。中途半端だと愚痴が出る。いい加減だと言い訳が出る。", a:"武田信玄", b:1521, d:1573, c:"日本の偉人", desc:"戦国時代の武将。甲斐国を治め「風林火山」の旗印で知られる名将。家臣団の育成にも優れた。" },
+  { t:"人の一生は重荷を負うて遠き道を行くがごとし。急ぐべからず。", a:"徳川家康", b:1543, d:1616, c:"日本の偉人", desc:"江戸幕府初代将軍。260年に及ぶ泰平の世を築いた「たぬきおやじ」と呼ばれる忍耐の戦略家。" },
+  { t:"至誠にして動かざる者は、いまだこれあらざるなり。", a:"吉田松陰", b:1830, d:1859, c:"日本の偉人", desc:"幕末の思想家・教育者。松下村塾で伊藤博文ら多くの明治の指導者を育てた「先生の先生」。" },
+  { t:"この道より、われを生かす道なし。この道を歩く。", a:"武者小路実篤", b:1885, d:1976, c:"日本の偉人", desc:"日本の作家・画家。「白樺派」を代表する人道主義的な文学者で「仲よき事は美しき哉」でも知られる。" },
+  { t:"負けると知りながら戦うのが武士というものだ。", a:"西郷隆盛", b:1828, d:1877, c:"日本の偉人", desc:"幕末・明治の武士・政治家。明治維新の原動力となり「西郷どん」として今も深く親しまれている。" },
+  { t:"世の人は我を何とも言わば言え、我がなすことは我のみぞ知る。", a:"坂本龍馬", b:1836, d:1867, c:"日本の偉人", desc:"幕末の志士。薩長同盟を成立させ大政奉還への道を開いた、時代を超えた革命的な夢想家。" },
+  { t:"鳴かぬなら 鳴かせてみせよう ほととぎす。", a:"豊臣秀吉（辞世の句として伝わる）", b:1537, d:1598, c:"日本の偉人", desc:"戦国時代の武将・政治家。農民から天下人へ上り詰めた歴史上最大の立身出世を遂げた人物。" },
+
+  // ─── さらに多様な名言 ───
+  { t:"過去は変えられない。未来は今日始まる。", a:"カール・グスタフ・ユング", b:1875, d:1961, c:"科学者", desc:"スイスの精神科医・心理学者。分析心理学を創始し集合的無意識・元型などの革命的概念を提唱した。" },
+  { t:"失敗から学ぶことは、成功から学ぶことよりはるかに多い。", a:"ジェームズ・ワット", b:1736, d:1819, c:"科学者", desc:"スコットランドの発明家。蒸気機関を大幅に改良し産業革命の原動力となった近代技術文明の父。" },
+  { t:"音楽がなければ、人生は間違いだ。", a:"フリードリヒ・ニーチェ", b:1844, d:1900, c:"哲学者", desc:"ドイツの哲学者。音楽を深く愛し、ワーグナーへの熱狂と訣別という複雑な関係でも知られる。" },
+  { t:"善を行うために生きる力を持つ者は、幸福だ。", a:"ヨハン・ヴォルフガング・フォン・ゲーテ", b:1749, d:1832, c:"作家・芸術家", desc:"ドイツの文豪。生涯を通じて人間の善性を信じ続けた詩人・小説家・政治家・自然科学者。" },
+  { t:"毎朝目を覚ますたびに選択がある。幸せになるかどうかの選択だ。", a:"ヴォルテール", b:1694, d:1778, c:"哲学者", desc:"フランスの啓蒙思想家・作家。寛容と自由を主張し続けたフランス革命の思想的先駆者。" },
+  { t:"書物は人類の思想の遺産だ。", a:"ヴォルテール", b:1694, d:1778, c:"哲学者", desc:"フランスの啓蒙思想家・作家。寛容と自由を主張し続けたフランス革命の思想的先駆者。" },
+  { t:"人類の歴史は知識の普及の歴史だ。", a:"H・G・ウェルズ", b:1866, d:1946, c:"作家・芸術家", desc:"英国の作家・歴史家。SFの先駆者として『タイムマシン』『宇宙戦争』などの傑作を残した。" },
+  { t:"自分を信じることが、成功への第一歩だ。", a:"ウッドロー・ウィルソン", b:1856, d:1924, c:"指導者", desc:"アメリカ第28代大統領。国際連盟を提唱し第一次大戦後の平和秩序の構築に尽力した。" },
+];
+
+/* ========================================================
+   STATE & STORAGE
+   ======================================================== */
+let current = null;
+let draws   = 0;
+let favs    = JSON.parse(localStorage.getItem('qg_favs') || '[]');
+
+function saveFavs() { localStorage.setItem('qg_favs', JSON.stringify(favs)); }
+function isFav(q)   { return favs.some(f => f.t === q.t && f.a === q.a); }
+
+function formatY(y) {
+  if (y === null) return '現在';
+  if (y < 0) return `紀元前${Math.abs(y)}年`;
+  return `${y}年`;
+}
+
+function updateStats() {
+  document.getElementById('s-total').textContent = Q.length;
+  document.getElementById('s-draws').textContent = draws;
+  document.getElementById('s-favs').textContent  = favs.length;
+}
+
+/* ========================================================
+   STARFIELD
+   ======================================================== */
+(function() {
+  const cv = document.getElementById('starfield');
+  const cx = cv.getContext('2d');
+  let st = [];
+
+  function resize() { cv.width = innerWidth; cv.height = innerHeight; }
+
+  function init() {
+    st = [];
+    for (let i = 0; i < 220; i++) {
+      st.push({
+        x: Math.random() * cv.width,
+        y: Math.random() * cv.height,
+        r: Math.random() * 1.4 + .25,
+        a: Math.random() * .65 + .1,
+        sp: Math.random() * .25 + .04,
+        tw: Math.random() * Math.PI * 2,
+        hue: Math.random() > .85 ? 200 : 45
+      });
+    }
+  }
+
+  function loop() {
+    cx.clearRect(0, 0, cv.width, cv.height);
+    st.forEach(s => {
+      s.tw += .018;
+      const a = s.a * (.7 + .3 * Math.sin(s.tw));
+      cx.beginPath();
+      cx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      cx.fillStyle = s.hue === 200
+        ? `rgba(180,210,255,${a})`
+        : `rgba(255,235,170,${a})`;
+      cx.fill();
+      s.y += s.sp;
+      if (s.y > cv.height) { s.y = 0; s.x = Math.random() * cv.width; }
+    });
+    requestAnimationFrame(loop);
+  }
+
+  resize(); init(); loop();
+  window.addEventListener('resize', () => { resize(); init(); });
+})();
+
+/* ========================================================
+   DRAW
+   ======================================================== */
+function draw() {
+  const btn = document.getElementById('gacha-btn');
+  const lbl = document.getElementById('btn-label');
+  const dots = document.getElementById('dots');
+
+  btn.disabled = true;
+  lbl.style.display = 'none';
+  dots.style.display = 'flex';
+  btn.classList.add('go');
+
+  setTimeout(() => {
+    current = Q[Math.floor(Math.random() * Q.length)];
+    draws++;
+
+    const card = document.getElementById('card');
+    card.classList.remove('reveal');
+    void card.offsetWidth;
+
+    const faved = isFav(current);
+    card.innerHTML = `
+      <div class="q-mark">"</div>
+      <span class="category">${current.c}</span>
+      <div class="q-text">${current.t}</div>
+      <div class="divider"></div>
+      <div class="q-author">${current.a}</div>
+      <div class="q-years">${formatY(current.b)} 〜 ${formatY(current.d)}</div>
+      <div class="q-desc">${current.desc}</div>
+      <button class="fav-btn ${faved ? 'on' : ''}"
+              onclick="toggleFav()"
+              title="${faved ? 'お気に入りから削除' : 'お気に入りに追加'}">
+        ${faved ? '❤️' : '🤍'}
+      </button>
+    `;
+    card.classList.add('reveal');
+
+    btn.disabled = false;
+    lbl.style.display = '';
+    dots.style.display = 'none';
+    btn.classList.remove('go');
+    updateStats();
+  }, 560);
+}
+
+/* ========================================================
+   FAVORITES
+   ======================================================== */
+function toggleFav() {
+  if (!current) return;
+  const btn = document.querySelector('.fav-btn');
+  if (isFav(current)) {
+    favs = favs.filter(f => !(f.t === current.t && f.a === current.a));
+    if (btn) { btn.textContent = '🤍'; btn.classList.remove('on'); }
+  } else {
+    favs.push({ ...current });
+    if (btn) { btn.textContent = '❤️'; btn.classList.add('on'); }
+  }
+  saveFavs();
+  updateStats();
+}
+
+function openFavs() {
+  const list = document.getElementById('fav-list');
+  if (!favs.length) {
+    list.innerHTML = `<div class="empty"><span>🤍</span>まだお気に入りがありません。<br>名言を引いて ❤️ を押してみよう！</div>`;
+  } else {
+    list.innerHTML = favs.map((f, i) => `
+      <div class="fav-item">
+        <button class="del-btn" onclick="delFav(${i})" title="削除">✕</button>
+        <div class="fi-text">${f.t}</div>
+        <div class="fi-author">${f.a}</div>
+        <div class="fi-years">${formatY(f.b)} 〜 ${formatY(f.d)}</div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeFavs() { document.getElementById('overlay').classList.remove('open'); }
+function outsideClose(e) { if (e.target === document.getElementById('overlay')) closeFavs(); }
+
+function delFav(i) {
+  favs.splice(i, 1);
+  saveFavs();
+  updateStats();
+  openFavs();
+  if (current) {
+    const btn = document.querySelector('.fav-btn');
+    if (btn && !isFav(current)) { btn.textContent = '🤍'; btn.classList.remove('on'); }
+  }
+}
+
+// init
+updateStats();
+</script>
+</body>
+</html>
