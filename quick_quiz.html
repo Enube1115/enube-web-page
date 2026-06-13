@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>早押しクイズ ⚡</title>
+  <style>
+    :root {
+      --bg:    #09090f;
+      --surf:  rgba(255,255,255,0.045);
+      --bord:  rgba(255,255,255,0.1);
+      --text:  #e8e8f8;
+      --muted: #5a5a90;
+      --ok:    #4ade80;
+      --ng:    #f87171;
+      --acc:   #a78bfa;  /* default — overridden per genre */
+      --acc2:  #818cf8;
+      --glow:  rgba(167,139,250,0.25);
+    }
+    *{ margin:0; padding:0; box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      background:var(--bg); color:var(--text);
+      font-family:'Segoe UI','Hiragino Kaku Gothic ProN',system-ui,sans-serif;
+      min-height:100vh; display:flex; flex-direction:column; align-items:center;
+      overflow-x:hidden;
+    }
+    canvas#bg{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+
+    .app{
+      position:relative; z-index:1;
+      width:100%; max-width:540px;
+      padding:0 14px 60px;
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+    }
+
+    /* ── SCREENS ── */
+    .scr{ width:100%; display:flex; flex-direction:column; align-items:center; gap:14px; }
+    .scr.gone{ display:none; }
+    @keyframes scrIn  { from{ opacity:0; transform:translateY(12px) scale(.97); } to{ opacity:1; transform:none; } }
+    @keyframes scrOut { from{ opacity:1; } to{ opacity:0; transform:scale(.96); } }
+    .scr.ani-in  { animation:scrIn  .32s cubic-bezier(.22,1,.36,1) both; }
+    .scr.ani-out { animation:scrOut .2s ease both; }
+
+    /* ── TITLE SCREEN ── */
+    .title-head{ width:100%; padding:22px 0 8px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .title-logo{ font-size:2rem; font-weight:900; letter-spacing:-.03em; }
+    .title-logo span{ background:linear-gradient(90deg,#a78bfa,#38bdf8,#4ade80,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .title-sub{ font-size:.84rem; color:var(--muted); }
+
+    .genre-grid{
+      width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    }
+    .genre-card{
+      background:var(--surf); border:1px solid var(--bord);
+      border-radius:20px; padding:22px 18px;
+      display:flex; flex-direction:column; gap:8px;
+      cursor:pointer; position:relative; overflow:hidden;
+      transition:transform .2s, border-color .2s, box-shadow .2s;
+      text-align:left;
+    }
+    .genre-card::before{
+      content:''; position:absolute; inset:0; border-radius:20px;
+      background:radial-gradient(circle at 30% 30%, var(--gc,rgba(167,139,250,.12)) 0%, transparent 70%);
+      pointer-events:none;
+    }
+    .genre-card:hover{
+      transform:translateY(-3px);
+      border-color:var(--gc-bord, rgba(167,139,250,.4));
+      box-shadow:0 12px 32px var(--gc-shadow, rgba(167,139,250,.12));
+    }
+    .gc-icon{ font-size:2rem; line-height:1; }
+    .gc-name{ font-size:1.1rem; font-weight:800; }
+    .gc-desc{ font-size:.73rem; color:var(--muted); }
+    .gc-best{
+      display:inline-block; margin-top:2px;
+      font-size:.65rem; color:var(--gc-col, #a78bfa); font-weight:700;
+      background:rgba(255,255,255,.06); border-radius:100px; padding:2px 8px;
+    }
+
+    /* Genre color themes */
+    .g-trivia  { --gc:rgba(251,191,36,.12);  --gc-bord:rgba(251,191,36,.4);  --gc-shadow:rgba(251,191,36,.12);  --gc-col:#fbbf24; }
+    .g-history { --gc:rgba(251,113,94,.12);  --gc-bord:rgba(251,113,94,.4);  --gc-shadow:rgba(251,113,94,.12);  --gc-col:#fb7185; }
+    .g-science { --gc:rgba(56,189,248,.12);  --gc-bord:rgba(56,189,248,.4);  --gc-shadow:rgba(56,189,248,.12);  --gc-col:#38bdf8; }
+    .g-sports  { --gc:rgba(74,222,128,.12);  --gc-bord:rgba(74,222,128,.4);  --gc-shadow:rgba(74,222,128,.12);  --gc-col:#4ade80; }
+
+    /* ── GAME SCREEN ── */
+    .game-topbar{
+      width:100%; display:flex; justify-content:space-between; align-items:center;
+      padding:18px 0 4px;
+    }
+    .gtb-left{ display:flex; align-items:center; gap:10px; }
+    .genre-pill{
+      font-size:.7rem; font-weight:800; letter-spacing:.12em;
+      padding:5px 14px; border-radius:100px;
+      background:rgba(255,255,255,.06); border:1px solid var(--acc);
+      color:var(--acc);
+    }
+    .q-counter{ font-size:.75rem; color:var(--muted); font-weight:600; }
+    .score-display{
+      font-size:1.25rem; font-weight:900;
+      background:linear-gradient(135deg,var(--acc),var(--acc2,#818cf8));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+
+    /* Question card */
+    .q-card{
+      width:100%; background:var(--surf); border:1px solid var(--bord);
+      border-radius:22px; overflow:hidden; position:relative;
+      box-shadow:0 0 40px var(--glow,rgba(167,139,250,.08));
+    }
+    /* Timer bar */
+    .timer-bar-wrap{
+      width:100%; height:6px; background:rgba(255,255,255,.07);
+      position:relative; overflow:hidden;
+    }
+    .timer-bar-fill{
+      height:100%; border-radius:0;
+      box-shadow:0 0 10px var(--acc);
+    }
+    @keyframes timerAnim{
+      0%  { width:100%; background:var(--acc); box-shadow:0 0 10px var(--acc); }
+      60% { background:var(--acc); }
+      78% { background:var(--gold,#fbbf24); box-shadow:0 0 10px var(--gold,#fbbf24); }
+      92% { background:#f87171; box-shadow:0 0 12px #f87171; }
+      100%{ width:0%; background:#f87171; box-shadow:0 0 8px #f87171; }
+    }
+
+    .q-inner{ padding:26px 22px 22px; }
+    .q-meta{
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:14px;
+    }
+    .q-no{
+      font-size:.68rem; font-weight:800; color:var(--acc);
+      letter-spacing:.14em; text-transform:uppercase;
+    }
+    .q-time{
+      font-size:1rem; font-weight:900; font-variant-numeric:tabular-nums;
+      color:var(--muted); transition:color .3s;
+    }
+    .q-time.urgent{ color:#f87171; animation:timePulse .4s ease infinite alternate; }
+    @keyframes timePulse{ from{ opacity:1; } to{ opacity:.5; } }
+
+    .q-text{
+      font-size:clamp(1.05rem,3.5vw,1.25rem); font-weight:700; line-height:1.6;
+      text-align:center; padding:10px 0 22px;
+    }
+
+    /* Choice grid */
+    .choice-grid{
+      display:grid; grid-template-columns:1fr 1fr; gap:8px;
+    }
+    .choice{
+      background:rgba(255,255,255,.05); border:1.5px solid var(--bord);
+      border-radius:14px; padding:14px 12px;
+      display:flex; align-items:center; gap:10px;
+      cursor:pointer; font-family:inherit;
+      transition:transform .15s, background .15s, border-color .15s, box-shadow .15s;
+      text-align:left; color:var(--text);
+    }
+    .choice:hover:not(:disabled){
+      transform:translateY(-2px);
+      background:rgba(255,255,255,.1);
+      border-color:var(--acc);
+      box-shadow:0 6px 18px var(--glow);
+    }
+    .choice:disabled{ cursor:default; }
+    .choice-lbl{
+      width:26px; height:26px; border-radius:8px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.72rem; font-weight:900; letter-spacing:.04em;
+      background:rgba(255,255,255,.08); color:var(--acc);
+      transition:background .15s;
+    }
+    .choice-txt{ font-size:.9rem; font-weight:600; line-height:1.3; }
+
+    /* Answer feedback states */
+    .choice.correct{
+      background:rgba(74,222,128,.15); border-color:var(--ok);
+      box-shadow:0 0 20px rgba(74,222,128,.2);
+    }
+    .choice.correct .choice-lbl{ background:var(--ok); color:#000; }
+    .choice.wrong{
+      background:rgba(248,113,113,.12); border-color:var(--ng);
+    }
+    .choice.wrong .choice-lbl{ background:var(--ng); color:#fff; }
+    .choice.reveal{
+      background:rgba(74,222,128,.1); border-color:rgba(74,222,128,.5);
+    }
+    .choice.reveal .choice-lbl{ background:rgba(74,222,128,.3); color:var(--ok); }
+
+    /* Score popup */
+    .score-pop{
+      position:absolute; right:24px; top:30%; z-index:20;
+      font-size:1.4rem; font-weight:900; pointer-events:none;
+      animation:scPop 1s ease forwards;
+    }
+    .score-pop.ok{ color:var(--ok); }
+    .score-pop.ng{ color:var(--ng); font-size:1rem; }
+    .score-pop.to{ color:#fbbf24; font-size:1rem; }
+    @keyframes scPop{
+      0%  { opacity:0; transform:translateY(0) scale(.8); }
+      20% { opacity:1; transform:translateY(-8px) scale(1.05); }
+      70% { opacity:1; transform:translateY(-28px) scale(1); }
+      100%{ opacity:0; transform:translateY(-45px) scale(.9); }
+    }
+
+    /* Flash overlay */
+    .q-flash{
+      position:absolute; inset:0; border-radius:22px;
+      pointer-events:none; opacity:0; transition:opacity .1s;
+    }
+    .q-flash.fok{ background:rgba(74,222,128,.1); }
+    .q-flash.fng{ background:rgba(248,113,113,.12); }
+    .q-flash.fto{ background:rgba(251,191,36,.1); }
+    .q-flash.on { opacity:1; }
+
+    /* ── RESULT SCREEN ── */
+    .result-head{
+      width:100%; padding:22px 0 4px;
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+    }
+    .result-genre-pill{
+      font-size:.68rem; font-weight:800; letter-spacing:.14em;
+      padding:4px 14px; border-radius:100px;
+      background:rgba(255,255,255,.06); border:1px solid var(--acc); color:var(--acc);
+    }
+    .result-title{ font-size:1rem; font-weight:800; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; }
+
+    /* Rank badge */
+    .rank-wrap{
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      animation:rankPop .55s cubic-bezier(.22,1,.36,1) .15s both;
+    }
+    @keyframes rankPop{
+      from{ transform:scale(.5) rotate(-6deg); opacity:0; }
+      to  { transform:none; opacity:1; }
+    }
+    .rank-badge{
+      width:110px; height:110px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:3.2rem; font-weight:900; letter-spacing:-.04em;
+      border:3px solid var(--rk-col,#a78bfa);
+      box-shadow:0 0 40px var(--rk-glow,rgba(167,139,250,.35)), inset 0 0 20px rgba(255,255,255,.04);
+      background:radial-gradient(circle, rgba(255,255,255,.06) 0%, transparent 70%);
+      color:var(--rk-col,#a78bfa);
+    }
+    .rank-title{ font-size:1rem; font-weight:800; color:var(--rk-col,#a78bfa); }
+
+    /* Stats row */
+    .result-stats{
+      display:flex; gap:0; width:100%;
+      background:var(--surf); border:1px solid var(--bord); border-radius:18px;
+      overflow:hidden;
+    }
+    .rs-item{
+      flex:1; padding:16px 10px; text-align:center;
+      border-right:1px solid var(--bord);
+    }
+    .rs-item:last-child{ border-right:none; }
+    .rs-val{
+      font-size:1.8rem; font-weight:900; line-height:1;
+      background:linear-gradient(135deg,var(--acc),var(--acc2,#818cf8));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .rs-lbl{ font-size:.6rem; color:var(--muted); letter-spacing:.1em; margin-top:3px; text-transform:uppercase; }
+
+    /* Question log */
+    .q-log{
+      width:100%; background:var(--surf); border:1px solid var(--bord);
+      border-radius:18px; padding:14px 16px;
+      display:grid; grid-template-columns:1fr 1fr; gap:6px;
+    }
+    .q-log-row{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:4px 8px; border-radius:8px;
+      font-size:.78rem;
+    }
+    .q-log-row.ok{ background:rgba(74,222,128,.08); }
+    .q-log-row.ng{ background:rgba(248,113,113,.08); }
+    .q-log-label{ font-weight:700; }
+    .q-log-label.ok{ color:var(--ok); }
+    .q-log-label.ng{ color:var(--ng); }
+    .q-log-pts{ font-weight:800; font-variant-numeric:tabular-nums; color:var(--muted); font-size:.7rem; }
+
+    /* Buttons */
+    .btn{
+      background:linear-gradient(135deg,var(--acc),var(--acc2,#818cf8));
+      border:none; border-radius:14px; padding:14px 44px;
+      font-size:1rem; font-weight:800; color:#fff; cursor:pointer;
+      box-shadow:0 8px 28px var(--glow);
+      transition:transform .18s, box-shadow .18s;
+      font-family:inherit; letter-spacing:.06em;
+    }
+    .btn:hover{ transform:translateY(-2px); box-shadow:0 12px 36px var(--glow); }
+    .btn:active{ transform:translateY(1px); }
+    .btn-ghost{
+      background:transparent; border:1.5px solid var(--bord);
+      border-radius:14px; padding:12px 32px;
+      font-size:.9rem; font-weight:700; color:var(--muted); cursor:pointer;
+      transition:border-color .2s, color .2s;
+      font-family:inherit;
+    }
+    .btn-ghost:hover{ border-color:var(--acc); color:var(--text); }
+
+    .btn-row{ display:flex; gap:10px; width:100%; justify-content:center; flex-wrap:wrap; }
+
+    /* Keyboard hint */
+    .kbd-hint{ font-size:.68rem; color:rgba(255,255,255,.18); text-align:center; }
+
+    @media(max-width:400px){
+      .genre-grid{ grid-template-columns:1fr 1fr; gap:8px; }
+      .choice-grid{ gap:6px; }
+      .choice{ padding:12px 10px; }
+      .q-inner{ padding:20px 16px 18px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="app">
+
+  <!-- ═══ TITLE SCREEN ═══ -->
+  <div class="scr ani-in" id="s-title">
+    <div class="title-head">
+      <div class="title-logo">⚡ <span>早押しクイズ</span></div>
+      <div class="title-sub">速く答えるほど高得点！ジャンルを選ぼう</div>
+    </div>
+
+    <div class="genre-grid">
+      <div class="genre-card g-trivia"  onclick="selectGenre('雑学')"  id="gc-雑学">
+        <div class="gc-icon">💡</div>
+        <div class="gc-name">雑学</div>
+        <div class="gc-desc">身近な知識・常識</div>
+        <div class="gc-best" id="best-雑学">ベスト — pts</div>
+      </div>
+      <div class="genre-card g-history" onclick="selectGenre('歴史')"  id="gc-歴史">
+        <div class="gc-icon">🏛️</div>
+        <div class="gc-name">歴史</div>
+        <div class="gc-desc">日本史・世界史</div>
+        <div class="gc-best" id="best-歴史">ベスト — pts</div>
+      </div>
+      <div class="genre-card g-science" onclick="selectGenre('科学')"  id="gc-科学">
+        <div class="gc-icon">🔬</div>
+        <div class="gc-name">科学</div>
+        <div class="gc-desc">理科・化学・宇宙</div>
+        <div class="gc-best" id="best-科学">ベスト — pts</div>
+      </div>
+      <div class="genre-card g-sports"  onclick="selectGenre('スポーツ')" id="gc-スポーツ">
+        <div class="gc-icon">⚽</div>
+        <div class="gc-name">スポーツ</div>
+        <div class="gc-desc">スポーツの知識</div>
+        <div class="gc-best" id="best-スポーツ">ベスト — pts</div>
+      </div>
+    </div>
+
+    <div class="kbd-hint">キーボード：A B C D キーでも回答できます</div>
+  </div><!-- /s-title -->
+
+  <!-- ═══ GAME SCREEN ═══ -->
+  <div class="scr gone" id="s-game">
+    <div class="game-topbar">
+      <div class="gtb-left">
+        <div class="genre-pill" id="g-pill">雑学</div>
+        <div class="q-counter" id="q-counter">Q1 / 10</div>
+      </div>
+      <div class="score-display" id="live-score">0 pts</div>
+    </div>
+
+    <div class="q-card" id="qCard">
+      <div class="q-flash" id="qFlash"></div>
+      <div class="timer-bar-wrap">
+        <div class="timer-bar-fill" id="timerBar"></div>
+      </div>
+      <div class="q-inner">
+        <div class="q-meta">
+          <div class="q-no" id="qNo">QUESTION 1</div>
+          <div class="q-time" id="qTime">10.0</div>
+        </div>
+        <div class="q-text" id="qText">問題がここに表示されます</div>
+        <div class="choice-grid" id="choiceGrid">
+          <button class="choice" id="c0"><span class="choice-lbl">A</span><span class="choice-txt" id="ct0"></span></button>
+          <button class="choice" id="c1"><span class="choice-lbl">B</span><span class="choice-txt" id="ct1"></span></button>
+          <button class="choice" id="c2"><span class="choice-lbl">C</span><span class="choice-txt" id="ct2"></span></button>
+          <button class="choice" id="c3"><span class="choice-lbl">D</span><span class="choice-txt" id="ct3"></span></button>
+        </div>
+      </div>
+    </div>
+    <div class="kbd-hint" style="margin-top:2px">A B C D キーで回答 ／ 早いほど高得点</div>
+  </div><!-- /s-game -->
+
+  <!-- ═══ RESULT SCREEN ═══ -->
+  <div class="scr gone" id="s-result">
+    <div class="result-head">
+      <div class="result-genre-pill" id="rg-pill">雑学</div>
+      <div class="result-title">RESULT</div>
+    </div>
+
+    <div class="rank-wrap" id="rankWrap">
+      <div class="rank-badge" id="rankBadge">S</div>
+      <div class="rank-title" id="rankTitle">優秀！</div>
+    </div>
+
+    <div class="result-stats">
+      <div class="rs-item">
+        <div class="rs-val" id="r-score">0</div>
+        <div class="rs-lbl">スコア</div>
+      </div>
+      <div class="rs-item">
+        <div class="rs-val" id="r-correct">0/10</div>
+        <div class="rs-lbl">正解数</div>
+      </div>
+      <div class="rs-item">
+        <div class="rs-val" id="r-avgtime">—</div>
+        <div class="rs-lbl">平均速度</div>
+      </div>
+    </div>
+
+    <div class="q-log" id="qLog"></div>
+
+    <div class="btn-row">
+      <button class="btn" id="retryBtn">もう一度</button>
+      <button class="btn-ghost" onclick="goTitle()">ジャンル変更</button>
+    </div>
+  </div><!-- /s-result -->
+
+</div><!-- /app -->
+
+<script>
+/* ══════════════════════════════════════════
+   QUESTION DATA
+══════════════════════════════════════════ */
+const GENRES = {
+  '雑学': {
+    cls:'g-trivia', icon:'💡',
+    acc:'#fbbf24', acc2:'#f59e0b', glow:'rgba(251,191,36,.22)',
+    ptcl:'#fbbf24',
+    qs:[
+      { q:'日本で最も人口が多い都市は？',         opts:['東京','大阪','名古屋','横浜'],       ans:0 },
+      { q:'世界で最も面積が大きい国は？',           opts:['カナダ','ロシア','アメリカ','中国'],  ans:1 },
+      { q:'「モナリザ」を描いた芸術家は？',         opts:['ミケランジェロ','ラファエロ','ダ・ヴィンチ','ボッティチェリ'], ans:2 },
+      { q:'太陽系で最大の惑星は？',               opts:['土星','木星','天王星','海王星'],       ans:1 },
+      { q:'成人の人体の骨の数はおよそ何本？',       opts:['106本','206本','306本','406本'],      ans:1 },
+      { q:'虹は何色からできている？',             opts:['5色','6色','7色','8色'],              ans:2 },
+      { q:'ピアノの鍵盤の数は？',                 opts:['72鍵','80鍵','88鍵','96鍵'],          ans:2 },
+      { q:'日本で最も多い苗字は？',               opts:['鈴木','佐藤','田中','高橋'],           ans:1 },
+      { q:'ダイヤモンドの主成分は？',             opts:['炭素','シリコン','鉄','アルミニウム'],  ans:0 },
+      { q:'チョコレートの原料となる植物は？',       opts:['コーヒー','カカオ','コーラナッツ','バニラ'], ans:1 },
+      { q:'日本の国鳥は？',                       opts:['ツル','ハト','キジ','トキ'],           ans:2 },
+      { q:'海水の塩分濃度は約何%？',              opts:['1%','2%','3.5%','6%'],               ans:2 },
+      { q:'人間の体で最も大きな臓器は？',          opts:['肝臓','肺','心臓','皮膚'],            ans:3 },
+      { q:'太陽から最も遠い惑星は？（2006年〜）',   opts:['天王星','土星','海王星','冥王星'],     ans:2 },
+      { q:'世界で最初に制定された国際条約「赤十字」を作ったのは？', opts:['ナイチンゲール','デュナン','パスカル','リンカーン'], ans:1 },
+    ]
+  },
+  '歴史': {
+    cls:'g-history', icon:'🏛️',
+    acc:'#fb7185', acc2:'#f43f5e', glow:'rgba(251,113,133,.22)',
+    ptcl:'#fb7185',
+    qs:[
+      { q:'江戸幕府を開いた人物は？',             opts:['織田信長','豊臣秀吉','徳川家康','徳川家光'], ans:2 },
+      { q:'第二次世界大戦が終わった年は？',         opts:['1943年','1944年','1945年','1946年'],      ans:2 },
+      { q:'日本最初の元号は？',                   opts:['昭和','大化','明治','慶長'],               ans:1 },
+      { q:'アメリカ独立宣言が発表された年は？',     opts:['1775年','1776年','1777年','1789年'],      ans:1 },
+      { q:'「源氏物語」を書いたのは誰？',           opts:['清少納言','紫式部','和泉式部','小野小町'], ans:1 },
+      { q:'関ヶ原の戦いが起きた年は？',            opts:['1598年','1600年','1603年','1615年'],      ans:1 },
+      { q:'ナポレオンの出身地は？',               opts:['フランス本土','エルバ島','コルシカ島','シチリア島'], ans:2 },
+      { q:'フランス革命が始まった年は？',           opts:['1787年','1788年','1789年','1792年'],      ans:2 },
+      { q:'ローマ帝国の初代皇帝は？',              opts:['カエサル','アウグストゥス','ネロ','コンスタンティヌス'], ans:1 },
+      { q:'坂本龍馬が暗殺された年は？',            opts:['1865年','1866年','1867年','1868年'],      ans:2 },
+      { q:'ベルリンの壁が崩壊した年は？',           opts:['1987年','1988年','1989年','1991年'],      ans:2 },
+      { q:'織田信長が本能寺で自害した年は？',       opts:['1575年','1580年','1582年','1590年'],      ans:2 },
+      { q:'邪馬台国の女王の名前は？',              opts:['ヤマトタケル','卑弥呼','神功皇后','持統天皇'], ans:1 },
+      { q:'万里の長城の建設を命じた中国初の皇帝は？',opts:['漢の高祖','始皇帝','武帝','唐の太宗'],   ans:1 },
+      { q:'日本が国際連合に加盟したのは何年？',     opts:['1951年','1954年','1956年','1960年'],      ans:2 },
+    ]
+  },
+  '科学': {
+    cls:'g-science', icon:'🔬',
+    acc:'#38bdf8', acc2:'#0ea5e9', glow:'rgba(56,189,248,.22)',
+    ptcl:'#38bdf8',
+    qs:[
+      { q:'水の化学式は？',                       opts:['CO₂','H₂O','NaCl','O₂'],              ans:1 },
+      { q:'光の速さは約何km/s？',                  opts:['10万km/s','20万km/s','30万km/s','40万km/s'], ans:2 },
+      { q:'元素記号「Au」は何の元素？',             opts:['銀','銅','金','鉄'],                    ans:2 },
+      { q:'地球の大気の約78%を占める気体は？',       opts:['酸素','二酸化炭素','窒素','水素'],       ans:2 },
+      { q:'DNAの二重らせん構造を発見したのは？',     opts:['アインシュタイン','ダーウィン','ワトソンとクリック','キュリー夫人'], ans:2 },
+      { q:'元素の周期表で原子番号1番の元素は？',     opts:['ヘリウム','水素','炭素','酸素'],          ans:1 },
+      { q:'光合成で植物が取り込む気体は？',          opts:['酸素','窒素','二酸化炭素','アルゴン'],    ans:2 },
+      { q:'絶対零度は何℃か？',                    opts:['-100℃','-200℃','-273.15℃','-300℃'],    ans:2 },
+      { q:'音速は約何m/s（常温）？',               opts:['170m/s','340m/s','680m/s','1000m/s'],   ans:1 },
+      { q:'ペニシリンを発見したのは誰？',            opts:['パスツール','コッホ','フレミング','リスター'], ans:2 },
+      { q:'地球の中心核の主成分は？',              opts:['鉄','シリコン','マグネシウム','アルミニウム'], ans:0 },
+      { q:'人体の最も硬い組織は？',               opts:['骨','エナメル質','軟骨','爪'],             ans:1 },
+      { q:'ビッグバンはおよそ何年前に起きたか？',    opts:['45億年前','70億年前','138億年前','200億年前'], ans:2 },
+      { q:'太陽から地球までの距離は約何億km？',      opts:['0.15億km','1.5億km','15億km','150億km'], ans:1 },
+      { q:'人体の細胞の数は約何兆個？',             opts:['3.7兆','37兆','370兆','3700兆'],         ans:1 },
+    ]
+  },
+  'スポーツ': {
+    cls:'g-sports', icon:'⚽',
+    acc:'#4ade80', acc2:'#22c55e', glow:'rgba(74,222,128,.22)',
+    ptcl:'#4ade80',
+    qs:[
+      { q:'サッカーW杯の最多優勝国は？',            opts:['ドイツ','イタリア','ブラジル','アルゼンチン'], ans:2 },
+      { q:'テニスの4大大会（グランドスラム）の数は？', opts:['3大会','4大会','5大会','6大会'],          ans:1 },
+      { q:'バスケットボールの1チームのコート内人数は？',opts:['4人','5人','6人','7人'],                ans:1 },
+      { q:'近代オリンピック第1回大会の開催都市は？',  opts:['パリ','ロンドン','アテネ','ベルリン'],     ans:2 },
+      { q:'マラソンの正式な距離は？',               opts:['40km','42km','42.195km','45km'],         ans:2 },
+      { q:'大相撲の最高位は？',                    opts:['大関','関脇','小結','横綱'],               ans:3 },
+      { q:'バレーボールのコート内1チームの人数は？',  opts:['5人','6人','7人','8人'],                 ans:1 },
+      { q:'野球の正規のイニング数は？',             opts:['7回','8回','9回','10回'],                 ans:2 },
+      { q:'男子100m走の世界記録保持者は？',          opts:['カール・ルイス','ウサイン・ボルト','ヨハン・ブレイク','タイソン・ゲイ'], ans:1 },
+      { q:'サッカーのPKスポットまでの距離は？',       opts:['9m','10m','11m','12m'],                 ans:2 },
+      { q:'競泳プールの正式な長さは？',              opts:['25m','50m','75m','100m'],               ans:1 },
+      { q:'ラグビーでトライは何点？',               opts:['3点','4点','5点','7点'],                  ans:2 },
+      { q:'ゴルフで規定より2打少ないスコアは？',      opts:['バーディ','イーグル','アルバトロス','ホールインワン'], ans:1 },
+      { q:'柔道の試合時間（男子）は何分？',          opts:['3分','4分','5分','10分'],                ans:1 },
+      { q:'野球でピッチャーからキャッチャーまでの距離は？',opts:['15m','18.44m','20m','22m'],          ans:1 },
+    ]
+  }
+};
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+const MAX_TIME   = 10000; // ms per question
+const NUM_QS     = 10;
+const LS_PRE     = 'qq_best_';
+
+let genre       = null;
+let questions   = [];
+let qIdx        = 0;
+let totalScore  = 0;
+let correctCnt  = 0;
+let startTime   = 0;
+let timerID     = null;
+let answered    = false;
+let log         = [];   // [{pts, ok, ms}]
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function $id(id){ return document.getElementById(id); }
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function calcScore(ms){
+  const ratio = Math.max(0, 1 - ms / MAX_TIME);
+  return Math.round(100 + 900 * ratio * ratio);
+}
+function getRank(score){
+  if(score>=9000) return { r:'SSS', t:'超天才！',  c:'#fbbf24', g:'rgba(251,191,36,.45)' };
+  if(score>=7500) return { r:'SS',  t:'天才！',    c:'#a78bfa', g:'rgba(167,139,250,.45)' };
+  if(score>=6000) return { r:'S',   t:'優秀！',    c:'#60a5fa', g:'rgba(96,165,250,.45)' };
+  if(score>=4500) return { r:'A',   t:'すごい！',  c:'#4ade80', g:'rgba(74,222,128,.45)' };
+  if(score>=3000) return { r:'B',   t:'なかなか！', c:'#34d399', g:'rgba(52,211,153,.35)' };
+  if(score>=1500) return { r:'C',   t:'もう少し',  c:'#94a3b8', g:'rgba(148,163,184,.35)' };
+  return               { r:'D',   t:'練習あるのみ！',c:'#f87171', g:'rgba(248,113,113,.35)' };
+}
+function getBest(g){ return parseInt(localStorage.getItem(LS_PRE+g)||'0'); }
+function setBest(g,v){ localStorage.setItem(LS_PRE+g,v); }
+function fmt(n){ return n.toLocaleString(); }
+
+/* ══════════════════════════════════════════
+   SCREEN TRANSITIONS
+══════════════════════════════════════════ */
+const SCREENS = ['title','game','result'];
+function goTo(name, cb){
+  const cur = SCREENS.map(n=>$id('s-'+n)).find(el=>!el.classList.contains('gone'));
+  const nxt = $id('s-'+name);
+  if(!cur||cur===nxt){ nxt.classList.remove('gone'); nxt.classList.add('ani-in'); setTimeout(()=>nxt.classList.remove('ani-in'),350); if(cb)cb(); return; }
+  cur.classList.add('ani-out');
+  setTimeout(()=>{
+    cur.classList.remove('ani-out'); cur.classList.add('gone');
+    nxt.classList.remove('gone');    nxt.classList.add('ani-in');
+    setTimeout(()=>nxt.classList.remove('ani-in'),350);
+    if(cb)cb();
+  },200);
+}
+
+/* ══════════════════════════════════════════
+   GENRE THEME
+══════════════════════════════════════════ */
+function applyGenreTheme(g){
+  const d = GENRES[g];
+  const r = document.documentElement;
+  r.style.setProperty('--acc',  d.acc);
+  r.style.setProperty('--acc2', d.acc2);
+  r.style.setProperty('--glow', d.glow);
+  ptcColor = d.ptcl;
+}
+
+/* ══════════════════════════════════════════
+   TITLE
+══════════════════════════════════════════ */
+function initTitle(){
+  for(const g of Object.keys(GENRES)){
+    const b = getBest(g);
+    $id('best-'+g).textContent = b > 0 ? 'ベスト '+fmt(b)+' pts' : 'ベスト — pts';
+  }
+}
+
+/* ══════════════════════════════════════════
+   SELECT GENRE → START GAME
+══════════════════════════════════════════ */
+function selectGenre(g){
+  genre = g;
+  applyGenreTheme(g);
+
+  // Prep 10 questions with shuffled options
+  const raw = shuffle([...GENRES[g].qs]).slice(0, NUM_QS);
+  questions = raw.map(q => {
+    const map = shuffle([0,1,2,3]);
+    return { q:q.q, opts:map.map(i=>q.opts[i]), ans:map.indexOf(q.ans) };
+  });
+
+  qIdx = 0; totalScore = 0; correctCnt = 0; answered = false; log = [];
+  $id('g-pill').textContent  = genre;
+  $id('rg-pill').textContent = genre;
+
+  goTo('game', loadQuestion);
+}
+
+/* ══════════════════════════════════════════
+   LOAD QUESTION
+══════════════════════════════════════════ */
+function loadQuestion(){
+  const q = questions[qIdx];
+  answered = false;
+
+  // Header
+  $id('q-counter').textContent = `Q${qIdx+1} / ${NUM_QS}`;
+  $id('qNo').textContent       = `QUESTION ${qIdx+1}`;
+  $id('live-score').textContent = fmt(totalScore)+' pts';
+
+  // Text & options
+  $id('qText').textContent = q.q;
+  ['A','B','C','D'].forEach((lbl,i) => {
+    const btn = $id('c'+i);
+    btn.className = 'choice';
+    btn.disabled  = false;
+    $id('ct'+i).textContent = q.opts[i];
+    btn.querySelector('.choice-lbl').textContent = lbl;
+  });
+
+  // Timer bar
+  const bar = $id('timerBar');
+  bar.style.animation = 'none';
+  void bar.offsetWidth;
+  bar.style.animation = `timerAnim ${MAX_TIME}ms linear forwards`;
+
+  // Timer label
+  const timeEl = $id('qTime');
+  timeEl.className = 'q-time';
+  let rem = MAX_TIME;
+  timeEl.textContent = (rem/1000).toFixed(1);
+  clearInterval(timerID);
+  timerID = setInterval(()=>{
+    rem -= 100;
+    const s = Math.max(0, rem)/1000;
+    timeEl.textContent = s.toFixed(1);
+    if(s <= 3) timeEl.classList.add('urgent');
+    if(rem <= 0){ clearInterval(timerID); timeUp(); }
+  }, 100);
+
+  startTime = Date.now();
+  $id('qFlash').className = 'q-flash';
+}
+
+/* ══════════════════════════════════════════
+   ANSWER
+══════════════════════════════════════════ */
+function checkAnswer(idx){
+  if(answered) return;
+  answered = true;
+  clearInterval(timerID);
+
+  const elapsed = Date.now() - startTime;
+  const q       = questions[qIdx];
+  const correct = idx === q.ans;
+
+  // Disable all buttons
+  for(let i=0;i<4;i++) $id('c'+i).disabled = true;
+
+  if(correct){
+    const pts = calcScore(elapsed);
+    totalScore  += pts;
+    correctCnt++;
+    log.push({ pts, ok:true, ms:elapsed });
+
+    $id('c'+idx).classList.add('correct');
+    flashCard('fok');
+    showScorePop('+'+fmt(pts)+' pts', 'ok');
+    $id('live-score').textContent = fmt(totalScore)+' pts';
+
+  } else {
+    log.push({ pts:0, ok:false, ms:elapsed });
+    $id('c'+idx).classList.add('wrong');
+    $id('c'+q.ans).classList.add('reveal');
+    flashCard('fng');
+    showScorePop('✕ 不正解', 'ng');
+  }
+
+  setTimeout(advance, 1300);
+}
+
+function timeUp(){
+  if(answered) return;
+  answered = true;
+
+  const q = questions[qIdx];
+  for(let i=0;i<4;i++) $id('c'+i).disabled = true;
+  $id('c'+q.ans).classList.add('reveal');
+  log.push({ pts:0, ok:false, ms:MAX_TIME });
+  flashCard('fto');
+  showScorePop('⏰ 時間切れ！', 'to');
+
+  setTimeout(advance, 1300);
+}
+
+function advance(){
+  qIdx++;
+  if(qIdx < NUM_QS){
+    loadQuestion();
+  } else {
+    showResult();
+  }
+}
+
+/* ══════════════════════════════════════════
+   RESULT
+══════════════════════════════════════════ */
+function showResult(){
+  // Best score
+  const prev = getBest(genre);
+  if(totalScore > prev) setBest(genre, totalScore);
+  initTitle(); // refresh best labels
+
+  // Rank
+  const rank = getRank(totalScore);
+  $id('rankBadge').textContent = rank.r;
+  $id('rankTitle').textContent = rank.t;
+  $id('rankBadge').style.setProperty('--rk-col',  rank.c);
+  $id('rankBadge').style.setProperty('--rk-glow', rank.g);
+  document.querySelector('.rank-wrap').style.setProperty('--rk-col', rank.c);
+
+  // Stats
+  $id('r-score').textContent   = fmt(totalScore);
+  $id('r-correct').textContent = correctCnt+'/'+NUM_QS;
+  const times = log.filter(l=>l.ok).map(l=>l.ms);
+  $id('r-avgtime').textContent = times.length
+    ? (times.reduce((a,b)=>a+b,0)/times.length/1000).toFixed(1)+'s'
+    : '—';
+
+  // Q log
+  const logEl = $id('qLog');
+  logEl.innerHTML = '';
+  log.forEach((l,i)=>{
+    const row = document.createElement('div');
+    row.className = 'q-log-row ' + (l.ok?'ok':'ng');
+    row.innerHTML = `<span class="q-log-label ${l.ok?'ok':'ng'}">Q${i+1} ${l.ok?'✓':'✗'}</span><span class="q-log-pts">${l.ok?'+'+fmt(l.pts)+' pts':'0 pts'}</span>`;
+    logEl.appendChild(row);
+  });
+
+  // Retry button
+  $id('retryBtn').onclick = () => selectGenre(genre);
+
+  goTo('result');
+}
+
+/* ══════════════════════════════════════════
+   HELPERS FOR GAME
+══════════════════════════════════════════ */
+function flashCard(cls){
+  const el = $id('qFlash');
+  el.className = 'q-flash '+cls+' on';
+  setTimeout(()=>el.classList.remove('on'), 140);
+  setTimeout(()=>{ el.className='q-flash'; }, 280);
+}
+
+function showScorePop(text, type){
+  const old = $id('qCard').querySelector('.score-pop');
+  if(old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'score-pop '+type;
+  el.textContent = text;
+  $id('qCard').appendChild(el);
+  setTimeout(()=>el.remove(), 1000);
+}
+
+/* ══════════════════════════════════════════
+   TITLE NAV
+══════════════════════════════════════════ */
+function goTitle(){
+  // Reset theme
+  const r = document.documentElement;
+  r.style.setProperty('--acc',  '#a78bfa');
+  r.style.setProperty('--acc2', '#818cf8');
+  r.style.setProperty('--glow', 'rgba(167,139,250,.22)');
+  ptcColor = '#a78bfa';
+  goTo('title');
+}
+
+/* ══════════════════════════════════════════
+   KEYBOARD
+══════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  const map = { a:0, b:1, c:2, d:3, '1':0, '2':1, '3':2, '4':3 };
+  const key = e.key.toLowerCase();
+  if(key in map && !$id('s-game').classList.contains('gone')){
+    checkAnswer(map[key]);
+  }
+});
+
+/* ══════════════════════════════════════════
+   CANVAS BACKGROUND
+══════════════════════════════════════════ */
+let ptcColor = '#a78bfa';
+(function(){
+  const cvs = $id('bg'), ctx = cvs.getContext('2d');
+  function resize(){ cvs.width=innerWidth; cvs.height=innerHeight; }
+  resize(); window.addEventListener('resize',resize);
+
+  const pts = Array.from({length:60}, ()=>({
+    x: Math.random()*innerWidth,
+    y: Math.random()*innerHeight,
+    r: Math.random()*1.4+0.3,
+    vy: -(Math.random()*0.26+0.07),
+    vx: (Math.random()-.5)*0.12,
+    a: Math.random()*0.2+0.04,
+  }));
+
+  (function loop(){
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    pts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.y<-4){ p.y=cvs.height+4; p.x=Math.random()*cvs.width; }
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=ptcColor; ctx.globalAlpha=p.a; ctx.fill();
+    });
+    ctx.globalAlpha=1;
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+initTitle();
+</script>
+</body>
+</html>
