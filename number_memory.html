@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字記憶ゲーム 🧠</title>
+  <style>
+    :root {
+      --bg:     #08080f;
+      --surf:   rgba(255,255,255,0.045);
+      --bord:   rgba(255,255,255,0.1);
+      --text:   #e8e8f8;
+      --muted:  #5858a0;
+      --acc:    #38bdf8;
+      --acc2:   #818cf8;
+      --ok:     #4ade80;
+      --ng:     #f87171;
+      --gold:   #fbbf24;
+    }
+    *{ margin:0; padding:0; box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      background:var(--bg); color:var(--text);
+      font-family:'Segoe UI','Hiragino Kaku Gothic ProN',system-ui,sans-serif;
+      min-height:100vh; display:flex; flex-direction:column; align-items:center;
+      overflow-x:hidden;
+    }
+
+    canvas#bg{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+
+    .app{
+      position:relative; z-index:1;
+      width:100%; max-width:500px;
+      padding:0 16px 60px;
+      display:flex; flex-direction:column; align-items:center; gap:12px;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar{
+      width:100%; display:flex; justify-content:space-between; align-items:center;
+      padding:22px 0 6px;
+    }
+    .tb-logo{ font-size:1rem; font-weight:800; letter-spacing:0.02em; }
+    .tb-stats{ display:flex; align-items:center; gap:18px; }
+    .tbs{ text-align:center; }
+    .tbs-val{
+      font-size:1.2rem; font-weight:900; line-height:1;
+      background:linear-gradient(135deg,var(--acc),var(--acc2));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .tbs-val.gl{
+      background:linear-gradient(135deg,#fff9c4,var(--gold));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .tbs-lbl{ font-size:0.5rem; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; margin-top:2px; }
+
+    /* ── CARD ── */
+    .card{
+      width:100%; background:var(--surf); border:1px solid var(--bord);
+      border-radius:26px; min-height:360px;
+      display:flex; align-items:center; justify-content:center;
+      backdrop-filter:blur(22px); position:relative; overflow:hidden;
+      padding:32px 24px;
+    }
+    .card::before{
+      content:''; position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(ellipse at 30% 15%, rgba(56,189,248,0.06) 0%, transparent 65%);
+    }
+
+    /* Flash overlay */
+    .flash-el{
+      position:absolute; inset:0; border-radius:26px;
+      pointer-events:none; opacity:0; transition:opacity .1s;
+    }
+    .flash-el.fok{ background:rgba(74,222,128,0.13); }
+    .flash-el.fng{ background:rgba(248,113,113,0.15); }
+    .flash-el.on { opacity:1; }
+
+    /* ── SCREENS ── */
+    .scr{
+      width:100%; text-align:center;
+      display:flex; flex-direction:column; align-items:center; gap:18px;
+    }
+    .scr.gone{ display:none; }
+    @keyframes scrIn  { from{ opacity:0; transform:translateY(10px) scale(.97); } to{ opacity:1; transform:none; } }
+    @keyframes scrOut { from{ opacity:1; transform:none; } to{ opacity:0; transform:scale(.95); } }
+    .scr.ani-in  { animation:scrIn  .3s cubic-bezier(.22,1,.36,1) both; }
+    .scr.ani-out { animation:scrOut .2s ease both; }
+
+    /* ── IDLE ── */
+    .idle-icon{
+      font-size:3.2rem;
+      filter:drop-shadow(0 0 22px rgba(56,189,248,.65));
+      animation:bob 3.5s ease-in-out infinite;
+    }
+    @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-7px); } }
+    .idle-h1{ font-size:1.85rem; font-weight:900; letter-spacing:-.02em; }
+    .idle-sub{ font-size:.88rem; color:var(--muted); line-height:1.85; }
+    .best-badge{
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(251,191,36,.09); border:1px solid rgba(251,191,36,.3);
+      border-radius:100px; padding:7px 20px;
+      font-size:.82rem; color:var(--gold); font-weight:700;
+    }
+    .idle-note{ font-size:.72rem; color:rgba(255,255,255,.2); letter-spacing:.05em; }
+
+    /* ── BUTTON ── */
+    .btn{
+      background:linear-gradient(135deg,var(--acc),var(--acc2));
+      border:none; border-radius:14px; padding:14px 46px;
+      font-size:1rem; font-weight:800; color:#fff; cursor:pointer;
+      box-shadow:0 8px 28px rgba(56,189,248,.32);
+      transition:transform .18s, box-shadow .18s;
+      font-family:inherit; letter-spacing:.06em;
+    }
+    .btn:hover{ transform:translateY(-2px); box-shadow:0 12px 36px rgba(56,189,248,.44); }
+    .btn:active{ transform:translateY(1px); }
+
+    /* ── SHOW SCREEN ── */
+    .show-badge{
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(56,189,248,.1); border:1px solid rgba(56,189,248,.25);
+      border-radius:100px; padding:5px 18px;
+      font-size:.7rem; font-weight:800; color:var(--acc); letter-spacing:.16em;
+    }
+    .show-hint{ font-size:.84rem; color:var(--muted); }
+
+    /* Number digits */
+    .num-display{
+      display:flex; flex-wrap:wrap; gap:6px; justify-content:center; padding:4px 0;
+    }
+    .dgt{
+      background:rgba(56,189,248,.08); border:1px solid rgba(56,189,248,.22);
+      border-radius:12px;
+      width:clamp(38px,9.5vw,60px); height:clamp(48px,12vw,74px);
+      display:flex; align-items:center; justify-content:center;
+      font-size:clamp(1.6rem,5.5vw,2.6rem);
+      font-weight:900; font-family:'Courier New',monospace;
+      color:#fff; text-shadow:0 0 16px rgba(56,189,248,.75);
+      animation:dgtIn .28s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes dgtIn{ from{ opacity:0; transform:translateY(-14px) scale(.6); } to{ opacity:1; transform:none; } }
+    /* smaller sizes for large numbers */
+    .num-display[data-sz="md"] .dgt{ width:clamp(30px,7.5vw,48px); height:clamp(38px,9.5vw,60px); font-size:clamp(1.3rem,4.5vw,2.1rem); border-radius:10px; }
+    .num-display[data-sz="sm"] .dgt{ width:clamp(24px,6vw,38px);   height:clamp(30px,7.5vw,48px); font-size:clamp(1rem,3.5vw,1.65rem);  border-radius:8px; gap:4px; }
+
+    /* Countdown bar */
+    .cd-wrap{ width:100%; display:flex; align-items:center; gap:10px; }
+    .cd-track{ flex:1; height:5px; background:rgba(255,255,255,.08); border-radius:10px; overflow:hidden; }
+    .cd-fill{ height:100%; border-radius:10px; }
+    @keyframes cdAnim{
+      0%   { width:100%; background:var(--acc); }
+      65%  { background:var(--acc); }
+      82%  { background:var(--gold); }
+      100% { width:0%;   background:var(--ng); }
+    }
+    .cd-label{ font-size:.72rem; color:var(--muted); min-width:38px; text-align:right; font-variant-numeric:tabular-nums; }
+
+    /* ── INPUT SCREEN ── */
+    .inp-badge{
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(56,189,248,.1); border:1px solid rgba(56,189,248,.25);
+      border-radius:100px; padding:5px 18px;
+      font-size:.7rem; font-weight:800; color:var(--acc); letter-spacing:.16em;
+    }
+    .inp-hint{ font-size:.9rem; color:var(--muted); }
+    .inp-hint strong{ color:var(--text); }
+
+    .inp-dots{ display:flex; gap:7px; justify-content:center; flex-wrap:wrap; }
+    .inp-dot{
+      width:10px; height:10px; border-radius:50%;
+      background:rgba(56,189,248,.14); border:1px solid rgba(56,189,248,.32);
+    }
+
+    .inp-field{
+      width:100%;
+      background:rgba(255,255,255,.06); border:2px solid var(--bord);
+      border-radius:14px; padding:16px 20px; text-align:center;
+      font-size:2rem; font-family:'Courier New',monospace;
+      font-weight:900; color:var(--text); letter-spacing:.22em;
+      outline:none;
+      transition:border-color .2s, box-shadow .2s;
+      -moz-appearance:textfield;
+    }
+    .inp-field::-webkit-outer-spin-button,
+    .inp-field::-webkit-inner-spin-button{ -webkit-appearance:none; }
+    .inp-field::placeholder{ color:rgba(255,255,255,.14); font-size:.95rem; letter-spacing:0; }
+    .inp-field:focus { border-color:var(--acc); box-shadow:0 0 0 3px rgba(56,189,248,.18); }
+    .inp-field.ok-b  { border-color:var(--ok);  box-shadow:0 0 0 3px rgba(74,222,128,.18); }
+    .inp-field.ng-b  { border-color:var(--ng);  box-shadow:0 0 0 3px rgba(248,113,113,.18); }
+    .inp-key-hint{ font-size:.7rem; color:rgba(255,255,255,.18); }
+
+    /* ── RESULT SCREEN ── */
+    .res-icon{ font-size:2.8rem; line-height:1; }
+    .res-title{ font-size:1.5rem; font-weight:900; letter-spacing:.06em; }
+    .res-achieved{
+      font-size:4.5rem; font-weight:900; line-height:1;
+      background:linear-gradient(135deg,var(--acc),var(--acc2));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .res-achieved-lbl{ font-size:.8rem; color:var(--muted); letter-spacing:.12em; margin-top:-4px; }
+
+    .res-row{ display:flex; gap:28px; justify-content:center; }
+    .res-stat{ text-align:center; }
+    .res-stat-val{
+      font-size:2.2rem; font-weight:900; line-height:1;
+      background:linear-gradient(135deg,var(--acc),var(--acc2));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .res-stat-val.gl{
+      background:linear-gradient(135deg,#fff9c4,var(--gold));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .res-stat-lbl{ font-size:.68rem; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; margin-top:3px; }
+
+    /* Answer comparison */
+    .cmp-box{
+      width:100%; background:rgba(0,0,0,.28); border-radius:14px;
+      padding:14px 16px; text-align:left;
+    }
+    .cmp-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .cmp-row:last-child{ margin-bottom:0; }
+    .cmp-lbl{ font-size:.65rem; color:var(--muted); letter-spacing:.1em; min-width:48px; flex-shrink:0; }
+    .cmp-dgts{ display:flex; gap:4px; flex-wrap:wrap; }
+    .cmp-d{
+      font-family:'Courier New',monospace; font-weight:900;
+      font-size:1rem; padding:3px 7px; border-radius:7px; line-height:1.4;
+    }
+    .cmp-d.ok{ background:rgba(74,222,128,.14); color:var(--ok); }
+    .cmp-d.ng{ background:rgba(248,113,113,.16); color:var(--ng); }
+    .cmp-d.ex{ background:rgba(248,113,113,.07); color:rgba(248,113,113,.45); }
+
+    .new-rec{
+      background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(251,191,36,.06));
+      border:1px solid rgba(251,191,36,.42); border-radius:14px;
+      padding:12px 26px; color:var(--gold); font-weight:800; font-size:1.05rem;
+      animation:popIn .45s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes popIn{ from{ transform:scale(.7) rotate(-2deg); opacity:0; } to{ transform:none; opacity:1; } }
+
+    /* ── TRAIL DOTS ── */
+    .trail{
+      display:flex; gap:5px; flex-wrap:wrap; justify-content:center;
+      width:100%; min-height:14px;
+    }
+    .trail-dot{
+      width:22px; height:7px; border-radius:4px;
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+      transition:all .25s;
+    }
+    .trail-dot.lit{
+      background:var(--acc); border-color:var(--acc);
+      box-shadow:0 0 7px rgba(56,189,248,.45);
+    }
+
+    @media(max-width:400px){
+      .card{ padding:26px 16px; min-height:320px; }
+      .res-row{ gap:16px; }
+      .btn{ padding:14px 34px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-logo">🧠 数字記憶ゲーム</div>
+    <div class="tb-stats">
+      <div class="tbs">
+        <div class="tbs-val" id="statLv">1</div>
+        <div class="tbs-lbl">LEVEL</div>
+      </div>
+      <div class="tbs">
+        <div class="tbs-val gl" id="statBest">—</div>
+        <div class="tbs-lbl">BEST</div>
+      </div>
+      <div class="tbs">
+        <div class="tbs-val" id="statStreak">0</div>
+        <div class="tbs-lbl">STREAK</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game card -->
+  <div class="card" id="card">
+    <div class="flash-el" id="flashEl"></div>
+
+    <!-- IDLE -->
+    <div class="scr ani-in" id="s-idle">
+      <div class="idle-icon">🧠</div>
+      <div class="idle-h1">数字記憶ゲーム</div>
+      <div class="idle-sub">一瞬表示される数字を覚えて<br>正確に入力しよう</div>
+      <div class="best-badge">最高記録：<span id="bestLabel">未挑戦</span></div>
+      <button class="btn" onclick="startGame()">スタート</button>
+      <div class="idle-note">正解するたびに1桁ずつ増えていく</div>
+    </div>
+
+    <!-- SHOW -->
+    <div class="scr gone" id="s-show">
+      <div class="show-badge">LEVEL&thinsp;<span id="showLv">1</span>&ensp;/&ensp;<span id="showDigs">1</span>桁</div>
+      <div class="show-hint">数字を記憶してください</div>
+      <div class="num-display" id="numDisplay"></div>
+      <div class="cd-wrap">
+        <div class="cd-track"><div class="cd-fill" id="cdFill"></div></div>
+        <div class="cd-label" id="cdLabel">3.0s</div>
+      </div>
+    </div>
+
+    <!-- INPUT -->
+    <div class="scr gone" id="s-input">
+      <div class="inp-badge">LEVEL&thinsp;<span id="inpLv">1</span></div>
+      <div class="inp-hint"><strong id="inpDigs">1</strong>桁の数字を入力してください</div>
+      <div class="inp-dots" id="inpDots"></div>
+      <input class="inp-field" id="inpField"
+             type="text" inputmode="numeric" pattern="[0-9]*"
+             autocomplete="off" spellcheck="false"
+             placeholder="ここに数字を入力">
+      <button class="btn" id="submitBtn">確認する</button>
+      <div class="inp-key-hint">Enter でも確認できます</div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="scr gone" id="s-result">
+      <div class="res-icon" id="resIcon">💫</div>
+      <div class="res-title">GAME OVER</div>
+      <div class="res-achieved" id="resAchieved">0</div>
+      <div class="res-achieved-lbl">桁まで記憶できました</div>
+      <div class="res-row">
+        <div class="res-stat">
+          <div class="res-stat-val" id="resDigs">0</div>
+          <div class="res-stat-lbl">達成桁数</div>
+        </div>
+        <div class="res-stat">
+          <div class="res-stat-val gl" id="resBest">—</div>
+          <div class="res-stat-lbl">最高記録</div>
+        </div>
+      </div>
+      <div class="cmp-box" id="cmpBox"></div>
+      <div class="new-rec" id="newRec" style="display:none">🏆 新記録達成！</div>
+      <button class="btn" onclick="startGame()">もう一度</button>
+    </div>
+  </div>
+
+  <!-- Level trail -->
+  <div class="trail" id="trail"></div>
+
+</div><!-- /app -->
+
+<script>
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+const LS_KEY = 'nm_best_v3';
+let best     = parseInt(localStorage.getItem(LS_KEY) || '0');
+let level    = 1;
+let streak   = 0;
+let curNum   = '';
+let prevBest = 0;
+let cdTID    = null;   // countdown timeout
+let cdIID    = null;   // countdown interval
+let busy     = false;  // prevent double-submit
+
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+function $id(id) { return document.getElementById(id); }
+
+function displayTime(digits) {
+  // 1→1100ms  3→1900ms  6→3100ms  10→4700ms  cap 5500ms
+  return Math.min(5500, 800 + digits * 380);
+}
+
+function genNum(digits) {
+  let s = String(Math.floor(Math.random() * 9) + 1);
+  for (let i = 1; i < digits; i++) s += Math.floor(Math.random() * 10);
+  return s;
+}
+
+function numIcon(n) {
+  if (n === 0)  return '🤔';
+  if (n >= 14)  return '🏆';
+  if (n >= 10)  return '🎖️';
+  if (n >= 7)   return '🎯';
+  if (n >= 4)   return '✨';
+  return '💫';
+}
+
+/* ═══════════════════════════════════════════
+   SCREEN TRANSITIONS
+═══════════════════════════════════════════ */
+const SCREEN_IDS = ['idle','show','input','result'];
+
+function goTo(name, cb) {
+  const cur = SCREEN_IDS.map(n => $id('s-'+n)).find(el => !el.classList.contains('gone'));
+  const nxt = $id('s-'+name);
+  if (!cur || cur === nxt) {
+    nxt.classList.remove('gone');
+    nxt.classList.add('ani-in');
+    setTimeout(() => nxt.classList.remove('ani-in'), 350);
+    if (cb) cb();
+    return;
+  }
+  cur.classList.add('ani-out');
+  setTimeout(() => {
+    cur.classList.remove('ani-out'); cur.classList.add('gone');
+    nxt.classList.remove('gone');    nxt.classList.add('ani-in');
+    setTimeout(() => nxt.classList.remove('ani-in'), 350);
+    if (cb) cb();
+  }, 200);
+}
+
+/* ═══════════════════════════════════════════
+   STATS / UI
+═══════════════════════════════════════════ */
+function syncStats() {
+  $id('statLv').textContent     = level;
+  $id('statBest').textContent   = best > 0 ? best : '—';
+  $id('statStreak').textContent = streak;
+}
+
+function syncBestLabel() {
+  $id('bestLabel').textContent = best > 0 ? best + '桁' : '未挑戦';
+  $id('statBest').textContent  = best > 0 ? best : '—';
+}
+
+/* ═══════════════════════════════════════════
+   FLASH OVERLAY
+═══════════════════════════════════════════ */
+function showFlash(type) {
+  const el = $id('flashEl');
+  el.className = 'flash-el ' + (type === 'ok' ? 'fok' : 'fng') + ' on';
+  setTimeout(() => el.classList.remove('on'), 130);
+  setTimeout(() => { el.className = 'flash-el'; }, 260);
+}
+
+/* ═══════════════════════════════════════════
+   TRAIL DOTS
+═══════════════════════════════════════════ */
+function growTrail(n) {
+  const t = $id('trail');
+  while (t.children.length < n) {
+    const d = document.createElement('div');
+    d.className = 'trail-dot';
+    t.appendChild(d);
+  }
+}
+function litTrail(completed) {
+  Array.from($id('trail').children).forEach((d, i) => {
+    d.classList.toggle('lit', i < completed);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   GAME FLOW
+═══════════════════════════════════════════ */
+function startGame() {
+  prevBest = best;
+  level    = 1;
+  streak   = 0;
+  busy     = false;
+  $id('trail').innerHTML = '';
+  syncStats(); syncBestLabel();
+  nextRound();
+}
+
+function nextRound() {
+  curNum = genNum(level);
+  growTrail(level);
+  litTrail(level - 1);
+  syncStats();
+
+  $id('showLv').textContent   = level;
+  $id('showDigs').textContent = level;
+
+  goTo('show', () => {
+    renderDigits();
+    startCountdown();
+  });
+}
+
+function renderDigits() {
+  const el = $id('numDisplay');
+  el.innerHTML = '';
+  const n = curNum.length;
+  el.dataset.sz = n <= 7 ? 'lg' : n <= 11 ? 'md' : 'sm';
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement('div');
+    d.className = 'dgt';
+    d.textContent = curNum[i];
+    d.style.animationDelay = (i * 60) + 'ms';
+    el.appendChild(d);
+  }
+}
+
+function startCountdown() {
+  const dur = displayTime(level);
+
+  /* Restart CSS animation */
+  const fill = $id('cdFill');
+  fill.style.animation = 'none';
+  void fill.offsetWidth;
+  fill.style.animation = `cdAnim ${dur}ms linear forwards`;
+
+  /* Numeric countdown label */
+  let rem = dur;
+  $id('cdLabel').textContent = (rem / 1000).toFixed(1) + 's';
+  clearInterval(cdIID);
+  cdIID = setInterval(() => {
+    rem -= 100;
+    $id('cdLabel').textContent = (Math.max(0, rem) / 1000).toFixed(1) + 's';
+    if (rem <= 0) clearInterval(cdIID);
+  }, 100);
+
+  clearTimeout(cdTID);
+  cdTID = setTimeout(showInput, dur);
+}
+
+function showInput() {
+  clearInterval(cdIID);
+  busy = false;
+
+  $id('inpLv').textContent   = level;
+  $id('inpDigs').textContent = level;
+
+  /* Build digit-count dots */
+  const dots = $id('inpDots');
+  dots.innerHTML = '';
+  for (let i = 0; i < level; i++) {
+    const d = document.createElement('div');
+    d.className = 'inp-dot';
+    dots.appendChild(d);
+  }
+
+  const fld = $id('inpField');
+  fld.value = '';
+  fld.className = 'inp-field';
+  fld.maxLength = level + 2;
+
+  goTo('input', () => setTimeout(() => fld.focus(), 80));
+}
+
+function submitAnswer() {
+  if (busy) return;
+  const fld = $id('inpField');
+  const ans = fld.value.replace(/\D/g, '');
+  if (!ans) { fld.focus(); return; }
+
+  busy = true;
+
+  if (ans === curNum) {
+    /* ✓ Correct */
+    fld.classList.add('ok-b');
+    showFlash('ok');
+    streak++;
+
+    /* Update best immediately (during play) */
+    if (level > best) {
+      best = level;
+      localStorage.setItem(LS_KEY, best);
+      syncBestLabel();
+    }
+    level++;
+    litTrail(level - 1);
+    syncStats();
+
+    setTimeout(() => {
+      fld.classList.remove('ok-b');
+      nextRound();
+    }, 650);
+
+  } else {
+    /* ✗ Wrong */
+    fld.classList.add('ng-b');
+    showFlash('ng');
+    setTimeout(() => {
+      fld.classList.remove('ng-b');
+      showResult(ans);
+    }, 520);
+  }
+}
+
+function showResult(playerAns) {
+  const achieved = level - 1;
+  const isNew    = achieved > prevBest && achieved >= 1;
+
+  /* Final best save if needed */
+  if (achieved > best) {
+    best = achieved;
+    localStorage.setItem(LS_KEY, best);
+  }
+
+  $id('resIcon').textContent     = numIcon(achieved);
+  $id('resAchieved').textContent = achieved > 0 ? achieved : '0';
+  $id('resDigs').textContent     = achieved > 0 ? achieved : '0';
+  $id('resBest').textContent     = best > 0 ? best : '—';
+  $id('newRec').style.display    = isNew ? 'block' : 'none';
+  $id('cmpBox').innerHTML        = buildCompare(curNum, playerAns);
+
+  syncStats();
+  syncBestLabel();
+  goTo('result');
+}
+
+function buildCompare(correct, player) {
+  const row = (label, src, ref) => {
+    let html = `<div class="cmp-row"><span class="cmp-lbl">${label}</span><div class="cmp-dgts">`;
+    for (let i = 0; i < correct.length; i++) {
+      if (i < src.length) {
+        const ok = src[i] === correct[i];
+        html += `<span class="cmp-d ${ok ? 'ok' : 'ng'}">${src[i]}</span>`;
+      } else {
+        html += `<span class="cmp-d ex">?</span>`;
+      }
+    }
+    return html + '</div></div>';
+  };
+  return row('正解', correct, null) + row('入力', player, null);
+}
+
+/* ═══════════════════════════════════════════
+   INPUT EVENTS
+═══════════════════════════════════════════ */
+$id('inpField').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 20);
+});
+$id('inpField').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+$id('submitBtn').addEventListener('click', submitAnswer);
+
+/* ═══════════════════════════════════════════
+   CANVAS PARTICLES
+═══════════════════════════════════════════ */
+(function () {
+  const cvs = $id('bg');
+  const ctx = cvs.getContext('2d');
+
+  function resize() { cvs.width = innerWidth; cvs.height = innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+
+  const pts = [];
+  for (let i = 0; i < 55; i++) {
+    pts.push({
+      x:  Math.random() * innerWidth,
+      y:  Math.random() * innerHeight,
+      r:  Math.random() * 1.4 + 0.3,
+      vy: -(Math.random() * 0.28 + 0.08),
+      vx: (Math.random() - 0.5) * 0.12,
+      a:  Math.random() * 0.22 + 0.05,
+      c:  Math.random() > 0.5 ? '#38bdf8' : '#818cf8',
+    });
+  }
+
+  (function loop() {
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    pts.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.y < -4) { p.y = cvs.height + 4; p.x = Math.random() * cvs.width; }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.c;
+      ctx.globalAlpha = p.a;
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+syncBestLabel();
+</script>
+</body>
+</html>
