@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>血液型相性診断 🩸</title>
+  <style>
+    :root {
+      --bg:   #0d0810;
+      --mid:  #180d1e;
+      --text: #f0eaf4;
+      --muted:#8878a0;
+      --cA:   #e63946;
+      --cB:   #4361ee;
+      --cO:   #22c55e;
+      --cAB:  #9b2dca;
+      --red:  #e63946;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+
+    body {
+      min-height:100vh;
+      background: radial-gradient(ellipse at 30% 15%, #1e0a18 0%, #0d0810 55%, #080d1a 100%);
+      font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif;
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    /* ── AMBIENT ORBS ── */
+    .orbs { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+    .orb {
+      position:absolute; border-radius:50%;
+      filter:blur(80px); opacity:.35;
+    }
+    .o1 { width:500px; height:500px; background:#4a0820;
+          top:-10%; left:-10%; animation:drift1 18s ease-in-out infinite alternate; }
+    .o2 { width:400px; height:400px; background:#08154a;
+          bottom:-5%; right:-5%; animation:drift2 22s ease-in-out infinite alternate; }
+    .o3 { width:300px; height:300px; background:#200838;
+          top:40%; left:50%; animation:drift3 15s ease-in-out infinite alternate; }
+    @keyframes drift1 { to{transform:translate(8%,12%)} }
+    @keyframes drift2 { to{transform:translate(-6%,-8%)} }
+    @keyframes drift3 { to{transform:translate(-12%,6%)} }
+
+    /* ── LAYOUT ── */
+    .wrap { position:relative; z-index:1; max-width:580px; margin:0 auto; padding:0 16px 70px; }
+
+    /* ── HEADER ── */
+    .hd { text-align:center; padding:44px 0 26px; }
+    .hd-icon {
+      font-size:3rem; display:block; margin-bottom:12px;
+      filter:drop-shadow(0 0 18px rgba(230,57,70,.7));
+      animation:hpulse 3s ease-in-out infinite;
+    }
+    @keyframes hpulse {
+      0%,100%{ filter:drop-shadow(0 0 14px rgba(230,57,70,.5)); }
+      50%    { filter:drop-shadow(0 0 28px rgba(230,57,70,1)); }
+    }
+    .hd h1 {
+      font-size:2rem; font-weight:900; letter-spacing:.1em;
+      background:linear-gradient(130deg,#ff8080,#e63946,#ff8080);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      margin-bottom:8px;
+    }
+    .hd p { font-size:.84rem; color:var(--muted); letter-spacing:.06em; line-height:1.7; }
+
+    /* ── SELECTOR ── */
+    .sel-block { margin-bottom:22px; }
+    .sel-lbl {
+      font-size:.75rem; color:var(--muted); letter-spacing:.15em;
+      margin-bottom:11px; display:flex; align-items:center; gap:6px;
+    }
+    .type-row { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
+    .tbtn {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:14px 6px; border-radius:18px;
+      border:1.5px solid rgba(255,255,255,.09);
+      background:rgba(255,255,255,.04);
+      cursor:pointer; transition:all .22s; font-family:inherit; gap:3px;
+    }
+    .tbtn:hover { transform:translateY(-2px); border-color:rgba(230,57,70,.35); }
+    .tbtn .ti { font-size:1.1rem; }
+    .tbtn .tt { font-size:1.5rem; font-weight:900; color:rgba(255,255,255,.6); line-height:1; }
+    .tbtn .ts { font-size:.64rem; color:var(--muted); }
+
+    /* Selected per type */
+    .tbtn[data-t="A"].on  { background:rgba(230,57,70,.18); border-color:var(--cA); box-shadow:0 0 16px rgba(230,57,70,.3); }
+    .tbtn[data-t="A"].on .tt { color:var(--cA); }
+    .tbtn[data-t="B"].on  { background:rgba(67,97,238,.18); border-color:var(--cB); box-shadow:0 0 16px rgba(67,97,238,.3); }
+    .tbtn[data-t="B"].on .tt { color:var(--cB); }
+    .tbtn[data-t="O"].on  { background:rgba(34,197,94,.18); border-color:var(--cO); box-shadow:0 0 16px rgba(34,197,94,.3); }
+    .tbtn[data-t="O"].on .tt { color:var(--cO); }
+    .tbtn[data-t="AB"].on { background:rgba(155,45,202,.18); border-color:var(--cAB); box-shadow:0 0 16px rgba(155,45,202,.3); }
+    .tbtn[data-t="AB"].on .tt { color:var(--cAB); }
+
+    /* ── DIVIDER ── */
+    .divider { display:flex; align-items:center; gap:12px; margin:16px 0; }
+    .divider::before,.divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.07); }
+    .divider span { font-size:.75rem; color:var(--muted); letter-spacing:.1em; white-space:nowrap; }
+
+    /* ── RELATIONSHIP TABS ── */
+    .rel-block { margin-bottom:26px; }
+    .rel-lbl { font-size:.75rem; color:var(--muted); letter-spacing:.15em; margin-bottom:11px; }
+    .rel-tabs { display:flex; gap:9px; }
+    .rtab {
+      flex:1; padding:12px 6px; border-radius:14px;
+      border:1.5px solid rgba(255,255,255,.09);
+      background:rgba(255,255,255,.04);
+      text-align:center; cursor:pointer;
+      font-family:inherit; color:var(--muted); font-size:.85rem;
+      transition:all .2s;
+    }
+    .rtab:hover { border-color:rgba(230,57,70,.3); color:var(--text); }
+    .rtab.on {
+      background:rgba(230,57,70,.14); border-color:var(--red);
+      color:var(--red); font-weight:700;
+    }
+    .rtab .ri { display:block; font-size:1.2rem; margin-bottom:3px; }
+
+    /* ── PROMPT ── */
+    .prompt {
+      text-align:center; padding:32px 20px;
+      background:rgba(255,255,255,.02);
+      border:1px dashed rgba(255,255,255,.1);
+      border-radius:22px; color:var(--muted); font-size:.88rem;
+      line-height:1.8;
+    }
+    .prompt-icon { font-size:2.5rem; display:block; margin-bottom:12px; opacity:.45; }
+
+    /* ── RESULT CARD ── */
+    .rcard {
+      border-radius:26px; padding:26px 22px;
+      border:1px solid rgba(230,57,70,.22);
+      background:rgba(255,255,255,.04);
+      backdrop-filter:blur(22px);
+      position:relative; overflow:hidden;
+      animation:rcIn .6s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes rcIn {
+      from{ opacity:0; transform:translateY(20px) scale(.96); }
+      to  { opacity:1; transform:translateY(0)    scale(1);   }
+    }
+    /* Glow top */
+    .rcard::before {
+      content:''; position:absolute; top:-50%; left:50%; transform:translateX(-50%);
+      width:70%; height:80%;
+      background:radial-gradient(circle,rgba(230,57,70,.12) 0%,transparent 70%);
+      pointer-events:none;
+    }
+
+    /* Types header */
+    .rh { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:22px; }
+    .rh-badge { display:flex; flex-direction:column; align-items:center; gap:3px; }
+    .rh-type { font-size:2.2rem; font-weight:900; line-height:1; }
+    .rh-name { font-size:.62rem; color:var(--muted); letter-spacing:.1em; }
+    .rh-x { font-size:1.4rem; color:rgba(255,255,255,.2); }
+
+    /* Score area */
+    .score-area {
+      display:flex; align-items:center; justify-content:center;
+      gap:20px; margin-bottom:20px;
+    }
+    .sring { position:relative; width:94px; height:94px; flex-shrink:0; }
+    .sring svg { transform:rotate(-90deg); }
+    .sr-bg   { fill:none; stroke:rgba(255,255,255,.08); stroke-width:6; }
+    .sr-fill { fill:none; stroke:var(--red); stroke-width:6; stroke-linecap:round;
+               stroke-dasharray:238.76; stroke-dashoffset:238.76;
+               transition:stroke-dashoffset 1.1s ease, stroke .5s; }
+    .sring-inner {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+    }
+    .sn { font-size:1.9rem; font-weight:900; line-height:1; }
+    .sd { font-size:.62rem; color:var(--muted); }
+
+    .score-right { flex:1; }
+    .verdict { font-size:1.1rem; font-weight:800; margin-bottom:8px; }
+    .hearts  { font-size:1.15rem; letter-spacing:2px; margin-bottom:8px; }
+    .rbadge  {
+      display:inline-block; border-radius:12px; padding:3px 12px;
+      font-size:.72rem; font-weight:700; letter-spacing:.08em;
+      background:rgba(230,57,70,.14); border:1px solid rgba(230,57,70,.3); color:var(--red);
+    }
+
+    /* Traits */
+    .traits { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:18px; }
+    .chip {
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+      border-radius:20px; padding:5px 13px; font-size:.78rem; color:var(--text);
+    }
+
+    /* Desc & Advice */
+    .section-lbl {
+      font-size:.7rem; color:var(--muted); letter-spacing:.14em;
+      margin-bottom:8px; display:flex; align-items:center; gap:5px;
+    }
+    .desc-text { font-size:.87rem; line-height:1.9; color:#cac0dc; margin-bottom:18px; }
+    .adv-box {
+      background:rgba(230,57,70,.08);
+      border:1px solid rgba(230,57,70,.2);
+      border-radius:14px; padding:15px;
+    }
+    .adv-lbl { font-size:.7rem; color:var(--red); letter-spacing:.14em; margin-bottom:7px; display:flex; align-items:center; gap:5px; }
+    .adv-text { font-size:.87rem; line-height:1.9; color:#cac0dc; }
+
+    /* all-3 view */
+    .all3 { display:flex; flex-direction:column; gap:12px; margin-top:18px; padding-top:18px; border-top:1px solid rgba(255,255,255,.07); }
+    .all3-title { font-size:.72rem; color:var(--muted); letter-spacing:.14em; margin-bottom:6px; }
+    .mini-row { display:flex; gap:10px; }
+    .mini {
+      flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+      border-radius:14px; padding:12px 10px; text-align:center; cursor:pointer;
+      transition:border-color .2s;
+    }
+    .mini:hover { border-color:rgba(230,57,70,.35); }
+    .mini.cur { border-color:var(--red); background:rgba(230,57,70,.1); }
+    .mini-icon { font-size:.95rem; display:block; margin-bottom:3px; }
+    .mini-label{ font-size:.65rem; color:var(--muted); margin-bottom:4px; }
+    .mini-score{ font-size:1.1rem; font-weight:900; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(230,57,70,.3); border-radius:2px; }
+
+    @media(max-width:420px){
+      .hd h1 { font-size:1.7rem; }
+      .tbtn .tt { font-size:1.25rem; }
+      .rh-type { font-size:1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="orbs"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+
+<div class="wrap">
+
+  <header class="hd">
+    <span class="hd-icon">🩸</span>
+    <h1>血液型相性診断</h1>
+    <p>友達・恋愛・仕事の3パターンで<br>あなたの相性を深く分析します</p>
+  </header>
+
+  <!-- Your type -->
+  <div class="sel-block">
+    <div class="sel-lbl">🫀 あなたの血液型</div>
+    <div class="type-row" id="gr-you">
+      <button class="tbtn" data-t="A"  onclick="pick('you','A')"><span class="ti">🩸</span><span class="tt">A</span><span class="ts">型</span></button>
+      <button class="tbtn" data-t="B"  onclick="pick('you','B')"><span class="ti">🩸</span><span class="tt">B</span><span class="ts">型</span></button>
+      <button class="tbtn" data-t="O"  onclick="pick('you','O')"><span class="ti">🩸</span><span class="tt">O</span><span class="ts">型</span></button>
+      <button class="tbtn" data-t="AB" onclick="pick('you','AB')"><span class="ti">🩸</span><span class="tt">AB</span><span class="ts">型</span></button>
+    </div>
+  </div>
+
+  <div class="divider"><span>✦ 相手を選択 ✦</span></div>
+
+  <!-- Partner's type -->
+  <div class="sel-block">
+    <div class="sel-lbl">💝 相手の血液型</div>
+    <div class="type-row" id="gr-partner">
+      <button class="tbtn" data-t="A"  onclick="pick('partner','A')"><span class="ti">🩸</span><span class="tt">A</span><span class="ts">型</span></button>
+      <button class="tbtn" data-t="B"  onclick="pick('partner','B')"><span class="ti">🩸</span><span class="tt">B</span><span class="ts">型</span></button>
+      <button class="tbtn" data-t="O"  onclick="pick('partner','O')"><span class="ti">🩸</span><span class="tt">O</span><span class="ts">型</span></button>
+      <button class="tbtn" data-t="AB" onclick="pick('partner','AB')"><span class="ti">🩸</span><span class="tt">AB</span><span class="ts">型</span></button>
+    </div>
+  </div>
+
+  <!-- Relationship tabs -->
+  <div class="rel-block">
+    <div class="rel-lbl">🔍 診断タイプ</div>
+    <div class="rel-tabs">
+      <button class="rtab" data-r="friend"  onclick="pickRel('friend')"><span class="ri">👫</span>友達</button>
+      <button class="rtab on" data-r="romance" onclick="pickRel('romance')"><span class="ri">💕</span>恋愛</button>
+      <button class="rtab" data-r="work"    onclick="pickRel('work')"><span class="ri">💼</span>仕事</button>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="result-area">
+    <div class="prompt">
+      <span class="prompt-icon">🩸</span>
+      あなたと相手の血液型を選ぶと<br>相性診断結果が表示されます
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+/* =============================================================
+   STATE
+   ============================================================= */
+const S = { you: null, partner: null, rel: 'romance' };
+
+const TYPE_COLOR = { A:'#e63946', B:'#4361ee', O:'#22c55e', AB:'#9b2dca' };
+const TYPE_ORDER = { A:0, AB:1, B:2, O:3 };
+const CIRC = 238.76;
+
+function getKey(a, b) {
+  return TYPE_ORDER[a] <= TYPE_ORDER[b] ? `${a}|${b}` : `${b}|${a}`;
+}
+
+/* =============================================================
+   DATA — 10 pairs × 3 patterns = 30 entries
+   ============================================================= */
+const DATA = {
+  friend: {
+    'A|A':  { s:74, title:'安定した友情',        traits:['気遣い上手な二人','約束をきちんと守る','本音を言いにくいことも'],
+      desc:'几帳面で真面目なA同士は、約束を守り礼儀正しい安定した友情を築けます。お互いに気を遣いすぎて本音が言えない場面もありますが、信頼関係は深まりやすい組み合わせです。',
+      adv:'遠慮しすぎずに本音を伝え合うことが大切。二人きりで話す機会を意識して作ってみましょう。' },
+    'A|AB': { s:71, title:'知的な友情',          traits:['深い会話が弾む','お互いを尊重できる','ABの二面性に戸惑うことも'],
+      desc:'真面目なAと分析力の高いABは、知的な会話を通じて深まる友情です。ABの多面的な性格をAが丁寧に受け止めることができ、お互いを尊重した関係を築けます。',
+      adv:'ABの気分の変わりやすさを個性として楽しんで。ABのユニークな発想を面白がることで関係がより豊かになります。' },
+    'A|B':  { s:52, title:'正反対の二人',        traits:['価値観の違いが目立つ','BのノリがAをほぐす','大きな歩み寄りが必要'],
+      desc:'几帳面なAとマイペースなBは、生活リズムや価値観がぶつかりやすい組み合わせ。ただしBの自由な明るさがAの緊張を解いてくれることも。違いを笑いに変えられれば本物の友情に。',
+      adv:'Aは完璧を求めすぎず、BはルールをもうすこしだけAに合わせてみて。正反対だからこそ補い合える面もあります。' },
+    'A|O':  { s:83, title:'黄金の友情',          traits:['OがリードAがサポート','長続きする安定感','自然に補い合える'],
+      desc:'おおらかなOの包容力がAの繊細さを優しく包む、友情の中でも最高クラスの相性。Oがリーダーシップを発揮し、AがOを丁寧にサポートする自然な役割分担が生まれます。',
+      adv:'この相性は自然に役割が決まるので信じて任せ合ってOK。Aはたまには感謝を言葉にしてOに伝えましょう。' },
+    'AB|AB':{ s:64, title:'ミステリアスな絆',    traits:['独特な世界観の共鳴','知的に分析し合う','感情的になりにくい'],
+      desc:'独特の感性を持つAB同士は、分かり合えると最高の友人になれます。ただしお互いを計算し合う傾向があり、感情的な盛り上がりに欠けることも。知的な刺激に満ちた特別な関係です。',
+      adv:'理性より感情を優先する時間を意識して作ってみましょう。素の自分を見せ合うことで一気に距離が縮まります。' },
+    'AB|B': { s:64, title:'個性が光る友情',      traits:['自由でユニークな雰囲気','互いの違いが新鮮','飽きない関係'],
+      desc:'ABの知的で分析的な面とBの直感的で自由な面が面白い化学反応を起こす組み合わせ。どちらも個性的なため一緒にいると刺激的で飽きない時間を過ごせます。',
+      adv:'一緒に新しいことに挑戦してみると関係が深まります。ABはBのアイデアを否定せず乗ってみることで楽しさが倍増。' },
+    'AB|O': { s:76, title:'知性×エネルギー',     traits:['OのパワーとABの知性','互いの強みを引き出す','バランスの取れた関係'],
+      desc:'OのエネルギーとABの知性が融合した、互いの強みを引き出し合える友情。Oが行動力で引っ張り、ABが知的な視点でサポートする理想的なバランスが生まれます。',
+      adv:'ABはOの行動力を尊重し、OはABの繊細な感覚を大切に。定期的に二人で新しいことをやってみましょう。' },
+    'B|B':  { s:60, title:'ノリが合う仲間',      traits:['笑いが絶えない','約束は曖昧になりがち','マイペースな友情'],
+      desc:'自由奔放なB同士は、一緒にいると楽しくて笑いが絶えない関係。ただしお互いがマイペースなため約束が曖昧になったり連絡が途絶えたりすることも。気ままだけど本物の友情。',
+      adv:'大事な約束は記録しておくと安心。連絡が途絶えても久しぶりに連絡すればすぐに元通りになれる関係なので心配しすぎないで。' },
+    'B|O':  { s:76, title:'行動力あふれる二人',  traits:['ノリとテンポが合う','笑いが絶えない','フットワークが軽い'],
+      desc:'OのおおらかさがBの自由さを受け入れ、ノリとテンポが合う明るい友情です。二人ともフットワークが軽く「今日行こうよ！」で動ける行動力のある関係。一緒にいると楽しいことが続きます。',
+      adv:'たまにはゆっくりした時間を共に過ごして、深い会話もしてみましょう。関係がより豊かになります。' },
+    'O|O':  { s:76, title:'社交的な名コンビ',    traits:['友達の輪が広がる','行動力が倍増','リーダー争いに注意'],
+      desc:'社交的なO同士は、一緒にいることで友達の輪がどんどん広がる積極的な友情。行動力も倍増するため楽しいイベントを次々と生み出せます。時にリーダー争いになることも。',
+      adv:'お互いのリーダーシップを尊重し、役割を分担することが友情を長続きさせるコツ。張り合いより協力を大切に。' },
+  },
+  romance: {
+    'A|A':  { s:70, title:'穏やかな愛',          traits:['安定感がある','価値観が近い','積極性に欠けることも'],
+      desc:'真面目で気遣い上手なA同士の恋愛は、安定感があり心地よい関係。しかしお互いに遠慮しがちで、なかなか気持ちを伝えられない場面も。一歩踏み出す勇気が二人の恋愛を発展させます。',
+      adv:'気持ちは言葉にして伝えて。「察してほしい」より「伝える」を意識することで関係がぐっと深まります。' },
+    'A|AB': { s:64, title:'ミステリアスな魅力',  traits:['ABの謎に惹かれるA','知的な会話で深まる','ABのペースに合わせるのが大変'],
+      desc:'ABの謎めいた二面性にAが惹かれる恋愛。知的でセンスの良いABをAは尊敬し、ABもAの誠実さを高く評価します。ただしABの気分の変化についていくのがAには難しいこともあります。',
+      adv:'AはABの変わりやすさを個性として楽しんで。ABはAの誠実さを当たり前と思わず、感謝を言葉にしましょう。' },
+    'A|B':  { s:42, title:'正反対が惹かれ合う',  traits:['最初は新鮮な魅力','価値観の違いが摩擦に','歩み寄りが最大の鍵'],
+      desc:'真面目なAと自由奔放なBは、最初は正反対の魅力で惹かれ合います。しかし生活リズムや価値観の違いから摩擦が生まれやすく、長続きさせるには大きな歩み寄りが必要な組み合わせ。',
+      adv:'AはBを変えようとしないこと。BはAの気持ちを考えて行動する意識を。違いを「面白い」と思えるかどうかが分かれ目です。' },
+    'A|O':  { s:87, title:'💘 最高の相性！',      traits:['Oがリードして完璧なバランス','安心感と信頼が抜群','長続きする黄金コンビ'],
+      desc:'AとOの恋愛相性は最高クラス。おおらかで頼もしいOが繊細なAを優しく包み込み、AはOを誠実に支えるという理想的なバランスが自然に生まれます。長続きする安定した愛情関係です。',
+      adv:'この関係は自然体でいることが一番大切。AはOに感謝を言葉で伝え、OはAの細やかな気遣いに気づいてあげましょう。' },
+    'AB|AB':{ s:60, title:'知的な静かな愛',      traits:['精神的な繋がりが深い','ドラマチックさは少ない','独自の世界観を共有'],
+      desc:'AB同士の恋愛は、感情的な盛り上がりより精神的な深い繋がりが特徴。お互いを分析し合う傾向があるため自然体で甘えることが難しいことも。でも理解し合えた時の絆は格別です。',
+      adv:'分析より感情を優先する時間を。素の自分を見せ合うことで、二人だけの特別な世界が生まれます。' },
+    'AB|B': { s:77, title:'刺激的な恋愛',        traits:['惹かれ合う個性','飽きない関係','BのパワーにABが動かされる'],
+      desc:'ABの知的な魅力とBの自由な個性が互いを惹きつける刺激的な恋愛。予測不能なBの行動がABの好奇心を刺激し、ABの深みのある思考がBを惹きつけます。一緒にいて飽きない相性です。',
+      adv:'ABはBの自由を尊重して束縛しないように。BはたまにはABに感謝と愛情を伝えてみて。' },
+    'AB|O': { s:83, title:'情熱と知性の融合',    traits:['OのパワーとABの深み','刺激し合える関係','互いに成長できる'],
+      desc:'OのエネルギーとABの知性・センスが融合した、互いに高め合える素晴らしい恋愛相性。Oの行動力がABを動かし、ABの洗練された感性がOを豊かにします。',
+      adv:'OはABのペースを少し尊重して急かさないように。ABはOの純粋な気持ちを素直に受け取って、理屈より感情を大切にしましょう。' },
+    'B|B':  { s:47, title:'楽しいが不安定',      traits:['一緒にいると楽しい','束縛を嫌う同士','長続きが難しいことも'],
+      desc:'自由なB同士は一緒にいると楽しくてノリが合いますが、お互いが束縛を嫌い自由を求めるため関係が長続きしにくい傾向があります。強い意志で関係を育てる覚悟が必要です。',
+      adv:'自由を大切にしながらも、二人の約束事を1つだけ決めてみて。ルールを持つことで関係に安定感が生まれます。' },
+    'B|O':  { s:73, title:'明るく楽しい恋愛',    traits:['OのおおらかさがBを包む','笑顔が絶えない','行動力ある二人'],
+      desc:'おおらかで包容力のあるOがBの自由な個性を受け入れ、明るく笑いの絶えない恋愛に。BはOのスケールの大きさに惹かれ、OはBのユニークな個性を面白いと感じます。',
+      adv:'OはBの自由を信頼すること。BはたまにはOに感謝と愛情を言葉にして伝えてみて。言葉にするだけで関係がさらに深まります。' },
+    'O|O':  { s:73, title:'情熱的な恋愛',        traits:['スケールの大きい愛','燃え上がる情熱','意地の張り合いに注意'],
+      desc:'情熱的なO同士の恋愛は、スケールが大きくドラマチック。お互いに行動力があり恋愛を全力で楽しめます。ただし両者ともリーダー気質があるため意地を張り合うと大げんかになることも。',
+      adv:'先に謝れる方が二人の関係を救います。勝負より幸せを大切に。「負けたくない」より「一緒にいたい」を優先して。' },
+  },
+  work: {
+    'A|A':  { s:83, title:'ミスのない最強タッグ', traits:['丁寧で確実な仕事ぶり','細部へのこだわりが共通','高い責任感'],
+      desc:'几帳面で責任感の強いA同士は、ミスが少なく確実に仕事を進める頼りになるチーム。細部へのこだわりが共通しているため認識のズレも少ない。完璧を求め合ってプレッシャーになることも。',
+      adv:'完璧すぎる目標を立てずに「80点でOK」の精神も大切に。互いの頑張りをしっかり認め合いましょう。' },
+    'A|AB': { s:74, title:'創造と実行のコンビ',  traits:['ABのアイデアをAが具現化','クリエイティブなチーム','スピードのズレに注意'],
+      desc:'ABのユニークなアイデアと創造力を、Aの丁寧で確実な実行力が形にする良いチーム。Aの真面目さとABの革新性が組み合わさると質の高いアウトプットが生まれます。',
+      adv:'ABは思いついたアイデアをしっかり共有し、AはABの斬新な発想を頭から否定しないように。互いの強みを認めることが成功の鍵。' },
+    'A|B':  { s:50, title:'補完し合えれば最強',  traits:['価値観のズレが目立つ','AのPDCA×Bの直感力','歩み寄りが必要'],
+      desc:'几帳面なAと大雑把なBは仕事のスタイルが大きく異なります。計画を立てて進めたいAと直感で動きたいBは衝突しやすい。しかし互いの強みを活かせれば補完し合える最強コンビにもなれます。',
+      adv:'AはBの大局観を認め、BはAの細かいチェックを邪魔だと思わないように。役割を明確にすると衝突が減ります。' },
+    'A|O':  { s:80, title:'信頼の鉄板コンビ',    traits:['OがリードAがサポート','役割が自然に決まる','信頼関係が深まりやすい'],
+      desc:'Oがビジョンとリーダーシップを担い、Aが丁寧なサポートと管理を行う職場での黄金コンビ。お互いの役割が自然に決まり、信頼関係を築きやすい相性です。',
+      adv:'OはAの細かい仕事に感謝を伝え、AはOの大きな判断を信頼して。感謝の言葉がこのコンビをさらに強化します。' },
+    'AB|AB':{ s:71, title:'分析力の最強タッグ',  traits:['高い戦略性と分析力','優れたアイデアが出やすい','決断が遅くなりがち'],
+      desc:'どちらも分析力が高く戦略的なAB同士は、会議での議論が活発で質の高いアイデアを生み出せます。ただし慎重な性格が重なると決断が遅くなりがちです。',
+      adv:'議論をしたら必ず期限を決めて結論を出す習慣を。分析は大切ですが実行しなければ意味がありません。' },
+    'AB|B': { s:63, title:'戦略×アイデア',       traits:['ABの戦略性×Bのアイデア','斬新な発想が生まれる','実行・継続力が弱い'],
+      desc:'ABの戦略的思考とBのユニークなアイデア力が組み合わさると、斬新なビジネスや企画が生まれる可能性を秘めた組み合わせ。ただし両者とも実行・継続が苦手な面があり外部のサポートが必要になることも。',
+      adv:'面白いアイデアを出し合った後は具体的なアクションプランを必ず作ること。実行役が必要ならば正直に求めましょう。' },
+    'AB|O': { s:86, title:'設計者と実行者',      traits:['ABが設計しOが実行','理想的な分業体制','ビジネスパートナーに最適'],
+      desc:'ABが戦略を設計しOが力強く実行する、ビジネスパートナーとして最高クラスの組み合わせ。ABの知的な分析とOの行動力・実行力が完璧に補い合います。',
+      adv:'ABはOが動きやすい形で指示を出し、OはABの細かい計画を尊重して。定期的な進捗共有で関係がより強固になります。' },
+    'B|B':  { s:50, title:'アイデアは豊富だが…', traits:['アイデアが湯水のように出る','計画性・継続性が弱い','外部サポートがあれば輝く'],
+      desc:'自由な発想を持つB同士はアイデアの宝庫。ブレインストーミングや新企画の立案では輝きます。しかし計画を立てて継続的に実行することが苦手なため、管理役の存在が必要になることも。',
+      adv:'面白いアイデアをしっかり記録しておくことが大切。計画と管理が得意なAやO型のサポートがあると最大の力を発揮できます。' },
+    'B|O':  { s:73, title:'チームに活力を生む',  traits:['Oのリーダー×Bの個性','職場を明るくする','活発なチームを作れる'],
+      desc:'Oのリーダーシップに個性豊かなBが加わることで職場全体に活力が生まれます。Bの斬新なアイデアをOが判断して実行に移す流れが生まれると、とても効果的なコンビになります。',
+      adv:'OはBの個性を活かせる裁量を与え、BはOのリーダーとしての立場を尊重して。役割を大切にすると最大のパフォーマンスが出ます。' },
+    'O|O':  { s:70, title:'パワフルな二人',      traits:['行動力が圧倒的','チームを引っ張れる','リーダー争いに注意'],
+      desc:'行動力のあるO同士は、パワフルにチームを引っ張る力があります。方向性が一致すれば最強のペアに。ただし両者ともリーダー気質が強いため方向性が違う時に対立しやすい点が注意。',
+      adv:'役割と権限を明確に決めておくことが大切。「どちらが正しいか」より「組織にとって何が良いか」という視点を持つとうまくいきます。' },
+  }
+};
+
+/* =============================================================
+   HELPERS
+   ============================================================= */
+function verdict(s) {
+  if (s >= 85) return '💘 最高の相性！';
+  if (s >= 75) return '💕 相性抜群';
+  if (s >= 62) return '✨ まずまずの相性';
+  if (s >= 48) return '💭 少し難しいかも';
+  return '⚡ 正反対な二人';
+}
+function scoreColor(s) {
+  if (s >= 85) return '#e63946';
+  if (s >= 75) return '#ff8c42';
+  if (s >= 62) return '#a855f7';
+  if (s >= 48) return '#4361ee';
+  return '#4361ee';
+}
+function hearts(s) {
+  const f = Math.round(s / 20);
+  return '♥'.repeat(Math.min(f,5)) + '♡'.repeat(Math.max(0,5-f));
+}
+function relLabel(r) {
+  return { friend:'👫 友達', romance:'💕 恋愛', work:'💼 仕事' }[r];
+}
+const OTHERS = { friend:['romance','work'], romance:['friend','work'], work:['friend','romance'] };
+
+let countTimer = null;
+function countUp(from, to, ms, el, color) {
+  clearInterval(countTimer);
+  let v = from;
+  const step = (to - from) / (ms / 16);
+  countTimer = setInterval(() => {
+    v += step;
+    if (v >= to) { v = to; clearInterval(countTimer); }
+    el.textContent = Math.round(v);
+    el.style.color = color;
+  }, 16);
+}
+
+/* =============================================================
+   PICK
+   ============================================================= */
+function pick(who, t) {
+  S[who] = t;
+  document.querySelectorAll(`#gr-${who} .tbtn`).forEach(b => {
+    b.classList.toggle('on', b.dataset.t === t);
+  });
+  if (S.you && S.partner) render();
+}
+
+function pickRel(r) {
+  S.rel = r;
+  document.querySelectorAll('.rtab').forEach(b => b.classList.toggle('on', b.dataset.r === r));
+  if (S.you && S.partner) render();
+}
+
+/* =============================================================
+   RENDER RESULT
+   ============================================================= */
+function render() {
+  const key  = getKey(S.you, S.partner);
+  const d    = DATA[S.rel][key];
+  if (!d) return;
+
+  const col  = scoreColor(d.s);
+  const area = document.getElementById('result-area');
+
+  area.innerHTML = `
+    <div class="rcard">
+      <div class="rh">
+        <div class="rh-badge">
+          <span class="rh-type" style="color:${TYPE_COLOR[S.you]}">${S.you}</span>
+          <span class="rh-name">あなた</span>
+        </div>
+        <span class="rh-x">×</span>
+        <div class="rh-badge">
+          <span class="rh-type" style="color:${TYPE_COLOR[S.partner]}">${S.partner}</span>
+          <span class="rh-name">相手</span>
+        </div>
+      </div>
+
+      <div class="score-area">
+        <div class="sring">
+          <svg width="94" height="94" viewBox="0 0 94 94">
+            <circle class="sr-bg"   cx="47" cy="47" r="38"/>
+            <circle class="sr-fill" id="sr-fill" cx="47" cy="47" r="38"/>
+          </svg>
+          <div class="sring-inner">
+            <span class="sn" id="sn">0</span>
+            <span class="sd">/ 100</span>
+          </div>
+        </div>
+        <div class="score-right">
+          <div class="verdict">${verdict(d.s)}</div>
+          <div class="hearts">${hearts(d.s)}</div>
+          <div class="rbadge">${relLabel(S.rel)}</div>
+        </div>
+      </div>
+
+      <div class="traits">
+        ${d.traits.map(t => `<span class="chip">${t}</span>`).join('')}
+      </div>
+
+      <div class="section-lbl">🔍 相性の特徴</div>
+      <div class="desc-text">${d.desc}</div>
+
+      <div class="adv-box">
+        <div class="adv-lbl">💡 アドバイス</div>
+        <div class="adv-text">${d.adv}</div>
+      </div>
+
+      <div class="all3">
+        <div class="all3-title">📊 他のシチュエーションとの比較</div>
+        <div class="mini-row" id="mini-row"></div>
+      </div>
+    </div>
+  `;
+
+  // Ring animation
+  const fill = document.getElementById('sr-fill');
+  fill.style.stroke = col;
+  // Force reflow before animating
+  void fill.offsetWidth;
+  fill.style.strokeDashoffset = CIRC * (1 - d.s / 100);
+
+  // Score count-up
+  countUp(0, d.s, 1100, document.getElementById('sn'), col);
+
+  // Mini comparison
+  const mr = document.getElementById('mini-row');
+  ['friend','romance','work'].forEach(r => {
+    const md = DATA[r][key];
+    if (!md) return;
+    const mc = document.createElement('div');
+    mc.className = `mini${r === S.rel ? ' cur' : ''}`;
+    mc.innerHTML = `
+      <span class="mini-icon">${{friend:'👫',romance:'💕',work:'💼'}[r]}</span>
+      <div class="mini-label">${{friend:'友達',romance:'恋愛',work:'仕事'}[r]}</div>
+      <div class="mini-score" style="color:${scoreColor(md.s)}">${md.s}</div>
+    `;
+    mc.onclick = () => pickRel(r);
+    mr.appendChild(mc);
+  });
+
+  // Scroll into view
+  setTimeout(() => area.scrollIntoView({ behavior:'smooth', block:'nearest' }), 80);
+}
+
+/* =============================================================
+   INIT
+   ============================================================= */
+document.querySelector('.rtab[data-r="romance"]').classList.add('on');
+</script>
+</body>
+</html>
