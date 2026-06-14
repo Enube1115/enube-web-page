@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>バイオリズム診断 🌊</title>
+  <style>
+    :root {
+      --bg:    #09090f;
+      --surf:  rgba(255,255,255,0.042);
+      --bord:  rgba(255,255,255,0.09);
+      --text:  #e8e8f8;
+      --muted: #5a5a90;
+      --phys:  #fb7185;
+      --emot:  #fbbf24;
+      --intl:  #38bdf8;
+      --comp:  #a78bfa;
+      --ok:    #4ade80;
+    }
+    *{ margin:0; padding:0; box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      background:var(--bg); color:var(--text);
+      font-family:'Segoe UI','Hiragino Kaku Gothic ProN',system-ui,sans-serif;
+      min-height:100vh; display:flex; flex-direction:column; align-items:center;
+      overflow-x:hidden;
+    }
+    canvas#bg{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+
+    .app{
+      position:relative; z-index:1;
+      width:100%; max-width:560px;
+      padding:0 14px 80px;
+      display:flex; flex-direction:column; align-items:center; gap:14px;
+    }
+
+    /* ── HEADER ── */
+    .hero{
+      width:100%; text-align:center;
+      padding:28px 0 10px; display:flex; flex-direction:column; align-items:center; gap:6px;
+    }
+    .hero-icon{ font-size:2.4rem; filter:drop-shadow(0 0 20px rgba(167,139,250,.7)); animation:waveFl 4s ease-in-out infinite; }
+    @keyframes waveFl{ 0%,100%{ transform:translateY(0) rotate(0deg); } 50%{ transform:translateY(-6px) rotate(3deg); } }
+    .hero-title{
+      font-size:clamp(1.6rem,5vw,2rem); font-weight:900; letter-spacing:-.03em;
+      background:linear-gradient(135deg,#c084fc,var(--comp),var(--intl));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .hero-sub{ font-size:.82rem; color:var(--muted); }
+
+    /* ── CARD BASE ── */
+    .card{
+      width:100%; background:var(--surf); border:1px solid var(--bord);
+      border-radius:22px; padding:22px 20px;
+      backdrop-filter:blur(18px); position:relative; overflow:hidden;
+    }
+    .card::before{
+      content:''; position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(ellipse at 20% 0%, rgba(167,139,250,.05) 0%, transparent 60%);
+    }
+    .card-title{
+      font-size:.7rem; font-weight:800; letter-spacing:.18em; text-transform:uppercase;
+      color:var(--comp); margin-bottom:14px; display:flex; align-items:center; gap:6px;
+    }
+    .card-title::after{
+      content:''; flex:1; height:1px; background:linear-gradient(90deg,rgba(167,139,250,.3),transparent);
+    }
+
+    /* ── INPUT CARD ── */
+    .input-row{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    .date-wrap{ flex:1; min-width:160px; position:relative; }
+    .date-label{
+      font-size:.68rem; color:var(--muted); letter-spacing:.1em; margin-bottom:5px;
+    }
+    input[type="date"]{
+      width:100%; background:rgba(255,255,255,.06); border:1.5px solid var(--bord);
+      border-radius:12px; padding:12px 14px;
+      color:var(--text); font-size:.95rem; font-family:inherit;
+      outline:none; -webkit-appearance:none; appearance:none;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    input[type="date"]:focus{
+      border-color:var(--comp); box-shadow:0 0 0 3px rgba(167,139,250,.18);
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator{
+      filter:invert(0.7) hue-rotate(220deg); cursor:pointer; opacity:.6;
+    }
+    .btn-analyze{
+      background:linear-gradient(135deg,var(--comp),var(--intl));
+      border:none; border-radius:12px; padding:12px 26px;
+      font-size:.95rem; font-weight:800; color:#fff; cursor:pointer;
+      box-shadow:0 8px 24px rgba(167,139,250,.32);
+      transition:transform .18s, box-shadow .18s; font-family:inherit;
+      white-space:nowrap;
+    }
+    .btn-analyze:hover{ transform:translateY(-2px); box-shadow:0 12px 32px rgba(167,139,250,.44); }
+    .btn-analyze:active{ transform:translateY(1px); }
+
+    .error-msg{ font-size:.78rem; color:var(--phys); margin-top:6px; display:none; }
+
+    /* ── RESULTS ── */
+    #results{ display:contents; }
+    #results.gone{ display:none; }
+
+    /* ── GRAPH CARD ── */
+    .graph-card{ padding-bottom:16px; }
+    .graph-meta{
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:10px;
+    }
+    .graph-period{ font-size:.72rem; color:var(--muted); }
+    .birth-info{ font-size:.72rem; color:var(--muted); }
+    canvas#bioCanvas{
+      width:100%; height:220px; display:block; border-radius:10px;
+    }
+    .graph-legend{
+      display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-top:12px;
+    }
+    .legend-item{
+      display:flex; align-items:center; gap:5px; font-size:.72rem; color:var(--muted);
+    }
+    .legend-dot{
+      width:26px; height:3px; border-radius:2px; flex-shrink:0;
+    }
+
+    /* ── TODAY CARD ── */
+    .today-top{
+      display:flex; gap:20px; align-items:center; margin-bottom:18px; flex-wrap:wrap;
+    }
+    .comp-gauge-wrap{
+      flex-shrink:0; position:relative; width:100px; height:100px;
+    }
+    .comp-gauge-wrap svg{ width:100%; height:100%; }
+    .comp-center{
+      position:absolute; inset:0; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:2px;
+    }
+    .comp-pct{
+      font-size:1.4rem; font-weight:900; line-height:1;
+      background:linear-gradient(135deg,#c084fc,var(--comp));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .comp-lbl{ font-size:.6rem; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; }
+
+    .today-msg{
+      flex:1; min-width:160px;
+    }
+    .today-msg-main{ font-size:.95rem; font-weight:700; line-height:1.6; margin-bottom:6px; }
+    .today-msg-sub{ font-size:.78rem; color:var(--muted); line-height:1.6; }
+
+    /* Cycle bars */
+    .cycle-bars{ display:flex; flex-direction:column; gap:12px; }
+    .cycle-row{ display:flex; flex-direction:column; gap:5px; }
+    .cycle-row-head{
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .cycle-name{
+      display:flex; align-items:center; gap:6px;
+      font-size:.82rem; font-weight:700;
+    }
+    .cycle-state{
+      font-size:.68rem; font-weight:800; letter-spacing:.08em;
+      padding:2px 10px; border-radius:100px;
+    }
+    .cycle-val{ font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+    /* Gradient bar with needle */
+    .bio-track{
+      width:100%; height:8px; border-radius:10px;
+      background:linear-gradient(90deg, #f87171 0%, #fbbf24 50%, #4ade80 100%);
+      position:relative;
+    }
+    .bio-needle{
+      position:absolute; top:50%;
+      width:14px; height:14px; border-radius:50%;
+      background:#fff; border:2px solid rgba(0,0,0,0.2);
+      transform:translate(-50%,-50%);
+      box-shadow:0 0 8px rgba(255,255,255,.5);
+      transition:left 1.3s cubic-bezier(0.22,1,0.36,1);
+    }
+
+    /* ── WEEK CARD ── */
+    .week-grid{
+      display:grid; grid-template-columns:repeat(7,1fr); gap:6px;
+    }
+    .week-day{
+      display:flex; flex-direction:column; align-items:center; gap:5px;
+    }
+    .wd-name{ font-size:.62rem; color:var(--muted); font-weight:700; }
+    .wd-date{ font-size:.55rem; color:var(--muted); }
+    .wd-circle{
+      width:34px; height:34px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.72rem; font-weight:900;
+      border:1.5px solid var(--bord);
+      transition:all .3s;
+    }
+    .wd-circle.today{ border-color:var(--comp); box-shadow:0 0 12px rgba(167,139,250,.4); }
+
+    .week-summary{ margin-top:12px; font-size:.8rem; color:var(--muted); line-height:1.7; }
+
+    /* ── TIMING CARD ── */
+    .timing-grid{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .timing-item{
+      display:flex; align-items:flex-start; gap:12px;
+      background:rgba(255,255,255,.04); border:1px solid var(--bord);
+      border-radius:14px; padding:12px 14px;
+      transition:border-color .2s;
+    }
+    .timing-item:hover{ border-color:rgba(167,139,250,.3); }
+    .timing-icon{ font-size:1.4rem; flex-shrink:0; line-height:1; padding-top:2px; }
+    .timing-body{ flex:1; }
+    .timing-name{ font-size:.78rem; font-weight:800; margin-bottom:2px; }
+    .timing-days{
+      font-size:1.1rem; font-weight:900;
+      background:linear-gradient(135deg,var(--comp),var(--intl));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .timing-date{ font-size:.7rem; color:var(--muted); margin-bottom:4px; }
+    .timing-advice{ font-size:.73rem; color:var(--muted); line-height:1.5; }
+    .timing-now{
+      font-size:.7rem; font-weight:800; color:var(--ok);
+      background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.25);
+      border-radius:100px; padding:2px 10px; display:inline-block; margin-bottom:4px;
+    }
+
+    .critical-days{ margin-top:10px; }
+    .critical-title{
+      font-size:.68rem; font-weight:800; color:#fb923c; letter-spacing:.1em;
+      margin-bottom:8px; display:flex; align-items:center; gap:5px;
+    }
+    .critical-list{ display:flex; gap:7px; flex-wrap:wrap; }
+    .critical-tag{
+      font-size:.7rem; color:#fb923c; font-weight:700;
+      background:rgba(251,146,60,.1); border:1px solid rgba(251,146,60,.3);
+      border-radius:8px; padding:4px 10px;
+    }
+    .no-critical{ font-size:.75rem; color:var(--muted); }
+
+    /* Reveal animation */
+    @keyframes slideUp { from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
+    .card.reveal{ animation:slideUp .5s cubic-bezier(.22,1,.36,1) both; }
+    .card:nth-child(1).reveal{ animation-delay:.0s; }
+    .card:nth-child(2).reveal{ animation-delay:.08s; }
+    .card:nth-child(3).reveal{ animation-delay:.16s; }
+    .card:nth-child(4).reveal{ animation-delay:.24s; }
+
+    @media(max-width:380px){
+      .today-top{ flex-direction:column; align-items:flex-start; }
+      .wd-circle{ width:28px; height:28px; font-size:.62rem; }
+      .wd-name{ font-size:.55rem; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="app">
+
+  <!-- Header -->
+  <div class="hero">
+    <div class="hero-icon">🌊</div>
+    <div class="hero-title">バイオリズム診断</div>
+    <div class="hero-sub">生年月日から身体・感情・知性の波を読み解く</div>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="card-title">生年月日を入力</div>
+    <div class="input-row">
+      <div class="date-wrap">
+        <div class="date-label">YOUR BIRTHDAY</div>
+        <input type="date" id="birthInput" max="">
+      </div>
+      <button class="btn-analyze" onclick="analyze()">診断する</button>
+    </div>
+    <div class="error-msg" id="errMsg">有効な生年月日を入力してください（今日より前の日付）</div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" class="gone">
+
+    <!-- Graph -->
+    <div class="card graph-card reveal">
+      <div class="card-title">バイオリズム グラフ</div>
+      <div class="graph-meta">
+        <div class="graph-period" id="graphPeriod"></div>
+        <div class="birth-info" id="birthInfo"></div>
+      </div>
+      <canvas id="bioCanvas"></canvas>
+      <div class="graph-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--phys)"></div>身体（23日周期）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--emot)"></div>感情（28日周期）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--intl)"></div>知性（33日周期）</div>
+      </div>
+    </div>
+
+    <!-- Today's condition -->
+    <div class="card reveal">
+      <div class="card-title">今日のコンディション</div>
+      <div class="today-top">
+        <div class="comp-gauge-wrap">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/>
+            <circle cx="50" cy="50" r="40" fill="none"
+                    stroke="url(#compGrd)" stroke-width="8"
+                    stroke-linecap="round"
+                    stroke-dasharray="251.3"
+                    id="compRing"
+                    style="stroke-dashoffset:251.3; transform:rotate(-90deg); transform-origin:center; transition:stroke-dashoffset 1.4s cubic-bezier(.22,1,.36,1)"/>
+            <defs>
+              <linearGradient id="compGrd" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#c084fc"/>
+                <stop offset="100%" stop-color="#38bdf8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="comp-center">
+            <div class="comp-pct" id="compPct">0%</div>
+            <div class="comp-lbl" id="compLbl">—</div>
+          </div>
+        </div>
+        <div class="today-msg">
+          <div class="today-msg-main" id="todayMain">—</div>
+          <div class="today-msg-sub" id="todaySub">—</div>
+        </div>
+      </div>
+      <div class="cycle-bars">
+        <!-- Physical -->
+        <div class="cycle-row">
+          <div class="cycle-row-head">
+            <div class="cycle-name" style="color:var(--phys)"><span>💪</span>身体リズム</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div class="cycle-val" id="physVal">0.00</div>
+              <div class="cycle-state" id="physState">—</div>
+            </div>
+          </div>
+          <div class="bio-track"><div class="bio-needle" id="physNeedle" style="left:50%"></div></div>
+        </div>
+        <!-- Emotional -->
+        <div class="cycle-row">
+          <div class="cycle-row-head">
+            <div class="cycle-name" style="color:var(--emot)"><span>💛</span>感情リズム</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div class="cycle-val" id="emotVal">0.00</div>
+              <div class="cycle-state" id="emotState">—</div>
+            </div>
+          </div>
+          <div class="bio-track"><div class="bio-needle" id="emotNeedle" style="left:50%"></div></div>
+        </div>
+        <!-- Intellectual -->
+        <div class="cycle-row">
+          <div class="cycle-row-head">
+            <div class="cycle-name" style="color:var(--intl)"><span>🧠</span>知性リズム</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div class="cycle-val" id="intlVal">0.00</div>
+              <div class="cycle-state" id="intlState">—</div>
+            </div>
+          </div>
+          <div class="bio-track"><div class="bio-needle" id="intlNeedle" style="left:50%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Week forecast -->
+    <div class="card reveal">
+      <div class="card-title">今週の運勢</div>
+      <div class="week-grid" id="weekGrid"></div>
+      <div class="week-summary" id="weekSummary"></div>
+    </div>
+
+    <!-- Best timing -->
+    <div class="card reveal">
+      <div class="card-title">ベストなタイミング</div>
+      <div class="timing-grid" id="timingGrid"></div>
+      <div class="critical-days" id="criticalDays"></div>
+    </div>
+
+  </div><!-- /results -->
+
+</div><!-- /app -->
+
+<script>
+/* ══════════════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════════ */
+const CYCLES = [
+  { key:'phys', name:'身体', icon:'💪', days:23, color:'#fb7185', r:[248,113,133] },
+  { key:'emot', name:'感情', icon:'💛', days:28, color:'#fbbf24', r:[251,191,36]  },
+  { key:'intl', name:'知性', icon:'🧠', days:33, color:'#38bdf8', r:[56,189,248]  },
+];
+const CIRC = 2 * Math.PI * 40; // ≈ 251.3
+const WEEK_JP = ['日','月','火','水','木','金','土'];
+const TODAY_OFFSET = 7;  // today is at index 7 (out of 0…27)
+const TOTAL_DAYS   = 28;
+
+/* ══════════════════════════════════════════
+   BIORHYTHM HELPERS
+══════════════════════════════════════════ */
+function bv(daysSince, cycleDays) {
+  return Math.sin(2 * Math.PI * daysSince / cycleDays);
+}
+
+function pct(v) { return Math.round((v + 1) / 2 * 100); } // -1…+1 → 0…100
+
+function stateOf(v) {
+  if (v >=  0.7) return { text:'ハイ',  bg:'rgba(74,222,128,.14)',  col:'#4ade80' };
+  if (v >=  0.3) return { text:'好調',  bg:'rgba(163,230,53,.12)',  col:'#a3e635' };
+  if (v >= -0.3) return { text:'平穏',  bg:'rgba(251,191,36,.12)', col:'#fbbf24' };
+  if (v >= -0.7) return { text:'低調',  bg:'rgba(251,146,60,.12)', col:'#fb923c' };
+  return              { text:'不調',  bg:'rgba(248,113,113,.14)', col:'#fb7185' };
+}
+
+function compState(v) {
+  if (v >= 0.5) return '絶好調！';
+  if (v >= 0.2) return '好調';
+  if (v >= -0.2) return '安定';
+  if (v >= -0.5) return 'やや低調';
+  return '要注意';
+}
+
+/* ══════════════════════════════════════════
+   TODAY MESSAGE
+══════════════════════════════════════════ */
+function todayMessage(p, e, i) {
+  const avg = (p + e + i) / 3;
+  const high = [p>=0.7,e>=0.7,i>=0.7];
+  const low  = [p<=-0.5,e<=-0.5,i<=-0.5];
+  if (high[0]&&high[1]&&high[2]) return { main:'🌟 トリプルハイ！最高の一日', sub:'身体・感情・知性すべてが好調。絶好調の一日です。大切な勝負に臨みましょう！' };
+  if (low[0]&&low[1]&&low[2])   return { main:'😴 全体的に休息が必要', sub:'すべてのリズムが低下中。無理をせず、体と心を休ませることを優先して。' };
+  if (high[0]) return { main:'💪 体力が充実しています', sub:'スポーツや体を使う作業に最適。運動・肉体的な挑戦に打ち込みましょう。' };
+  if (high[1]) return { main:'💛 感情が豊かな一日', sub:'人間関係や社交が充実。大切な人との時間や、感謝を伝えるのに最適な日です。' };
+  if (high[2]) return { main:'🧠 思考力が冴えています', sub:'記憶力・集中力が高まる日。試験・企画・重要な決断に向いています。' };
+  if (low[0])  return { main:'⚠️ 体力を温存して', sub:'体力リズムが低下中。激しい運動や無理は避け、回復に専念しましょう。' };
+  if (low[1])  return { main:'💙 感情が揺れやすい日', sub:'感情が不安定になりがち。重要な判断・口論は避け、穏やかに過ごして。' };
+  if (low[2])  return { main:'📚 集中力に注意', sub:'知性リズムが低下気味。ミスが起きやすい日なので、大切な作業はダブルチェックを。' };
+  if (avg>0.2) return { main:'✨ 全体的に好調', sub:'バランス良くコンディションは良好。積極的に行動できる日です。' };
+  if (avg<-0.2)return { main:'🌙 ゆっくりペースで', sub:'少し疲れやすい一日。無理せず、自分のペースを大切に過ごしましょう。' };
+  return { main:'🌿 安定した一日', sub:'リズムは穏やか。いつも通りのペースで着実に進みましょう。' };
+}
+
+/* ══════════════════════════════════════════
+   WEEK SUMMARY
+══════════════════════════════════════════ */
+function weekMsg(scores) {
+  const avg = scores.reduce((a,b)=>a+b,0)/7;
+  const best = scores.indexOf(Math.max(...scores));
+  const worst = scores.indexOf(Math.min(...scores));
+  const dayNames = ['月','火','水','木','金','土','日'];
+  let msg = '';
+  if (avg > 0.3) msg += '今週は全体的に好調な一週間です。';
+  else if (avg < -0.2) msg += '今週はやや低調な一週間。無理は禁物です。';
+  else msg += '今週は安定した一週間となるでしょう。';
+  msg += ` ${dayNames[best]}曜日がベストデー、${dayNames[worst]}曜日は注意が必要です。`;
+  return msg;
+}
+
+/* ══════════════════════════════════════════
+   FIND NEXT PEAK
+══════════════════════════════════════════ */
+function nextPeak(daysSince, cycleDays) {
+  let prev = bv(daysSince, cycleDays);
+  let prevPrev = bv(daysSince - 1, cycleDays);
+  for (let d = 1; d <= Math.ceil(cycleDays * 2); d++) {
+    const v    = bv(daysSince + d, cycleDays);
+    const vnxt = bv(daysSince + d + 1, cycleDays);
+    if (prev >= prevPrev && prev >= v && prev > 0.85) return d - 1;
+    prevPrev = prev; prev = v;
+  }
+  return null;
+}
+
+function findCritical(daysSince, cycleDays, look = 21) {
+  const days = [];
+  for (let d = 1; d <= look; d++) {
+    const v1 = bv(daysSince + d - 1, cycleDays);
+    const v2 = bv(daysSince + d,     cycleDays);
+    if (v1 * v2 < 0) days.push({ d, falling: v2 < 0 });
+  }
+  return days;
+}
+
+/* ══════════════════════════════════════════
+   CANVAS GRAPH
+══════════════════════════════════════════ */
+let animRAF = null;
+function drawGraph(daysSince) {
+  const canvas = document.getElementById('bioCanvas');
+  const DPR = window.devicePixelRatio || 1;
+  const cssW = canvas.parentElement.clientWidth - 40; // card padding
+  canvas.width  = cssW * DPR;
+  canvas.height = 220 * DPR;
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = '220px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+  const W = cssW, H = 220;
+  const PAD = { t:28, r:10, b:38, l:38 };
+  const pw = W - PAD.l - PAD.r;
+  const ph = H - PAD.t - PAD.b;
+  const cx = PAD.l, cy = PAD.t;
+  const RANGE = 0.88;
+  const STEPS = pw * 2; // 2 samples per CSS pixel
+
+  if (animRAF) cancelAnimationFrame(animRAF);
+  let animStart = null;
+
+  function frame(ts) {
+    if (!animStart) animStart = ts;
+    const prog = Math.min(1, (ts - animStart) / 1400);
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid & axes
+    [1, 0.5, 0, -0.5, -1].forEach(v => {
+      const y = cy + ph/2 - v * (ph/2) * RANGE;
+      ctx.beginPath();
+      ctx.moveTo(cx, y); ctx.lineTo(cx + pw, y);
+      ctx.strokeStyle = v === 0 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.05)';
+      ctx.lineWidth = v === 0 ? 1 : 0.5;
+      ctx.stroke();
+      // Y labels
+      ctx.font = `${10 * DPR / DPR}px system-ui`;
+      ctx.fillStyle = 'rgba(255,255,255,.28)';
+      ctx.textAlign = 'right';
+      ctx.fillText(v > 0 ? '+'+v : v.toString(), cx - 6, y + 3.5);
+    });
+
+    // Vertical guides every 7 days
+    for (let d = 0; d < TOTAL_DAYS; d += 7) {
+      if (d === TODAY_OFFSET) continue;
+      const x = cx + (d / (TOTAL_DAYS - 1)) * pw;
+      ctx.beginPath();
+      ctx.setLineDash([2,5]);
+      ctx.moveTo(x, cy); ctx.lineTo(x, cy + ph);
+      ctx.strokeStyle = 'rgba(255,255,255,.05)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Clip to animated portion
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cx, 0, pw * prog, H);
+    ctx.clip();
+
+    // Draw waves
+    CYCLES.forEach(cyc => {
+      const pts = [];
+      for (let i = 0; i <= STEPS; i++) {
+        const d    = (i / STEPS) * (TOTAL_DAYS - 1);
+        const v    = bv(daysSince - TODAY_OFFSET + d, cyc.days);
+        const x    = cx + (i / STEPS) * pw;
+        const y    = cy + ph/2 - v * (ph/2) * RANGE;
+        pts.push({ x, y });
+      }
+
+      // Gradient fill (wave ↔ zero)
+      const zeroY = cy + ph/2;
+      const fillGrd = ctx.createLinearGradient(0, cy, 0, cy + ph);
+      fillGrd.addColorStop(0,   `rgba(${cyc.r.join(',')},0.18)`);
+      fillGrd.addColorStop(0.5, `rgba(${cyc.r.join(',')},0.03)`);
+      fillGrd.addColorStop(1,   `rgba(${cyc.r.join(',')},0.18)`);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, zeroY);
+      pts.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.lineTo(pts[pts.length-1].x, zeroY);
+      ctx.closePath();
+      ctx.fillStyle = fillGrd;
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.strokeStyle = cyc.color;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    });
+
+    ctx.restore(); // end clip
+
+    // Today marker (always)
+    const todayX = cx + (TODAY_OFFSET / (TOTAL_DAYS - 1)) * pw;
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,255,255,.35)';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.setLineDash([5,5]);
+    ctx.moveTo(todayX, cy); ctx.lineTo(todayX, cy + ph);
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // "TODAY" label
+    ctx.font = 'bold 10px system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.textAlign = 'center';
+    ctx.fillText('TODAY', todayX, cy - 9);
+
+    // X-axis date labels
+    const now = new Date(); now.setHours(0,0,0,0);
+    [0, 7, 14, 21, 27].forEach(d => {
+      const dt = new Date(now);
+      dt.setDate(now.getDate() + d - TODAY_OFFSET);
+      const x = cx + (d / (TOTAL_DAYS - 1)) * pw;
+      ctx.font = '9.5px system-ui';
+      ctx.fillStyle = d === TODAY_OFFSET ? 'rgba(255,255,255,.65)' : 'rgba(255,255,255,.28)';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${dt.getMonth()+1}/${dt.getDate()}`, x, cy + ph + 20);
+    });
+
+    if (prog < 1) animRAF = requestAnimationFrame(frame);
+  }
+
+  animRAF = requestAnimationFrame(frame);
+}
+
+/* ══════════════════════════════════════════
+   MAIN ANALYZE
+══════════════════════════════════════════ */
+function analyze() {
+  const input = document.getElementById('birthInput');
+  const err   = document.getElementById('errMsg');
+  const val   = input.value;
+
+  if (!val) { err.style.display = 'block'; return; }
+  const birth = new Date(val + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (isNaN(birth) || birth >= today) { err.style.display = 'block'; return; }
+  err.style.display = 'none';
+
+  const days = Math.floor((today - birth) / 86400000);
+  const p = bv(days, 23), e = bv(days, 28), i = bv(days, 33);
+  const comp = (p + e + i) / 3;
+
+  /* ── Graph ── */
+  const startDate = new Date(today); startDate.setDate(today.getDate() - TODAY_OFFSET);
+  const endDate   = new Date(today); endDate.setDate(today.getDate() + (TOTAL_DAYS - 1 - TODAY_OFFSET));
+  document.getElementById('graphPeriod').textContent =
+    `${startDate.getMonth()+1}/${startDate.getDate()} 〜 ${endDate.getMonth()+1}/${endDate.getDate()}`;
+  document.getElementById('birthInfo').textContent =
+    `生まれて ${days.toLocaleString()} 日目`;
+
+  setTimeout(() => drawGraph(days), 50); // after reveal
+
+  /* ── Composite ring ── */
+  const compP = pct(comp);
+  const offset = CIRC * (1 - compP / 100);
+  setTimeout(() => {
+    document.getElementById('compRing').style.strokeDashoffset = offset;
+  }, 300);
+  document.getElementById('compPct').textContent = compP + '%';
+  document.getElementById('compLbl').textContent = compState(comp);
+
+  /* ── Today message ── */
+  const msg = todayMessage(p, e, i);
+  document.getElementById('todayMain').textContent = msg.main;
+  document.getElementById('todaySub').textContent  = msg.sub;
+
+  /* ── Cycle bars ── */
+  const needlePos = v => ((v + 1) / 2 * 100).toFixed(1) + '%';
+  setTimeout(() => {
+    document.getElementById('physNeedle').style.left = needlePos(p);
+    document.getElementById('emotNeedle').style.left = needlePos(e);
+    document.getElementById('intlNeedle').style.left = needlePos(i);
+  }, 400);
+
+  [[p,'phys'],[e,'emot'],[i,'intl']].forEach(([v,key]) => {
+    const s = stateOf(v);
+    document.getElementById(key+'Val').textContent = (v >= 0 ? '+' : '') + v.toFixed(2);
+    const stEl = document.getElementById(key+'State');
+    stEl.textContent = s.text;
+    stEl.style.background = s.bg;
+    stEl.style.color = s.col;
+  });
+
+  /* ── Week grid ── */
+  const wg = document.getElementById('weekGrid');
+  wg.innerHTML = '';
+  const now2 = new Date(today);
+  const dow = today.getDay(); // 0=Sun
+  // Week: Mon→Sun
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  const weekScores = [];
+
+  for (let d = 0; d < 7; d++) {
+    const dt = new Date(weekStart);
+    dt.setDate(weekStart.getDate() + d);
+    const diff = Math.floor((dt - today) / 86400000);
+    const dSince = days + diff;
+    const wp = bv(dSince,23), we = bv(dSince,28), wi = bv(dSince,33);
+    const wComp = (wp + we + wi) / 3;
+    weekScores.push(wComp);
+    const isToday = diff === 0;
+
+    // Color by composite
+    let bg, textC, label;
+    if (wComp >= 0.45)       { bg='rgba(74,222,128,.18)'; textC='#4ade80'; label='◎'; }
+    else if (wComp >= 0.1)   { bg='rgba(163,230,53,.14)'; textC='#a3e635'; label='○'; }
+    else if (wComp >= -0.1)  { bg='rgba(251,191,36,.13)'; textC='#fbbf24'; label='△'; }
+    else if (wComp >= -0.45) { bg='rgba(251,146,60,.13)'; textC='#fb923c'; label='▽'; }
+    else                     { bg='rgba(248,113,113,.16)';textC='#f87171'; label='✕'; }
+
+    const cell = document.createElement('div');
+    cell.className = 'week-day';
+    cell.innerHTML = `
+      <div class="wd-name" style="color:${isToday?'#a78bfa':''}">${['月','火','水','木','金','土','日'][d]}</div>
+      <div class="wd-circle${isToday?' today':''}" style="background:${bg};color:${textC}">${label}</div>
+      <div class="wd-date">${dt.getDate()}</div>
+    `;
+    wg.appendChild(cell);
+  }
+  document.getElementById('weekSummary').textContent = weekMsg(weekScores);
+
+  /* ── Timing section ── */
+  const tg = document.getElementById('timingGrid');
+  tg.innerHTML = '';
+
+  const adviceMap = {
+    phys: { advice:'スポーツ・体力仕事・アウトドア活動に最適',    icon:'💪' },
+    emot: { advice:'人間関係・恋愛・コミュニケーションに最適',    icon:'💛' },
+    intl: { advice:'試験・企画・重要な意思決定・学習に最適',      icon:'🧠' },
+  };
+
+  [{ key:'phys',days:23 },{ key:'emot',days:28 },{ key:'intl',days:33 }].forEach(({ key, days:cd }) => {
+    const curVal = key==='phys'?p:key==='emot'?e:i;
+    const cyc    = CYCLES.find(c=>c.key===key);
+    const item   = document.createElement('div');
+    item.className = 'timing-item';
+    const info = adviceMap[key];
+
+    if (curVal >= 0.85) {
+      // Currently at peak
+      item.innerHTML = `
+        <div class="timing-icon">${info.icon}</div>
+        <div class="timing-body">
+          <div class="timing-name" style="color:${cyc.color}">${cyc.name}リズム</div>
+          <div class="timing-now">🌟 今がピーク！</div>
+          <div class="timing-advice">${info.advice}</div>
+        </div>`;
+    } else {
+      const np = nextPeak(days, cd);
+      const peakDate = np != null ? (() => {
+        const d2 = new Date(today); d2.setDate(today.getDate() + np);
+        return `${d2.getMonth()+1}月${d2.getDate()}日（${WEEK_JP[d2.getDay()]}）`;
+      })() : '—';
+      item.innerHTML = `
+        <div class="timing-icon">${info.icon}</div>
+        <div class="timing-body">
+          <div class="timing-name" style="color:${cyc.color}">${cyc.name}リズム</div>
+          <div class="timing-days">${np != null ? np+'日後' : '—'}</div>
+          <div class="timing-date">${peakDate}がピーク</div>
+          <div class="timing-advice">${info.advice}</div>
+        </div>`;
+    }
+    tg.appendChild(item);
+  });
+
+  /* ── Critical days ── */
+  const cd = document.getElementById('criticalDays');
+  const allCritical = [];
+  [{ key:'phys',days:23 },{ key:'emot',days:28 },{ key:'intl',days:33 }].forEach(({ key, days:cd2 }) => {
+    const cyc = CYCLES.find(c=>c.key===key);
+    findCritical(days, cd2, 21).forEach(c => {
+      if (c.falling && c.d > 0) {
+        const d2 = new Date(today); d2.setDate(today.getDate() + c.d);
+        allCritical.push({
+          label: `${cyc.name} ${c.d}日後（${d2.getMonth()+1}/${d2.getDate()}）`,
+        });
+      }
+    });
+  });
+
+  if (allCritical.length > 0) {
+    cd.innerHTML = `
+      <div class="critical-title">⚠️ 要注意日（バイオリズムが低下に転じる日）</div>
+      <div class="critical-list">${allCritical.map(c=>`<div class="critical-tag">${c.label}</div>`).join('')}</div>
+    `;
+  } else {
+    cd.innerHTML = `<div class="critical-title">✅ 直近3週間の要注意日</div><div class="no-critical">直近3週間は大きな要注意日はありません。</div>`;
+  }
+
+  /* ── Reveal ── */
+  const res = document.getElementById('results');
+  res.classList.remove('gone');
+  // Re-trigger reveal animations
+  res.querySelectorAll('.card').forEach((c,i) => {
+    c.classList.remove('reveal');
+    void c.offsetWidth;
+    c.style.animationDelay = (i * 0.08) + 's';
+    c.classList.add('reveal');
+  });
+
+  setTimeout(() => res.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+/* ══════════════════════════════════════════
+   INPUT INIT
+══════════════════════════════════════════ */
+const todayStr = new Date().toISOString().split('T')[0];
+document.getElementById('birthInput').max = todayStr;
+
+/* ══════════════════════════════════════════
+   CANVAS BACKGROUND
+══════════════════════════════════════════ */
+(function () {
+  const cvs = document.getElementById('bg');
+  const ctx = cvs.getContext('2d');
+  function resize() { cvs.width = innerWidth; cvs.height = innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+
+  const PTS = Array.from({ length: 55 }, () => ({
+    x:  Math.random() * innerWidth,
+    y:  Math.random() * innerHeight,
+    r:  Math.random() * 1.4 + 0.3,
+    vy: -(Math.random() * 0.25 + 0.07),
+    vx: (Math.random() - 0.5) * 0.1,
+    a:  Math.random() * 0.2 + 0.04,
+    c:  ['#a78bfa','#38bdf8','#fb7185'][Math.floor(Math.random()*3)],
+  }));
+
+  (function loop() {
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    PTS.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.y < -4) { p.y = cvs.height + 4; p.x = Math.random() * cvs.width; }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.c; ctx.globalAlpha = p.a; ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* Redraw graph on window resize */
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const input = document.getElementById('birthInput').value;
+    if (!input || document.getElementById('results').classList.contains('gone')) return;
+    const birth = new Date(input + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const days = Math.floor((today - birth) / 86400000);
+    drawGraph(days);
+  }, 200);
+});
+</script>
+</body>
+</html>
