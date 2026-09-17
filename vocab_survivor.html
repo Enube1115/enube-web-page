@@ -1,0 +1,2491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Vocab Survivor</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: #0a0a12; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    color: #fff; user-select: none;
+  }
+  #game { display: block; width: 100%; height: 100%; background: #12121c; }
+
+  #hud {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    left: 12px; right: 78px; max-width: 480px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 10px;
+    pointer-events: none; z-index: 10;
+  }
+  .bar-row { display: flex; align-items: center; gap: 8px; }
+  .bar-label { font-size: 12px; font-weight: 700; width: 34px; text-shadow: 0 1px 2px #000; flex-shrink: 0; }
+  .bar-track {
+    flex: 1; height: 14px; border-radius: 7px; background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.25); overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 7px 0 0 7px; transition: width 0.15s ease-out; }
+  #hpFill { background: linear-gradient(90deg, #ff4d5e, #ff8a5c); }
+  #xpFill { background: linear-gradient(90deg, #4dd0ff, #7c5cff); }
+  .bar-text { font-size: 11px; min-width: 52px; text-align: right; text-shadow: 0 1px 2px #000; flex-shrink: 0; }
+  #topInfo {
+    display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+    text-shadow: 0 1px 2px #000; gap: 8px;
+  }
+  #topInfo b { font-size: 15px; color: #ffe066; }
+
+  #joyZone {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: 58%; z-index: 5;
+  }
+  .joy-ring {
+    position: absolute; width: 108px; height: 108px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.06);
+    transform: translate(-50%, -50%); display: none;
+  }
+  .joy-knob {
+    position: absolute; width: 46px; height: 46px; border-radius: 50%;
+    background: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.5);
+    transform: translate(-50%, -50%); display: none;
+  }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 20;
+    background: rgba(5,5,15,0.82);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+  .overlay h1 { font-size: 26px; margin: 0 0 4px; color: #ffe066; text-shadow: 0 2px 4px #000; }
+  .overlay p { margin: 4px 0 18px; font-size: 14px; opacity: 0.85; }
+
+  #cardList { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 340px; }
+  .card {
+    background: linear-gradient(160deg, #23233a, #14141f);
+    border: 1px solid rgba(255,255,255,0.18); border-radius: 14px;
+    padding: 14px 16px; text-align: left; cursor: pointer;
+  }
+  .card:active { background: linear-gradient(160deg, #33335a, #1c1c2c); }
+  .card .icon { font-size: 22px; margin-right: 8px; }
+  .card .title { font-size: 16px; font-weight: 700; color: #7cf7c9; }
+  .card .desc { font-size: 12px; opacity: 0.8; margin-top: 4px; }
+
+  #resumeBtn, #pauseRestartBtn, #pauseHomeBtn, #gameOverHomeBtn {
+    margin-top: 8px; padding: 12px 32px; font-size: 16px; font-weight: 700;
+    border: none; border-radius: 24px; background: #ff8a5c; color: #1a1a1a;
+  }
+  #resumeBtn:active, #pauseRestartBtn:active,
+  #pauseHomeBtn:active, #gameOverHomeBtn:active { background: #ffab85; }
+  #resumeBtn { background: #4dd0ff; margin-top: 0; }
+  #resumeBtn:active { background: #7ce0ff; }
+  #pauseRestartBtn, #pauseHomeBtn, #gameOverHomeBtn {
+    background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3);
+  }
+  #pauseRestartBtn:active, #pauseHomeBtn:active, #gameOverHomeBtn:active { background: rgba(255,255,255,0.25); }
+  #pauseOverlay .btnRow { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 280px; }
+
+  .big-retry-btn {
+    font-size: 22px; font-weight: 800; padding: 18px 56px; margin-bottom: 18px;
+    border: none; border-radius: 28px; background: #ff8a5c; color: #1a1a1a;
+  }
+  .big-retry-btn:active { background: #ffab85; }
+
+  #pauseBtn {
+    position: fixed; z-index: 15;
+    top: calc(env(safe-area-inset-top, 0px) + 10px); right: 12px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
+  #pauseBtn:active { background: rgba(0,0,0,0.65); }
+
+  #skillBar { display: flex; flex-wrap: wrap; gap: 4px; }
+  .skill-pill {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.15);
+    padding: 2px 7px; border-radius: 10px; font-size: 10px; opacity: 0.85;
+    text-shadow: 0 1px 2px #000;
+  }
+
+  .skill-list { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 340px;
+    margin-bottom: 16px; max-height: 40vh; overflow-y: auto; }
+  .skill-list .empty { font-size: 12px; opacity: 0.6; }
+  .skill-row {
+    display: flex; align-items: center; gap: 10px; text-align: left;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 8px 10px;
+  }
+  .skill-row .icon { font-size: 18px; }
+  .skill-row .info { flex: 1; }
+  .skill-row .name { font-size: 13px; font-weight: 700; color: #7cf7c9; }
+  .skill-row .desc { font-size: 10px; opacity: 0.65; margin-top: 1px; }
+  .skill-row .effect { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+  .skill-row .stack {
+    font-size: 12px; font-weight: 700; background: rgba(255,224,102,0.2);
+    color: #ffe066; padding: 2px 8px; border-radius: 10px;
+  }
+
+  .card { position: relative; }
+  .card .owned-badge {
+    position: absolute; top: 10px; right: 12px; font-size: 11px; font-weight: 700;
+    color: #ffe066; background: rgba(0,0,0,0.35); padding: 2px 8px; border-radius: 10px;
+  }
+  .card.selected { border-color: #4dd0ff; box-shadow: 0 0 0 2px rgba(77,208,255,0.6); }
+
+  .select-group { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .select-btn {
+    padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff;
+  }
+  .select-btn.selected { background: #4dd0ff; color: #0a0a12; border-color: #4dd0ff; }
+  .select-btn:disabled { opacity: 0.35; }
+  .home-highscore {
+    font-size: 13px; opacity: 0.9; margin: 4px 0 20px; line-height: 1.6;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 10px 16px;
+  }
+  #startBtn { font-size: 20px; padding: 16px 48px; }
+
+  #quizOverlay { padding-top: 16px; padding-bottom: 16px; }
+  .quiz-content {
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%; max-width: 480px; gap: 14px;
+  }
+  .quiz-content p { margin: 0; font-size: 14px; opacity: 0.85; }
+  .quiz-meaning { font-size: 26px; font-weight: 700; color: #ffe066; margin: 0; text-shadow: 0 2px 4px #000; }
+  .quiz-spelling { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; }
+  .letter-box {
+    width: 34px; height: 40px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; border-radius: 8px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+  }
+  .letter-box.blank { border: 2px dashed rgba(255,224,102,0.6); color: #ffe066; }
+  .letter-box.filled { border-style: solid; background: rgba(255,224,102,0.18); cursor: pointer; }
+  .quiz-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0; max-width: 320px; }
+  .tile-btn {
+    width: 44px; height: 44px; border-radius: 10px; font-size: 18px; font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.25); background: linear-gradient(160deg, #33335a, #1c1c2c); color: #fff;
+  }
+  .tile-btn:active { background: linear-gradient(160deg, #45457a, #26263a); }
+  .tile-btn.used, .tile-btn:disabled { visibility: hidden; }
+  .quiz-result { min-height: 20px; font-size: 14px; font-weight: 700; color: #7cf7c9; margin: 0; }
+  #pausePackName { font-size: 12px; opacity: 0.7; margin-top: -10px; }
+
+  .quiz-timer-num {
+    font-size: 32px; font-weight: 800; color: #ffe066; font-variant-numeric: tabular-nums;
+    margin: 0; text-shadow: 0 2px 4px #000;
+  }
+  .quiz-timer-num.danger { color: #ff4d5e; }
+  #quizTimerFill.danger { background: linear-gradient(90deg, #ff4d5e, #ff1f3d) !important; }
+
+  .ui-lang-toggle {
+    position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 14px;
+    display: flex; gap: 4px;
+  }
+  .ui-lang-toggle button {
+    padding: 6px 10px; font-size: 11px; font-weight: 700; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff;
+  }
+  .ui-lang-toggle button.selected { background: #ffe066; color: #1a1a1a; border-color: #ffe066; }
+
+  #evolutionOverlay { background: radial-gradient(circle, rgba(255,224,102,0.3), rgba(5,5,15,0.92)); }
+  .evolution-icon {
+    font-size: 72px; margin-bottom: 8px; animation: evoPulse 0.6s ease-out;
+    filter: drop-shadow(0 0 24px #ffe066);
+  }
+  #evolutionOverlay h1 { animation: evoPulse 0.6s ease-out; }
+  @keyframes evoPulse {
+    0% { transform: scale(0.4); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  #encircleWarning {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 72px); left: 50%;
+    transform: translateX(-50%); z-index: 12; text-align: center;
+    background: rgba(255,40,60,0.85); color: #fff; font-weight: 800; font-size: 14px;
+    padding: 10px 20px; border-radius: 20px;
+    animation: warnPulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes warnPulse { from { opacity: 1; } to { opacity: 0.55; } }
+
+  #bossWarning {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 110px); left: 50%;
+    transform: translateX(-50%); z-index: 12; text-align: center;
+    background: rgba(180,20,80,0.9); color: #fff; font-weight: 800; font-size: 14px;
+    padding: 10px 20px; border-radius: 20px;
+    animation: warnPulse 0.6s ease-in-out infinite alternate;
+  }
+
+  #bossHpBar {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 50%;
+    transform: translateX(-50%); width: min(90vw, 480px); z-index: 11; pointer-events: none;
+  }
+  .boss-hp-label {
+    text-align: center; font-size: 11px; font-weight: 800; color: #ffe066;
+    text-shadow: 0 1px 3px #000; margin-bottom: 3px;
+  }
+  .boss-hp-track { height: 10px; }
+
+  #pendingLevelUpsLabel {
+    font-size: 11px; font-weight: 700; color: #ffe066; text-shadow: 0 1px 2px #000;
+    background: rgba(0,0,0,0.35); border-radius: 10px; padding: 2px 8px; align-self: flex-start;
+  }
+
+  .sound-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; width: 100%; max-width: 280px; }
+  .mute-btn {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); color: #fff; font-size: 17px;
+  }
+  .mute-btn:active { background: rgba(255,255,255,0.2); }
+  .volume-slider { flex: 1; accent-color: #4dd0ff; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<button id="pauseBtn">❚❚</button>
+
+<div id="hud">
+  <div id="topInfo">
+    <span><span data-i18n="survivalTimeLabel"></span> <b id="timeText">00:00</b></span>
+    <span><span data-i18n="levelLabel"></span><b id="levelText">1</b></span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label" data-i18n="hpLabel"></span>
+    <div class="bar-track"><div class="bar-fill" id="hpFill" style="width:100%"></div></div>
+    <span class="bar-text" id="hpText">100/100</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label" data-i18n="xpLabel"></span>
+    <div class="bar-track"><div class="bar-fill" id="xpFill" style="width:0%"></div></div>
+    <span class="bar-text" id="xpText">0/10</span>
+  </div>
+  <div id="skillBar"></div>
+  <div id="pendingLevelUpsLabel" class="hidden"></div>
+</div>
+
+<div id="bossHpBar" class="hidden">
+  <div class="boss-hp-label" id="bossHpLabel"></div>
+  <div class="bar-track boss-hp-track"><div class="bar-fill" id="bossHpFill" style="width:100%;background:linear-gradient(90deg,#c04dff,#ff2d55);"></div></div>
+</div>
+
+<div id="bossWarning" class="hidden"></div>
+
+<div id="joyZone">
+  <div class="joy-ring" id="joyRing"></div>
+  <div class="joy-knob" id="joyKnob"></div>
+</div>
+
+<div class="overlay" id="homeOverlay">
+  <div class="ui-lang-toggle" id="uiLangToggle">
+    <button data-lang="ja">日本語</button>
+    <button data-lang="en">English</button>
+  </div>
+  <h1 data-i18n="appTitle">Vocab Survivor</h1>
+  <p data-i18n="homeSubtitle"></p>
+  <div class="select-group" id="langGroup"></div>
+  <div class="select-group" id="diffGroup"></div>
+  <div class="select-group" id="modeGroup"></div>
+  <div class="select-group" id="stageGroup"></div>
+  <div class="home-highscore" id="homeHighScore"></div>
+  <div class="sound-row">
+    <button id="homeMuteBtn" class="mute-btn">🔊</button>
+    <input type="range" id="homeVolumeSlider" class="volume-slider" min="0" max="100" value="30">
+  </div>
+  <button id="startBtn" data-i18n="startButton"></button>
+</div>
+
+<div class="overlay hidden" id="quizOverlay">
+  <div class="quiz-content">
+    <p data-i18n="quizPrompt"></p>
+    <div class="quiz-meaning" id="quizMeaning"></div>
+    <div class="quiz-spelling" id="quizSpelling"></div>
+    <div class="quiz-timer-num" id="quizTimerNum">5.0</div>
+    <div class="bar-track" style="width:100%;max-width:280px;">
+      <div class="bar-fill" id="quizTimerFill" style="width:100%;background:linear-gradient(90deg,#ffe066,#ff8a5c);"></div>
+    </div>
+    <div class="quiz-tiles" id="quizTiles"></div>
+    <p class="quiz-result" id="quizResult"></p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="evolutionOverlay">
+  <div class="evolution-icon" id="evolutionIcon">💥</div>
+  <h1 id="evolutionTitle"></h1>
+  <p id="evolutionDesc"></p>
+</div>
+
+<div class="overlay hidden" id="bossRewardOverlay">
+  <h1 data-i18n="bossRewardTitle"></h1>
+  <div id="bossRewardList" style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;"></div>
+</div>
+
+<div class="overlay hidden" id="stageClearOverlay">
+  <h1 data-i18n="stageClearTitle"></h1>
+  <p id="stageClearStats">-</p>
+  <div class="skill-list" id="stageClearSkillList"></div>
+  <button id="stageClearHomeBtn" data-i18n="homeButton"></button>
+</div>
+
+<div id="encircleWarning" class="hidden" data-i18n="encircleWarningText"></div>
+
+<div class="overlay hidden" id="pauseOverlay">
+  <h1 data-i18n="pauseTitle"></h1>
+  <p id="pausePackName">-</p>
+  <p data-i18n="acquiredSkillsLabel"></p>
+  <div class="skill-list" id="pauseSkillList"></div>
+  <div class="sound-row">
+    <button id="pauseMuteBtn" class="mute-btn">🔊</button>
+    <input type="range" id="pauseVolumeSlider" class="volume-slider" min="0" max="100" value="30">
+  </div>
+  <div class="btnRow">
+    <button id="resumeBtn" data-i18n="resumeButton"></button>
+    <button id="pauseRestartBtn" data-i18n="restartButton"></button>
+    <button id="pauseHomeBtn" data-i18n="homeButton"></button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="gameOverOverlay">
+  <button id="retryBtn" class="big-retry-btn" data-i18n="retryButton"></button>
+  <h1 data-i18n="gameOverTitle"></h1>
+  <p id="gameOverStats">-</p>
+  <div class="skill-list" id="gameOverSkillList"></div>
+  <button id="gameOverHomeBtn" data-i18n="homeButton"></button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- i18n ----------
+  const I18N = {
+    ja: {
+      appTitle: 'Vocab Survivor',
+      homeSubtitle: '言語と難易度を選んでスタート',
+      startButton: 'ゲーム開始',
+      langJapanese: '日本語',
+      langEnglish: 'English',
+      difficulty1: '初級',
+      difficulty2: '中級',
+      difficulty3: '上級',
+      highScoreWithPack: 'ハイスコア（{pack}）',
+      bestSurvival: '最高生存時間: {time}',
+      bestLevel: '最高到達レベル: Lv.{level}',
+      survivalTimeLabel: '生存時間',
+      levelLabel: 'Lv.',
+      hpLabel: 'HP',
+      xpLabel: 'XP',
+      pauseAria: '一時停止',
+      pauseTitle: '一時停止中',
+      packPrefix: 'パック: ',
+      acquiredSkillsLabel: '取得済みスキル',
+      resumeButton: '再開',
+      restartButton: '最初からやり直す',
+      homeButton: 'ホームへ戻る',
+      gameOverTitle: 'ゲームオーバー',
+      retryButton: 'もう一度',
+      reviewPendingLabel: '復習待ちの単語: {count}語',
+      modeStage: 'ステージ',
+      modeEndless: 'エンドレス',
+      stageLabel: 'ステージ {n}',
+      bossName_mini: '小ボス',
+      bossName_mid: '中ボス',
+      bossName_big: '大ボス',
+      bossWarningText: '⚠️ {name} 出現！',
+      bossRewardTitle: 'ボス撃破！ 能力を選択',
+      stageClearTitle: 'ステージクリア！',
+      stageClearTimeKills: '生存時間: {time} ／ 撃破数: {kills}',
+      stageClearAccuracy: 'クイズ正答率: {pct}%',
+      pendingLevelUpsLabel: 'レベルアップ保留 x{count}',
+      emptySkillList: 'まだ強化を取得していません',
+      quizPrompt: 'この単語は？',
+      quizCorrectPrefix: '正解！ ',
+      quizWrongPrefix: '不正解… ',
+      quizResultBig: '（大）',
+      quizResultSmall: '（小）',
+      skill_atk_title: '攻撃力アップ',
+      skill_atk_short: '攻撃',
+      skill_atk_desc: '弾のダメージを上げる',
+      skill_cnt_title: '弾の数アップ',
+      skill_cnt_short: '弾数',
+      skill_cnt_desc: '同時に発射する弾の数を増やす',
+      skill_atkspd_title: '攻撃速度アップ',
+      skill_atkspd_short: '速射',
+      skill_atkspd_desc: '弾を発射する間隔を短くする',
+      skill_pierce_title: '貫通アップ',
+      skill_pierce_short: '貫通',
+      skill_pierce_desc: '弾が敵を貫通する数を増やす',
+      skill_bspd_title: '弾速アップ',
+      skill_bspd_short: '弾速',
+      skill_bspd_desc: '弾の飛ぶ速さを上げる',
+      skill_aura_title: 'オーラ',
+      skill_aura_short: 'オーラ',
+      skill_aura_desc: 'プレイヤーの周囲に継続ダメージを与える',
+      skill_burst_title: '爆散',
+      skill_burst_short: '爆散',
+      skill_burst_desc: '敵を倒したときに小さな爆発を起こす',
+      skill_ricochet_title: '跳弾',
+      skill_ricochet_short: '跳弾',
+      skill_ricochet_desc: '弾が別の敵に跳ねるようになる',
+      skill_maxhp_title: '最大HPアップ',
+      skill_maxhp_short: 'HP',
+      skill_maxhp_desc: '最大HPを増やす',
+      skill_invuln_title: '無敵時間アップ',
+      skill_invuln_short: '無敵',
+      skill_invuln_desc: '被弾後の無敵時間を延ばす',
+      skill_def_title: '防御力アップ',
+      skill_def_short: '防御',
+      skill_def_desc: '受けるダメージを減らす',
+      skill_spd_title: '移動速度アップ',
+      skill_spd_short: '速度',
+      skill_spd_desc: '移動速度を上げる',
+      skill_pickup_title: 'XP回収範囲アップ',
+      skill_pickup_short: '回収',
+      skill_pickup_desc: '経験値ジェムの回収範囲を広げる',
+      skill_qtime_title: '制限時間+1秒',
+      skill_qtime_short: '制限+',
+      skill_qtime_desc: 'クイズの制限時間を1秒増やす',
+      skill_qblank_title: '伏せ字-1',
+      skill_qblank_short: '伏字-',
+      skill_qblank_desc: 'クイズの伏せ字を1つ減らす',
+      skill_qpenalty_title: '弱体化軽減',
+      skill_qpenalty_short: '軽減',
+      skill_qpenalty_desc: '誤答時に得られる効果の弱体化を軽減する',
+      skill_qbonus_title: '正解時XPボーナス',
+      skill_qbonus_short: 'XP+',
+      skill_qbonus_desc: 'クイズに正解すると経験値を追加で得る',
+      effectAtk: '攻撃力倍率 x{mult} (基礎ダメージ {dmg})',
+      effectCnt: '同時発射数 {count}本',
+      effectAtkspd: '発射間隔 {interval}秒',
+      effectPierce: '貫通数 {count}',
+      effectBspd: '弾速 {speed} px/s',
+      effectAura: 'DPS {dps} / 範囲 {radius}px',
+      effectBurst: '爆発ダメージ {dmg} / 範囲 {radius}px',
+      effectRicochet: '跳ね返り回数 {count}',
+      effectMaxhp: '最大HP {hp}',
+      effectInvuln: '無敵時間 {time}秒',
+      effectDef: 'ダメージ軽減 {pct}%',
+      effectSpd: '移動速度倍率 x{mult} ({px} px/s)',
+      effectPickup: 'XP回収範囲 {radius}px',
+      effectQtime: '制限時間 +{sec}秒',
+      effectQblank: '伏せ字 -{count}',
+      effectQpenalty: '弱体化軽減 {pct}%',
+      effectQbonus: '正解時 +{xp} XP',
+      evo_bombardment_title: '爆撃',
+      evo_bombardment_desc: '弾の着弾時に大爆発を起こす',
+      evo_barrage_title: '乱舞',
+      evo_barrage_desc: '全方位に弾を発射するようになる',
+      evo_sprint_title: '疾走',
+      evo_sprint_desc: '移動中、オーラのダメージが強化される',
+      encircleWarningText: '⚠️ 包囲されている！ 突破口を探せ！',
+    },
+    en: {
+      appTitle: 'Vocab Survivor',
+      homeSubtitle: 'Choose a language and difficulty to start',
+      startButton: 'Start Game',
+      langJapanese: 'Japanese',
+      langEnglish: 'English',
+      difficulty1: 'Beginner',
+      difficulty2: 'Intermediate',
+      difficulty3: 'Advanced',
+      highScoreWithPack: 'High Score ({pack})',
+      bestSurvival: 'Best Survival Time: {time}',
+      bestLevel: 'Best Level: Lv.{level}',
+      survivalTimeLabel: 'Survival Time',
+      levelLabel: 'Lv.',
+      hpLabel: 'HP',
+      xpLabel: 'XP',
+      pauseAria: 'Pause',
+      pauseTitle: 'Paused',
+      packPrefix: 'Pack: ',
+      acquiredSkillsLabel: 'Acquired Skills',
+      resumeButton: 'Resume',
+      restartButton: 'Restart',
+      homeButton: 'Back to Home',
+      gameOverTitle: 'Game Over',
+      retryButton: 'Retry',
+      reviewPendingLabel: 'Words to review: {count}',
+      modeStage: 'Stage',
+      modeEndless: 'Endless',
+      stageLabel: 'Stage {n}',
+      bossName_mini: 'Mini-Boss',
+      bossName_mid: 'Mid-Boss',
+      bossName_big: 'Big Boss',
+      bossWarningText: '⚠️ {name} appeared!',
+      bossRewardTitle: 'Boss Defeated! Choose an Ability',
+      stageClearTitle: 'Stage Clear!',
+      stageClearTimeKills: 'Time: {time} / Kills: {kills}',
+      stageClearAccuracy: 'Quiz Accuracy: {pct}%',
+      pendingLevelUpsLabel: 'Level-up pending x{count}',
+      emptySkillList: 'No upgrades acquired yet',
+      quizPrompt: 'What is this word?',
+      quizCorrectPrefix: 'Correct! ',
+      quizWrongPrefix: 'Incorrect… ',
+      quizResultBig: ' (Major)',
+      quizResultSmall: ' (Minor)',
+      skill_atk_title: 'Attack Up',
+      skill_atk_short: 'ATK',
+      skill_atk_desc: 'Increases bullet damage',
+      skill_cnt_title: 'Bullet Count Up',
+      skill_cnt_short: 'Bullets',
+      skill_cnt_desc: 'Increases the number of bullets fired at once',
+      skill_atkspd_title: 'Attack Speed Up',
+      skill_atkspd_short: 'RoF',
+      skill_atkspd_desc: 'Shortens the interval between shots',
+      skill_pierce_title: 'Pierce Up',
+      skill_pierce_short: 'Pierce',
+      skill_pierce_desc: 'Lets bullets pass through more enemies',
+      skill_bspd_title: 'Bullet Speed Up',
+      skill_bspd_short: 'BSpd',
+      skill_bspd_desc: 'Increases bullet travel speed',
+      skill_aura_title: 'Aura',
+      skill_aura_short: 'Aura',
+      skill_aura_desc: 'Deals continuous damage to enemies near you',
+      skill_burst_title: 'Burst',
+      skill_burst_short: 'Burst',
+      skill_burst_desc: 'Causes a small explosion when you defeat an enemy',
+      skill_ricochet_title: 'Ricochet',
+      skill_ricochet_short: 'Bounce',
+      skill_ricochet_desc: 'Lets bullets bounce to another enemy',
+      skill_maxhp_title: 'Max HP Up',
+      skill_maxhp_short: 'HP',
+      skill_maxhp_desc: 'Increases maximum HP',
+      skill_invuln_title: 'Invulnerability Up',
+      skill_invuln_short: 'Invuln',
+      skill_invuln_desc: 'Extends invincibility time after being hit',
+      skill_def_title: 'Defense Up',
+      skill_def_short: 'DEF',
+      skill_def_desc: 'Reduces the damage you take',
+      skill_spd_title: 'Speed Up',
+      skill_spd_short: 'SPD',
+      skill_spd_desc: 'Increases movement speed',
+      skill_pickup_title: 'XP Range Up',
+      skill_pickup_short: 'Pickup',
+      skill_pickup_desc: 'Widens the range for collecting XP gems',
+      skill_qtime_title: 'Quiz Time +1s',
+      skill_qtime_short: 'Time+',
+      skill_qtime_desc: 'Adds 1 second to the quiz time limit',
+      skill_qblank_title: 'Blank -1',
+      skill_qblank_short: 'Blank-',
+      skill_qblank_desc: 'Reduces the quiz by one blank letter',
+      skill_qpenalty_title: 'Penalty Reduction',
+      skill_qpenalty_short: 'Mitig',
+      skill_qpenalty_desc: 'Reduces how weak wrong answers make your rewards',
+      skill_qbonus_title: 'Correct-Answer XP Bonus',
+      skill_qbonus_short: 'XP+',
+      skill_qbonus_desc: 'Grants bonus XP when you answer the quiz correctly',
+      effectAtk: 'Attack multiplier x{mult} (base damage {dmg})',
+      effectCnt: 'Bullets per shot: {count}',
+      effectAtkspd: 'Fire interval {interval}s',
+      effectPierce: 'Pierce count {count}',
+      effectBspd: 'Bullet speed {speed} px/s',
+      effectAura: 'DPS {dps} / radius {radius}px',
+      effectBurst: 'Blast damage {dmg} / radius {radius}px',
+      effectRicochet: 'Bounces {count}',
+      effectMaxhp: 'Max HP {hp}',
+      effectInvuln: 'Invuln time {time}s',
+      effectDef: 'Damage reduction {pct}%',
+      effectSpd: 'Speed multiplier x{mult} ({px} px/s)',
+      effectPickup: 'XP pickup range {radius}px',
+      effectQtime: 'Quiz time +{sec}s',
+      effectQblank: 'Blanks -{count}',
+      effectQpenalty: 'Penalty reduction {pct}%',
+      effectQbonus: '+{xp} XP on correct answer',
+      evo_bombardment_title: 'Bombardment',
+      evo_bombardment_desc: 'Bullets cause a huge explosion on impact',
+      evo_barrage_title: 'Barrage',
+      evo_barrage_desc: 'Fires bullets in all directions',
+      evo_sprint_title: 'Sprint',
+      evo_sprint_desc: 'While moving, your aura deals bonus damage',
+      encircleWarningText: '⚠️ Surrounded! Find the gap!',
+    },
+  };
+
+  function detectDefaultUiLang(){
+    const nav = ((navigator.language || navigator.userLanguage || '') + '').toLowerCase();
+    return nav.indexOf('ja') === 0 ? 'ja' : 'en';
+  }
+  let uiLang = lsGet('vs_ui_lang', null);
+  if (uiLang !== 'ja' && uiLang !== 'en') uiLang = detectDefaultUiLang();
+
+  function t(key){
+    const dict = I18N[uiLang] || I18N.en;
+    return Object.prototype.hasOwnProperty.call(dict, key) ? dict[key] : (I18N.en[key] || key);
+  }
+  function tf(key, vars){
+    let s = t(key);
+    for (const k in vars) s = s.split('{' + k + '}').join(vars[k]);
+    return s;
+  }
+  function setUiLang(lang){
+    uiLang = (lang === 'ja') ? 'ja' : 'en';
+    lsSet('vs_ui_lang', uiLang);
+    applyI18n();
+  }
+  function applyI18n(){
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+    document.getElementById('pauseBtn').setAttribute('aria-label', t('pauseAria'));
+    renderUiLangToggle();
+    renderHomeSelectors();
+    renderSkillBar();
+  }
+  function renderUiLangToggle(){
+    document.querySelectorAll('#uiLangToggle button').forEach(btn => {
+      btn.classList.toggle('selected', btn.getAttribute('data-lang') === uiLang);
+    });
+  }
+  document.querySelectorAll('#uiLangToggle button').forEach(btn => {
+    btn.addEventListener('click', () => setUiLang(btn.getAttribute('data-lang')));
+  });
+
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  let dpr = Math.max(1, window.devicePixelRatio || 1);
+  let width = 0, height = 0;
+
+  function resize(){
+    width = window.innerWidth;
+    height = window.innerHeight;
+    dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- config ----------
+  const CFG = {
+    playerRadius: 16,
+    baseSpeed: 220,
+    baseAtk: 10,
+    bulletSpeed: 520,
+    bulletRadius: 5,
+    fireInterval: 0.5,
+    baseHp: 100,
+    invulnTime: 0.6,
+    enemyBaseHp: 20,
+    enemyBaseSpeed: 68,
+    enemyBaseDamage: 8,
+    enemyBaseXp: 5,
+    magnetRadius: 95,
+    collectRadius: 22,
+    gemSpeed: 300,
+    maxEnemies: 260,
+
+    // elite enemy
+    eliteInterval: 90,
+    eliteHpMult: 8,
+    eliteDamageMult: 2,
+    eliteXpMult: 5,
+    eliteRadius: 30,
+    eliteDashSpeed: 260,
+    eliteDashDuration: 0.9,
+    eliteRecoverTime: 2.2,
+    eliteSpawnPadding: 120,
+    elitePredictLead: 0.6,
+
+    // encirclement event
+    encircleInterval: 120,
+    encircleDuration: 20,
+    encircleEnemyCount: 22,
+    encircleGapWidth: Math.PI / 4,
+    encircleSpeedMult: 0.5,
+    encircleSpawnPadding: 140,
+
+    // healing items
+    healDropChance: 0.06,
+    healAmount: 25,
+    healRadius: 8,
+
+    // ability effects
+    auraBaseRadius: 70,
+    burstBaseRadius: 50,
+    bombardmentRadius: 70,
+    bombardmentDamage: 14,
+    sprintAuraMult: 2,
+
+    // sound effects (frequencies in Hz, durations/gaps in seconds, gain 0-1)
+    sound: {
+      maxVoices: 16,
+      shoot: { type: 'square', freq: 1100, duration: 0.035, gain: 0.04, minGap: 40 },
+      kill: { duration: 0.09, gain: 0.16, filterFreq: 400, minGap: 40 },
+      gem: { type: 'sine', freq: 1200, duration: 0.06, gain: 0.12, pitchStep: 35, pitchMax: 2000, minGap: 30 },
+      levelup: { type: 'triangle', notes: [523, 659, 784], noteDuration: 0.09, gap: 0.05, gain: 0.16, minGap: 200 },
+      quizCorrect: { type: 'triangle', notes: [660, 880, 1175], noteDuration: 0.08, gap: 0.04, gain: 0.18, minGap: 200 },
+      quizWrong: { type: 'sawtooth', freqStart: 320, freqEnd: 100, duration: 0.35, gain: 0.18, minGap: 200 },
+      hit: { type: 'sine', freq: 100, duration: 0.16, gain: 0.2, minGap: 80 },
+      heal: { type: 'sine', freq: 950, duration: 0.16, gain: 0.14, minGap: 100 },
+      eliteSpawn: { type: 'sawtooth', freq: 80, freqEnd: 50, duration: 0.7, gain: 0.18, minGap: 500 },
+      encircleWarning: { type: 'square', freqA: 700, freqB: 480, beepDuration: 0.15, gap: 0.1, repeats: 5, gain: 0.18, minGap: 1000 },
+      evolution: { type: 'triangle', notes: [440, 554, 659, 880, 1108], noteDuration: 0.13, gap: 0.03, gain: 0.22, minGap: 300 },
+      gameover: { type: 'sawtooth', freqStart: 260, freqEnd: 55, duration: 0.9, gain: 0.2, minGap: 300 },
+      bossWarning: { type: 'sawtooth', notes: [110, 90, 70], noteDuration: 0.22, gap: 0.04, gain: 0.24, minGap: 800 },
+    },
+
+    // stage mode / bosses
+    stage: {
+      duration: 480,
+      miniBossTime: 120,
+      midBossTime: 240,
+      bigBossTime: 480,
+      miniBossHpMult: 40,
+      midBossHpMult: 70,
+      bigBossHpMult: 110,
+      miniBossSpeedMult: 0.8,
+      midBossSpeedMult: 0.7,
+      bigBossSpeedMult: 0.65,
+      miniBossRadius: 30,
+      midBossRadius: 34,
+      bigBossRadius: 42,
+      bossDamageMult: 2.5,
+      midAttackInterval: 2.5,
+      midAttackBulletCount: 10,
+      midAttackBulletSpeed: 160,
+      midAttackBulletDamage: 10,
+      bigCloneHpRatio: 0.35,
+      bigCloneCount: 2,
+      stageDifficultyMult: [1, 1.35, 1.75],
+    },
+  };
+
+  const STAGE_COUNT = CFG.stage.stageDifficultyMult.length;
+
+  function weakBlend(strongVal, weakVal, p){
+    const stacks = p.upgradeCounts.qpenalty || 0;
+    const ratio = Math.min(1, stacks * 0.2);
+    return weakVal + (strongVal - weakVal) * ratio;
+  }
+
+  // ---------- audio ----------
+  let audioCtx = null;
+  let masterGain = null;
+  let activeVoiceCount = 0;
+  const lastPlayedAt = {};
+  let volume = lsGet('vs_volume', 30);
+  let muted = lsGet('vs_muted', false);
+
+  function ensureAudioContext(){
+    if (audioCtx){
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return;
+    }
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = muted ? 0 : volume / 100;
+      masterGain.connect(audioCtx.destination);
+    } catch (e){ audioCtx = null; }
+  }
+
+  function setVolume(v){
+    volume = Math.max(0, Math.min(100, v));
+    lsSet('vs_volume', volume);
+    if (masterGain) masterGain.gain.value = muted ? 0 : volume / 100;
+    updateVolumeUI();
+  }
+  function setMuted(m){
+    muted = !!m;
+    lsSet('vs_muted', muted);
+    if (masterGain) masterGain.gain.value = muted ? 0 : volume / 100;
+    updateVolumeUI();
+  }
+  function toggleMute(){ setMuted(!muted); }
+  function updateVolumeUI(){
+    const icon = (muted || volume === 0) ? '🔇' : '🔊';
+    ['homeVolumeSlider', 'pauseVolumeSlider'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = volume;
+    });
+    ['homeMuteBtn', 'pauseMuteBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = icon;
+    });
+  }
+
+  function canPlaySound(key, minGap){
+    if (!key) return true;
+    const now = performance.now();
+    const last = lastPlayedAt[key] || 0;
+    if (now - last < (minGap != null ? minGap : 50)) return false;
+    if (activeVoiceCount >= (CFG.sound.maxVoices || 16)) return false;
+    lastPlayedAt[key] = now;
+    return true;
+  }
+  function registerVoice(node){
+    activeVoiceCount++;
+    node.onended = () => { activeVoiceCount = Math.max(0, activeVoiceCount - 1); };
+  }
+
+  function playToneAt(freq, duration, startTime, opts){
+    opts = opts || {};
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    osc.type = opts.type || 'sine';
+    osc.frequency.setValueAtTime(Math.max(1, freq), startTime);
+    if (opts.freqEnd != null){
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, opts.freqEnd), startTime + duration);
+    }
+    const g = audioCtx.createGain();
+    const peak = opts.gain != null ? opts.gain : 0.15;
+    g.gain.setValueAtTime(0.0001, startTime);
+    g.gain.exponentialRampToValueAtTime(peak, startTime + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.02);
+    registerVoice(osc);
+  }
+
+  function playTone(freq, duration, opts){
+    opts = opts || {};
+    if (!canPlaySound(opts.key, opts.minGap)) return;
+    ensureAudioContext();
+    if (!audioCtx) return;
+    playToneAt(freq, duration, audioCtx.currentTime, opts);
+  }
+
+  function playSequence(notes, noteDuration, gap, opts){
+    opts = opts || {};
+    if (!canPlaySound(opts.key, opts.minGap)) return;
+    ensureAudioContext();
+    if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    notes.forEach((freq, i) => {
+      playToneAt(freq, noteDuration, t0 + i * (noteDuration + gap), opts);
+    });
+  }
+
+  function playNoise(duration, opts){
+    opts = opts || {};
+    if (!canPlaySound(opts.key, opts.minGap)) return;
+    ensureAudioContext();
+    if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = opts.filterFreq || 500;
+    const g = audioCtx.createGain();
+    const peak = opts.gain != null ? opts.gain : 0.2;
+    g.gain.setValueAtTime(peak, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    src.connect(filter); filter.connect(g); g.connect(masterGain);
+    src.start(t0);
+    src.stop(t0 + duration + 0.02);
+    registerVoice(src);
+  }
+
+  let gemComboCount = 0;
+  let gemComboLastAt = 0;
+
+  function sfxShoot(){ const c = CFG.sound.shoot; playTone(c.freq, c.duration, { type: c.type, gain: c.gain, key: 'shoot', minGap: c.minGap }); }
+  function sfxKill(){ const c = CFG.sound.kill; playNoise(c.duration, { gain: c.gain, filterFreq: c.filterFreq, key: 'kill', minGap: c.minGap }); }
+  function sfxGem(){
+    const c = CFG.sound.gem;
+    if (!canPlaySound('gem', c.minGap)) return;
+    const now = performance.now();
+    if (now - gemComboLastAt > 400) gemComboCount = 0;
+    gemComboLastAt = now;
+    const freq = Math.min(c.freq + gemComboCount * c.pitchStep, c.pitchMax);
+    gemComboCount++;
+    ensureAudioContext();
+    if (!audioCtx) return;
+    playToneAt(freq, c.duration, audioCtx.currentTime, { type: c.type, gain: c.gain });
+  }
+  function sfxLevelUp(){ const c = CFG.sound.levelup; playSequence(c.notes, c.noteDuration, c.gap, { type: c.type, gain: c.gain, key: 'levelup', minGap: c.minGap }); }
+  function sfxQuizCorrect(){ const c = CFG.sound.quizCorrect; playSequence(c.notes, c.noteDuration, c.gap, { type: c.type, gain: c.gain, key: 'quizCorrect', minGap: c.minGap }); }
+  function sfxQuizWrong(){ const c = CFG.sound.quizWrong; playTone(c.freqStart, c.duration, { type: c.type, gain: c.gain, freqEnd: c.freqEnd, key: 'quizWrong', minGap: c.minGap }); }
+  function sfxHit(){ const c = CFG.sound.hit; playTone(c.freq, c.duration, { type: c.type, gain: c.gain, key: 'hit', minGap: c.minGap }); }
+  function sfxHeal(){ const c = CFG.sound.heal; playTone(c.freq, c.duration, { type: c.type, gain: c.gain, key: 'heal', minGap: c.minGap }); }
+  function sfxEliteSpawn(){ const c = CFG.sound.eliteSpawn; playTone(c.freq, c.duration, { type: c.type, gain: c.gain, freqEnd: c.freqEnd, key: 'eliteSpawn', minGap: c.minGap }); }
+  function sfxEncircleWarning(){
+    const c = CFG.sound.encircleWarning;
+    const notes = [];
+    for (let i = 0; i < c.repeats; i++) notes.push(i % 2 === 0 ? c.freqA : c.freqB);
+    playSequence(notes, c.beepDuration, c.gap, { type: c.type, gain: c.gain, key: 'encircleWarning', minGap: c.minGap });
+  }
+  function sfxEvolution(){ const c = CFG.sound.evolution; playSequence(c.notes, c.noteDuration, c.gap, { type: c.type, gain: c.gain, key: 'evolution', minGap: c.minGap }); }
+  function sfxGameOver(){ const c = CFG.sound.gameover; playTone(c.freqStart, c.duration, { type: c.type, gain: c.gain, freqEnd: c.freqEnd, key: 'gameover', minGap: c.minGap }); }
+  function sfxBossWarning(){ const c = CFG.sound.bossWarning; playSequence(c.notes, c.noteDuration, c.gap, { type: c.type, gain: c.gain, key: 'bossWarning', minGap: c.minGap }); }
+
+  const MAX_ABILITY_STACKS = 5;
+
+  const UPGRADES = [
+    { id: 'atk', icon: '⚔️',
+      strongApply: p => { p.atkMult *= 1.15; },
+      weakApply: p => { p.atkMult *= weakBlend(1.15, 1.06, p); } },
+    { id: 'cnt', icon: '🔫',
+      strongApply: p => { p.bulletCount += 2; },
+      weakApply: p => { p.bulletCount += Math.max(1, Math.round(weakBlend(2, 1, p))); } },
+    { id: 'atkspd', icon: '⚡',
+      strongApply: p => { p.fireIntervalMult *= 0.85; },
+      weakApply: p => { p.fireIntervalMult *= weakBlend(0.85, 0.94, p); } },
+    { id: 'pierce', icon: '🎯',
+      strongApply: p => { p.pierceCount += 2; },
+      weakApply: p => { p.pierceCount += Math.max(1, Math.round(weakBlend(2, 1, p))); } },
+    { id: 'bspd', icon: '💨',
+      strongApply: p => { p.bulletSpeedMult *= 1.2; },
+      weakApply: p => { p.bulletSpeedMult *= weakBlend(1.2, 1.08, p); } },
+    { id: 'aura', icon: '🌀',
+      strongApply: p => { p.auraDps += 8; p.auraRadiusBonus += 16; },
+      weakApply: p => { p.auraDps += weakBlend(8, 4, p); p.auraRadiusBonus += weakBlend(16, 8, p); } },
+    { id: 'burst', icon: '💢',
+      strongApply: p => { p.burstDamage += 12; p.burstRadiusBonus += 18; },
+      weakApply: p => { p.burstDamage += weakBlend(12, 6, p); p.burstRadiusBonus += weakBlend(18, 10, p); } },
+    { id: 'ricochet', icon: '↩️',
+      strongApply: p => { p.bounceCount += 2; },
+      weakApply: p => { p.bounceCount += Math.max(1, Math.round(weakBlend(2, 1, p))); } },
+    { id: 'maxhp', icon: '❤️',
+      strongApply: p => { p.maxHp += 20; p.hp += 20; },
+      weakApply: p => { const inc = weakBlend(20, 10, p); p.maxHp += inc; p.hp += inc; } },
+    { id: 'invuln', icon: '🛡️',
+      strongApply: p => { p.invulnBonus += 0.15; },
+      weakApply: p => { p.invulnBonus += weakBlend(0.15, 0.08, p); } },
+    { id: 'def', icon: '🪖',
+      strongApply: p => { p.defense = Math.min(0.75, p.defense + 0.08); },
+      weakApply: p => { p.defense = Math.min(0.75, p.defense + weakBlend(0.08, 0.04, p)); } },
+    { id: 'spd', icon: '👟',
+      strongApply: p => { p.speedMult *= 1.2; },
+      weakApply: p => { p.speedMult *= weakBlend(1.2, 1.05, p); } },
+    { id: 'pickup', icon: '🧲',
+      strongApply: p => { p.magnetBonus += 30; },
+      weakApply: p => { p.magnetBonus += weakBlend(30, 15, p); } },
+    { id: 'qtime', icon: '⏱️',
+      strongApply: p => { p.quizTimeBonus += 1; },
+      weakApply: p => { p.quizTimeBonus += 1; } },
+    { id: 'qblank', icon: '❓',
+      strongApply: p => { p.quizBlankReduction += 1; },
+      weakApply: p => { p.quizBlankReduction += 1; } },
+    { id: 'qpenalty', icon: '🌟',
+      strongApply: () => {},
+      weakApply: () => {} },
+    { id: 'qbonus', icon: '✨',
+      strongApply: p => { p.correctBonusXp += 8; },
+      weakApply: p => { p.correctBonusXp += 8; } },
+  ];
+  function upgradeById(id){ return UPGRADES.find(u => u.id === id); }
+  function upgradeTitle(id){ return t('skill_' + id + '_title'); }
+  function upgradeShort(id){ return t('skill_' + id + '_short'); }
+  function upgradeDesc(id){ return t('skill_' + id + '_desc'); }
+  function pickAvailableUpgrade(){
+    const avail = UPGRADES.filter(u => (player.upgradeCounts[u.id] || 0) < MAX_ABILITY_STACKS);
+    const pool = avail.length > 0 ? avail : UPGRADES;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function upgradeEffectText(id, p){
+    switch (id){
+      case 'atk': return tf('effectAtk', { mult: p.atkMult.toFixed(2), dmg: (CFG.baseAtk * p.atkMult).toFixed(1) });
+      case 'cnt': return tf('effectCnt', { count: p.bulletCount });
+      case 'atkspd': return tf('effectAtkspd', { interval: (CFG.fireInterval * p.fireIntervalMult).toFixed(2) });
+      case 'pierce': return tf('effectPierce', { count: p.pierceCount });
+      case 'bspd': return tf('effectBspd', { speed: Math.round(CFG.bulletSpeed * p.bulletSpeedMult) });
+      case 'aura': return tf('effectAura', { dps: p.auraDps.toFixed(1), radius: Math.round(CFG.auraBaseRadius + p.auraRadiusBonus) });
+      case 'burst': return tf('effectBurst', { dmg: p.burstDamage.toFixed(1), radius: Math.round(CFG.burstBaseRadius + p.burstRadiusBonus) });
+      case 'ricochet': return tf('effectRicochet', { count: p.bounceCount });
+      case 'maxhp': return tf('effectMaxhp', { hp: Math.round(p.maxHp) });
+      case 'invuln': return tf('effectInvuln', { time: (CFG.invulnTime + p.invulnBonus).toFixed(2) });
+      case 'def': return tf('effectDef', { pct: Math.round(p.defense * 100) });
+      case 'spd': return tf('effectSpd', { mult: p.speedMult.toFixed(2), px: Math.round(CFG.baseSpeed * p.speedMult) });
+      case 'pickup': return tf('effectPickup', { radius: Math.round(CFG.magnetRadius + p.magnetBonus) });
+      case 'qtime': return tf('effectQtime', { sec: p.quizTimeBonus });
+      case 'qblank': return tf('effectQblank', { count: p.quizBlankReduction });
+      case 'qpenalty': return tf('effectQpenalty', { pct: Math.min(100, (p.upgradeCounts.qpenalty || 0) * 20) });
+      case 'qbonus': return tf('effectQbonus', { xp: p.correctBonusXp });
+      default: return '';
+    }
+  }
+
+  // ---------- evolutions ----------
+  const EVOLUTIONS = [
+    { id: 'bombardment', icon: '💥', requires: ['atk', 'burst'] },
+    { id: 'barrage', icon: '🌪️', requires: ['cnt', 'ricochet'] },
+    { id: 'sprint', icon: '🔥', requires: ['aura', 'spd'] },
+  ];
+  function pendingEvolution(){
+    return EVOLUTIONS.find(ev =>
+      !player.evolutions[ev.id] &&
+      ev.requires.every(id => (player.upgradeCounts[id] || 0) >= MAX_ABILITY_STACKS)
+    );
+  }
+  function evolutionTitle(id){ return t('evo_' + id + '_title'); }
+  function evolutionDesc(id){ return t('evo_' + id + '_desc'); }
+
+  // ---------- languages & difficulty ----------
+  const LANGUAGES = [
+    { id: 'japanese', labelKey: 'langJapanese' },
+    { id: 'english', labelKey: 'langEnglish' },
+  ];
+  const DIFFICULTIES = [
+    { id: 1, labelKey: 'difficulty1', quizTime: 8, blankCount: 2 },
+    { id: 2, labelKey: 'difficulty2', quizTime: 7, blankCount: 3 },
+    { id: 3, labelKey: 'difficulty3', quizTime: 6, blankCount: 4 },
+  ];
+  function getLanguage(id){ return LANGUAGES.find(l => l.id === id) || LANGUAGES[0]; }
+  function getDifficulty(id){ return DIFFICULTIES.find(d => d.id === id) || DIFFICULTIES[0]; }
+  function packDisplayName(pack){
+    return t(getLanguage(pack.langId).labelKey) + ' / ' + t(getDifficulty(pack.difficultyId).labelKey);
+  }
+
+  // ---------- word packs (language x difficulty) ----------
+  const WORD_PACKS = [
+    { id: 'japanese_1', langId: 'japanese', difficultyId: 1, words: [
+      { word: 'てがみ', meaning: { ja: '気持ちを書いて相手に送る紙', en: 'A written message sent to someone' } },
+      { word: 'やくそく', meaning: { ja: 'あとで必ずすると決めること', en: 'A commitment to do something later' } },
+      { word: 'しんぱい', meaning: { ja: '悪いことが起きないか気にすること', en: 'Worry about something bad happening' } },
+      { word: 'そうだん', meaning: { ja: '困りごとを人に話して意見を聞くこと', en: 'Asking someone for advice' } },
+      { word: 'きょうりょく', meaning: { ja: '力を合わせて一緒にやること', en: 'Working together toward a goal' } },
+      { word: 'せいかつ', meaning: { ja: '毎日を過ごしていくこと', en: 'The way one lives day to day' } },
+      { word: 'しゅうかん', meaning: { ja: 'いつも繰り返してやること', en: 'Something done regularly' } },
+      { word: 'どりょく', meaning: { ja: '目標のために力を出して頑張ること', en: 'Making a sustained effort' } },
+      { word: 'しっぱい', meaning: { ja: 'うまくいかずに終わること', en: 'An attempt that did not succeed' } },
+      { word: 'せいこう', meaning: { ja: '思ったとおりにうまくいくこと', en: 'Achieving what was intended' } },
+      { word: 'けいけん', meaning: { ja: '実際にやって身についたこと', en: 'Knowledge gained by doing' } },
+      { word: 'きろく', meaning: { ja: 'あとで見られるように書き残すこと', en: 'Writing something down to keep' } },
+      { word: 'はっけん', meaning: { ja: '今まで知られていなかったものを見つけること', en: 'Finding something not known before' } },
+      { word: 'せつめい', meaning: { ja: '相手に分かるように話すこと', en: 'Making something clear to others' } },
+      { word: 'しつもん', meaning: { ja: '分からないことを人に聞くこと', en: 'Asking about something unclear' } },
+      { word: 'へんじ', meaning: { ja: '呼ばれたり聞かれたりして返す言葉', en: 'A reply to a call or question' } },
+      { word: 'あいさつ', meaning: { ja: '会ったときや別れるときに交わす言葉', en: 'Words exchanged on meeting or parting' } },
+      { word: 'かんしゃ', meaning: { ja: 'ありがたいと思う気持ち', en: 'Feeling thankful' } },
+      { word: 'そんけい', meaning: { ja: 'すごいと思って大事にする気持ち', en: 'Holding someone in high regard' } },
+      { word: 'しんらい', meaning: { ja: '相手を信じて任せること', en: 'Trusting someone' } },
+      { word: 'ゆうき', meaning: { ja: 'こわくても前に進む強い心', en: 'The will to act despite fear' } },
+      { word: 'がまん', meaning: { ja: 'つらくても耐えること', en: 'Enduring something difficult' } },
+      { word: 'はんせい', meaning: { ja: '自分のしたことを振り返って考えること', en: "Looking back on one's own actions" } },
+      { word: 'かいけつ', meaning: { ja: '問題をなくして終わらせること', en: 'Settling a problem' } },
+      { word: 'げんいん', meaning: { ja: 'そうなったもとになること', en: 'The thing that caused something' } },
+      { word: 'けっか', meaning: { ja: 'やったあとに出てくるもの', en: 'What comes out of an action' } },
+      { word: 'もくひょう', meaning: { ja: 'そこを目指すと決めた場所', en: 'What one aims to reach' } },
+      { word: 'けいかく', meaning: { ja: '前もって決めておく進め方', en: 'A plan decided in advance' } },
+      { word: 'じゅんび', meaning: { ja: '始める前に用意しておくこと', en: 'Getting ready beforehand' } },
+      { word: 'かんせい', meaning: { ja: 'すべて出来上がること', en: 'Being fully finished' } },
+      { word: 'そうぞう', meaning: { ja: '頭の中で思い描くこと', en: 'Picturing something in the mind' } },
+      { word: 'はつめい', meaning: { ja: '今までにない物を作り出すこと', en: 'Creating something new' } },
+      { word: 'ぎじゅつ', meaning: { ja: 'うまくやるための方法や腕前', en: 'Skill or method for doing something' } },
+      { word: 'どうぐ', meaning: { ja: '何かをするために使う物', en: 'A thing used to do work' } },
+      { word: 'ざいりょう', meaning: { ja: '物を作るもとになるもの', en: 'What something is made from' } },
+      { word: 'しぜん', meaning: { ja: '人が作ったのではない山や川や生き物', en: 'The natural world' } },
+      { word: 'かんきょう', meaning: { ja: 'まわりを取り巻いている状態', en: 'The surroundings one is in' } },
+      { word: 'きせつ', meaning: { ja: '春夏秋冬の移り変わり', en: 'One of the four times of year' } },
+      { word: 'てんき', meaning: { ja: '晴れや雨などその日の空の様子', en: 'The state of the sky that day' } },
+      { word: 'ちいき', meaning: { ja: '区切られた土地のまとまり', en: 'A particular area of land' } },
+      { word: 'ぶんか', meaning: { ja: 'その土地に伝わる暮らし方や考え方', en: 'The customs of a place' } },
+      { word: 'れきし', meaning: { ja: '昔から今までに起きたこと', en: 'What happened in the past' } },
+      { word: 'しゃかい', meaning: { ja: '人が集まって作っているまとまり', en: 'People living together as a group' } },
+      { word: 'せきにん', meaning: { ja: '自分がやると引き受けた務め', en: 'A duty one has taken on' } },
+      { word: 'やくわり', meaning: { ja: 'それぞれが受け持つ仕事', en: 'The part one is assigned to play' } },
+      { word: 'きかい', meaning: { ja: '何かをするのにちょうどよいとき', en: 'A good time to do something' } },
+      { word: 'へんか', meaning: { ja: '前とちがう状態になること', en: 'Becoming different from before' } },
+      { word: 'せいちょう', meaning: { ja: '育って大きくなること', en: 'Growing or developing' } },
+      { word: 'きぼう', meaning: { ja: 'こうなってほしいと願う気持ち', en: 'A wish for something to happen' } },
+      { word: 'みらい', meaning: { ja: 'これから先の時', en: 'The time still to come' } },
+    ] },
+    { id: 'japanese_2', langId: 'japanese', difficultyId: 2, words: [
+      { word: 'ありがとう', meaning: { ja: '感謝を伝える言葉', en: 'A word used to express thanks' } },
+      { word: 'こんにちは', meaning: { ja: '日中のあいさつ', en: 'A greeting used during the daytime' } },
+      { word: 'さようなら', meaning: { ja: '別れのあいさつ', en: 'A greeting said when parting from someone' } },
+      { word: 'たんじょうび', meaning: { ja: '生まれた日', en: 'The day a person was born' } },
+      { word: 'としょかん', meaning: { ja: '本を借りる場所', en: 'A place where you can borrow books' } },
+    ] },
+    { id: 'japanese_3', langId: 'japanese', difficultyId: 3, words: [
+      { word: 'ありがとうございます', meaning: { ja: '丁寧な感謝の言葉', en: 'A polite way of saying thank you' } },
+      { word: 'おつかれさまでした', meaning: { ja: 'ねぎらいの言葉', en: "A phrase used to acknowledge someone's hard work" } },
+      { word: 'いってらっしゃい', meaning: { ja: '出かける人へのあいさつ', en: 'A phrase said to someone who is leaving home' } },
+      { word: 'おめでとうございます', meaning: { ja: '祝いの言葉', en: 'A polite phrase used to congratulate someone' } },
+      { word: 'よろしくおねがいします', meaning: { ja: '依頼するときのあいさつ', en: 'A polite phrase used when asking a favor or meeting someone' } },
+    ] },
+    { id: 'english_1', langId: 'english', difficultyId: 1, words: [
+      { word: 'apple', meaning: { ja: 'りんご', en: 'A round fruit with red or green skin and firm white flesh' } },
+      { word: 'lemon', meaning: { ja: 'レモン', en: 'A yellow citrus fruit with a sour taste' } },
+      { word: 'mango', meaning: { ja: 'マンゴー', en: 'A sweet tropical fruit with orange flesh and a large seed' } },
+      { word: 'grape', meaning: { ja: 'ぶどう', en: 'A small round fruit that grows in bunches on a vine' } },
+      { word: 'peach', meaning: { ja: 'もも', en: 'A soft, round fruit with fuzzy skin and a sweet taste' } },
+    ] },
+    { id: 'english_2', langId: 'english', difficultyId: 2, words: [
+      { word: 'orange', meaning: { ja: 'みかん', en: 'A round citrus fruit with a thick orange peel' } },
+      { word: 'banana', meaning: { ja: 'バナナ', en: 'A long curved fruit with a yellow skin' } },
+      { word: 'cherry', meaning: { ja: 'さくらんぼ', en: 'A small round red fruit with a hard pit inside' } },
+      { word: 'coconut', meaning: { ja: 'ココナッツ', en: 'A large brown fruit with a hard shell and white flesh inside' } },
+      { word: 'avocado', meaning: { ja: 'アボカド', en: 'A pear-shaped fruit with green skin and soft, creamy flesh' } },
+    ] },
+    { id: 'english_3', langId: 'english', difficultyId: 3, words: [
+      { word: 'blueberry', meaning: { ja: 'ブルーベリー', en: 'A small round berry with dark blue skin' } },
+      { word: 'pineapple', meaning: { ja: 'パイナップル', en: 'A large tropical fruit with spiky skin and sweet yellow flesh' } },
+      { word: 'watermelon', meaning: { ja: 'すいか', en: 'A large fruit with green skin and sweet red flesh' } },
+      { word: 'grapefruit', meaning: { ja: 'グレープフルーツ', en: 'A large citrus fruit with a slightly bitter taste' } },
+      { word: 'dragonfruit', meaning: { ja: 'ドラゴンフルーツ', en: 'A tropical fruit with bright pink skin and white or red flesh dotted with tiny seeds' } },
+    ] },
+  ];
+  function getPack(id){ return WORD_PACKS.find(p => p.id === id) || WORD_PACKS[0]; }
+  function wordMeaning(wordObj){
+    const dict = wordObj.meaning;
+    return (dict && dict[uiLang]) || (dict && dict.ja) || '';
+  }
+
+  // ---------- local storage ----------
+  function lsGet(key, fallback){
+    try {
+      const v = localStorage.getItem(key);
+      return v === null ? fallback : JSON.parse(v);
+    } catch (e) { return fallback; }
+  }
+  function lsSet(key, value){
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  }
+  function statsKey(packId){ return 'vs_stats_' + packId; }
+  function wrongKey(packId){ return 'vs_wrong_' + packId; }
+  function loadStats(packId){
+    return lsGet(statsKey(packId), { highScoreTime: 0, highScoreLevel: 0, plays: 0, correctCount: 0, wrongCount: 0 });
+  }
+  function saveStats(packId, stats){ lsSet(statsKey(packId), stats); }
+  function recordWrongWord(packId, wordObj){
+    const list = lsGet(wrongKey(packId), []);
+    const existing = list.find(w => w.word === wordObj.word);
+    if (existing){ existing.count += 1; existing.lastAt = Date.now(); }
+    else list.push({ word: wordObj.word, meaning: wordObj.meaning, count: 1, lastAt: Date.now() });
+    lsSet(wrongKey(packId), list);
+  }
+  function removeWrongWord(packId, wordObj){
+    const list = lsGet(wrongKey(packId), []);
+    const filtered = list.filter(w => w.word !== wordObj.word);
+    if (filtered.length !== list.length) lsSet(wrongKey(packId), filtered);
+  }
+  function wrongWordCount(packId){
+    return lsGet(wrongKey(packId), []).length;
+  }
+
+  let selectedLangId = lsGet('vs_selected_lang', LANGUAGES[0].id);
+  if (!LANGUAGES.some(l => l.id === selectedLangId)) selectedLangId = LANGUAGES[0].id;
+  let selectedDifficultyId = lsGet('vs_selected_difficulty', DIFFICULTIES[0].id);
+  if (!DIFFICULTIES.some(d => d.id === selectedDifficultyId)) selectedDifficultyId = DIFFICULTIES[0].id;
+  function currentPackId(){ return selectedLangId + '_' + selectedDifficultyId; }
+
+  // ---------- state ----------
+  let player, enemies, bullets, gems, heals, enemyBullets;
+  let camera = { x: 0, y: 0 };
+  let survivalTime = 0;
+  let spawnTimer = 0;
+  let fireTimer = 0;
+  let eliteTimer = 0;
+  let encircleTimer = 0;
+  let encircleWarningTimer = 0;
+  let pendingLevelUps = 0;
+  let gameState = 'title'; // title | playing | paused | quiz | evolution | bossReward | stageclear | gameover
+  let stateBeforePause = 'playing';
+  let quiz = null;
+  let lastTs = 0;
+  let keys = {};
+  let killCount = 0;
+
+  // ---------- stage mode ----------
+  let selectedMode = lsGet('vs_selected_mode', 'endless');
+  if (selectedMode !== 'endless' && selectedMode !== 'stage') selectedMode = 'endless';
+  let selectedStage = lsGet('vs_selected_stage', 1);
+  if (!(selectedStage >= 1 && selectedStage <= STAGE_COUNT)) selectedStage = 1;
+  let stageMode = false;
+  let stageNumber = 1;
+  let stageDifficultyMult = 1;
+  let stagePhase = 'none'; // none | pending-mini | mini-active | pending-mid | mid-active | pending-big | big-active | cleared
+  let pendingBossTier = null;
+  let bossWarningHideTimer = null;
+  function isBossActive(){
+    return stagePhase === 'mini-active' || stagePhase === 'mid-active' || stagePhase === 'big-active';
+  }
+
+  function xpToNext(level){ return 10 + (level - 1) * 7; }
+
+  function newPlayer(){
+    return {
+      x: 0, y: 0, radius: CFG.playerRadius,
+      hp: CFG.baseHp, maxHp: CFG.baseHp,
+      level: 1, xp: 0, xpNext: xpToNext(1),
+      atkMult: 1, speedMult: 1, bulletCount: 1,
+      fireIntervalMult: 1, pierceCount: 0, bulletSpeedMult: 1,
+      auraDps: 0, auraRadiusBonus: 0,
+      burstDamage: 0, burstRadiusBonus: 0,
+      bounceCount: 0,
+      invulnBonus: 0, defense: 0,
+      magnetBonus: 0,
+      quizTimeBonus: 0, quizBlankReduction: 0, correctBonusXp: 0,
+      invuln: 0, facing: 0, vx: 0, vy: 0,
+      upgradeCounts: {},
+      evolutions: {},
+    };
+  }
+
+  function resetGame(){
+    player = newPlayer();
+    enemies = [];
+    bullets = [];
+    gems = [];
+    heals = [];
+    enemyBullets = [];
+    quiz = null;
+    killCount = 0;
+    camera.x = 0; camera.y = 0;
+    survivalTime = 0;
+    spawnTimer = 0.6;
+    fireTimer = CFG.fireInterval;
+    eliteTimer = CFG.eliteInterval;
+    encircleTimer = CFG.encircleInterval;
+    encircleWarningTimer = 0;
+    pendingLevelUps = 0;
+    gameState = 'playing';
+
+    stageMode = (selectedMode === 'stage');
+    stageNumber = selectedStage;
+    stageDifficultyMult = stageMode ? (CFG.stage.stageDifficultyMult[stageNumber - 1] || 1) : 1;
+    stagePhase = stageMode ? 'pending-mini' : 'none';
+    pendingBossTier = null;
+    clearTimeout(bossWarningHideTimer);
+
+    document.getElementById('quizOverlay').classList.add('hidden');
+    document.getElementById('evolutionOverlay').classList.add('hidden');
+    document.getElementById('bossRewardOverlay').classList.add('hidden');
+    document.getElementById('stageClearOverlay').classList.add('hidden');
+    document.getElementById('gameOverOverlay').classList.add('hidden');
+    document.getElementById('pauseOverlay').classList.add('hidden');
+    document.getElementById('encircleWarning').classList.add('hidden');
+    document.getElementById('bossWarning').classList.add('hidden');
+    document.getElementById('bossHpBar').classList.add('hidden');
+    setPauseButtonVisible(true);
+    renderSkillBar();
+    updateHud();
+    lastTs = performance.now();
+
+    const stats = loadStats(currentPackId());
+    stats.plays += 1;
+    saveStats(currentPackId(), stats);
+  }
+
+  // ---------- input: keyboard ----------
+  window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (e.key === 'Escape' || e.key === ' '){
+      e.preventDefault();
+      togglePause();
+    }
+    if (e.key === 'Enter' && gameState === 'gameover'){
+      e.preventDefault();
+      resetGame();
+    }
+  });
+  window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+  // ---------- pause ----------
+  function setPauseButtonVisible(v){
+    document.getElementById('pauseBtn').style.display = v ? 'flex' : 'none';
+  }
+  function pauseGame(){
+    if (gameState !== 'playing') return;
+    stateBeforePause = gameState;
+    gameState = 'paused';
+    document.getElementById('pausePackName').textContent = t('packPrefix') + packDisplayName(getPack(currentPackId()));
+    renderPauseSkillList();
+    document.getElementById('pauseOverlay').classList.remove('hidden');
+  }
+  function resumeGame(){
+    if (gameState !== 'paused') return;
+    gameState = 'playing';
+    document.getElementById('pauseOverlay').classList.add('hidden');
+    lastTs = performance.now();
+  }
+  function togglePause(){
+    if (gameState === 'playing') pauseGame();
+    else if (gameState === 'paused') resumeGame();
+    // title / quiz / gameover: pausing is intentionally disallowed
+  }
+  document.getElementById('pauseBtn').addEventListener('click', togglePause);
+  document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+  document.getElementById('pauseRestartBtn').addEventListener('click', resetGame);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseGame();
+  });
+
+  // ---------- home screen ----------
+  function goHome(){
+    gameState = 'title';
+    document.getElementById('pauseOverlay').classList.add('hidden');
+    document.getElementById('gameOverOverlay').classList.add('hidden');
+    document.getElementById('stageClearOverlay').classList.add('hidden');
+    document.getElementById('bossRewardOverlay').classList.add('hidden');
+    document.getElementById('bossHpBar').classList.add('hidden');
+    document.getElementById('bossWarning').classList.add('hidden');
+    setPauseButtonVisible(false);
+    renderHomeSelectors();
+    document.getElementById('homeOverlay').classList.remove('hidden');
+  }
+  document.getElementById('pauseHomeBtn').addEventListener('click', goHome);
+  document.getElementById('gameOverHomeBtn').addEventListener('click', goHome);
+  document.getElementById('stageClearHomeBtn').addEventListener('click', goHome);
+
+  function renderHomeSelectors(){
+    const langGroup = document.getElementById('langGroup');
+    langGroup.innerHTML = '';
+    LANGUAGES.forEach(lang => {
+      const btn = document.createElement('button');
+      btn.className = 'select-btn' + (lang.id === selectedLangId ? ' selected' : '');
+      btn.textContent = t(lang.labelKey);
+      btn.addEventListener('click', () => {
+        selectedLangId = lang.id;
+        lsSet('vs_selected_lang', selectedLangId);
+        renderHomeSelectors();
+      });
+      langGroup.appendChild(btn);
+    });
+
+    const diffGroup = document.getElementById('diffGroup');
+    diffGroup.innerHTML = '';
+    DIFFICULTIES.forEach(diff => {
+      const btn = document.createElement('button');
+      btn.className = 'select-btn' + (diff.id === selectedDifficultyId ? ' selected' : '');
+      btn.textContent = t(diff.labelKey);
+      btn.addEventListener('click', () => {
+        selectedDifficultyId = diff.id;
+        lsSet('vs_selected_difficulty', selectedDifficultyId);
+        renderHomeSelectors();
+      });
+      diffGroup.appendChild(btn);
+    });
+
+    const modeGroup = document.getElementById('modeGroup');
+    modeGroup.innerHTML = '';
+    [['stage', 'modeStage'], ['endless', 'modeEndless']].forEach(([id, key]) => {
+      const btn = document.createElement('button');
+      btn.className = 'select-btn' + (selectedMode === id ? ' selected' : '');
+      btn.textContent = t(key);
+      btn.addEventListener('click', () => {
+        selectedMode = id;
+        lsSet('vs_selected_mode', selectedMode);
+        renderHomeSelectors();
+      });
+      modeGroup.appendChild(btn);
+    });
+
+    const stageGroup = document.getElementById('stageGroup');
+    stageGroup.innerHTML = '';
+    stageGroup.style.display = selectedMode === 'stage' ? 'flex' : 'none';
+    if (selectedMode === 'stage'){
+      const cleared = lsGet('vs_cleared_' + currentPackId(), 0);
+      if (selectedStage > cleared + 1) selectedStage = cleared + 1;
+      for (let n = 1; n <= STAGE_COUNT; n++){
+        const btn = document.createElement('button');
+        const locked = n > cleared + 1;
+        btn.className = 'select-btn' + (selectedStage === n ? ' selected' : '');
+        btn.textContent = tf('stageLabel', { n });
+        btn.disabled = locked;
+        btn.addEventListener('click', () => {
+          selectedStage = n;
+          lsSet('vs_selected_stage', selectedStage);
+          renderHomeSelectors();
+        });
+        stageGroup.appendChild(btn);
+      }
+    }
+
+    const stats = loadStats(currentPackId());
+    const m = Math.floor(stats.highScoreTime / 60), s = Math.floor(stats.highScoreTime % 60);
+    document.getElementById('homeHighScore').innerHTML =
+      tf('highScoreWithPack', { pack: packDisplayName(getPack(currentPackId())) }) + '<br>' +
+      tf('bestSurvival', { time: pad(m) + ':' + pad(s) }) + ' ／ ' +
+      tf('bestLevel', { level: stats.highScoreLevel }) + '<br>' +
+      tf('reviewPendingLabel', { count: wrongWordCount(currentPackId()) });
+  }
+  document.getElementById('startBtn').addEventListener('click', () => {
+    document.getElementById('homeOverlay').classList.add('hidden');
+    resetGame();
+  });
+
+  // ---------- sound controls ----------
+  document.getElementById('homeOverlay').addEventListener('click', ensureAudioContext, { once: true });
+  ['homeVolumeSlider', 'pauseVolumeSlider'].forEach(id => {
+    document.getElementById(id).addEventListener('input', e => {
+      ensureAudioContext();
+      setVolume(parseInt(e.target.value, 10));
+    });
+  });
+  ['homeMuteBtn', 'pauseMuteBtn'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      ensureAudioContext();
+      toggleMute();
+    });
+  });
+  updateVolumeUI();
+
+  function keyboardVector(){
+    let x = 0, y = 0;
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) x -= 1;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) x += 1;
+    if (keys['ArrowUp'] || keys['w'] || keys['W']) y -= 1;
+    if (keys['ArrowDown'] || keys['s'] || keys['S']) y += 1;
+    return { x, y };
+  }
+
+  // ---------- input: floating joystick ----------
+  const joyZone = document.getElementById('joyZone');
+  const joyRing = document.getElementById('joyRing');
+  const joyKnob = document.getElementById('joyKnob');
+  let joyActive = false, joyId = null;
+  let joyOrigin = { x: 0, y: 0 };
+  let joyVec = { x: 0, y: 0 };
+  const JOY_MAX = 54;
+
+  function showJoyAt(x, y){
+    joyOrigin.x = x; joyOrigin.y = y;
+    joyRing.style.left = x + 'px'; joyRing.style.top = y + 'px';
+    joyKnob.style.left = x + 'px'; joyKnob.style.top = y + 'px';
+    joyRing.style.display = 'block';
+    joyKnob.style.display = 'block';
+  }
+  function hideJoy(){
+    joyRing.style.display = 'none';
+    joyKnob.style.display = 'none';
+    joyVec.x = 0; joyVec.y = 0;
+  }
+  function updateJoyKnob(x, y){
+    let dx = x - joyOrigin.x, dy = y - joyOrigin.y;
+    const dist = Math.hypot(dx, dy);
+    const clamped = Math.min(dist, JOY_MAX);
+    const ang = Math.atan2(dy, dx);
+    const kx = joyOrigin.x + Math.cos(ang) * clamped;
+    const ky = joyOrigin.y + Math.sin(ang) * clamped;
+    joyKnob.style.left = kx + 'px'; joyKnob.style.top = ky + 'px';
+    joyVec.x = dist > 4 ? Math.cos(ang) * (clamped / JOY_MAX) : 0;
+    joyVec.y = dist > 4 ? Math.sin(ang) * (clamped / JOY_MAX) : 0;
+  }
+
+  joyZone.addEventListener('touchstart', e => {
+    if (joyActive) return;
+    const t = e.changedTouches[0];
+    joyActive = true; joyId = t.identifier;
+    showJoyAt(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+
+  joyZone.addEventListener('touchmove', e => {
+    for (const t of e.changedTouches){
+      if (t.identifier === joyId){ updateJoyKnob(t.clientX, t.clientY); }
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  function endJoyTouch(e){
+    for (const t of e.changedTouches){
+      if (t.identifier === joyId){ joyActive = false; joyId = null; hideJoy(); }
+    }
+  }
+  joyZone.addEventListener('touchend', endJoyTouch, { passive: false });
+  joyZone.addEventListener('touchcancel', endJoyTouch, { passive: false });
+
+  function inputVector(){
+    const kv = keyboardVector();
+    if (kv.x !== 0 || kv.y !== 0){
+      const len = Math.hypot(kv.x, kv.y) || 1;
+      return { x: kv.x / len, y: kv.y / len };
+    }
+    return joyVec;
+  }
+
+  // ---------- spawning ----------
+  function spawnInterval(t){ return Math.max(0.25, (1.4 - t * 0.006) / stageDifficultyMult); }
+  function spawnCount(t){ return Math.min(6, 1 + Math.floor(t / 20)) + Math.floor((stageDifficultyMult - 1) * 2); }
+
+  function createEnemyAt(x, y, opts){
+    opts = opts || {};
+    const t = survivalTime;
+    const variance = 0.85 + Math.random() * 0.3;
+    const hp = CFG.enemyBaseHp * (1 + t * 0.02) * variance * (opts.hpMult || 1) * stageDifficultyMult;
+    const speed = CFG.enemyBaseSpeed * (1 + Math.min(t * 0.004, 0.6)) * (0.9 + Math.random() * 0.2) * (opts.speedMult != null ? opts.speedMult : 1);
+    return {
+      x, y, hp, maxHp: hp, speed,
+      damage: CFG.enemyBaseDamage * (1 + t * 0.01) * (opts.damageMult || 1) * stageDifficultyMult,
+      xpValue: Math.round(CFG.enemyBaseXp * variance * (opts.xpMult || 1)),
+      radius: opts.radius || 14 * variance,
+      hitFlash: 0,
+      type: opts.type || 'normal',
+    };
+  }
+
+  function spawnEnemy(){
+    if (enemies.length >= CFG.maxEnemies) return;
+    const spawnRadius = Math.hypot(width, height) / 2 + 120;
+    const ang = Math.random() * Math.PI * 2;
+    enemies.push(createEnemyAt(player.x + Math.cos(ang) * spawnRadius, player.y + Math.sin(ang) * spawnRadius));
+  }
+
+  function spawnElite(){
+    if (enemies.length >= CFG.maxEnemies) return;
+    const spawnRadius = Math.hypot(width, height) / 2 + CFG.eliteSpawnPadding;
+    const ang = Math.random() * Math.PI * 2;
+    const e = createEnemyAt(player.x + Math.cos(ang) * spawnRadius, player.y + Math.sin(ang) * spawnRadius, {
+      hpMult: CFG.eliteHpMult, damageMult: CFG.eliteDamageMult, xpMult: CFG.eliteXpMult,
+      radius: CFG.eliteRadius, type: 'elite',
+    });
+    e.eliteState = 'recover';
+    e.eliteTimer = 0.4;
+    e.dashVX = 0; e.dashVY = 0;
+    enemies.push(e);
+    sfxEliteSpawn();
+  }
+
+  function updateElite(e, dt){
+    if (e.eliteState === 'dashing'){
+      e.x += e.dashVX * dt;
+      e.y += e.dashVY * dt;
+      e.eliteTimer -= dt;
+      if (e.eliteTimer <= 0){ e.eliteState = 'recover'; e.eliteTimer = CFG.eliteRecoverTime; }
+    } else {
+      e.eliteTimer -= dt;
+      if (e.eliteTimer <= 0){
+        const leadX = player.x + (player.vx || 0) * CFG.elitePredictLead;
+        const leadY = player.y + (player.vy || 0) * CFG.elitePredictLead;
+        const ang = Math.atan2(leadY - e.y, leadX - e.x);
+        e.dashVX = Math.cos(ang) * CFG.eliteDashSpeed;
+        e.dashVY = Math.sin(ang) * CFG.eliteDashSpeed;
+        e.eliteState = 'dashing';
+        e.eliteTimer = CFG.eliteDashDuration;
+      }
+    }
+  }
+
+  function spawnEncircleRing(){
+    const cx = player.x, cy = player.y;
+    const radius = Math.hypot(width, height) / 2 + CFG.encircleSpawnPadding;
+    const gapAngle = Math.random() * Math.PI * 2;
+    const half = CFG.encircleGapWidth / 2;
+    const n = CFG.encircleEnemyCount;
+    for (let i = 0; i < n; i++){
+      if (enemies.length >= CFG.maxEnemies) break;
+      const angle = (i / n) * Math.PI * 2;
+      let d = Math.abs(angle - gapAngle);
+      d = Math.min(d, Math.PI * 2 - d);
+      if (d < half) continue;
+      enemies.push(createEnemyAt(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius, { speedMult: CFG.encircleSpeedMult }));
+    }
+  }
+  function showEncircleWarning(){
+    encircleWarningTimer = CFG.encircleDuration;
+    document.getElementById('encircleWarning').classList.remove('hidden');
+    sfxEncircleWarning();
+  }
+  function hideEncircleWarning(){
+    document.getElementById('encircleWarning').classList.add('hidden');
+  }
+
+  // ---------- bosses (stage mode) ----------
+  function spawnBoss(tier){
+    const spawnRadius = Math.hypot(width, height) / 2 + 150;
+    const ang = Math.random() * Math.PI * 2;
+    let hpMult, speedMult, radius;
+    if (tier === 'mini'){ hpMult = CFG.stage.miniBossHpMult; speedMult = CFG.stage.miniBossSpeedMult; radius = CFG.stage.miniBossRadius; }
+    else if (tier === 'mid'){ hpMult = CFG.stage.midBossHpMult; speedMult = CFG.stage.midBossSpeedMult; radius = CFG.stage.midBossRadius; }
+    else { hpMult = CFG.stage.bigBossHpMult; speedMult = CFG.stage.bigBossSpeedMult; radius = CFG.stage.bigBossRadius; }
+
+    const e = createEnemyAt(player.x + Math.cos(ang) * spawnRadius, player.y + Math.sin(ang) * spawnRadius, {
+      hpMult, speedMult, damageMult: CFG.stage.bossDamageMult, xpMult: hpMult * 0.5, radius, type: 'boss',
+    });
+    e.bossTier = tier;
+    e.isMainBoss = true;
+    e.hasSplit = false;
+    e.attackTimer = CFG.stage.midAttackInterval;
+    enemies.push(e);
+    showBossWarning(tier);
+    sfxBossWarning();
+  }
+
+  function spawnBossClone(parent){
+    const e = createEnemyAt(
+      parent.x + (Math.random() - 0.5) * 80,
+      parent.y + (Math.random() - 0.5) * 80,
+      { type: 'boss', radius: CFG.stage.bigBossRadius * 0.7 }
+    );
+    e.maxHp = parent.maxHp * CFG.stage.bigCloneHpRatio;
+    e.hp = e.maxHp;
+    e.speed = parent.speed;
+    e.damage = parent.damage;
+    e.xpValue = Math.round(parent.xpValue * 0.4);
+    e.bossTier = 'big';
+    e.isMainBoss = false;
+    e.hasSplit = true;
+    e.attackTimer = CFG.stage.midAttackInterval * 0.7;
+    enemies.push(e);
+  }
+
+  function bossRadialAttack(e){
+    const n = CFG.stage.midAttackBulletCount;
+    for (let i = 0; i < n; i++){
+      const ang = (i / n) * Math.PI * 2;
+      enemyBullets.push({
+        x: e.x, y: e.y,
+        vx: Math.cos(ang) * CFG.stage.midAttackBulletSpeed,
+        vy: Math.sin(ang) * CFG.stage.midAttackBulletSpeed,
+        radius: 6,
+        damage: CFG.stage.midAttackBulletDamage * stageDifficultyMult,
+        life: 4,
+      });
+    }
+  }
+
+  function updateBoss(e, dt){
+    const dx = player.x - e.x, dy = player.y - e.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    e.x += (dx / dist) * e.speed * dt;
+    e.y += (dy / dist) * e.speed * dt;
+
+    if (e.bossTier === 'mid' || e.bossTier === 'big'){
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0){
+        bossRadialAttack(e);
+        e.attackTimer = CFG.stage.midAttackInterval;
+      }
+    }
+    if (e.bossTier === 'big' && e.isMainBoss && !e.hasSplit && e.hp <= e.maxHp * 0.5){
+      e.hasSplit = true;
+      for (let i = 0; i < CFG.stage.bigCloneCount; i++) spawnBossClone(e);
+    }
+  }
+
+  function showBossWarning(tier){
+    const el = document.getElementById('bossWarning');
+    el.textContent = tf('bossWarningText', { name: t('bossName_' + tier) });
+    el.classList.remove('hidden');
+    clearTimeout(bossWarningHideTimer);
+    bossWarningHideTimer = setTimeout(() => el.classList.add('hidden'), 3000);
+  }
+
+  function updateBossHpBar(){
+    const boss = enemies.find(e => e.type === 'boss' && e.isMainBoss);
+    const bar = document.getElementById('bossHpBar');
+    if (!boss){ bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    document.getElementById('bossHpLabel').textContent = t('bossName_' + boss.bossTier);
+    document.getElementById('bossHpFill').style.width = Math.max(0, boss.hp / boss.maxHp * 100) + '%';
+  }
+
+  function onBossDefeated(tier){
+    pendingBossTier = tier;
+    showBossReward();
+  }
+
+  function pickThreeUpgrades(){
+    const avail = UPGRADES.filter(u => (player.upgradeCounts[u.id] || 0) < MAX_ABILITY_STACKS);
+    return shuffleArray(avail.slice()).slice(0, 3);
+  }
+
+  function showBossReward(){
+    const choices = pickThreeUpgrades();
+    if (choices.length === 0){ afterBossRewardResolved(); return; }
+    gameState = 'bossReward';
+    setPauseButtonVisible(false);
+    const list = document.getElementById('bossRewardList');
+    list.innerHTML = '';
+    choices.forEach(u => {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML = '<span class="icon">' + u.icon + '</span><span class="title">' + upgradeTitle(u.id) + '</span>' +
+        '<div class="desc">' + upgradeDesc(u.id) + '</div>';
+      el.addEventListener('click', () => chooseBossReward(u));
+      list.appendChild(el);
+    });
+    document.getElementById('bossRewardOverlay').classList.remove('hidden');
+  }
+
+  function chooseBossReward(u){
+    u.strongApply(player);
+    player.upgradeCounts[u.id] = Math.min(MAX_ABILITY_STACKS, (player.upgradeCounts[u.id] || 0) + 1);
+    renderSkillBar();
+    document.getElementById('bossRewardOverlay').classList.add('hidden');
+    afterBossRewardResolved();
+  }
+
+  function afterBossRewardResolved(){
+    if (pendingBossTier === 'mini') stagePhase = 'pending-mid';
+    else if (pendingBossTier === 'mid') stagePhase = 'pending-big';
+    else if (pendingBossTier === 'big') stagePhase = 'cleared';
+    pendingBossTier = null;
+
+    if (stagePhase === 'cleared'){
+      stageClear();
+      return;
+    }
+    gameState = 'playing';
+    setPauseButtonVisible(true);
+    lastTs = performance.now();
+    if (pendingLevelUps > 0) triggerLevelUpReward();
+  }
+
+  function stageClear(){
+    gameState = 'stageclear';
+    setPauseButtonVisible(false);
+    const packId = currentPackId();
+    const cleared = lsGet('vs_cleared_' + packId, 0);
+    if (stageNumber > cleared) lsSet('vs_cleared_' + packId, stageNumber);
+
+    const stats = loadStats(packId);
+    if (survivalTime > stats.highScoreTime) stats.highScoreTime = survivalTime;
+    if (player.level > stats.highScoreLevel) stats.highScoreLevel = player.level;
+    saveStats(packId, stats);
+
+    const total = stats.correctCount + stats.wrongCount;
+    const rate = total > 0 ? Math.round(stats.correctCount / total * 100) : 0;
+    const m = Math.floor(survivalTime / 60), s = Math.floor(survivalTime % 60);
+    document.getElementById('stageClearStats').innerHTML =
+      tf('stageClearTimeKills', { time: pad(m) + ':' + pad(s), kills: killCount }) + '<br>' +
+      tf('stageClearAccuracy', { pct: rate });
+    document.getElementById('stageClearSkillList').innerHTML = buildSkillListHtml();
+    document.getElementById('bossHpBar').classList.add('hidden');
+    document.getElementById('stageClearOverlay').classList.remove('hidden');
+  }
+
+  // ---------- combat ----------
+  function makeBullet(x, y, angle){
+    const spd = CFG.bulletSpeed * (player.bulletSpeedMult || 1);
+    return {
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd,
+      damage: CFG.baseAtk * player.atkMult,
+      radius: CFG.bulletRadius,
+      life: 1.6,
+      pierceLeft: player.pierceCount || 0,
+      bounceLeft: player.bounceCount || 0,
+      hitSet: new Set(),
+    };
+  }
+
+  function fireBullets(){
+    if (enemies.length === 0) return;
+    sfxShoot();
+    const sorted = enemies.slice().sort((a, b) => {
+      const da = (a.x - player.x) ** 2 + (a.y - player.y) ** 2;
+      const db = (b.x - player.x) ** 2 + (b.y - player.y) ** 2;
+      return da - db;
+    });
+    for (let i = 0; i < player.bulletCount; i++){
+      const target = sorted[i % sorted.length];
+      let ang = Math.atan2(target.y - player.y, target.x - player.x);
+      if (i >= sorted.length) ang += (Math.random() - 0.5) * 0.5;
+      bullets.push(makeBullet(player.x, player.y, ang));
+    }
+    if (player.evolutions.barrage){
+      const n = 12;
+      for (let i = 0; i < n; i++){
+        bullets.push(makeBullet(player.x, player.y, (i / n) * Math.PI * 2));
+      }
+    }
+  }
+
+  function findNearestEnemyExcluding(x, y, excludeSet){
+    let best = null, bestD = Infinity;
+    for (const e of enemies){
+      if (excludeSet && excludeSet.has(e)) continue;
+      const d = (e.x - x) ** 2 + (e.y - y) ** 2;
+      if (d < bestD){ bestD = d; best = e; }
+    }
+    return best;
+  }
+
+  function applySplashDamage(x, y, radius, dmg, excludeEnemy){
+    for (let i = enemies.length - 1; i >= 0; i--){
+      const e = enemies[i];
+      if (e === excludeEnemy) continue;
+      const d = Math.hypot(e.x - x, e.y - y);
+      if (d <= radius + e.radius){
+        e.hp -= dmg;
+        e.hitFlash = 0.12;
+        if (e.hp <= 0) killEnemy(e, { triggerBurst: false });
+      }
+    }
+  }
+
+  function killEnemy(enemy, opts){
+    opts = opts || {};
+    const idx = enemies.indexOf(enemy);
+    if (idx === -1) return;
+    sfxKill();
+    killCount += 1;
+    gems.push({ x: enemy.x, y: enemy.y, value: enemy.xpValue, radius: 6 });
+    const guaranteedHeal = enemy.type === 'elite' || enemy.type === 'boss';
+    if (guaranteedHeal || Math.random() < CFG.healDropChance){
+      heals.push({ x: enemy.x, y: enemy.y, radius: CFG.healRadius, amount: CFG.healAmount });
+    }
+    const shouldBurst = opts.triggerBurst !== false && (player.burstDamage || 0) > 0;
+    const bx = enemy.x, by = enemy.y;
+    const br = CFG.burstBaseRadius + (player.burstRadiusBonus || 0);
+    const bd = player.burstDamage || 0;
+    const isMainBossKill = enemy.type === 'boss' && enemy.isMainBoss;
+    const bossTier = enemy.bossTier;
+    enemies.splice(idx, 1);
+    if (shouldBurst) applySplashDamage(bx, by, br, bd, enemy);
+    if (isMainBossKill) onBossDefeated(bossTier);
+  }
+
+  function addBonusXp(amount){
+    if (!amount) return;
+    player.xp += amount;
+    while (player.xp >= player.xpNext){
+      player.xp -= player.xpNext;
+      player.level += 1;
+      player.xpNext = xpToNext(player.level);
+      pendingLevelUps += 1;
+      sfxLevelUp();
+    }
+  }
+
+  function grantXp(amount){
+    player.xp += amount;
+    while (player.xp >= player.xpNext){
+      player.xp -= player.xpNext;
+      player.level += 1;
+      player.xpNext = xpToNext(player.level);
+      pendingLevelUps += 1;
+      sfxLevelUp();
+    }
+    if (pendingLevelUps > 0 && gameState === 'playing' && !(stageMode && isBossActive())) triggerLevelUpReward();
+  }
+
+  // ---------- level up quiz (word fill-in-the-blank) ----------
+  const QUIZ_DANGER_TIME = 1.5;
+
+  const WRONG_WORD_PRIORITY = 0.6;
+
+  function pickRandomWord(pack){
+    const wrongList = lsGet(wrongKey(pack.id), []);
+    const wrongWords = wrongList.length
+      ? pack.words.filter(w => wrongList.some(r => r.word === w.word))
+      : [];
+    const otherWords = wrongWords.length
+      ? pack.words.filter(w => !wrongWords.includes(w))
+      : pack.words;
+
+    let pool;
+    if (wrongWords.length > 0 && otherWords.length > 0){
+      pool = (Math.random() < WRONG_WORD_PRIORITY) ? wrongWords : otherWords;
+    } else {
+      pool = wrongWords.length > 0 ? wrongWords : otherWords;
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function buildDummyPool(pack, currentWord){
+    const set = new Set();
+    pack.words.forEach(w => {
+      if (w === currentWord) return;
+      for (const ch of w.word) set.add(ch);
+    });
+    return Array.from(set);
+  }
+  function shuffleArray(arr){
+    for (let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function openQuiz(){
+    gameState = 'quiz';
+    setPauseButtonVisible(false);
+
+    const pack = getPack(currentPackId());
+    const difficulty = getDifficulty(pack.difficultyId);
+    const wordObj = pickRandomWord(pack);
+    const chars = Array.from(wordObj.word);
+    const len = chars.length;
+    const blankCount = Math.max(1, Math.min(difficulty.blankCount - (player.quizBlankReduction || 0), len - 1));
+    const quizTime = difficulty.quizTime + (player.quizTimeBonus || 0);
+
+    const blankIndices = [];
+    while (blankIndices.length < blankCount){
+      const idx = Math.floor(Math.random() * len);
+      if (!blankIndices.includes(idx)) blankIndices.push(idx);
+    }
+    blankIndices.sort((a, b) => a - b);
+
+    const dummyPool = buildDummyPool(pack, wordObj);
+    const neededDummies = Math.max(2, 6 - blankCount);
+    const dummies = [];
+    for (let i = 0; i < neededDummies && dummyPool.length > 0; i++){
+      dummies.push(dummyPool[Math.floor(Math.random() * dummyPool.length)]);
+    }
+    const tiles = shuffleArray(
+      blankIndices.map(i => chars[i]).concat(dummies)
+    ).map(ch => ({ char: ch, used: false, slotIndex: undefined }));
+
+    quiz = {
+      pack, wordObj, chars, blankIndices,
+      slots: blankIndices.map(() => null),
+      tiles,
+      timeLeft: quizTime, timeTotal: quizTime,
+      resolved: false,
+      upgrade: pickAvailableUpgrade(),
+    };
+
+    document.getElementById('quizResult').textContent = '';
+    document.getElementById('quizMeaning').textContent = wordMeaning(wordObj);
+    const fillEl = document.getElementById('quizTimerFill');
+    const numEl = document.getElementById('quizTimerNum');
+    fillEl.style.width = '100%';
+    fillEl.classList.remove('danger');
+    numEl.textContent = quizTime.toFixed(1);
+    numEl.classList.remove('danger');
+    renderQuizSpelling();
+    renderQuizTiles();
+    document.getElementById('quizOverlay').classList.remove('hidden');
+  }
+
+  function renderQuizSpelling(){
+    const el = document.getElementById('quizSpelling');
+    el.innerHTML = '';
+    quiz.chars.forEach((ch, i) => {
+      const blankPos = quiz.blankIndices.indexOf(i);
+      const box = document.createElement('span');
+      if (blankPos === -1){
+        box.className = 'letter-box';
+        box.textContent = ch;
+      } else {
+        const filled = quiz.slots[blankPos];
+        box.className = 'letter-box blank' + (filled ? ' filled' : '');
+        box.textContent = filled || '_';
+        if (filled) box.addEventListener('click', () => onSlotClick(blankPos));
+      }
+      el.appendChild(box);
+    });
+  }
+  function renderQuizTiles(){
+    const el = document.getElementById('quizTiles');
+    el.innerHTML = '';
+    quiz.tiles.forEach((tile, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'tile-btn' + (tile.used ? ' used' : '');
+      btn.textContent = tile.char;
+      btn.disabled = tile.used || quiz.resolved;
+      btn.addEventListener('click', () => onTileClick(i));
+      el.appendChild(btn);
+    });
+  }
+  function onTileClick(tileIndex){
+    if (quiz.resolved) return;
+    const tile = quiz.tiles[tileIndex];
+    if (tile.used) return;
+    const emptySlot = quiz.slots.findIndex(s => s === null);
+    if (emptySlot === -1) return;
+    quiz.slots[emptySlot] = tile.char;
+    tile.used = true;
+    tile.slotIndex = emptySlot;
+    renderQuizSpelling();
+    renderQuizTiles();
+    if (quiz.slots.every(s => s !== null)) resolveQuiz(false);
+  }
+  function onSlotClick(slotIndex){
+    if (quiz.resolved) return;
+    if (quiz.slots[slotIndex] === null) return;
+    const tile = quiz.tiles.find(t => t.used && t.slotIndex === slotIndex);
+    if (tile){ tile.used = false; tile.slotIndex = undefined; }
+    quiz.slots[slotIndex] = null;
+    renderQuizSpelling();
+    renderQuizTiles();
+  }
+
+  function updateQuizTimer(dt){
+    if (!quiz || quiz.resolved) return;
+    quiz.timeLeft -= dt;
+    const remaining = Math.max(0, quiz.timeLeft);
+    const ratio = remaining / quiz.timeTotal;
+    const danger = remaining <= QUIZ_DANGER_TIME;
+
+    const fillEl = document.getElementById('quizTimerFill');
+    const numEl = document.getElementById('quizTimerNum');
+    fillEl.style.width = (ratio * 100) + '%';
+    fillEl.classList.toggle('danger', danger);
+    numEl.textContent = remaining.toFixed(1);
+    numEl.classList.toggle('danger', danger);
+
+    if (quiz.timeLeft <= 0) resolveQuiz(true);
+  }
+
+  function resolveQuiz(timedOut){
+    if (quiz.resolved) return;
+    quiz.resolved = true;
+
+    const correct = !timedOut && quiz.slots.every((s, i) => s === quiz.chars[quiz.blankIndices[i]]);
+    const stats = loadStats(quiz.pack.id);
+    if (correct){
+      quiz.upgrade.strongApply(player);
+      stats.correctCount += 1;
+      removeWrongWord(quiz.pack.id, quiz.wordObj);
+      addBonusXp(player.correctBonusXp);
+      sfxQuizCorrect();
+    } else {
+      quiz.upgrade.weakApply(player);
+      stats.wrongCount += 1;
+      recordWrongWord(quiz.pack.id, quiz.wordObj);
+      sfxQuizWrong();
+    }
+    saveStats(quiz.pack.id, stats);
+
+    player.upgradeCounts[quiz.upgrade.id] = Math.min(MAX_ABILITY_STACKS, (player.upgradeCounts[quiz.upgrade.id] || 0) + 1);
+    renderSkillBar();
+
+    quiz.blankIndices.forEach((charIdx, i) => { quiz.slots[i] = quiz.chars[charIdx]; });
+    renderQuizSpelling();
+    renderQuizTiles();
+    document.getElementById('quizResult').textContent =
+      (correct ? t('quizCorrectPrefix') : t('quizWrongPrefix')) + upgradeTitle(quiz.upgrade.id) +
+      (correct ? t('quizResultBig') : t('quizResultSmall'));
+
+    setTimeout(closeQuiz, 1000);
+  }
+
+  function closeQuiz(){
+    document.getElementById('quizOverlay').classList.add('hidden');
+    quiz = null;
+    pendingLevelUps = Math.max(0, pendingLevelUps - 1);
+    if (pendingLevelUps > 0){
+      triggerLevelUpReward();
+    } else {
+      gameState = 'playing';
+      setPauseButtonVisible(true);
+      lastTs = performance.now();
+    }
+  }
+
+  // ---------- level-up reward routing (quiz or evolution) ----------
+  function triggerLevelUpReward(){
+    const evo = pendingEvolution();
+    if (evo) showEvolution(evo); else openQuiz();
+  }
+  function showEvolution(evo){
+    gameState = 'evolution';
+    setPauseButtonVisible(false);
+    sfxEvolution();
+    player.evolutions[evo.id] = true;
+    document.getElementById('evolutionIcon').textContent = evo.icon;
+    document.getElementById('evolutionTitle').textContent = evolutionTitle(evo.id);
+    document.getElementById('evolutionDesc').textContent = evolutionDesc(evo.id);
+    document.getElementById('evolutionOverlay').classList.remove('hidden');
+    setTimeout(closeEvolution, 2400);
+  }
+  function closeEvolution(){
+    document.getElementById('evolutionOverlay').classList.add('hidden');
+    pendingLevelUps = Math.max(0, pendingLevelUps - 1);
+    if (pendingLevelUps > 0){
+      triggerLevelUpReward();
+    } else {
+      gameState = 'playing';
+      setPauseButtonVisible(true);
+      lastTs = performance.now();
+    }
+  }
+
+  // ---------- skill display ----------
+  function renderSkillBar(){
+    const bar = document.getElementById('skillBar');
+    bar.innerHTML = '';
+    for (const id in player.upgradeCounts){
+      const count = player.upgradeCounts[id];
+      if (count <= 0) continue;
+      const u = upgradeById(id);
+      const pill = document.createElement('span');
+      pill.className = 'skill-pill';
+      pill.textContent = u.icon + ' ' + upgradeShort(id) + ' x' + count;
+      bar.appendChild(pill);
+    }
+  }
+  function buildSkillListHtml(){
+    const ids = Object.keys(player.upgradeCounts).filter(id => player.upgradeCounts[id] > 0);
+    if (ids.length === 0) return '<div class="empty">' + t('emptySkillList') + '</div>';
+    return ids.map(id => {
+      const u = upgradeById(id);
+      const count = player.upgradeCounts[id];
+      return '<div class="skill-row">' +
+        '<span class="icon">' + u.icon + '</span>' +
+        '<span class="info"><div class="name">' + upgradeTitle(id) + '</div>' +
+        '<div class="desc">' + upgradeDesc(id) + '</div>' +
+        '<div class="effect">' + upgradeEffectText(id, player) + '</div></span>' +
+        '<span class="stack">x' + count + '</span></div>';
+    }).join('');
+  }
+  function renderPauseSkillList(){
+    document.getElementById('pauseSkillList').innerHTML = buildSkillListHtml();
+  }
+
+  // ---------- game over ----------
+  function gameOver(){
+    gameState = 'gameover';
+    setPauseButtonVisible(false);
+    sfxGameOver();
+
+    const stats = loadStats(currentPackId());
+    if (survivalTime > stats.highScoreTime) stats.highScoreTime = survivalTime;
+    if (player.level > stats.highScoreLevel) stats.highScoreLevel = player.level;
+    saveStats(currentPackId(), stats);
+
+    const m = Math.floor(survivalTime / 60), s = Math.floor(survivalTime % 60);
+    document.getElementById('gameOverStats').textContent =
+      t('survivalTimeLabel') + ' ' + pad(m) + ':' + pad(s) + ' / ' + t('levelLabel') + player.level;
+    document.getElementById('gameOverSkillList').innerHTML = buildSkillListHtml();
+    document.getElementById('gameOverOverlay').classList.remove('hidden');
+  }
+  document.getElementById('retryBtn').addEventListener('click', resetGame);
+
+  // ---------- hud ----------
+  function pad(n){ return n < 10 ? '0' + n : '' + n; }
+  function updateHud(){
+    document.getElementById('hpFill').style.width = Math.max(0, player.hp / player.maxHp * 100) + '%';
+    document.getElementById('hpText').textContent = Math.max(0, Math.ceil(player.hp)) + '/' + player.maxHp;
+    document.getElementById('xpFill').style.width = Math.max(0, player.xp / player.xpNext * 100) + '%';
+    document.getElementById('xpText').textContent = Math.floor(player.xp) + '/' + player.xpNext;
+    document.getElementById('levelText').textContent = player.level;
+    const m = Math.floor(survivalTime / 60), s = Math.floor(survivalTime % 60);
+    document.getElementById('timeText').textContent = pad(m) + ':' + pad(s);
+
+    const pendEl = document.getElementById('pendingLevelUpsLabel');
+    if (stageMode && isBossActive() && pendingLevelUps > 0){
+      pendEl.classList.remove('hidden');
+      pendEl.textContent = tf('pendingLevelUpsLabel', { count: pendingLevelUps });
+    } else {
+      pendEl.classList.add('hidden');
+    }
+  }
+
+  // ---------- update ----------
+  function update(dt){
+    survivalTime += dt;
+
+    const iv = inputVector();
+    const spd = CFG.baseSpeed * player.speedMult;
+    player.vx = iv.x * spd;
+    player.vy = iv.y * spd;
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+    if (iv.x !== 0 || iv.y !== 0) player.facing = Math.atan2(iv.y, iv.x);
+
+    if (player.invuln > 0) player.invuln -= dt;
+
+    fireTimer -= dt;
+    if (fireTimer <= 0){
+      fireBullets();
+      fireTimer += CFG.fireInterval * (player.fireIntervalMult || 1);
+    }
+
+    spawnTimer -= dt;
+    if (spawnTimer <= 0){
+      if (!(stageMode && isBossActive())){
+        const n = spawnCount(survivalTime);
+        for (let i = 0; i < n; i++) spawnEnemy();
+      }
+      spawnTimer += spawnInterval(survivalTime);
+    }
+
+    if (stageMode){
+      if (stagePhase === 'pending-mini' && survivalTime >= CFG.stage.miniBossTime){
+        spawnBoss('mini'); stagePhase = 'mini-active';
+      } else if (stagePhase === 'pending-mid' && survivalTime >= CFG.stage.midBossTime){
+        spawnBoss('mid'); stagePhase = 'mid-active';
+      } else if (stagePhase === 'pending-big' && survivalTime >= CFG.stage.bigBossTime){
+        spawnBoss('big'); stagePhase = 'big-active';
+      }
+    }
+
+    eliteTimer -= dt;
+    if (eliteTimer <= 0){
+      spawnElite();
+      eliteTimer += CFG.eliteInterval;
+    }
+
+    encircleTimer -= dt;
+    if (encircleTimer <= 0){
+      spawnEncircleRing();
+      showEncircleWarning();
+      encircleTimer += CFG.encircleInterval;
+    }
+    if (encircleWarningTimer > 0){
+      encircleWarningTimer -= dt;
+      if (encircleWarningTimer <= 0) hideEncircleWarning();
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--){
+      const b = bullets[i];
+      b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+      let destroyed = false;
+      for (let j = enemies.length - 1; j >= 0; j--){
+        const e = enemies[j];
+        if (b.hitSet.has(e)) continue;
+        const rr = (b.radius + e.radius);
+        if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 <= rr * rr){
+          e.hp -= b.damage;
+          e.hitFlash = 0.12;
+          b.hitSet.add(e);
+          if (player.evolutions.bombardment){
+            applySplashDamage(e.x, e.y, CFG.bombardmentRadius, CFG.bombardmentDamage, e);
+          }
+          if (e.hp <= 0) killEnemy(e);
+
+          if (b.bounceLeft > 0){
+            const nextTarget = findNearestEnemyExcluding(b.x, b.y, b.hitSet);
+            if (nextTarget){
+              const ang = Math.atan2(nextTarget.y - b.y, nextTarget.x - b.x);
+              const spd2 = Math.hypot(b.vx, b.vy);
+              b.vx = Math.cos(ang) * spd2; b.vy = Math.sin(ang) * spd2;
+              b.bounceLeft -= 1;
+            } else if (b.pierceLeft > 0){
+              b.pierceLeft -= 1;
+            } else {
+              destroyed = true;
+            }
+          } else if (b.pierceLeft > 0){
+            b.pierceLeft -= 1;
+          } else {
+            destroyed = true;
+          }
+          break;
+        }
+      }
+      if (destroyed || b.life <= 0) bullets.splice(i, 1);
+    }
+
+    for (let i = enemies.length - 1; i >= 0; i--){
+      const e = enemies[i];
+      if (e.hitFlash > 0) e.hitFlash -= dt;
+
+      if (e.type === 'elite'){
+        updateElite(e, dt);
+      } else if (e.type === 'boss'){
+        updateBoss(e, dt);
+      } else {
+        const dx = player.x - e.x, dy = player.y - e.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        e.x += (dx / dist) * e.speed * dt;
+        e.y += (dy / dist) * e.speed * dt;
+      }
+
+      const rr = e.radius + player.radius;
+      const pd = Math.hypot(player.x - e.x, player.y - e.y);
+      if (pd <= rr && player.invuln <= 0){
+        player.hp -= e.damage * (1 - (player.defense || 0));
+        player.invuln = CFG.invulnTime + (player.invulnBonus || 0);
+        sfxHit();
+        if (player.hp <= 0){ player.hp = 0; gameOver(); }
+      }
+    }
+
+    for (let i = enemyBullets.length - 1; i >= 0; i--){
+      const b = enemyBullets[i];
+      b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+      let hit = false;
+      const dist = Math.hypot(player.x - b.x, player.y - b.y);
+      if (dist <= player.radius + b.radius && player.invuln <= 0){
+        player.hp -= b.damage * (1 - (player.defense || 0));
+        player.invuln = CFG.invulnTime + (player.invulnBonus || 0);
+        sfxHit();
+        hit = true;
+        if (player.hp <= 0){ player.hp = 0; gameOver(); }
+      }
+      if (hit || b.life <= 0) enemyBullets.splice(i, 1);
+    }
+
+    updateBossHpBar();
+
+    if ((player.auraDps || 0) > 0){
+      const radius = CFG.auraBaseRadius + (player.auraRadiusBonus || 0);
+      let dps = player.auraDps;
+      if (player.evolutions.sprint && (iv.x !== 0 || iv.y !== 0)) dps *= CFG.sprintAuraMult;
+      for (let i = enemies.length - 1; i >= 0; i--){
+        const e = enemies[i];
+        const d = Math.hypot(e.x - player.x, e.y - player.y);
+        if (d <= radius + e.radius){
+          e.hp -= dps * dt;
+          e.hitFlash = Math.max(e.hitFlash, 0.06);
+          if (e.hp <= 0) killEnemy(e);
+        }
+      }
+    }
+
+    for (let i = gems.length - 1; i >= 0; i--){
+      const g = gems[i];
+      const dx = player.x - g.x, dy = player.y - g.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist <= CFG.collectRadius){
+        sfxGem();
+        grantXp(g.value);
+        gems.splice(i, 1);
+        continue;
+      }
+      const magnetR = CFG.magnetRadius + (player.magnetBonus || 0);
+      if (dist <= magnetR){
+        const pull = CFG.gemSpeed * (1 - dist / magnetR + 0.3);
+        g.x += (dx / dist) * pull * dt;
+        g.y += (dy / dist) * pull * dt;
+      }
+    }
+
+    for (let i = heals.length - 1; i >= 0; i--){
+      const h = heals[i];
+      const dist = Math.hypot(player.x - h.x, player.y - h.y);
+      if (dist <= player.radius + h.radius){
+        player.hp = Math.min(player.maxHp, player.hp + h.amount);
+        heals.splice(i, 1);
+        sfxHeal();
+      }
+    }
+
+    camera.x = player.x - width / 2;
+    camera.y = player.y - height / 2;
+    updateHud();
+  }
+
+  // ---------- draw ----------
+  function drawGrid(){
+    const cell = 64;
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    const offX = -((camera.x % cell) + cell) % cell;
+    const offY = -((camera.y % cell) + cell) % cell;
+    ctx.beginPath();
+    for (let x = offX; x < width; x += cell){ ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+    for (let y = offY; y < height; y += cell){ ctx.moveTo(0, y); ctx.lineTo(width, y); }
+    ctx.stroke();
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#12121c';
+    ctx.fillRect(0, 0, width, height);
+    drawGrid();
+
+    for (const g of gems){
+      const sx = g.x - camera.x, sy = g.y - camera.y;
+      if (sx < -20 || sx > width + 20 || sy < -20 || sy > height + 20) continue;
+      ctx.fillStyle = '#4dffb0';
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-5, -5, 10, 10);
+      ctx.restore();
+    }
+
+    for (const h of heals){
+      const sx = h.x - camera.x, sy = h.y - camera.y;
+      if (sx < -20 || sx > width + 20 || sy < -20 || sy > height + 20) continue;
+      ctx.fillStyle = '#ff6b81';
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.fillRect(-8, -2.5, 16, 5);
+      ctx.fillRect(-2.5, -8, 5, 16);
+      ctx.restore();
+    }
+
+    for (const b of bullets){
+      const sx = b.x - camera.x, sy = b.y - camera.y;
+      ctx.fillStyle = '#ffe066';
+      ctx.beginPath();
+      ctx.arc(sx, sy, b.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (const b of enemyBullets){
+      const sx = b.x - camera.x, sy = b.y - camera.y;
+      ctx.fillStyle = '#ff4d5e';
+      ctx.beginPath();
+      ctx.arc(sx, sy, b.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (const e of enemies){
+      const sx = e.x - camera.x, sy = e.y - camera.y;
+      if (sx < -60 || sx > width + 60 || sy < -60 || sy > height + 60) continue;
+      const isElite = e.type === 'elite';
+      const isBoss = e.type === 'boss';
+      ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : (isBoss ? '#ff2d55' : (isElite ? '#c04dff' : '#ff5566'));
+      ctx.beginPath();
+      ctx.arc(sx, sy, e.radius, 0, Math.PI * 2);
+      ctx.fill();
+      if (isElite){
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = e.eliteState === 'dashing' ? '#ffe066' : 'rgba(255,224,102,0.6)';
+        ctx.stroke();
+      }
+      if (isBoss){
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = e.isMainBoss ? '#ffe066' : 'rgba(255,224,102,0.6)';
+        ctx.stroke();
+      }
+      if (!isBoss){
+        const hpRatio = Math.max(0, e.hp / e.maxHp);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(sx - e.radius, sy - e.radius - 8, e.radius * 2, 4);
+        ctx.fillStyle = '#ff8a5c';
+        ctx.fillRect(sx - e.radius, sy - e.radius - 8, e.radius * 2 * hpRatio, 4);
+      }
+    }
+
+    // player, always screen-centered
+    const px = width / 2, py = height / 2;
+
+    if ((player.auraDps || 0) > 0){
+      const auraRadius = CFG.auraBaseRadius + (player.auraRadiusBonus || 0);
+      ctx.beginPath();
+      ctx.arc(px, py, auraRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(124,247,201,0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(124,247,201,0.08)';
+      ctx.fill();
+    }
+
+    ctx.save();
+    ctx.translate(px, py);
+    if (player.invuln > 0 && Math.floor(survivalTime * 20) % 2 === 0) ctx.globalAlpha = 0.4;
+    ctx.rotate(player.facing);
+    ctx.fillStyle = '#4dd0ff';
+    ctx.beginPath();
+    ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0a0a12';
+    ctx.beginPath();
+    ctx.moveTo(player.radius + 6, 0);
+    ctx.lineTo(player.radius - 4, -6);
+    ctx.lineTo(player.radius - 4, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ---------- main loop ----------
+  function loop(ts){
+    if (!lastTs) lastTs = ts;
+    let dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+    dt = Math.min(dt, 0.05);
+
+    if (gameState === 'playing') update(dt);
+    else if (gameState === 'quiz') updateQuizTimer(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- init ----------
+  player = newPlayer();
+  enemies = []; bullets = []; gems = []; heals = []; enemyBullets = [];
+  gameState = 'title';
+  setPauseButtonVisible(false);
+  applyI18n();
+  updateHud();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
