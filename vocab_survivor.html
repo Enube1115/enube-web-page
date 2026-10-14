@@ -37,19 +37,23 @@
   }
   #topInfo b { font-size: 15px; color: #ffe066; }
 
-  #joyZone {
-    position: fixed; left: 0; right: 0; bottom: 0;
-    height: 58%; z-index: 5;
+  #joystick {
+    position: fixed; left: 50%; z-index: 5;
+    transform: translateX(-50%);
+    touch-action: none;
   }
-  .joy-ring {
-    position: absolute; width: 108px; height: 108px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.06);
-    transform: translate(-50%, -50%); display: none;
+  .joy-base {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18); border: 2px solid rgba(255,255,255,0.45);
+    transition: opacity 0.15s ease-out;
   }
   .joy-knob {
-    position: absolute; width: 46px; height: 46px; border-radius: 50%;
-    background: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.5);
-    transform: translate(-50%, -50%); display: none;
+    position: absolute; left: 50%; top: 50%;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.65);
+    transition: opacity 0.15s ease-out;
+    will-change: transform;
   }
 
   .overlay {
@@ -276,8 +280,8 @@
 
 <div id="bossWarning" class="hidden"></div>
 
-<div id="joyZone">
-  <div class="joy-ring" id="joyRing"></div>
+<div id="joystick" class="hidden">
+  <div class="joy-base" id="joyBase"></div>
   <div class="joy-knob" id="joyKnob"></div>
 </div>
 
@@ -680,6 +684,12 @@
     gemSpeed: 300,
     maxEnemies: 260,
 
+    // enemy scaling over time
+    spawnIntervalRamp: 0.006,
+    spawnCountStepTime: 20,
+    enemyHpGrowth: 0.02,
+    enemyDamageGrowth: 0.01,
+
     // elite enemy
     eliteInterval: 90,
     eliteHpMult: 8,
@@ -704,6 +714,15 @@
     healDropChance: 0.06,
     healAmount: 25,
     healRadius: 8,
+
+    // virtual joystick
+    joystick: {
+      baseSize: 120,
+      knobSize: 50,
+      opacity: 0.25,
+      activeOpacity: 0.4,
+      bottomMargin: 22,
+    },
 
     // ability effects
     auraBaseRadius: 70,
@@ -753,10 +772,24 @@
       bigCloneHpRatio: 0.35,
       bigCloneCount: 2,
       stageDifficultyMult: [1, 1.35, 1.75],
+      // per-stage tuning (index = stage - 1); omitted keys default to 1 (no change)
+      tuning: [
+        { // stage 1: tutorial-like
+          spawnRampMult: 0.6,          // spawn pace ramp-up speed
+          enemyGrowthMult: 0.7,        // enemy HP / damage growth over time
+          bossHpMult: 0.7,             // mini / mid / big boss HP
+          bossAttackIntervalMult: 1.4, // mid / big boss radial attack interval
+          encircleGapMult: 1.5,        // encirclement gap width
+          healDropMult: 1.5,           // heal item drop chance
+        },
+        {},
+        {},
+      ],
     },
   };
 
   const STAGE_COUNT = CFG.stage.stageDifficultyMult.length;
+  const NO_TUNING = { spawnRampMult: 1, enemyGrowthMult: 1, bossHpMult: 1, bossAttackIntervalMult: 1, encircleGapMult: 1, healDropMult: 1 };
 
   function weakBlend(strongVal, weakVal, p){
     const stacks = p.upgradeCounts.qpenalty || 0;
@@ -1198,6 +1231,7 @@
   let stageMode = false;
   let stageNumber = 1;
   let stageDifficultyMult = 1;
+  let tuning = NO_TUNING;
   let stagePhase = 'none'; // none | pending-mini | mini-active | pending-mid | mid-active | pending-big | big-active | cleared
   let pendingBossTier = null;
   let bossWarningHideTimer = null;
@@ -1248,6 +1282,7 @@
     stageMode = (selectedMode === 'stage');
     stageNumber = selectedStage;
     stageDifficultyMult = stageMode ? (CFG.stage.stageDifficultyMult[stageNumber - 1] || 1) : 1;
+    tuning = stageMode ? Object.assign({}, NO_TUNING, CFG.stage.tuning[stageNumber - 1]) : NO_TUNING;
     stagePhase = stageMode ? 'pending-mini' : 'none';
     pendingBossTier = null;
     clearTimeout(bossWarningHideTimer);
@@ -1434,48 +1469,74 @@
     return { x, y };
   }
 
-  // ---------- input: floating joystick ----------
-  const joyZone = document.getElementById('joyZone');
-  const joyRing = document.getElementById('joyRing');
+  // ---------- input: fixed virtual joystick ----------
+  const joyEl = document.getElementById('joystick');
+  const joyBase = document.getElementById('joyBase');
   const joyKnob = document.getElementById('joyKnob');
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
   let joyActive = false, joyId = null;
   let joyOrigin = { x: 0, y: 0 };
   let joyVec = { x: 0, y: 0 };
-  const JOY_MAX = 54;
+  const JOY_MAX = (CFG.joystick.baseSize - CFG.joystick.knobSize) / 2;
 
-  function showJoyAt(x, y){
-    joyOrigin.x = x; joyOrigin.y = y;
-    joyRing.style.left = x + 'px'; joyRing.style.top = y + 'px';
-    joyKnob.style.left = x + 'px'; joyKnob.style.top = y + 'px';
-    joyRing.style.display = 'block';
-    joyKnob.style.display = 'block';
+  (function initJoystickLayout(){
+    const jc = CFG.joystick;
+    joyEl.style.width = jc.baseSize + 'px';
+    joyEl.style.height = jc.baseSize + 'px';
+    joyEl.style.bottom = 'calc(env(safe-area-inset-bottom, 0px) + ' + jc.bottomMargin + 'px)';
+    joyBase.style.width = jc.baseSize + 'px';
+    joyBase.style.height = jc.baseSize + 'px';
+    joyKnob.style.width = jc.knobSize + 'px';
+    joyKnob.style.height = jc.knobSize + 'px';
+    setJoyOpacity(jc.opacity);
+  })();
+
+  function setJoyOpacity(v){
+    joyBase.style.opacity = v;
+    joyKnob.style.opacity = v;
   }
-  function hideJoy(){
-    joyRing.style.display = 'none';
-    joyKnob.style.display = 'none';
+  function setKnobOffset(x, y){
+    joyKnob.style.transform = 'translate(calc(-50% + ' + x + 'px), calc(-50% + ' + y + 'px))';
+  }
+  function resetKnob(){
+    setKnobOffset(0, 0);
     joyVec.x = 0; joyVec.y = 0;
   }
+
+  function pointWithinJoyBase(x, y){
+    const r = joyEl.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    return Math.hypot(x - cx, y - cy) <= r.width / 2;
+  }
+
   function updateJoyKnob(x, y){
     let dx = x - joyOrigin.x, dy = y - joyOrigin.y;
     const dist = Math.hypot(dx, dy);
     const clamped = Math.min(dist, JOY_MAX);
     const ang = Math.atan2(dy, dx);
-    const kx = joyOrigin.x + Math.cos(ang) * clamped;
-    const ky = joyOrigin.y + Math.sin(ang) * clamped;
-    joyKnob.style.left = kx + 'px'; joyKnob.style.top = ky + 'px';
+    const kx = Math.cos(ang) * clamped, ky = Math.sin(ang) * clamped;
+    setKnobOffset(kx, ky);
     joyVec.x = dist > 4 ? Math.cos(ang) * (clamped / JOY_MAX) : 0;
     joyVec.y = dist > 4 ? Math.sin(ang) * (clamped / JOY_MAX) : 0;
   }
 
-  joyZone.addEventListener('touchstart', e => {
+  joyEl.addEventListener('touchstart', e => {
     if (joyActive) return;
-    const t = e.changedTouches[0];
-    joyActive = true; joyId = t.identifier;
-    showJoyAt(t.clientX, t.clientY);
+    for (const t of e.changedTouches){
+      if (pointWithinJoyBase(t.clientX, t.clientY)){
+        joyActive = true; joyId = t.identifier;
+        const r = joyEl.getBoundingClientRect();
+        joyOrigin.x = r.left + r.width / 2; joyOrigin.y = r.top + r.height / 2;
+        setJoyOpacity(CFG.joystick.activeOpacity);
+        updateJoyKnob(t.clientX, t.clientY);
+        break;
+      }
+    }
     e.preventDefault();
   }, { passive: false });
 
-  joyZone.addEventListener('touchmove', e => {
+  joyEl.addEventListener('touchmove', e => {
+    if (!joyActive) return;
     for (const t of e.changedTouches){
       if (t.identifier === joyId){ updateJoyKnob(t.clientX, t.clientY); }
     }
@@ -1484,11 +1545,28 @@
 
   function endJoyTouch(e){
     for (const t of e.changedTouches){
-      if (t.identifier === joyId){ joyActive = false; joyId = null; hideJoy(); }
+      if (t.identifier === joyId){
+        joyActive = false; joyId = null;
+        setJoyOpacity(CFG.joystick.opacity);
+        resetKnob();
+      }
     }
   }
-  joyZone.addEventListener('touchend', endJoyTouch, { passive: false });
-  joyZone.addEventListener('touchcancel', endJoyTouch, { passive: false });
+  joyEl.addEventListener('touchend', endJoyTouch, { passive: false });
+  joyEl.addEventListener('touchcancel', endJoyTouch, { passive: false });
+
+  let joystickVisible = false;
+  function updateJoystickVisibility(){
+    const show = isTouchDevice && gameState === 'playing';
+    if (show === joystickVisible) return;
+    joystickVisible = show;
+    joyEl.classList.toggle('hidden', !show);
+    if (!show){
+      joyActive = false; joyId = null;
+      setJoyOpacity(CFG.joystick.opacity);
+      resetKnob();
+    }
+  }
 
   function inputVector(){
     const kv = keyboardVector();
@@ -1500,18 +1578,18 @@
   }
 
   // ---------- spawning ----------
-  function spawnInterval(t){ return Math.max(0.25, (1.4 - t * 0.006) / stageDifficultyMult); }
-  function spawnCount(t){ return Math.min(6, 1 + Math.floor(t / 20)) + Math.floor((stageDifficultyMult - 1) * 2); }
+  function spawnInterval(t){ return Math.max(0.25, (1.4 - t * CFG.spawnIntervalRamp * tuning.spawnRampMult) / stageDifficultyMult); }
+  function spawnCount(t){ return Math.min(6, 1 + Math.floor(t * tuning.spawnRampMult / CFG.spawnCountStepTime)) + Math.floor((stageDifficultyMult - 1) * 2); }
 
   function createEnemyAt(x, y, opts){
     opts = opts || {};
     const t = survivalTime;
     const variance = 0.85 + Math.random() * 0.3;
-    const hp = CFG.enemyBaseHp * (1 + t * 0.02) * variance * (opts.hpMult || 1) * stageDifficultyMult;
+    const hp = CFG.enemyBaseHp * (1 + t * CFG.enemyHpGrowth * tuning.enemyGrowthMult) * variance * (opts.hpMult || 1) * stageDifficultyMult;
     const speed = CFG.enemyBaseSpeed * (1 + Math.min(t * 0.004, 0.6)) * (0.9 + Math.random() * 0.2) * (opts.speedMult != null ? opts.speedMult : 1);
     return {
       x, y, hp, maxHp: hp, speed,
-      damage: CFG.enemyBaseDamage * (1 + t * 0.01) * (opts.damageMult || 1) * stageDifficultyMult,
+      damage: CFG.enemyBaseDamage * (1 + t * CFG.enemyDamageGrowth * tuning.enemyGrowthMult) * (opts.damageMult || 1) * stageDifficultyMult,
       xpValue: Math.round(CFG.enemyBaseXp * variance * (opts.xpMult || 1)),
       radius: opts.radius || 14 * variance,
       hitFlash: 0,
@@ -1565,7 +1643,7 @@
     const cx = player.x, cy = player.y;
     const radius = Math.hypot(width, height) / 2 + CFG.encircleSpawnPadding;
     const gapAngle = Math.random() * Math.PI * 2;
-    const half = CFG.encircleGapWidth / 2;
+    const half = CFG.encircleGapWidth * tuning.encircleGapMult / 2;
     const n = CFG.encircleEnemyCount;
     for (let i = 0; i < n; i++){
       if (enemies.length >= CFG.maxEnemies) break;
@@ -1595,12 +1673,12 @@
     else { hpMult = CFG.stage.bigBossHpMult; speedMult = CFG.stage.bigBossSpeedMult; radius = CFG.stage.bigBossRadius; }
 
     const e = createEnemyAt(player.x + Math.cos(ang) * spawnRadius, player.y + Math.sin(ang) * spawnRadius, {
-      hpMult, speedMult, damageMult: CFG.stage.bossDamageMult, xpMult: hpMult * 0.5, radius, type: 'boss',
+      hpMult: hpMult * tuning.bossHpMult, speedMult, damageMult: CFG.stage.bossDamageMult, xpMult: hpMult * 0.5, radius, type: 'boss',
     });
     e.bossTier = tier;
     e.isMainBoss = true;
     e.hasSplit = false;
-    e.attackTimer = CFG.stage.midAttackInterval;
+    e.attackTimer = CFG.stage.midAttackInterval * tuning.bossAttackIntervalMult;
     enemies.push(e);
     showBossWarning(tier);
     sfxBossWarning();
@@ -1620,7 +1698,7 @@
     e.bossTier = 'big';
     e.isMainBoss = false;
     e.hasSplit = true;
-    e.attackTimer = CFG.stage.midAttackInterval * 0.7;
+    e.attackTimer = CFG.stage.midAttackInterval * tuning.bossAttackIntervalMult * 0.7;
     enemies.push(e);
   }
 
@@ -1649,7 +1727,7 @@
       e.attackTimer -= dt;
       if (e.attackTimer <= 0){
         bossRadialAttack(e);
-        e.attackTimer = CFG.stage.midAttackInterval;
+        e.attackTimer = CFG.stage.midAttackInterval * tuning.bossAttackIntervalMult;
       }
     }
     if (e.bossTier === 'big' && e.isMainBoss && !e.hasSplit && e.hp <= e.maxHp * 0.5){
@@ -1819,7 +1897,7 @@
     killCount += 1;
     gems.push({ x: enemy.x, y: enemy.y, value: enemy.xpValue, radius: 6 });
     const guaranteedHeal = enemy.type === 'elite' || enemy.type === 'boss';
-    if (guaranteedHeal || Math.random() < CFG.healDropChance){
+    if (guaranteedHeal || Math.random() < CFG.healDropChance * tuning.healDropMult){
       heals.push({ x: enemy.x, y: enemy.y, radius: CFG.healRadius, amount: CFG.healAmount });
     }
     const shouldBurst = opts.triggerBurst !== false && (player.burstDamage || 0) > 0;
@@ -2473,6 +2551,7 @@
 
     if (gameState === 'playing') update(dt);
     else if (gameState === 'quiz') updateQuizTimer(dt);
+    updateJoystickVisibility();
     draw();
     requestAnimationFrame(loop);
   }
