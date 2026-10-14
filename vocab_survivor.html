@@ -225,6 +225,17 @@
     animation: warnPulse 0.6s ease-in-out infinite alternate;
   }
 
+  #bossAbilityWarning {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 150px); left: 50%;
+    transform: translateX(-50%); z-index: 12; text-align: center; max-width: 90vw;
+    background: rgba(255,140,0,0.9); color: #fff; font-weight: 800; font-size: 14px;
+    padding: 10px 20px; border-radius: 20px;
+    animation: warnPulse 0.5s ease-in-out infinite alternate;
+  }
+
+  .skill-pill.sealed, .skill-row.sealed { filter: grayscale(1); opacity: 0.45; }
+  .skill-pill.sealed { text-decoration: line-through; }
+
   #bossHpBar {
     position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 50%;
     transform: translateX(-50%); width: min(90vw, 480px); z-index: 11; pointer-events: none;
@@ -279,6 +290,7 @@
 </div>
 
 <div id="bossWarning" class="hidden"></div>
+<div id="bossAbilityWarning" class="hidden"></div>
 
 <div id="joystick" class="hidden">
   <div class="joy-base" id="joyBase"></div>
@@ -487,6 +499,10 @@
       evo_sprint_title: '疾走',
       evo_sprint_desc: '移動中、オーラのダメージが強化される',
       encircleWarningText: '⚠️ 包囲されている！ 突破口を探せ！',
+      bossAbilitySummon: '⚠️ 小ボスが子分を呼び出した！',
+      bossAbilityBeam: '⚠️ 中ボスの回転ビーム！ 光線に触れるな！',
+      bossAbilitySeal: '⚠️ 封印！ 「{skill}」の効果が封じられた！',
+      sealedTag: '（封印中）',
     },
     en: {
       appTitle: 'Vocab Survivor',
@@ -607,6 +623,10 @@
       evo_sprint_title: 'Sprint',
       evo_sprint_desc: 'While moving, your aura deals bonus damage',
       encircleWarningText: '⚠️ Surrounded! Find the gap!',
+      bossAbilitySummon: '⚠️ The Mini-Boss summoned minions!',
+      bossAbilityBeam: '⚠️ Rotating beam! Stay out of the light!',
+      bossAbilitySeal: '⚠️ Sealed! "{skill}" has been disabled!',
+      sealedTag: ' (Sealed)',
     },
   };
 
@@ -747,6 +767,9 @@
       evolution: { type: 'triangle', notes: [440, 554, 659, 880, 1108], noteDuration: 0.13, gap: 0.03, gain: 0.22, minGap: 300 },
       gameover: { type: 'sawtooth', freqStart: 260, freqEnd: 55, duration: 0.9, gain: 0.2, minGap: 300 },
       bossWarning: { type: 'sawtooth', notes: [110, 90, 70], noteDuration: 0.22, gap: 0.04, gain: 0.24, minGap: 800 },
+      bossSummon: { type: 'square', notes: [330, 440, 330, 440], noteDuration: 0.07, gap: 0.03, gain: 0.16, minGap: 800 },
+      bossBeam: { type: 'sawtooth', freq: 180, freqEnd: 900, duration: 0.6, gain: 0.18, minGap: 800 },
+      bossSeal: { type: 'triangle', notes: [880, 622, 440, 311], noteDuration: 0.16, gap: 0.03, gain: 0.22, minGap: 800 },
     },
 
     // stage mode / bosses
@@ -771,6 +794,25 @@
       midAttackBulletDamage: 10,
       bigCloneHpRatio: 0.35,
       bigCloneCount: 2,
+
+      // boss abilities
+      abilityWarningDuration: 2.5,
+      // mini boss: summon minions
+      miniSummonInterval: 15,
+      miniSummonCount: 4,
+      miniSummonDistance: 60,
+      minionHpMult: 0.4,
+      minionSpeedMult: 1.5,
+      minionRadius: 9,
+      // mid boss: rotating beam
+      beamStartDelay: 2,
+      beamLength: 280,
+      beamWidth: 16,
+      beamRotationSpeed: 0.7, // rad/s
+      beamDps: 22,
+      // big boss: seal one acquired upgrade
+      sealHpRatio: 0.5,
+
       stageDifficultyMult: [1, 1.35, 1.75],
       // per-stage tuning (index = stage - 1); omitted keys default to 1 (no change)
       tuning: [
@@ -953,6 +995,9 @@
   function sfxEvolution(){ const c = CFG.sound.evolution; playSequence(c.notes, c.noteDuration, c.gap, { type: c.type, gain: c.gain, key: 'evolution', minGap: c.minGap }); }
   function sfxGameOver(){ const c = CFG.sound.gameover; playTone(c.freqStart, c.duration, { type: c.type, gain: c.gain, freqEnd: c.freqEnd, key: 'gameover', minGap: c.minGap }); }
   function sfxBossWarning(){ const c = CFG.sound.bossWarning; playSequence(c.notes, c.noteDuration, c.gap, { type: c.type, gain: c.gain, key: 'bossWarning', minGap: c.minGap }); }
+  function sfxBossSummon(){ const c = CFG.sound.bossSummon; playSequence(c.notes, c.noteDuration, c.gap, { type: c.type, gain: c.gain, key: 'bossSummon', minGap: c.minGap }); }
+  function sfxBossBeam(){ const c = CFG.sound.bossBeam; playTone(c.freq, c.duration, { type: c.type, gain: c.gain, freqEnd: c.freqEnd, key: 'bossBeam', minGap: c.minGap }); }
+  function sfxBossSeal(){ const c = CFG.sound.bossSeal; playSequence(c.notes, c.noteDuration, c.gap, { type: c.type, gain: c.gain, key: 'bossSeal', minGap: c.minGap }); }
 
   const MAX_ABILITY_STACKS = 5;
 
@@ -1055,6 +1100,54 @@
   }
   function evolutionTitle(id){ return t('evo_' + id + '_title'); }
   function evolutionDesc(id){ return t('evo_' + id + '_desc'); }
+
+  // ---------- upgrade application / seal ----------
+  const UPGRADE_STAT_FIELDS = [
+    'maxHp', 'atkMult', 'speedMult', 'bulletCount', 'fireIntervalMult', 'pierceCount', 'bulletSpeedMult',
+    'auraDps', 'auraRadiusBonus', 'burstDamage', 'burstRadiusBonus', 'bounceCount',
+    'invulnBonus', 'defense', 'magnetBonus', 'quizTimeBonus', 'quizBlankReduction', 'correctBonusXp',
+  ];
+  function applyUpgrade(u, strong){
+    (strong ? u.strongApply : u.weakApply)(player);
+    player.upgradeCounts[u.id] = Math.min(MAX_ABILITY_STACKS, (player.upgradeCounts[u.id] || 0) + 1);
+    player.upgradeHistory.push({ id: u.id, strong });
+    if (player.sealedUpgradeId) recalcUpgradeStats();
+    renderSkillBar();
+  }
+  // Rebuilds upgrade-derived stats by replaying history, skipping the sealed upgrade. Stack counts are untouched.
+  function recalcUpgradeStats(){
+    const base = newPlayer();
+    for (const h of player.upgradeHistory){
+      if (h.id === player.sealedUpgradeId) continue;
+      const u = upgradeById(h.id);
+      (h.strong ? u.strongApply : u.weakApply)(base);
+      base.upgradeCounts[h.id] = Math.min(MAX_ABILITY_STACKS, (base.upgradeCounts[h.id] || 0) + 1);
+    }
+    UPGRADE_STAT_FIELDS.forEach(f => { player[f] = base[f]; });
+    player.hp = Math.min(player.hp, player.maxHp);
+  }
+  // Upgrades that fed an acquired evolution are exempt from sealing.
+  function sealableUpgradeIds(){
+    const evolved = new Set();
+    EVOLUTIONS.forEach(ev => { if (player.evolutions[ev.id]) ev.requires.forEach(id => evolved.add(id)); });
+    return Object.keys(player.upgradeCounts).filter(id => player.upgradeCounts[id] > 0 && !evolved.has(id));
+  }
+  function sealRandomUpgrade(){
+    const ids = sealableUpgradeIds();
+    if (ids.length === 0) return;
+    const id = ids[Math.floor(Math.random() * ids.length)];
+    player.sealedUpgradeId = id;
+    recalcUpgradeStats();
+    renderSkillBar();
+    showAbilityWarning(tf('bossAbilitySeal', { skill: upgradeTitle(id) }));
+    sfxBossSeal();
+  }
+  function releaseSeal(){
+    if (!player.sealedUpgradeId) return;
+    player.sealedUpgradeId = null;
+    recalcUpgradeStats();
+    renderSkillBar();
+  }
 
   // ---------- languages & difficulty ----------
   const LANGUAGES = [
@@ -1235,6 +1328,7 @@
   let stagePhase = 'none'; // none | pending-mini | mini-active | pending-mid | mid-active | pending-big | big-active | cleared
   let pendingBossTier = null;
   let bossWarningHideTimer = null;
+  let abilityWarningTimer = 0;
   function isBossActive(){
     return stagePhase === 'mini-active' || stagePhase === 'mid-active' || stagePhase === 'big-active';
   }
@@ -1256,6 +1350,8 @@
       quizTimeBonus: 0, quizBlankReduction: 0, correctBonusXp: 0,
       invuln: 0, facing: 0, vx: 0, vy: 0,
       upgradeCounts: {},
+      upgradeHistory: [], // [{ id, strong }] in acquisition order, replayed when a seal changes
+      sealedUpgradeId: null,
       evolutions: {},
     };
   }
@@ -1286,6 +1382,8 @@
     stagePhase = stageMode ? 'pending-mini' : 'none';
     pendingBossTier = null;
     clearTimeout(bossWarningHideTimer);
+    abilityWarningTimer = 0;
+    minionPurgePending = false;
 
     document.getElementById('quizOverlay').classList.add('hidden');
     document.getElementById('evolutionOverlay').classList.add('hidden');
@@ -1295,6 +1393,7 @@
     document.getElementById('pauseOverlay').classList.add('hidden');
     document.getElementById('encircleWarning').classList.add('hidden');
     document.getElementById('bossWarning').classList.add('hidden');
+    document.getElementById('bossAbilityWarning').classList.add('hidden');
     document.getElementById('bossHpBar').classList.add('hidden');
     setPauseButtonVisible(true);
     renderSkillBar();
@@ -1679,9 +1778,79 @@
     e.isMainBoss = true;
     e.hasSplit = false;
     e.attackTimer = CFG.stage.midAttackInterval * tuning.bossAttackIntervalMult;
+    e.summonTimer = CFG.stage.miniSummonInterval;
+    e.beamDelay = CFG.stage.beamStartDelay;
+    e.beamActive = false;
+    e.beamAngle = Math.random() * Math.PI * 2;
+    e.beamDir = Math.random() < 0.5 ? -1 : 1;
+    e.hasSealed = false;
     enemies.push(e);
     showBossWarning(tier);
     sfxBossWarning();
+  }
+
+  function summonMinions(boss){
+    const n = CFG.stage.miniSummonCount;
+    const offset = Math.random() * Math.PI * 2;
+    for (let i = 0; i < n; i++){
+      if (enemies.length >= CFG.maxEnemies) break;
+      const ang = offset + (i / n) * Math.PI * 2;
+      enemies.push(createEnemyAt(
+        boss.x + Math.cos(ang) * (boss.radius + CFG.stage.miniSummonDistance),
+        boss.y + Math.sin(ang) * (boss.radius + CFG.stage.miniSummonDistance),
+        { type: 'minion', hpMult: CFG.stage.minionHpMult, speedMult: CFG.stage.minionSpeedMult, radius: CFG.stage.minionRadius }
+      ));
+    }
+    showAbilityWarning(t('bossAbilitySummon'));
+    sfxBossSummon();
+  }
+
+  function beamEnd(e){
+    return { x: e.x + Math.cos(e.beamAngle) * CFG.stage.beamLength, y: e.y + Math.sin(e.beamAngle) * CFG.stage.beamLength };
+  }
+  function distToSegment(px, py, ax, ay, bx, by){
+    const vx = bx - ax, vy = by - ay;
+    const lenSq = vx * vx + vy * vy || 1;
+    const k = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / lenSq));
+    return Math.hypot(px - (ax + vx * k), py - (ay + vy * k));
+  }
+  function updateBossBeam(e, dt){
+    if (!e.beamActive){
+      e.beamDelay -= dt;
+      if (e.beamDelay > 0) return;
+      e.beamActive = true;
+      showAbilityWarning(t('bossAbilityBeam'));
+      sfxBossBeam();
+    }
+    e.beamAngle += e.beamDir * CFG.stage.beamRotationSpeed * dt;
+    const end = beamEnd(e);
+    if (distToSegment(player.x, player.y, e.x, e.y, end.x, end.y) <= player.radius + CFG.stage.beamWidth / 2){
+      player.hp -= CFG.stage.beamDps * stageDifficultyMult * (1 - (player.defense || 0)) * dt;
+      sfxHit();
+      if (player.hp <= 0){ player.hp = 0; gameOver(); }
+    }
+  }
+
+  // Minions are removed after the update pass so in-progress enemy loops keep valid indices.
+  let minionPurgePending = false;
+  function purgeMinionsIfPending(){
+    if (!minionPurgePending) return;
+    minionPurgePending = false;
+    for (let i = enemies.length - 1; i >= 0; i--){
+      if (enemies[i].type === 'minion') enemies.splice(i, 1);
+    }
+  }
+
+  function showAbilityWarning(text){
+    const el = document.getElementById('bossAbilityWarning');
+    el.textContent = text;
+    el.classList.remove('hidden');
+    abilityWarningTimer = CFG.stage.abilityWarningDuration;
+  }
+  function updateAbilityWarning(dt){
+    if (abilityWarningTimer <= 0) return;
+    abilityWarningTimer -= dt;
+    if (abilityWarningTimer <= 0) document.getElementById('bossAbilityWarning').classList.add('hidden');
   }
 
   function spawnBossClone(parent){
@@ -1734,6 +1903,20 @@
       e.hasSplit = true;
       for (let i = 0; i < CFG.stage.bigCloneCount; i++) spawnBossClone(e);
     }
+    if (!e.isMainBoss) return;
+
+    if (e.bossTier === 'mini'){
+      e.summonTimer -= dt;
+      if (e.summonTimer <= 0){
+        summonMinions(e);
+        e.summonTimer += CFG.stage.miniSummonInterval;
+      }
+    } else if (e.bossTier === 'mid'){
+      updateBossBeam(e, dt);
+    } else if (e.bossTier === 'big' && !e.hasSealed && e.hp <= e.maxHp * CFG.stage.sealHpRatio){
+      e.hasSealed = true;
+      sealRandomUpgrade();
+    }
   }
 
   function showBossWarning(tier){
@@ -1754,6 +1937,8 @@
   }
 
   function onBossDefeated(tier){
+    if (tier === 'mini') minionPurgePending = true;
+    if (tier === 'big') releaseSeal();
     pendingBossTier = tier;
     showBossReward();
   }
@@ -1782,9 +1967,7 @@
   }
 
   function chooseBossReward(u){
-    u.strongApply(player);
-    player.upgradeCounts[u.id] = Math.min(MAX_ABILITY_STACKS, (player.upgradeCounts[u.id] || 0) + 1);
-    renderSkillBar();
+    applyUpgrade(u, true);
     document.getElementById('bossRewardOverlay').classList.add('hidden');
     afterBossRewardResolved();
   }
@@ -1895,9 +2078,10 @@
     if (idx === -1) return;
     sfxKill();
     killCount += 1;
-    gems.push({ x: enemy.x, y: enemy.y, value: enemy.xpValue, radius: 6 });
+    const isMinion = enemy.type === 'minion'; // minions drop nothing, so they can't be farmed
+    if (!isMinion) gems.push({ x: enemy.x, y: enemy.y, value: enemy.xpValue, radius: 6 });
     const guaranteedHeal = enemy.type === 'elite' || enemy.type === 'boss';
-    if (guaranteedHeal || Math.random() < CFG.healDropChance * tuning.healDropMult){
+    if (guaranteedHeal || (!isMinion && Math.random() < CFG.healDropChance * tuning.healDropMult)){
       heals.push({ x: enemy.x, y: enemy.y, radius: CFG.healRadius, amount: CFG.healAmount });
     }
     const shouldBurst = opts.triggerBurst !== false && (player.burstDamage || 0) > 0;
@@ -2100,22 +2284,18 @@
 
     const correct = !timedOut && quiz.slots.every((s, i) => s === quiz.chars[quiz.blankIndices[i]]);
     const stats = loadStats(quiz.pack.id);
+    applyUpgrade(quiz.upgrade, correct);
     if (correct){
-      quiz.upgrade.strongApply(player);
       stats.correctCount += 1;
       removeWrongWord(quiz.pack.id, quiz.wordObj);
       addBonusXp(player.correctBonusXp);
       sfxQuizCorrect();
     } else {
-      quiz.upgrade.weakApply(player);
       stats.wrongCount += 1;
       recordWrongWord(quiz.pack.id, quiz.wordObj);
       sfxQuizWrong();
     }
     saveStats(quiz.pack.id, stats);
-
-    player.upgradeCounts[quiz.upgrade.id] = Math.min(MAX_ABILITY_STACKS, (player.upgradeCounts[quiz.upgrade.id] || 0) + 1);
-    renderSkillBar();
 
     quiz.blankIndices.forEach((charIdx, i) => { quiz.slots[i] = quiz.chars[charIdx]; });
     renderQuizSpelling();
@@ -2177,8 +2357,9 @@
       if (count <= 0) continue;
       const u = upgradeById(id);
       const pill = document.createElement('span');
-      pill.className = 'skill-pill';
-      pill.textContent = u.icon + ' ' + upgradeShort(id) + ' x' + count;
+      const sealed = player.sealedUpgradeId === id;
+      pill.className = 'skill-pill' + (sealed ? ' sealed' : '');
+      pill.textContent = (sealed ? '🔒' : u.icon) + ' ' + upgradeShort(id) + ' x' + count;
       bar.appendChild(pill);
     }
   }
@@ -2188,9 +2369,10 @@
     return ids.map(id => {
       const u = upgradeById(id);
       const count = player.upgradeCounts[id];
-      return '<div class="skill-row">' +
-        '<span class="icon">' + u.icon + '</span>' +
-        '<span class="info"><div class="name">' + upgradeTitle(id) + '</div>' +
+      const sealed = player.sealedUpgradeId === id;
+      return '<div class="skill-row' + (sealed ? ' sealed' : '') + '">' +
+        '<span class="icon">' + (sealed ? '🔒' : u.icon) + '</span>' +
+        '<span class="info"><div class="name">' + upgradeTitle(id) + (sealed ? t('sealedTag') : '') + '</div>' +
         '<div class="desc">' + upgradeDesc(id) + '</div>' +
         '<div class="effect">' + upgradeEffectText(id, player) + '</div></span>' +
         '<span class="stack">x' + count + '</span></div>';
@@ -2420,6 +2602,9 @@
       }
     }
 
+    purgeMinionsIfPending();
+    updateAbilityWarning(dt);
+
     camera.x = player.x - width / 2;
     camera.y = player.y - height / 2;
     updateHud();
@@ -2482,12 +2667,39 @@
       ctx.fill();
     }
 
+    // mid boss beams (drawn before culling: the beam can be on screen while the boss is not)
+    for (const e of enemies){
+      if (e.type !== 'boss' || !e.isMainBoss || e.bossTier !== 'mid') continue;
+      const end = beamEnd(e);
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(e.x - camera.x, e.y - camera.y);
+      ctx.lineTo(end.x - camera.x, end.y - camera.y);
+      if (e.beamActive){
+        ctx.strokeStyle = 'rgba(255,90,200,0.35)';
+        ctx.lineWidth = CFG.stage.beamWidth * 1.8;
+        ctx.stroke();
+        ctx.strokeStyle = '#ffd6f5';
+        ctx.lineWidth = CFG.stage.beamWidth * 0.5;
+        ctx.stroke();
+      } else {
+        // telegraph line until the beam fires
+        ctx.strokeStyle = 'rgba(255,90,200,0.3)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     for (const e of enemies){
       const sx = e.x - camera.x, sy = e.y - camera.y;
       if (sx < -60 || sx > width + 60 || sy < -60 || sy > height + 60) continue;
       const isElite = e.type === 'elite';
       const isBoss = e.type === 'boss';
-      ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : (isBoss ? '#ff2d55' : (isElite ? '#c04dff' : '#ff5566'));
+      const isMinion = e.type === 'minion';
+      ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : (isBoss ? '#ff2d55' : (isElite ? '#c04dff' : (isMinion ? '#ff9f43' : '#ff5566')));
       ctx.beginPath();
       ctx.arc(sx, sy, e.radius, 0, Math.PI * 2);
       ctx.fill();
