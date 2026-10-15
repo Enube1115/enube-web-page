@@ -483,6 +483,7 @@
       startButton: 'ゲーム開始',
       langJapanese: '日本語',
       langEnglish: 'English',
+      langMath: '数学',
       difficulty1: '初級',
       difficulty2: '中級',
       difficulty3: '上級',
@@ -625,6 +626,7 @@
       startButton: 'Start Game',
       langJapanese: 'Japanese',
       langEnglish: 'English',
+      langMath: 'Math',
       difficulty1: 'Beginner',
       difficulty2: 'Intermediate',
       difficulty3: 'Advanced',
@@ -1286,6 +1288,7 @@
   const LANGUAGES = [
     { id: 'japanese', labelKey: 'langJapanese' },
     { id: 'english', labelKey: 'langEnglish' },
+    { id: 'math', labelKey: 'langMath' },
   ];
   const DIFFICULTIES = [
     { id: 1, labelKey: 'difficulty1', quizTime: 8, blankCount: 2 },
@@ -1482,6 +1485,45 @@
       { word: 'grapefruit', meaning: { ja: 'グレープフルーツ', en: 'A large citrus fruit with a slightly bitter taste' } },
       { word: 'dragonfruit', meaning: { ja: 'ドラゴンフルーツ', en: 'A tropical fruit with bright pink skin and white or red flesh dotted with tiny seeds' } },
     ] },
+    // math packs: word = answer digits, meaning = expression.
+    // tileChars: tiles/dummies come from this set; blankAll: hide every char; quizTime: overrides the difficulty's time
+    // any word may set `time` (seconds) to override the pack/difficulty time for that question
+    { id: 'math_1', langId: 'math', difficultyId: 1, tileChars: '0123456789', blankAll: true, quizTime: 10, words: [
+      { word: '48', time: 8, meaning: { ja: '6 × 8', en: '6 × 8' } },
+      { word: '37', time: 8, meaning: { ja: '52 − 15', en: '52 − 15' } },
+      { word: '126', time: 10, meaning: { ja: '18 × 7', en: '18 × 7' } },
+      { word: '9', time: 8, meaning: { ja: '72 ÷ 8', en: '72 ÷ 8' } },
+      { word: '250', time: 10, meaning: { ja: '1000 の 25%', en: '25% of 1000' } },
+      { word: '24', time: 10, meaning: { ja: '縦4cm 横6cm の長方形の面積', en: 'area of a 4cm × 6cm rectangle' } },
+      { word: '15', time: 10, meaning: { ja: '60 分の 4 分の 1 は何分', en: 'a quarter of 60 minutes' } },
+      { word: '180', time: 8, meaning: { ja: '三角形の内角の和', en: "sum of a triangle's angles" } },
+      { word: '63', time: 8, meaning: { ja: '9 × 7', en: '9 × 7' } },
+      { word: '35', time: 10, meaning: { ja: '7 と 5 の最小公倍数', en: 'LCM of 7 and 5' } },
+    ] },
+    { id: 'math_2', langId: 'math', difficultyId: 2, tileChars: '0123456789', blankAll: true, quizTime: 12, words: [
+      { word: '13', time: 10, meaning: { ja: '√169', en: '√169' } },
+      { word: '4', time: 12, meaning: { ja: '2x + 6 = 14 の x', en: 'solve 2x + 6 = 14' } },
+      { word: '64', time: 10, meaning: { ja: '2 の 6 乗', en: '2 to the 6th' } },
+      { word: '25', time: 12, meaning: { ja: '半径が整数で面積が 25π の円の半径の2乗', en: 'r² when the area is 25π' } },
+      { word: '12', time: 12, meaning: { ja: '直角三角形で斜辺13、一辺5のときの残りの辺', en: 'the missing side when the hypotenuse is 13 and one leg is 5' } },
+      { word: '6', time: 12, meaning: { ja: 'x² − 5x − 6 = 0 の正の解', en: 'the positive root of x² − 5x − 6 = 0' } },
+      { word: '540', time: 12, meaning: { ja: '五角形の内角の和', en: "sum of a pentagon's angles" } },
+      { word: '20', time: 12, meaning: { ja: '初項2、公差2の等差数列の第10項', en: '10th term when a₁ = 2 and d = 2' } },
+      { word: '8', time: 10, meaning: { ja: '−3 と 5 の差', en: 'the distance between −3 and 5' } },
+      { word: '81', time: 10, meaning: { ja: '3 の 4 乗', en: '3 to the 4th' } },
+    ] },
+    { id: 'math_3', langId: 'math', difficultyId: 3, tileChars: '0123456789', blankAll: true, quizTime: 15, words: [
+      { word: '3', time: 12, meaning: { ja: 'log₂ 8', en: 'log₂ 8' } },
+      { word: '1', time: 12, meaning: { ja: 'sin 90°', en: 'sin 90°' } },
+      { word: '2', time: 15, meaning: { ja: 'y = x² の x = 1 における微分係数', en: 'the derivative of y = x² at x = 1' } },
+      { word: '120', time: 15, meaning: { ja: '5 の階乗', en: '5 factorial' } },
+      { word: '10', time: 15, meaning: { ja: '5個から2個を選ぶ組み合わせの数', en: 'the number of ways to choose 2 from 5' } },
+      { word: '4', time: 15, meaning: { ja: '0 から 2 までの ∫2x dx', en: '∫2x dx from 0 to 2' } },
+      { word: '0', time: 12, meaning: { ja: 'cos 90°', en: 'cos 90°' } },
+      { word: '55', time: 15, meaning: { ja: '1 から 10 までの整数の和', en: 'the sum of integers from 1 to 10' } },
+      { word: '5', time: 15, meaning: { ja: 'log₁₀ 100000', en: 'log₁₀ 100000' } },
+      { word: '6', time: 15, meaning: { ja: '3 つのものを並べる順列の数', en: 'the number of ways to arrange 3 items' } },
+    ] },
   ];
   function getPack(id){ return WORD_PACKS.find(p => p.id === id) || WORD_PACKS[0]; }
   function wordMeaning(wordObj){
@@ -1525,7 +1567,13 @@
   if (!LANGUAGES.some(l => l.id === selectedLangId)) selectedLangId = LANGUAGES[0].id;
   let selectedDifficultyId = lsGet('vs_selected_difficulty', DIFFICULTIES[0].id);
   if (!DIFFICULTIES.some(d => d.id === selectedDifficultyId)) selectedDifficultyId = DIFFICULTIES[0].id;
-  function currentPackId(){ return selectedLangId + '_' + selectedDifficultyId; }
+  function packExists(langId, difficultyId){ return WORD_PACKS.some(p => p.id === langId + '_' + difficultyId); }
+  // falls back to the language's first pack when the selected difficulty has none (e.g. math_2)
+  function currentPackId(){
+    if (packExists(selectedLangId, selectedDifficultyId)) return selectedLangId + '_' + selectedDifficultyId;
+    const fallback = WORD_PACKS.find(p => p.langId === selectedLangId);
+    return fallback ? fallback.id : WORD_PACKS[0].id;
+  }
 
   // ---------- state ----------
   let player, enemies, bullets, gems, heals, enemyBullets;
@@ -1711,10 +1759,12 @@
 
     const diffGroup = document.getElementById('diffGroup');
     diffGroup.innerHTML = '';
+    const activeDifficultyId = getPack(currentPackId()).difficultyId;
     DIFFICULTIES.forEach(diff => {
       const btn = document.createElement('button');
-      btn.className = 'select-btn' + (diff.id === selectedDifficultyId ? ' selected' : '');
+      btn.className = 'select-btn' + (diff.id === activeDifficultyId ? ' selected' : '');
       btn.textContent = t(diff.labelKey);
+      btn.disabled = !packExists(selectedLangId, diff.id);
       btn.addEventListener('click', () => {
         selectedDifficultyId = diff.id;
         lsSet('vs_selected_difficulty', selectedDifficultyId);
@@ -2403,8 +2453,10 @@
     const wordObj = pickRandomWord(pack);
     const chars = Array.from(wordObj.word);
     const len = chars.length;
-    const blankCount = Math.max(1, Math.min(difficulty.blankCount - (player.quizBlankReduction || 0), len - 1));
-    const quizTime = difficulty.quizTime + (player.quizTimeBonus || 0);
+    const blankCount = pack.blankAll
+      ? len
+      : Math.max(1, Math.min(difficulty.blankCount - (player.quizBlankReduction || 0), len - 1));
+    const quizTime = (wordObj.time || pack.quizTime || difficulty.quizTime) + (player.quizTimeBonus || 0);
 
     const blankIndices = [];
     while (blankIndices.length < blankCount){
@@ -2413,11 +2465,17 @@
     }
     blankIndices.sort((a, b) => a - b);
 
-    const dummyPool = buildDummyPool(pack, wordObj);
     const neededDummies = Math.max(2, 6 - blankCount);
     const dummies = [];
-    for (let i = 0; i < neededDummies && dummyPool.length > 0; i++){
-      dummies.push(dummyPool[Math.floor(Math.random() * dummyPool.length)]);
+    if (pack.tileChars){
+      // distinct dummies from the tile set, excluding every char in the answer
+      const pool = shuffleArray(Array.from(pack.tileChars).filter(ch => !chars.includes(ch)));
+      dummies.push(...pool.slice(0, neededDummies));
+    } else {
+      const dummyPool = buildDummyPool(pack, wordObj);
+      for (let i = 0; i < neededDummies && dummyPool.length > 0; i++){
+        dummies.push(dummyPool[Math.floor(Math.random() * dummyPool.length)]);
+      }
     }
     const tiles = shuffleArray(
       blankIndices.map(i => chars[i]).concat(dummies)
