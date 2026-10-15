@@ -7,6 +7,15 @@
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <meta name="apple-mobile-web-app-title" content="Vocab Survivor">
+<script>
+  // ---------- online ranking (Supabase REST) ----------
+  // 自分のプロジェクトの値に差し替える。プレースホルダのままならランキングは無効（オフラインのまま遊べる）
+  const CONFIG = {
+    SUPABASE_URL: 'https://YOUR-PROJECT-REF.supabase.co',
+    SUPABASE_ANON_KEY: 'YOUR-SUPABASE-ANON-KEY',
+    RANKING_TABLE: 'scores',
+  };
+</script>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
   html, body {
@@ -195,6 +204,63 @@
     border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff;
   }
   #howtoOverlay { z-index: 30; background: rgba(5,5,15,0.94); }
+
+  .home-sub-btns { display: flex; gap: 8px; justify-content: center; }
+  #rankingBtn {
+    font-size: 12px; padding: 6px 16px; margin-bottom: 14px; border-radius: 16px;
+    border: 1px solid rgba(255,224,102,0.5); background: rgba(255,224,102,0.12); color: #ffe066;
+  }
+  #rankingOverlay { z-index: 30; background: rgba(5,5,15,0.94); justify-content: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #rankingOverlay, #rankingOverlay * { touch-action: pan-y; }
+  .ranking-inner { margin: auto 0; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 360px; }
+  .ranking-body { width: 100%; margin-bottom: 12px; }
+  .ranking-msg { font-size: 13px; opacity: 0.8; padding: 20px 0; }
+  .ranking-msg.error { color: #ff8a8a; opacity: 1; }
+  .ranking-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ranking-table th { font-size: 11px; font-weight: 600; opacity: 0.6; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+  .ranking-table td { padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .ranking-table td:first-child, .ranking-table th:first-child { text-align: right; width: 2.5em; }
+  .ranking-table td:nth-child(2), .ranking-table th:nth-child(2) { text-align: left; word-break: break-all; }
+  .ranking-table td:nth-child(n+3), .ranking-table th:nth-child(n+3) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ranking-table tr.me td { color: #ffe066; font-weight: 700; background: rgba(255,224,102,0.1); }
+  #rankingRetryBtn, #rankingCloseBtn {
+    margin-top: 6px; padding: 10px 32px; font-size: 15px; font-weight: 700;
+    border: none; border-radius: 24px; background: #4dd0ff; color: #0a0a12;
+  }
+  #rankingRetryBtn { background: rgba(255,255,255,0.15); color: #fff; }
+
+  .rank-submit { margin-bottom: 12px; }
+  .rank-submit:empty { display: none; }
+  .rank-status { font-size: 11px; opacity: 0.7; min-height: 1em; }
+  .rank-status.error { color: #ff8a8a; opacity: 1; }
+
+  .home-name-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; font-size: 13px; }
+  #homeNameLabel.unset { opacity: 0.6; }
+  #nameChangeBtn {
+    font-size: 12px; padding: 4px 12px; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff;
+  }
+  #nameDialog { z-index: 40; background: rgba(5,5,15,0.9); }
+  .name-dialog-box {
+    width: 100%; max-width: 320px; padding: 18px 16px; border-radius: 14px; text-align: left;
+    background: #1a1a2a; border: 1px solid rgba(255,255,255,0.2);
+  }
+  .name-dialog-box h2 { font-size: 16px; margin: 0 0 10px; color: #ffe066; }
+  .name-input {
+    width: 100%; padding: 9px 10px; font-size: 16px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); color: #fff;
+    user-select: text; -webkit-user-select: text; touch-action: manipulation;
+  }
+  .name-counter { font-size: 11px; opacity: 0.7; text-align: right; margin: 4px 0 8px; }
+  .name-counter.over { color: #ff8a8a; opacity: 1; }
+  .name-note { font-size: 11px; line-height: 1.5; margin: 0 0 4px; }
+  .name-note.warn { color: #ffb3b3; }
+  .name-note.sub { opacity: 0.65; }
+  .name-dialog-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  .name-dialog-btns button { padding: 8px 18px; font-size: 14px; font-weight: 700; border-radius: 18px; border: none; }
+  #nameCancelBtn { background: rgba(255,255,255,0.12); color: #fff; }
+  #nameSaveBtn { background: #ffe066; color: #1a1a1a; }
+  #nameSaveBtn:disabled { opacity: 0.4; }
   .howto-inner { max-width: 360px; }
   .howto-section {
     width: 100%; text-align: left; margin-bottom: 10px; padding: 10px 14px;
@@ -364,6 +430,10 @@
   <div class="select-group" id="modeGroup"></div>
   <div class="select-group" id="stageGroup"></div>
   <div class="home-highscore" id="homeHighScore"></div>
+  <div class="home-name-row">
+    <span id="homeNameLabel"></span>
+    <button id="nameChangeBtn" data-i18n="nicknameChange"></button>
+  </div>
   <div class="sound-row">
     <button id="homeMuteBtn" class="mute-btn">🔊</button>
     <input type="range" id="homeVolumeSlider" class="volume-slider" min="0" max="100" value="30">
@@ -373,7 +443,10 @@
     <li data-i18n="howtoBrief2"></li>
     <li data-i18n="howtoBrief3"></li>
   </ol>
-  <button id="howtoBtn" data-i18n="howtoButton"></button>
+  <div class="home-sub-btns">
+    <button id="howtoBtn" data-i18n="howtoButton"></button>
+    <button id="rankingBtn" data-i18n="rankingButton"></button>
+  </div>
   <button id="startBtn" data-i18n="startButton"></button>
   </div>
 </div>
@@ -413,6 +486,30 @@
   </div>
 </div>
 
+<div class="overlay hidden" id="rankingOverlay">
+  <div class="ranking-inner">
+    <h1 data-i18n="rankingTitle"></h1>
+    <p id="rankingPackName">-</p>
+    <div class="ranking-body" id="rankingBody"></div>
+    <button id="rankingRetryBtn" class="hidden" data-i18n="rankingRetry"></button>
+    <button id="rankingCloseBtn" data-i18n="rankingClose"></button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="nameDialog">
+  <div class="name-dialog-box" role="dialog" aria-modal="true" aria-labelledby="nameDialogTitle">
+    <h2 id="nameDialogTitle" data-i18n="nameDialogTitle"></h2>
+    <input type="text" id="nameInput" class="name-input" autocomplete="off" spellcheck="false">
+    <div class="name-counter" id="nameCounter"></div>
+    <p class="name-note warn" data-i18n="nameNotePrivacy"></p>
+    <p class="name-note sub" data-i18n="nameNoteHistory"></p>
+    <div class="name-dialog-btns">
+      <button id="nameCancelBtn" data-i18n="nameCancel"></button>
+      <button id="nameSaveBtn" data-i18n="nameSave"></button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay hidden" id="quizOverlay">
   <div class="quiz-content">
     <p data-i18n="quizPrompt"></p>
@@ -441,6 +538,7 @@
 <div class="overlay hidden" id="stageClearOverlay">
   <h1 data-i18n="stageClearTitle"></h1>
   <p id="stageClearStats">-</p>
+  <div class="rank-submit" id="stageClearRankSubmit"></div>
   <div class="skill-list" id="stageClearSkillList"></div>
   <button id="stageClearHomeBtn" data-i18n="homeButton"></button>
 </div>
@@ -467,6 +565,7 @@
   <button id="retryBtn" class="big-retry-btn" data-i18n="retryButton"></button>
   <h1 data-i18n="gameOverTitle"></h1>
   <p id="gameOverStats">-</p>
+  <div class="rank-submit" id="gameOverRankSubmit"></div>
   <div class="skill-list" id="gameOverSkillList"></div>
   <button id="gameOverHomeBtn" data-i18n="homeButton"></button>
 </div>
@@ -482,8 +581,33 @@
       homeSubtitle: '言語と難易度を選んでスタート',
       startButton: 'ゲーム開始',
       langJapanese: '日本語',
-      langEnglish: 'English',
+      langEnglish: '英語',
       langMath: '数学',
+      rankingButton: 'ランキング',
+      rankingTitle: 'ランキング',
+      rankingLoading: '読み込み中…',
+      rankingError: 'ランキングを読み込めませんでした',
+      rankingEmpty: 'まだ記録がありません',
+      rankingNotConfigured: 'オンラインランキングは未設定です',
+      rankingRetry: '再読み込み',
+      rankingClose: '閉じる',
+      rankColRank: '順位',
+      rankColName: '名前',
+      rankColTime: '生存時間',
+      rankColLevel: '到達Lv',
+      nicknameLabel: 'ニックネーム: {name}',
+      nicknameUnset: 'ニックネーム未設定',
+      nicknameChange: '変更',
+      nameDialogTitle: 'ニックネーム（1〜12文字）',
+      nameInputPlaceholder: 'ニックネーム',
+      nameRemaining: '残り {n} 文字',
+      nameNotePrivacy: '本名や個人が特定できる情報は入れないでください',
+      nameNoteHistory: '変更しても、これまでの記録の名前は変わりません',
+      nameSave: '保存',
+      nameCancel: 'キャンセル',
+      rankSending: 'ランキングに送信中…',
+      rankSent: 'ランキングに送信しました',
+      rankSendError: 'ランキングへの送信に失敗しました',
       difficulty1: '初級',
       difficulty2: '中級',
       difficulty3: '上級',
@@ -627,6 +751,31 @@
       langJapanese: 'Japanese',
       langEnglish: 'English',
       langMath: 'Math',
+      rankingButton: 'Ranking',
+      rankingTitle: 'Ranking',
+      rankingLoading: 'Loading…',
+      rankingError: 'Could not load the ranking',
+      rankingEmpty: 'No records yet',
+      rankingNotConfigured: 'Online ranking is not set up',
+      rankingRetry: 'Retry',
+      rankingClose: 'Close',
+      rankColRank: '#',
+      rankColName: 'Name',
+      rankColTime: 'Time',
+      rankColLevel: 'Level',
+      nicknameLabel: 'Nickname: {name}',
+      nicknameUnset: 'No nickname set',
+      nicknameChange: 'Change',
+      nameDialogTitle: 'Nickname (1–12 characters)',
+      nameInputPlaceholder: 'Nickname',
+      nameRemaining: '{n} characters left',
+      nameNotePrivacy: 'Do not enter your real name or anything that could identify you',
+      nameNoteHistory: 'Changing it does not rename your past records',
+      nameSave: 'Save',
+      nameCancel: 'Cancel',
+      rankSending: 'Sending to the ranking…',
+      rankSent: 'Sent to the ranking',
+      rankSendError: 'Could not send to the ranking',
       difficulty1: 'Beginner',
       difficulty2: 'Intermediate',
       difficulty3: 'Advanced',
@@ -1591,6 +1740,7 @@
   let lastTs = 0;
   let keys = {};
   let killCount = 0;
+  let runQuizCorrect = 0, runQuizWrong = 0; // this run only (stats.correctCount is cumulative per pack)
 
   // ---------- stage mode ----------
   let selectedMode = lsGet('vs_selected_mode', 'endless');
@@ -1641,6 +1791,8 @@
     enemyBullets = [];
     quiz = null;
     killCount = 0;
+    runQuizCorrect = 0;
+    runQuizWrong = 0;
     camera.x = 0; camera.y = 0;
     survivalTime = 0;
     spawnTimer = 0.6;
@@ -1683,6 +1835,7 @@
 
   // ---------- input: keyboard ----------
   window.addEventListener('keydown', e => {
+    if (isNameDialogOpen()) return; // the nickname dialog handles its own keys
     keys[e.key] = true;
     if (e.key === 'Escape' || e.key === ' '){
       e.preventDefault();
@@ -1815,6 +1968,7 @@
       tf('bestSurvival', { time: pad(m) + ':' + pad(s) }) + ' ／ ' +
       tf('bestLevel', { level: stats.highScoreLevel }) + '<br>' +
       tf('reviewPendingLabel', { count: wrongWordCount(currentPackId()) });
+    renderHomeName();
   }
   document.getElementById('startBtn').addEventListener('click', () => {
     document.getElementById('homeOverlay').classList.add('hidden');
@@ -2294,6 +2448,7 @@
       tf('stageClearTimeKills', { time: pad(m) + ':' + pad(s), kills: killCount }) + '<br>' +
       tf('stageClearAccuracy', { pct: rate });
     document.getElementById('stageClearSkillList').innerHTML = buildSkillListHtml();
+    offerRankingSubmit('stageClearRankSubmit');
     document.getElementById('bossHpBar').classList.add('hidden');
     document.getElementById('stageClearOverlay').classList.remove('hidden');
   }
@@ -2582,11 +2737,13 @@
     applyUpgrade(quiz.upgrade, correct);
     if (correct){
       stats.correctCount += 1;
+      runQuizCorrect += 1;
       removeWrongWord(quiz.pack.id, quiz.wordObj);
       addBonusXp(player.correctBonusXp);
       sfxQuizCorrect();
     } else {
       stats.wrongCount += 1;
+      runQuizWrong += 1;
       recordWrongWord(quiz.pack.id, quiz.wordObj);
       sfxQuizWrong();
     }
@@ -2692,9 +2849,204 @@
     document.getElementById('gameOverStats').textContent =
       t('survivalTimeLabel') + ' ' + pad(m) + ':' + pad(s) + ' / ' + t('levelLabel') + player.level;
     document.getElementById('gameOverSkillList').innerHTML = buildSkillListHtml();
+    offerRankingSubmit('gameOverRankSubmit');
     document.getElementById('gameOverOverlay').classList.remove('hidden');
   }
   document.getElementById('retryBtn').addEventListener('click', resetGame);
+
+  // ---------- online ranking ----------
+  // Supabase REST via fetch. Any failure only shows a small message; local high scores are unaffected.
+  const RANK_NAME_MAX = 12;
+  const RANK_LIMIT = 50;
+  const RANK_TIMEOUT_MS = 8000;
+  function rankingEnabled(){
+    if (typeof CONFIG === 'undefined') return false;
+    const url = CONFIG.SUPABASE_URL || '', key = CONFIG.SUPABASE_ANON_KEY || '';
+    return /^https:\/\//.test(url) && key !== '' && !/YOUR-/.test(url + key);
+  }
+  function rankingFetch(path, options){
+    options = options || {};
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), RANK_TIMEOUT_MS);
+    const headers = Object.assign({
+      apikey: CONFIG.SUPABASE_ANON_KEY,
+      Authorization: 'Bearer ' + CONFIG.SUPABASE_ANON_KEY,
+    }, options.headers);
+    return fetch(CONFIG.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/' + path,
+      Object.assign({}, options, { headers, signal: ctrl.signal }))
+      .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res; })
+      .finally(() => clearTimeout(timer));
+  }
+  function submitScore(record){
+    return rankingFetch(encodeURIComponent(CONFIG.RANKING_TABLE), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(record),
+    });
+  }
+  function fetchRanking(packId){
+    return rankingFetch(encodeURIComponent(CONFIG.RANKING_TABLE) +
+      '?select=name,survival_time,level&pack_id=eq.' + encodeURIComponent(packId) +
+      '&order=survival_time.desc&limit=' + RANK_LIMIT)
+      .then(res => res.json());
+  }
+  function getPlayerName(){
+    const n = lsGet('vs_name', '');
+    return typeof n === 'string' ? n : '';
+  }
+  function formatSurvival(sec){
+    const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+    return pad(m) + ':' + pad(s);
+  }
+
+  function offerRankingSubmit(containerId){
+    const box = document.getElementById(containerId);
+    box.innerHTML = '';
+    if (!rankingEnabled()) return;
+
+    const total = runQuizCorrect + runQuizWrong;
+    const record = {
+      pack_id: currentPackId(),
+      survival_time: Math.round(survivalTime * 10) / 10,
+      level: player.level,
+      accuracy: total > 0 ? Math.round(runQuizCorrect / total * 1000) / 10 : null,
+    };
+    const status = document.createElement('div');
+    status.className = 'rank-status';
+    const send = name => {
+      status.className = 'rank-status';
+      status.textContent = t('rankSending');
+      submitScore(Object.assign({ name }, record))
+        .then(() => { status.textContent = t('rankSent'); })
+        .catch(() => { status.className = 'rank-status error'; status.textContent = t('rankSendError'); });
+    };
+
+    box.appendChild(status);
+    const savedName = getPlayerName();
+    if (savedName){ send(savedName); return; }
+    // no nickname yet: ask first; cancelling skips the upload and leaves the result screen as is
+    openNameDialog(name => { if (name) send(name); });
+  }
+
+  // ---------- nickname dialog ----------
+  let nameDialogDone = null;
+  function isNameDialogOpen(){ return !document.getElementById('nameDialog').classList.contains('hidden'); }
+  function sanitizeNameInput(s){ return s.replace(/[\r\n\t]/g, ''); }
+  function nameCharCount(s){ return Array.from(s.trim()).length; }
+  function updateNameDialog(){
+    const input = document.getElementById('nameInput');
+    const count = nameCharCount(input.value);
+    const remaining = RANK_NAME_MAX - count;
+    const counter = document.getElementById('nameCounter');
+    counter.textContent = tf('nameRemaining', { n: remaining });
+    counter.classList.toggle('over', remaining < 0);
+    document.getElementById('nameSaveBtn').disabled = count < 1 || remaining < 0;
+  }
+  function openNameDialog(onDone){
+    nameDialogDone = onDone || null;
+    const input = document.getElementById('nameInput');
+    input.value = getPlayerName();
+    input.placeholder = t('nameInputPlaceholder');
+    updateNameDialog();
+    document.getElementById('nameDialog').classList.remove('hidden');
+    input.focus();
+  }
+  function closeNameDialog(savedName){
+    document.getElementById('nameDialog').classList.add('hidden');
+    document.getElementById('nameInput').blur();
+    const done = nameDialogDone;
+    nameDialogDone = null;
+    renderHomeName();
+    if (done) done(savedName);
+  }
+  function saveNameDialog(){
+    const name = document.getElementById('nameInput').value.trim();
+    const len = Array.from(name).length;
+    if (len < 1 || len > RANK_NAME_MAX) return;
+    lsSet('vs_name', name);
+    closeNameDialog(name);
+  }
+  function renderHomeName(){
+    const name = getPlayerName();
+    const label = document.getElementById('homeNameLabel');
+    label.textContent = name ? tf('nicknameLabel', { name }) : t('nicknameUnset');
+    label.classList.toggle('unset', !name);
+  }
+  (function initNameDialog(){
+    const input = document.getElementById('nameInput');
+    input.addEventListener('input', () => {
+      const clean = sanitizeNameInput(input.value);
+      if (clean !== input.value) input.value = clean;
+      updateNameDialog();
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Tab'){ e.preventDefault(); return; }
+      if (e.isComposing) return;
+      if (e.key === 'Enter'){ e.preventDefault(); saveNameDialog(); }
+      if (e.key === 'Escape'){ e.preventDefault(); closeNameDialog(null); }
+    });
+    document.getElementById('nameSaveBtn').addEventListener('click', saveNameDialog);
+    document.getElementById('nameCancelBtn').addEventListener('click', () => closeNameDialog(null));
+    document.getElementById('nameChangeBtn').addEventListener('click', () => openNameDialog(null));
+  })();
+
+  let rankingRequestId = 0;
+  function setRankingMessage(text, isError){
+    const body = document.getElementById('rankingBody');
+    body.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.className = 'ranking-msg' + (isError ? ' error' : '');
+    msg.textContent = text;
+    body.appendChild(msg);
+  }
+  function renderRankingTable(rows){
+    const myName = getPlayerName();
+    const table = document.createElement('table');
+    table.className = 'ranking-table';
+    const head = table.insertRow();
+    ['rankColRank', 'rankColName', 'rankColTime', 'rankColLevel'].forEach(key => {
+      const th = document.createElement('th');
+      th.textContent = t(key);
+      head.appendChild(th);
+    });
+    rows.forEach((r, i) => {
+      const tr = table.insertRow();
+      if (myName && r.name === myName) tr.className = 'me';
+      [String(i + 1), String(r.name || ''), formatSurvival(Number(r.survival_time) || 0), 'Lv.' + (r.level | 0)]
+        .forEach(text => { tr.insertCell().textContent = text; });
+    });
+    const body = document.getElementById('rankingBody');
+    body.innerHTML = '';
+    body.appendChild(table);
+  }
+  function loadRanking(){
+    const packId = currentPackId();
+    const retryBtn = document.getElementById('rankingRetryBtn');
+    document.getElementById('rankingPackName').textContent = packDisplayName(getPack(packId));
+    retryBtn.classList.add('hidden');
+    if (!rankingEnabled()){ setRankingMessage(t('rankingNotConfigured')); return; }
+
+    setRankingMessage(t('rankingLoading'));
+    const reqId = ++rankingRequestId;
+    fetchRanking(packId).then(rows => {
+      if (reqId !== rankingRequestId) return;
+      if (!Array.isArray(rows) || rows.length === 0){ setRankingMessage(t('rankingEmpty')); return; }
+      renderRankingTable(rows);
+    }).catch(() => {
+      if (reqId !== rankingRequestId) return;
+      setRankingMessage(t('rankingError'), true);
+      retryBtn.classList.remove('hidden');
+    });
+  }
+  document.getElementById('rankingBtn').addEventListener('click', () => {
+    document.getElementById('rankingOverlay').classList.remove('hidden');
+    loadRanking();
+  });
+  document.getElementById('rankingRetryBtn').addEventListener('click', loadRanking);
+  document.getElementById('rankingCloseBtn').addEventListener('click', () => {
+    rankingRequestId++;
+    document.getElementById('rankingOverlay').classList.add('hidden');
+  });
 
   // ---------- hud ----------
   function pad(n){ return n < 10 ? '0' + n : '' + n; }
