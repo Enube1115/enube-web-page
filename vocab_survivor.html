@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Vocab Survivor</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-title" content="Vocab Survivor">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
   html, body {
@@ -152,7 +155,58 @@
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
     border-radius: 10px; padding: 10px 16px;
   }
-  #startBtn { font-size: 20px; padding: 16px 48px; }
+  :root {
+    /* ゲーム開始ボタン（ここを変えれば色・サイズを調整できる） */
+    --start-btn-bg: linear-gradient(160deg, #ffe066, #ffb340);
+    --start-btn-bg-active: linear-gradient(160deg, #fff0a8, #ffc870);
+    --start-btn-color: #1a1a1a;
+    --start-btn-glow: rgba(255,200,80,0.45);
+    --start-btn-radius: 16px;
+    --start-btn-min-height: 56px;
+    --start-btn-max-width: 320px;
+  }
+  #startBtn {
+    -webkit-appearance: none; appearance: none; border: none; outline: none;
+    background: var(--start-btn-bg); color: var(--start-btn-color);
+    width: 100%; max-width: var(--start-btn-max-width); min-height: max(48px, var(--start-btn-min-height));
+    padding: 14px 24px; border-radius: var(--start-btn-radius);
+    font-size: 22px; font-weight: 800; letter-spacing: 0.05em; cursor: pointer;
+    box-shadow: 0 4px 18px var(--start-btn-glow), inset 0 -3px 0 rgba(0,0,0,0.15);
+    transition: transform 0.08s ease-out, filter 0.08s ease-out;
+  }
+  #startBtn:active { background: var(--start-btn-bg-active); transform: scale(0.96); }
+  #startBtn:focus-visible { box-shadow: 0 0 0 3px #fff, 0 4px 18px var(--start-btn-glow); }
+
+  #homeOverlay, #howtoOverlay { justify-content: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #homeOverlay, #homeOverlay *, #howtoOverlay, #howtoOverlay * { touch-action: pan-y; }
+  .home-inner, .howto-inner {
+    margin: auto 0; display: flex; flex-direction: column; align-items: center; width: 100%;
+  }
+  .home-inner { padding-top: 36px; }
+  .home-howto-brief {
+    list-style: none; counter-reset: howto; margin: 0 0 10px; padding: 8px 14px; max-width: 320px; text-align: left;
+    font-size: 12px; line-height: 1.6; opacity: 0.75;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+  }
+  .home-howto-brief li { counter-increment: howto; }
+  .home-howto-brief li::before { content: counter(howto) ". "; opacity: 0.7; }
+  #howtoBtn {
+    font-size: 12px; padding: 6px 16px; margin-bottom: 14px; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff;
+  }
+  #howtoOverlay { z-index: 30; background: rgba(5,5,15,0.94); }
+  .howto-inner { max-width: 360px; }
+  .howto-section {
+    width: 100%; text-align: left; margin-bottom: 10px; padding: 10px 14px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+  }
+  .howto-section h2 { font-size: 14px; margin: 0 0 4px; color: #7cf7c9; }
+  .howto-section ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.6; opacity: 0.9; }
+  #howtoCloseBtn {
+    margin-top: 6px; padding: 12px 40px; font-size: 16px; font-weight: 700;
+    border: none; border-radius: 24px; background: #4dd0ff; color: #0a0a12;
+  }
+  #howtoCloseBtn:active { background: #7ce0ff; }
 
   #quizOverlay { padding-top: 16px; padding-bottom: 16px; }
   .quiz-content {
@@ -302,6 +356,7 @@
     <button data-lang="ja">日本語</button>
     <button data-lang="en">English</button>
   </div>
+  <div class="home-inner">
   <h1 data-i18n="appTitle">Vocab Survivor</h1>
   <p data-i18n="homeSubtitle"></p>
   <div class="select-group" id="langGroup"></div>
@@ -313,7 +368,49 @@
     <button id="homeMuteBtn" class="mute-btn">🔊</button>
     <input type="range" id="homeVolumeSlider" class="volume-slider" min="0" max="100" value="30">
   </div>
+  <ol class="home-howto-brief">
+    <li data-i18n="howtoBrief1"></li>
+    <li data-i18n="howtoBrief2"></li>
+    <li data-i18n="howtoBrief3"></li>
+  </ol>
+  <button id="howtoBtn" data-i18n="howtoButton"></button>
   <button id="startBtn" data-i18n="startButton"></button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="howtoOverlay">
+  <div class="howto-inner">
+    <h1 data-i18n="howtoTitle"></h1>
+    <div class="howto-section">
+      <h2 data-i18n="howtoControlsTitle"></h2>
+      <ul>
+        <li data-i18n="howtoControls1"></li>
+        <li data-i18n="howtoControls2"></li>
+      </ul>
+    </div>
+    <div class="howto-section">
+      <h2 data-i18n="howtoQuizTitle"></h2>
+      <ul>
+        <li data-i18n="howtoQuiz1"></li>
+        <li data-i18n="howtoQuiz2"></li>
+        <li data-i18n="howtoQuiz3"></li>
+      </ul>
+    </div>
+    <div class="howto-section">
+      <h2 data-i18n="howtoBossTitle"></h2>
+      <ul>
+        <li data-i18n="howtoBoss1"></li>
+        <li data-i18n="howtoBoss2"></li>
+      </ul>
+    </div>
+    <div class="howto-section">
+      <h2 data-i18n="howtoHealTitle"></h2>
+      <ul>
+        <li data-i18n="howtoHeal1"></li>
+      </ul>
+    </div>
+    <button id="howtoCloseBtn" data-i18n="howtoClose"></button>
+  </div>
 </div>
 
 <div class="overlay hidden" id="quizOverlay">
@@ -503,6 +600,24 @@
       bossAbilityBeam: '⚠️ 中ボスの回転ビーム！ 光線に触れるな！',
       bossAbilitySeal: '⚠️ 封印！ 「{skill}」の効果が封じられた！',
       sealedTag: '（封印中）',
+      howtoBrief1: '移動するだけ。攻撃は自動で出ます',
+      howtoBrief2: 'レベルアップすると単語の問題が出ます',
+      howtoBrief3: '正解すると強い能力、外すと弱い能力になります',
+      howtoButton: 'あそびかた',
+      howtoTitle: 'あそびかた',
+      howtoControlsTitle: '🎮 操作方法',
+      howtoControls1: 'スマホ：画面のスティックで移動',
+      howtoControls2: 'PC：矢印キーで移動',
+      howtoQuizTitle: '📝 クイズの答え方',
+      howtoQuiz1: 'タイルをタップして空欄を埋める',
+      howtoQuiz2: '押し間違えたら、入れた文字をタップで取り消せる',
+      howtoQuiz3: '制限時間があるので急ごう',
+      howtoBossTitle: '👹 ボスとイベント',
+      howtoBoss1: '一定時間ごとに強い敵が出る',
+      howtoBoss2: '囲まれたら突破口を探そう',
+      howtoHealTitle: '❤️ 回復',
+      howtoHeal1: '回復は敵が落とすアイテムだけ',
+      howtoClose: '閉じる',
     },
     en: {
       appTitle: 'Vocab Survivor',
@@ -627,6 +742,24 @@
       bossAbilityBeam: '⚠️ Rotating beam! Stay out of the light!',
       bossAbilitySeal: '⚠️ Sealed! "{skill}" has been disabled!',
       sealedTag: ' (Sealed)',
+      howtoBrief1: 'Just move. Attacks fire automatically',
+      howtoBrief2: 'Each level-up gives you a word quiz',
+      howtoBrief3: 'Correct = strong ability, wrong = weak ability',
+      howtoButton: 'How to Play',
+      howtoTitle: 'How to Play',
+      howtoControlsTitle: '🎮 Controls',
+      howtoControls1: 'Mobile: move with the on-screen stick',
+      howtoControls2: 'PC: move with the arrow keys',
+      howtoQuizTitle: '📝 Answering Quizzes',
+      howtoQuiz1: 'Tap tiles to fill in the blanks',
+      howtoQuiz2: 'Tap a placed letter to undo a mistake',
+      howtoQuiz3: 'There is a time limit, so be quick',
+      howtoBossTitle: '👹 Bosses & Events',
+      howtoBoss1: 'Strong enemies appear at regular intervals',
+      howtoBoss2: 'If surrounded, look for a way out',
+      howtoHealTitle: '❤️ Healing',
+      howtoHeal1: 'You can only heal with items dropped by enemies',
+      howtoClose: 'Close',
     },
   };
 
@@ -1542,6 +1675,15 @@
     document.getElementById('homeOverlay').classList.add('hidden');
     resetGame();
   });
+
+  // ---------- how to play ----------
+  function openHowto(){ document.getElementById('howtoOverlay').classList.remove('hidden'); }
+  function closeHowto(){
+    document.getElementById('howtoOverlay').classList.add('hidden');
+    lsSet('vs_seen_howto', true);
+  }
+  document.getElementById('howtoBtn').addEventListener('click', openHowto);
+  document.getElementById('howtoCloseBtn').addEventListener('click', closeHowto);
 
   // ---------- sound controls ----------
   document.getElementById('homeOverlay').addEventListener('click', ensureAudioContext, { once: true });
@@ -2775,6 +2917,10 @@
   setPauseButtonVisible(false);
   applyI18n();
   updateHud();
+  if (!lsGet('vs_seen_howto', false)){
+    lsSet('vs_seen_howto', true);
+    openHowto();
+  }
   requestAnimationFrame(loop);
 })();
 </script>
