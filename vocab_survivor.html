@@ -365,6 +365,8 @@
     text-shadow: 0 1px 3px #000; margin-bottom: 3px;
   }
   .boss-hp-track { height: 10px; }
+  /* make room for the boss HP bar so it doesn't cover the time / level row */
+  #hud.boss-shift { top: calc(env(safe-area-inset-top, 0px) + 46px); }
 
   #pendingLevelUpsLabel {
     font-size: 11px; font-weight: 700; color: #ffe066; text-shadow: 0 1px 2px #000;
@@ -979,6 +981,14 @@
     fireInterval: 0.5,
     baseHp: 100,
     invulnTime: 0.6,
+
+    // grace period after the quiz overlay closes (no damage until it ends or the player starts moving)
+    quizGrace: {
+      duration: 1.5,         // seconds
+      blinkRate: 5,          // blinks per second
+      blinkRateUrgent: 14,   // blinks per second just before it ends
+      urgentTime: 0.45,      // seconds left when blinking speeds up
+    },
     enemyBaseHp: 20,
     enemyBaseSpeed: 68,
     enemyBaseDamage: 8,
@@ -1019,6 +1029,22 @@
     healAmount: 25,
     healRadius: 8,
 
+    // emergency bomb item (spawns at low HP; touching it wipes out most on-screen normal enemies)
+    bomb: {
+      hpThreshold: 0.3,      // appears when hp <= maxHp * this
+      cooldown: 60,          // seconds from one spawn until the next can spawn
+      lifetime: 20,          // seconds before an uncollected bomb disappears
+      killRatio: 0.8,        // share of on-screen normal enemies removed
+      radius: 12,
+      spawnMinDist: 180,     // min distance from the player (shrunk on small screens)
+      screenMargin: 40,      // keep this far inside the screen edge
+      blinkRate: 3,          // blinks per second
+      blinkRateUrgent: 10,   // blinks per second near expiry
+      urgentTime: 5,         // seconds left when blinking speeds up
+      blastDuration: 0.6,    // explosion effect length
+      blastRadius: 220,
+    },
+
     // virtual joystick
     joystick: {
       baseSize: 120,
@@ -1046,6 +1072,7 @@
       quizWrong: { type: 'sawtooth', freqStart: 320, freqEnd: 100, duration: 0.35, gain: 0.18, minGap: 200 },
       hit: { type: 'sine', freq: 100, duration: 0.16, gain: 0.2, minGap: 80 },
       heal: { type: 'sine', freq: 950, duration: 0.16, gain: 0.14, minGap: 100 },
+      bomb: { duration: 0.7, gain: 0.4, filterFreq: 900, lowType: 'sine', lowFreq: 140, lowFreqEnd: 35, lowDuration: 0.6, lowGain: 0.3, minGap: 300 },
       eliteSpawn: { type: 'sawtooth', freq: 80, freqEnd: 50, duration: 0.7, gain: 0.18, minGap: 500 },
       encircleWarning: { type: 'square', freqA: 700, freqB: 480, beepDuration: 0.15, gap: 0.1, repeats: 5, gain: 0.18, minGap: 1000 },
       evolution: { type: 'triangle', notes: [440, 554, 659, 880, 1108], noteDuration: 0.13, gap: 0.03, gain: 0.22, minGap: 300 },
@@ -1072,6 +1099,11 @@
       midBossRadius: 34,
       bigBossRadius: 42,
       bossDamageMult: 2.5,
+      bossSpawnDistance: 220,  // spawn this far from the player (shrunk to fit on small screens)
+      bossScreenMargin: 36,    // bosses are kept this far inside the screen edge
+      bossReturnSpeed: 360,    // px/s a boss is pulled back on screen when the player outruns it
+      bossWarningDuration: 3,  // seconds of play the spawn warning stays up
+      bossArrowInset: 28,      // off-screen arrow distance from the screen edge
       midAttackInterval: 2.5,
       midAttackBulletCount: 10,
       midAttackBulletSpeed: 160,
@@ -1269,6 +1301,11 @@
   function sfxQuizWrong(){ const c = CFG.sound.quizWrong; playTone(c.freqStart, c.duration, { type: c.type, gain: c.gain, freqEnd: c.freqEnd, key: 'quizWrong', minGap: c.minGap }); }
   function sfxHit(){ const c = CFG.sound.hit; playTone(c.freq, c.duration, { type: c.type, gain: c.gain, key: 'hit', minGap: c.minGap }); }
   function sfxHeal(){ const c = CFG.sound.heal; playTone(c.freq, c.duration, { type: c.type, gain: c.gain, key: 'heal', minGap: c.minGap }); }
+  function sfxBomb(){
+    const c = CFG.sound.bomb;
+    playNoise(c.duration, { gain: c.gain, filterFreq: c.filterFreq, key: 'bomb', minGap: c.minGap });
+    playTone(c.lowFreq, c.lowDuration, { type: c.lowType, gain: c.lowGain, freqEnd: c.lowFreqEnd, key: 'bombLow', minGap: c.minGap });
+  }
   function sfxEliteSpawn(){ const c = CFG.sound.eliteSpawn; playTone(c.freq, c.duration, { type: c.type, gain: c.gain, freqEnd: c.freqEnd, key: 'eliteSpawn', minGap: c.minGap }); }
   function sfxEncircleWarning(){
     const c = CFG.sound.encircleWarning;
@@ -1726,6 +1763,9 @@
 
   // ---------- state ----------
   let player, enemies, bullets, gems, heals, enemyBullets;
+  let bomb = null;      // at most one on the field
+  let bombCooldown = 0;
+  let bombBlasts = [];  // explosion effects
   let camera = { x: 0, y: 0 };
   let survivalTime = 0;
   let spawnTimer = 0;
@@ -1753,7 +1793,7 @@
   let tuning = NO_TUNING;
   let stagePhase = 'none'; // none | pending-mini | mini-active | pending-mid | mid-active | pending-big | big-active | cleared
   let pendingBossTier = null;
-  let bossWarningHideTimer = null;
+  let bossWarningTimer = 0;
   let abilityWarningTimer = 0;
   function isBossActive(){
     return stagePhase === 'mini-active' || stagePhase === 'mid-active' || stagePhase === 'big-active';
@@ -1775,6 +1815,7 @@
       magnetBonus: 0,
       quizTimeBonus: 0, quizBlankReduction: 0, correctBonusXp: 0,
       invuln: 0, facing: 0, vx: 0, vy: 0,
+      quizGrace: 0, quizGraceArmed: false,
       upgradeCounts: {},
       upgradeHistory: [], // [{ id, strong }] in acquisition order, replayed when a seal changes
       sealedUpgradeId: null,
@@ -1789,6 +1830,9 @@
     gems = [];
     heals = [];
     enemyBullets = [];
+    bomb = null;
+    bombCooldown = 0;
+    bombBlasts = [];
     quiz = null;
     killCount = 0;
     runQuizCorrect = 0;
@@ -1809,7 +1853,7 @@
     tuning = stageMode ? Object.assign({}, NO_TUNING, CFG.stage.tuning[stageNumber - 1]) : NO_TUNING;
     stagePhase = stageMode ? 'pending-mini' : 'none';
     pendingBossTier = null;
-    clearTimeout(bossWarningHideTimer);
+    bossWarningTimer = 0;
     abilityWarningTimer = 0;
     minionPurgePending = false;
 
@@ -1823,6 +1867,7 @@
     document.getElementById('bossWarning').classList.add('hidden');
     document.getElementById('bossAbilityWarning').classList.add('hidden');
     document.getElementById('bossHpBar').classList.add('hidden');
+    document.getElementById('hud').classList.remove('boss-shift');
     setPauseButtonVisible(true);
     renderSkillBar();
     updateHud();
@@ -2134,6 +2179,7 @@
       radius: opts.radius || 14 * variance,
       hitFlash: 0,
       type: opts.type || 'normal',
+      encircle: !!opts.encircle,
     };
   }
 
@@ -2191,7 +2237,7 @@
       let d = Math.abs(angle - gapAngle);
       d = Math.min(d, Math.PI * 2 - d);
       if (d < half) continue;
-      enemies.push(createEnemyAt(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius, { speedMult: CFG.encircleSpeedMult }));
+      enemies.push(createEnemyAt(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius, { speedMult: CFG.encircleSpeedMult, encircle: true }));
     }
   }
   function showEncircleWarning(){
@@ -2204,15 +2250,47 @@
   }
 
   // ---------- bosses (stage mode) ----------
+  // half-extents of the area a boss center may occupy, relative to the (screen-centered) player
+  function bossScreenHalfExtents(radius){
+    const m = CFG.stage.bossScreenMargin + radius;
+    return { hw: Math.max(0, width / 2 - m), hh: Math.max(0, height / 2 - m) };
+  }
+  function bossSpawnPoint(radius){
+    const { hw, hh } = bossScreenHalfExtents(radius);
+    const dist = Math.min(CFG.stage.bossSpawnDistance, Math.max(hw, hh));
+    let ox = 0, oy = 0;
+    for (let attempt = 0; attempt < 20; attempt++){
+      const ang = Math.random() * Math.PI * 2;
+      ox = Math.cos(ang) * dist;
+      oy = Math.sin(ang) * dist;
+      if (Math.abs(ox) <= hw && Math.abs(oy) <= hh) break;
+    }
+    // fallback for very small screens: pull the last candidate inside the screen
+    ox = Math.max(-hw, Math.min(hw, ox));
+    oy = Math.max(-hh, Math.min(hh, oy));
+    return { x: player.x + ox, y: player.y + oy };
+  }
+  // keeps a boss on screen: an edge-hugging boss is held at the edge, a far one is pulled back
+  function keepBossOnScreen(e, dt){
+    const { hw, hh } = bossScreenHalfExtents(e.radius);
+    const tx = Math.max(player.x - hw, Math.min(player.x + hw, e.x));
+    const ty = Math.max(player.y - hh, Math.min(player.y + hh, e.y));
+    const dx = tx - e.x, dy = ty - e.y;
+    const d = Math.hypot(dx, dy);
+    if (d === 0) return;
+    const step = CFG.stage.bossReturnSpeed * dt;
+    if (d <= step){ e.x = tx; e.y = ty; }
+    else { e.x += dx / d * step; e.y += dy / d * step; }
+  }
+
   function spawnBoss(tier){
-    const spawnRadius = Math.hypot(width, height) / 2 + 150;
-    const ang = Math.random() * Math.PI * 2;
     let hpMult, speedMult, radius;
     if (tier === 'mini'){ hpMult = CFG.stage.miniBossHpMult; speedMult = CFG.stage.miniBossSpeedMult; radius = CFG.stage.miniBossRadius; }
     else if (tier === 'mid'){ hpMult = CFG.stage.midBossHpMult; speedMult = CFG.stage.midBossSpeedMult; radius = CFG.stage.midBossRadius; }
     else { hpMult = CFG.stage.bigBossHpMult; speedMult = CFG.stage.bigBossSpeedMult; radius = CFG.stage.bigBossRadius; }
 
-    const e = createEnemyAt(player.x + Math.cos(ang) * spawnRadius, player.y + Math.sin(ang) * spawnRadius, {
+    const pos = bossSpawnPoint(radius);
+    const e = createEnemyAt(pos.x, pos.y, {
       hpMult: hpMult * tuning.bossHpMult, speedMult, damageMult: CFG.stage.bossDamageMult, xpMult: hpMult * 0.5, radius, type: 'boss',
     });
     e.bossTier = tier;
@@ -2265,7 +2343,7 @@
     }
     e.beamAngle += e.beamDir * CFG.stage.beamRotationSpeed * dt;
     const end = beamEnd(e);
-    if (distToSegment(player.x, player.y, e.x, e.y, end.x, end.y) <= player.radius + CFG.stage.beamWidth / 2){
+    if (player.quizGrace <= 0 && distToSegment(player.x, player.y, e.x, e.y, end.x, end.y) <= player.radius + CFG.stage.beamWidth / 2){
       player.hp -= CFG.stage.beamDps * stageDifficultyMult * (1 - (player.defense || 0)) * dt;
       sfxHit();
       if (player.hp <= 0){ player.hp = 0; gameOver(); }
@@ -2332,6 +2410,7 @@
     const dist = Math.hypot(dx, dy) || 1;
     e.x += (dx / dist) * e.speed * dt;
     e.y += (dy / dist) * e.speed * dt;
+    keepBossOnScreen(e, dt);
 
     if (e.bossTier === 'mid' || e.bossTier === 'big'){
       e.attackTimer -= dt;
@@ -2364,15 +2443,22 @@
     const el = document.getElementById('bossWarning');
     el.textContent = tf('bossWarningText', { name: t('bossName_' + tier) });
     el.classList.remove('hidden');
-    clearTimeout(bossWarningHideTimer);
-    bossWarningHideTimer = setTimeout(() => el.classList.add('hidden'), 3000);
+    // counts down only during play, so a quiz opening right after the spawn doesn't eat the warning
+    bossWarningTimer = CFG.stage.bossWarningDuration;
+  }
+  function updateBossWarning(dt){
+    if (bossWarningTimer <= 0) return;
+    bossWarningTimer -= dt;
+    if (bossWarningTimer <= 0) document.getElementById('bossWarning').classList.add('hidden');
   }
 
   function updateBossHpBar(){
     const boss = enemies.find(e => e.type === 'boss' && e.isMainBoss);
     const bar = document.getElementById('bossHpBar');
-    if (!boss){ bar.classList.add('hidden'); return; }
+    const hud = document.getElementById('hud');
+    if (!boss){ bar.classList.add('hidden'); hud.classList.remove('boss-shift'); return; }
     bar.classList.remove('hidden');
+    hud.classList.add('boss-shift');
     document.getElementById('bossHpLabel').textContent = t('bossName_' + boss.bossTier);
     document.getElementById('bossHpFill').style.width = Math.max(0, boss.hp / boss.maxHp * 100) + '%';
   }
@@ -2762,6 +2848,9 @@
   function closeQuiz(){
     document.getElementById('quizOverlay').classList.add('hidden');
     quiz = null;
+    // only ticks during play, so it also covers an evolution popup chained after the quiz
+    player.quizGrace = CFG.quizGrace.duration;
+    player.quizGraceArmed = false;
     pendingLevelUps = Math.max(0, pendingLevelUps - 1);
     if (pendingLevelUps > 0){
       triggerLevelUpReward();
@@ -3081,6 +3170,13 @@
     if (iv.x !== 0 || iv.y !== 0) player.facing = Math.atan2(iv.y, iv.x);
 
     if (player.invuln > 0) player.invuln -= dt;
+    if (player.quizGrace > 0){
+      // a fresh move input ends the grace early; input held since the quiz doesn't count
+      const moving = iv.x !== 0 || iv.y !== 0;
+      if (!moving) player.quizGraceArmed = true;
+      if (moving && player.quizGraceArmed) player.quizGrace = 0;
+      else player.quizGrace -= dt;
+    }
 
     fireTimer -= dt;
     if (fireTimer <= 0){
@@ -3181,7 +3277,7 @@
 
       const rr = e.radius + player.radius;
       const pd = Math.hypot(player.x - e.x, player.y - e.y);
-      if (pd <= rr && player.invuln <= 0){
+      if (pd <= rr && player.invuln <= 0 && player.quizGrace <= 0){
         player.hp -= e.damage * (1 - (player.defense || 0));
         player.invuln = CFG.invulnTime + (player.invulnBonus || 0);
         sfxHit();
@@ -3194,7 +3290,7 @@
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
       let hit = false;
       const dist = Math.hypot(player.x - b.x, player.y - b.y);
-      if (dist <= player.radius + b.radius && player.invuln <= 0){
+      if (dist <= player.radius + b.radius && player.invuln <= 0 && player.quizGrace <= 0){
         player.hp -= b.damage * (1 - (player.defense || 0));
         player.invuln = CFG.invulnTime + (player.invulnBonus || 0);
         sfxHit();
@@ -3249,12 +3345,127 @@
       }
     }
 
+    updateBomb(dt);
+
     purgeMinionsIfPending();
+    updateBossWarning(dt);
     updateAbilityWarning(dt);
 
     camera.x = player.x - width / 2;
     camera.y = player.y - height / 2;
     updateHud();
+  }
+
+  // ---------- emergency bomb ----------
+  function trySpawnBomb(){
+    const c = CFG.bomb;
+    const m = c.screenMargin;
+    // player is screen-centered, so cap the distance to what fits on screen
+    const minDist = Math.min(c.spawnMinDist, Math.min(width, height) / 2 - m);
+    for (let attempt = 0; attempt < 30; attempt++){
+      const sx = m + Math.random() * Math.max(0, width - m * 2);
+      const sy = m + Math.random() * Math.max(0, height - m * 2);
+      if (Math.hypot(sx - width / 2, sy - height / 2) < minDist) continue;
+      bomb = { x: player.x - width / 2 + sx, y: player.y - height / 2 + sy, life: c.lifetime, radius: c.radius };
+      bombCooldown = c.cooldown;
+      return;
+    }
+  }
+  function isOnScreen(e){
+    const sx = e.x - camera.x, sy = e.y - camera.y;
+    return sx >= -e.radius && sx <= width + e.radius && sy >= -e.radius && sy <= height + e.radius;
+  }
+  function detonateBomb(){
+    const c = CFG.bomb;
+    const targets = shuffleArray(enemies.filter(e => e.type === 'normal' && !e.encircle && isOnScreen(e)));
+    const doomed = new Set(targets.slice(0, Math.round(targets.length * c.killRatio)));
+    // removed directly (not via killEnemy) so they drop no gems/heals and don't trigger burst
+    for (let i = enemies.length - 1; i >= 0; i--){
+      const e = enemies[i];
+      if (!doomed.has(e)) continue;
+      bombBlasts.push({ x: e.x, y: e.y, t: 0, maxR: e.radius * 2.2, small: true });
+      enemies.splice(i, 1);
+    }
+    killCount += doomed.size;
+    bombBlasts.push({ x: bomb.x, y: bomb.y, t: 0, maxR: c.blastRadius, small: false });
+    bomb = null;
+    sfxBomb();
+  }
+  function updateBomb(dt){
+    const c = CFG.bomb;
+    if (bombCooldown > 0) bombCooldown -= dt;
+    if (!bomb && bombCooldown <= 0 && player.hp > 0 && player.hp <= player.maxHp * c.hpThreshold) trySpawnBomb();
+    if (bomb){
+      bomb.life -= dt;
+      if (bomb.life <= 0) bomb = null;
+      else if (Math.hypot(player.x - bomb.x, player.y - bomb.y) <= player.radius + bomb.radius) detonateBomb();
+    }
+    for (let i = bombBlasts.length - 1; i >= 0; i--){
+      bombBlasts[i].t += dt;
+      if (bombBlasts[i].t >= c.blastDuration) bombBlasts.splice(i, 1);
+    }
+  }
+  function drawBomb(){
+    const c = CFG.bomb;
+    if (bomb){
+      const sx = bomb.x - camera.x, sy = bomb.y - camera.y;
+      const elapsed = c.lifetime - bomb.life;
+      const rate = bomb.life <= c.urgentTime ? c.blinkRateUrgent : c.blinkRate;
+      const bright = Math.floor(elapsed * rate * 2) % 2 === 0;
+      const r = bomb.radius;
+      ctx.save();
+      ctx.translate(sx, sy);
+      // glow ring
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 7, 0, Math.PI * 2);
+      ctx.strokeStyle = bright ? 'rgba(255,170,40,0.95)' : 'rgba(255,170,40,0.25)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // body
+      ctx.beginPath();
+      ctx.arc(0, 2, r, 0, Math.PI * 2);
+      ctx.fillStyle = bright ? '#3a3a52' : '#22222e';
+      ctx.fill();
+      ctx.strokeStyle = '#ffe066';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // fuse + spark
+      ctx.beginPath();
+      ctx.moveTo(r * 0.4, -r * 0.7);
+      ctx.quadraticCurveTo(r * 0.9, -r * 1.4, r * 0.5, -r * 1.7);
+      ctx.strokeStyle = '#c9a26b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(r * 0.5, -r * 1.7, bright ? 4.5 : 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = bright ? '#ffe066' : '#ff8a3c';
+      ctx.fill();
+      ctx.restore();
+    }
+    for (const b of bombBlasts){
+      const p = Math.min(1, b.t / c.blastDuration);
+      const sx = b.x - camera.x, sy = b.y - camera.y;
+      const rr = b.maxR * (0.2 + 0.8 * p);
+      ctx.save();
+      ctx.globalAlpha = 1 - p;
+      ctx.beginPath();
+      ctx.arc(sx, sy, rr, 0, Math.PI * 2);
+      ctx.fillStyle = b.small ? 'rgba(255,200,80,0.5)' : 'rgba(255,240,200,0.35)';
+      ctx.fill();
+      ctx.strokeStyle = b.small ? '#ffb340' : '#ff8a3c';
+      ctx.lineWidth = b.small ? 2 : 5;
+      ctx.stroke();
+      ctx.restore();
+    }
+    // brief full-screen flash right after the main blast
+    const main = bombBlasts.find(b => !b.small);
+    if (main && main.t < 0.15){
+      ctx.save();
+      ctx.globalAlpha = 0.35 * (1 - main.t / 0.15);
+      ctx.fillStyle = '#fff4d6';
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
   }
 
   // ---------- draw ----------
@@ -3369,6 +3580,8 @@
       }
     }
 
+    drawBomb();
+
     // player, always screen-centered
     const px = width / 2, py = height / 2;
 
@@ -3385,7 +3598,11 @@
 
     ctx.save();
     ctx.translate(px, py);
-    if (player.invuln > 0 && Math.floor(survivalTime * 20) % 2 === 0) ctx.globalAlpha = 0.4;
+    if (player.quizGrace > 0){
+      const g = CFG.quizGrace;
+      const rate = player.quizGrace <= g.urgentTime ? g.blinkRateUrgent : g.blinkRate;
+      if (Math.floor(performance.now() / 1000 * rate * 2) % 2 === 0) ctx.globalAlpha = 0.25;
+    } else if (player.invuln > 0 && Math.floor(survivalTime * 20) % 2 === 0) ctx.globalAlpha = 0.4;
     ctx.rotate(player.facing);
     ctx.fillStyle = '#4dd0ff';
     ctx.beginPath();
@@ -3399,6 +3616,46 @@
     ctx.closePath();
     ctx.fill();
     ctx.restore();
+
+    drawBossArrows();
+  }
+
+  // arrows on the screen edge pointing at bosses whose center is off screen
+  function drawBossArrows(){
+    if (!enemies.some(e => e.type === 'boss')) return;
+    const inset = CFG.stage.bossArrowInset;
+    // keep arrows below the DOM HUD so they aren't hidden behind it
+    const hudBottom = document.getElementById('hud').getBoundingClientRect().bottom;
+    const top = Math.min(height / 2, Math.max(inset, hudBottom + inset));
+    const cx = width / 2, cy = height / 2;
+    const pulse = 0.75 + 0.25 * Math.sin(performance.now() / 1000 * Math.PI * 4);
+    for (const e of enemies){
+      if (e.type !== 'boss') continue;
+      const sx = e.x - camera.x, sy = e.y - camera.y;
+      if (sx >= 0 && sx <= width && sy >= 0 && sy <= height) continue;
+      const dx = sx - cx, dy = sy - cy;
+      // scale the direction until it touches the inset rectangle
+      const kx = dx > 0 ? (width - inset - cx) / dx : dx < 0 ? (inset - cx) / dx : Infinity;
+      const ky = dy > 0 ? (height - inset - cy) / dy : dy < 0 ? (top - cy) / dy : Infinity;
+      const k = Math.max(0, Math.min(kx, ky));
+      const size = e.isMainBoss ? 16 : 11;
+      ctx.save();
+      ctx.translate(cx + dx * k, cy + dy * k);
+      ctx.rotate(Math.atan2(dy, dx));
+      ctx.globalAlpha = pulse;
+      ctx.beginPath();
+      ctx.moveTo(size, 0);
+      ctx.lineTo(-size * 0.7, -size * 0.75);
+      ctx.lineTo(-size * 0.3, 0);
+      ctx.lineTo(-size * 0.7, size * 0.75);
+      ctx.closePath();
+      ctx.fillStyle = '#ff2d55';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = e.isMainBoss ? '#ffe066' : 'rgba(255,224,102,0.6)';
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // ---------- main loop ----------
