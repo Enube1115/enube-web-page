@@ -14,11 +14,27 @@
     SUPABASE_URL: 'https://fadtttgkzyryzjakvrva.supabase.co',
     SUPABASE_ANON_KEY: 'sb_publishable_JVfGO7BS_IhZnHhLRQZlDw_CdCbwIx6',
     RANKING_TABLE: 'scores',
+    // 記録の送信先（1プレイ1行で上書き）。supabase_submit_run.sql で作成する
+    RANKING_SUBMIT_FN: 'submit_run',
+
+    // クイズ難易度の段階（生存時間で上がる）。値は選択した難易度パックの設定からの相対値
+    // from: 段階が始まる生存時間（秒） / timeMult: 制限時間の倍率 / extraBlanks: 伏せ字の追加数 / extraDummies: ダミー文字の追加数
+    // 数学パックは timeMult のみ適用
+    QUIZ_TIERS: [
+      { from: 0,   timeMult: 1,    extraBlanks: 0, extraDummies: 0 },
+      { from: 300, timeMult: 0.8,  extraBlanks: 0, extraDummies: 2 },
+      { from: 600, timeMult: 0.65, extraBlanks: 1, extraDummies: 3 },
+      { from: 900, timeMult: 0.5,  extraBlanks: 2, extraDummies: 4 },
+    ],
+    QUIZ_MIN_TIME: 4,          // 制限時間の下限（秒）
+    QUIZ_ALL_BLANK_MAX_LEN: 2, // この文字数以下の単語は常に全文字を伏せる
+    QUIZ_TIER_NOTICE_TIME: 2,  // 段階が上がったときの通知の表示時間（プレイ中の秒数）
 
     // 期間限定イベント（判定はプレイヤー端末のローカル時刻。開始日0:00〜終了日23:59、年またぎも可）
     // forceEnable: true にすると期間外でも有効になる（デバッグ用）
     EVENTS: {
-      halloween: { start: { month: 10, day: 25 }, end: { month: 11, day: 1 }, forceEnable: false },
+      // minWordRate: 期間中、1プレイ内のハロウィン単語の出題割合をこれ以上に保つ（0〜1）
+      halloween: { start: { month: 10, day: 25 }, end: { month: 11, day: 1 }, forceEnable: false, minWordRate: 0.6 },
     },
   };
 </script>
@@ -96,7 +112,7 @@
   .card .title { font-size: 16px; font-weight: 700; color: #7cf7c9; }
   .card .desc { font-size: 12px; opacity: 0.8; margin-top: 4px; }
 
-  #resumeBtn, #pauseRestartBtn, #pauseHomeBtn, #gameOverHomeBtn {
+  #resumeBtn, #quitSubmitBtn, #pauseRestartBtn, #pauseHomeBtn, #gameOverHomeBtn {
     margin-top: 8px; padding: 12px 32px; font-size: 16px; font-weight: 700;
     border: none; border-radius: 24px; background: #ff8a5c; color: #1a1a1a;
   }
@@ -104,6 +120,9 @@
   #pauseHomeBtn:active, #gameOverHomeBtn:active { background: #ffab85; }
   #resumeBtn { background: #4dd0ff; margin-top: 0; }
   #resumeBtn:active { background: #7ce0ff; }
+  #quitSubmitBtn { background: rgba(255,224,102,0.15); color: #ffe066; border: 1px solid rgba(255,224,102,0.5); }
+  #quitSubmitBtn:active { background: rgba(255,224,102,0.28); }
+  #homeRankStatus { margin-bottom: 8px; }
   #pauseRestartBtn, #pauseHomeBtn, #gameOverHomeBtn {
     background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3);
   }
@@ -374,6 +393,14 @@
   /* make room for the boss HP bar so it doesn't cover the time / level row */
   #hud.boss-shift { top: calc(env(safe-area-inset-top, 0px) + 46px); }
 
+  .tier-label { font-size: 11px; opacity: 0.8; }
+  #quizTierNotice {
+    position: fixed; top: 38%; left: 50%; transform: translate(-50%, -50%); z-index: 12;
+    pointer-events: none; text-align: center; white-space: nowrap;
+    font-size: 26px; font-weight: 800; color: #ffe066; text-shadow: 0 2px 8px #000, 0 0 18px rgba(255,140,40,0.7);
+  }
+  #quizTierNotice span { display: inline-block; animation: evoPulse 0.5s ease-out; }
+
   #pendingLevelUpsLabel {
     font-size: 11px; font-weight: 700; color: #ffe066; text-shadow: 0 1px 2px #000;
     background: rgba(0,0,0,0.35); border-radius: 10px; padding: 2px 8px; align-self: flex-start;
@@ -438,6 +465,7 @@
 <div id="hud">
   <div id="topInfo">
     <span><span data-i18n="survivalTimeLabel"></span> <b id="timeText">00:00</b></span>
+    <span class="tier-label" id="tierText"></span>
     <span><span data-i18n="levelLabel"></span><b id="levelText">1</b></span>
   </div>
   <div class="bar-row">
@@ -460,6 +488,7 @@
 </div>
 
 <div id="bossWarning" class="hidden"></div>
+<div id="quizTierNotice" class="hidden"></div>
 <div id="bossAbilityWarning" class="hidden"></div>
 
 <div id="joystick" class="hidden">
@@ -475,6 +504,7 @@
   <div class="home-inner">
   <h1><span class="halloween-only" aria-hidden="true">🎃 </span><span data-i18n="appTitle">Vocab Survivor</span><span class="halloween-only" aria-hidden="true"> 👻</span></h1>
   <div class="event-banner halloween-only" id="halloweenBanner"></div>
+  <div class="rank-status" id="homeRankStatus"></div>
   <p data-i18n="homeSubtitle"></p>
   <div class="select-group" id="langGroup"></div>
   <div class="select-group" id="diffGroup"></div>
@@ -607,6 +637,7 @@
   </div>
   <div class="btnRow">
     <button id="resumeBtn" data-i18n="resumeButton"></button>
+    <button id="quitSubmitBtn" data-i18n="quitSubmitButton"></button>
     <button id="pauseRestartBtn" data-i18n="restartButton"></button>
     <button id="pauseHomeBtn" data-i18n="homeButton"></button>
   </div>
@@ -674,6 +705,9 @@
       packPrefix: 'パック: ',
       acquiredSkillsLabel: '取得済みスキル',
       resumeButton: '再開',
+      quitSubmitButton: 'やめて記録を送る',
+      quizTierLabel: '難易度 {n}/{max}',
+      quizTierUp: '⚠️ 難易度上昇！（{n}/{max}）',
       restartButton: '最初からやり直す',
       homeButton: 'ホームへ戻る',
       gameOverTitle: 'ゲームオーバー',
@@ -844,6 +878,9 @@
       packPrefix: 'Pack: ',
       acquiredSkillsLabel: 'Acquired Skills',
       resumeButton: 'Resume',
+      quitSubmitButton: 'Quit & Submit Score',
+      quizTierLabel: 'Difficulty {n}/{max}',
+      quizTierUp: '⚠️ Difficulty up! ({n}/{max})',
       restartButton: 'Restart',
       homeButton: 'Back to Home',
       gameOverTitle: 'Game Over',
@@ -1061,6 +1098,7 @@
     fireInterval: 0.5,
     baseHp: 100,
     invulnTime: 0.6,
+    rankingAutoSendInterval: 60, // seconds of play between automatic ranking sends
 
     // grace period after the quiz overlay closes (no damage until it ends or the player starts moving)
     quizGrace: {
@@ -1946,6 +1984,13 @@
   let keys = {};
   let killCount = 0;
   let runQuizCorrect = 0, runQuizWrong = 0; // this run only (stats.correctCount is cumulative per pack)
+  let runWordsPicked = 0, runHalloweenPicked = 0; // this run only, for CONFIG.EVENTS.halloween.minWordRate
+  // ranking: every send in one run updates the same row (keyed by runId)
+  let runId = null, runPackId = null;
+  let runActive = false; // true while a started run hasn't ended (game over / stage clear / quit / home)
+  let autoSendTimer = 0;
+  let quizTier = 0;            // index into CONFIG.QUIZ_TIERS
+  let quizTierNoticeTimer = 0;
 
   // ---------- stage mode ----------
   let selectedMode = lsGet('vs_selected_mode', 'endless');
@@ -2003,6 +2048,15 @@
     killCount = 0;
     runQuizCorrect = 0;
     runQuizWrong = 0;
+    runWordsPicked = 0;
+    runHalloweenPicked = 0;
+    runId = newRunId();
+    runPackId = currentPackId();
+    runActive = true;
+    autoSendTimer = CFG.rankingAutoSendInterval;
+    quizTier = 0;
+    quizTierNoticeTimer = 0;
+    document.getElementById('quizTierNotice').classList.add('hidden');
     camera.x = 0; camera.y = 0;
     survivalTime = 0;
     spawnTimer = 0.6;
@@ -2069,6 +2123,7 @@
     gameState = 'paused';
     document.getElementById('pausePackName').textContent = t('packPrefix') + packDisplayName(getPack(currentPackId()));
     renderPauseSkillList();
+    document.getElementById('quitSubmitBtn').classList.toggle('hidden', !rankingEligible());
     document.getElementById('pauseOverlay').classList.remove('hidden');
   }
   function resumeGame(){
@@ -2086,18 +2141,23 @@
   document.getElementById('resumeBtn').addEventListener('click', resumeGame);
   document.getElementById('pauseRestartBtn').addEventListener('click', resetGame);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pauseGame();
+    if (!document.hidden) return;
+    pauseGame();
+    beaconSubmitRun();
   });
+  window.addEventListener('beforeunload', beaconSubmitRun);
 
   // ---------- home screen ----------
   function goHome(){
     gameState = 'title';
+    runActive = false;
     document.getElementById('pauseOverlay').classList.add('hidden');
     document.getElementById('gameOverOverlay').classList.add('hidden');
     document.getElementById('stageClearOverlay').classList.add('hidden');
     document.getElementById('bossRewardOverlay').classList.add('hidden');
     document.getElementById('bossHpBar').classList.add('hidden');
     document.getElementById('bossWarning').classList.add('hidden');
+    document.getElementById('quizTierNotice').classList.add('hidden');
     setPauseButtonVisible(false);
     refreshEvents();
     renderHomeSelectors();
@@ -2183,6 +2243,7 @@
     renderHomeName();
   }
   document.getElementById('startBtn').addEventListener('click', () => {
+    document.getElementById('homeRankStatus').textContent = '';
     document.getElementById('homeOverlay').classList.add('hidden');
     resetGame();
   });
@@ -2684,6 +2745,7 @@
 
   function stageClear(){
     gameState = 'stageclear';
+    runActive = false;
     setPauseButtonVisible(false);
     const packId = currentPackId();
     const cleared = lsGet('vs_cleared_' + packId, 0);
@@ -2814,6 +2876,31 @@
     if (pendingLevelUps > 0 && gameState === 'playing' && !(stageMode && isBossActive())) triggerLevelUpReward();
   }
 
+  // ---------- quiz difficulty tiers (rise with survival time; see CONFIG.QUIZ_TIERS) ----------
+  function quizTierAt(time){
+    let idx = 0;
+    CONFIG.QUIZ_TIERS.forEach((tier, i) => { if (time >= tier.from) idx = i; });
+    return idx;
+  }
+  // the notice counts down only during play, like the boss warning
+  function updateQuizTier(dt){
+    const idx = quizTierAt(survivalTime);
+    if (idx > quizTier){
+      quizTier = idx;
+      const el = document.getElementById('quizTierNotice');
+      el.innerHTML = '';
+      const text = document.createElement('span'); // fresh node restarts the pop-in animation
+      text.textContent = tf('quizTierUp', { n: quizTier + 1, max: CONFIG.QUIZ_TIERS.length });
+      el.appendChild(text);
+      el.classList.remove('hidden');
+      quizTierNoticeTimer = CONFIG.QUIZ_TIER_NOTICE_TIME;
+    }
+    if (quizTierNoticeTimer > 0){
+      quizTierNoticeTimer -= dt;
+      if (quizTierNoticeTimer <= 0) document.getElementById('quizTierNotice').classList.add('hidden');
+    }
+  }
+
   // ---------- level up quiz (word fill-in-the-blank) ----------
   const QUIZ_DANGER_TIME = 1.5;
 
@@ -2821,6 +2908,18 @@
 
   function pickRandomWord(pack){
     const words = activeWords(pack);
+    const seasonal = words.filter(w => w.halloween);
+    if (seasonal.length === 0 || seasonal.length === words.length) return pickWithReviewPriority(pack, words);
+    // keep this run's share of halloween words at or above minWordRate after every question:
+    // force one when a normal word would drop below it, otherwise roll at that rate
+    const minRate = CONFIG.EVENTS.halloween.minWordRate;
+    const useSeasonal = runHalloweenPicked < minRate * (runWordsPicked + 1) || Math.random() < minRate;
+    runWordsPicked += 1;
+    if (useSeasonal) runHalloweenPicked += 1;
+    return pickWithReviewPriority(pack, useSeasonal ? seasonal : words.filter(w => !w.halloween));
+  }
+  // words answered wrong before are asked first WRONG_WORD_PRIORITY of the time
+  function pickWithReviewPriority(pack, words){
     const wrongList = lsGet(wrongKey(pack.id), []);
     const wrongWords = wrongList.length
       ? words.filter(w => wrongList.some(r => r.word === w.word))
@@ -2862,10 +2961,19 @@
     const wordObj = pickRandomWord(pack);
     const chars = Array.from(wordObj.word);
     const len = chars.length;
-    const blankCount = pack.blankAll
-      ? len
-      : Math.max(1, Math.min(difficulty.blankCount - (player.quizBlankReduction || 0), len - 1));
-    const quizTime = (wordObj.time || pack.quizTime || difficulty.quizTime) + (player.quizTimeBonus || 0);
+    const tier = CONFIG.QUIZ_TIERS[quizTier];
+    // math answers are only a few digits, so only the time cut applies there
+    const extraBlanks = pack.blankAll ? 0 : tier.extraBlanks;
+    const extraDummies = pack.blankAll ? 0 : tier.extraDummies;
+    let blankCount;
+    if (pack.blankAll || len <= CONFIG.QUIZ_ALL_BLANK_MAX_LEN) blankCount = len;
+    else {
+      // base rule keeps one letter visible; tier extras may hide up to the whole word
+      const base = Math.max(1, Math.min(difficulty.blankCount - (player.quizBlankReduction || 0), len - 1));
+      blankCount = Math.min(len, base + extraBlanks);
+    }
+    const quizTime = Math.max(CONFIG.QUIZ_MIN_TIME,
+      (wordObj.time || pack.quizTime || difficulty.quizTime) * tier.timeMult + (player.quizTimeBonus || 0));
 
     const blankIndices = [];
     while (blankIndices.length < blankCount){
@@ -2874,7 +2982,7 @@
     }
     blankIndices.sort((a, b) => a - b);
 
-    const neededDummies = Math.max(2, 6 - blankCount);
+    const neededDummies = Math.max(2, 6 - blankCount) + extraDummies;
     const dummies = [];
     if (pack.tileChars){
       // distinct dummies from the tile set, excluding every char in the answer
@@ -3101,6 +3209,7 @@
   // ---------- game over ----------
   function gameOver(){
     gameState = 'gameover';
+    runActive = false;
     setPauseButtonVisible(false);
     sfxGameOver();
 
@@ -3141,12 +3250,57 @@
       .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res; })
       .finally(() => clearTimeout(timer));
   }
+  // Ranking is endless mode only.
+  function rankingEligible(){ return rankingEnabled() && !stageMode; }
+  function rankSubmitPath(){ return 'rpc/' + encodeURIComponent(CONFIG.RANKING_SUBMIT_FN); }
+  // Inserts or updates this run's row (see supabase_submit_run.sql). The body is text/plain so
+  // the same server function also accepts sendBeacon, which can't send JSON cross-origin.
   function submitScore(record){
-    return rankingFetch(encodeURIComponent(CONFIG.RANKING_TABLE), {
+    return rankingFetch(rankSubmitPath(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(record),
+      keepalive: true,
     });
+  }
+  // sendBeacon can't set headers, so the key goes in the query string (Supabase accepts ?apikey=)
+  function beaconScore(record){
+    const url = CONFIG.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/' + rankSubmitPath() +
+      '?apikey=' + encodeURIComponent(CONFIG.SUPABASE_ANON_KEY);
+    try { return navigator.sendBeacon(url, JSON.stringify(record)); } catch (e) { return false; }
+  }
+  function newRunId(){
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+  }
+  function currentRunRecord(name){
+    const total = runQuizCorrect + runQuizWrong;
+    return {
+      run_id: runId,
+      name,
+      pack_id: runPackId,
+      survival_time: Math.round(survivalTime * 10) / 10,
+      level: player.level,
+      accuracy: total > 0 ? Math.round(runQuizCorrect / total * 1000) / 10 : null,
+    };
+  }
+  // automatic sends (timer / leaving the page) never ask for a name, so they need one saved already
+  function canAutoSubmit(){ return runActive && rankingEligible() && getPlayerName() !== ''; }
+  function autoSubmitRun(){
+    if (canAutoSubmit()) submitScore(currentRunRecord(getPlayerName())).catch(() => {});
+  }
+  function beaconSubmitRun(){
+    if (canAutoSubmit()) beaconScore(currentRunRecord(getPlayerName()));
+  }
+  function submitWithStatus(status, record){
+    status.className = 'rank-status';
+    status.textContent = t('rankSending');
+    submitScore(record)
+      .then(() => { status.textContent = t('rankSent'); })
+      .catch(() => { status.className = 'rank-status error'; status.textContent = t('rankSendError'); });
   }
   function fetchRanking(packId){
     return rankingFetch(encodeURIComponent(CONFIG.RANKING_TABLE) +
@@ -3166,24 +3320,12 @@
   function offerRankingSubmit(containerId){
     const box = document.getElementById(containerId);
     box.innerHTML = '';
-    if (!rankingEnabled()) return;
+    if (!rankingEligible()) return;
 
-    const total = runQuizCorrect + runQuizWrong;
-    const record = {
-      pack_id: currentPackId(),
-      survival_time: Math.round(survivalTime * 10) / 10,
-      level: player.level,
-      accuracy: total > 0 ? Math.round(runQuizCorrect / total * 1000) / 10 : null,
-    };
+    const record = currentRunRecord('');
     const status = document.createElement('div');
     status.className = 'rank-status';
-    const send = name => {
-      status.className = 'rank-status';
-      status.textContent = t('rankSending');
-      submitScore(Object.assign({ name }, record))
-        .then(() => { status.textContent = t('rankSent'); })
-        .catch(() => { status.className = 'rank-status error'; status.textContent = t('rankSendError'); });
-    };
+    const send = name => submitWithStatus(status, Object.assign(record, { name }));
 
     box.appendChild(status);
     const savedName = getPlayerName();
@@ -3191,6 +3333,20 @@
     // no nickname yet: ask first; cancelling skips the upload and leaves the result screen as is
     openNameDialog(name => { if (name) send(name); });
   }
+
+  // pause menu: end the run now, send its record, and go home (cancelling the name dialog stays paused)
+  function quitAndSubmit(){
+    if (gameState !== 'paused' || !rankingEligible()) return;
+    const record = currentRunRecord('');
+    const finish = name => {
+      if (!name) return;
+      goHome();
+      submitWithStatus(document.getElementById('homeRankStatus'), Object.assign(record, { name }));
+    };
+    const savedName = getPlayerName();
+    if (savedName) finish(savedName); else openNameDialog(finish);
+  }
+  document.getElementById('quitSubmitBtn').addEventListener('click', quitAndSubmit);
 
   // ---------- nickname dialog ----------
   let nameDialogDone = null;
@@ -3320,6 +3476,7 @@
     document.getElementById('xpFill').style.width = Math.max(0, player.xp / player.xpNext * 100) + '%';
     document.getElementById('xpText').textContent = Math.floor(player.xp) + '/' + player.xpNext;
     document.getElementById('levelText').textContent = player.level;
+    document.getElementById('tierText').textContent = tf('quizTierLabel', { n: quizTier + 1, max: CONFIG.QUIZ_TIERS.length });
     const m = Math.floor(survivalTime / 60), s = Math.floor(survivalTime % 60);
     document.getElementById('timeText').textContent = pad(m) + ':' + pad(s);
 
@@ -3521,6 +3678,14 @@
     }
 
     updateBomb(dt);
+
+    updateQuizTier(dt);
+
+    autoSendTimer -= dt;
+    if (autoSendTimer <= 0){
+      autoSendTimer += CFG.rankingAutoSendInterval;
+      autoSubmitRun();
+    }
 
     purgeMinionsIfPending();
     updateBossWarning(dt);
