@@ -14,6 +14,12 @@
     SUPABASE_URL: 'https://fadtttgkzyryzjakvrva.supabase.co',
     SUPABASE_ANON_KEY: 'sb_publishable_JVfGO7BS_IhZnHhLRQZlDw_CdCbwIx6',
     RANKING_TABLE: 'scores',
+
+    // 期間限定イベント（判定はプレイヤー端末のローカル時刻。開始日0:00〜終了日23:59、年またぎも可）
+    // forceEnable: true にすると期間外でも有効になる（デバッグ用）
+    EVENTS: {
+      halloween: { start: { month: 10, day: 25 }, end: { month: 11, day: 1 }, forceEnable: false },
+    },
   };
 </script>
 <style>
@@ -380,6 +386,48 @@
   }
   .mute-btn:active { background: rgba(255,255,255,0.2); }
   .volume-slider { flex: 1; accent-color: #4dd0ff; }
+
+  /* ---------- halloween event (html.halloween while the event is active) ---------- */
+  html:not(.halloween) .halloween-only { display: none !important; }
+  .event-banner {
+    font-size: 13px; font-weight: 800; margin: 2px 0 6px; padding: 6px 16px; border-radius: 16px;
+    color: #1a0f26; background: linear-gradient(90deg, var(--hw-orange), #ffc36b);
+    box-shadow: 0 0 14px rgba(255,140,40,0.45);
+  }
+  html.halloween #quizMeaning { max-width: 100%; }
+  .event-word-mark {
+    display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 8px; white-space: nowrap;
+    font-size: 12px; font-weight: 800; border-radius: 10px; text-shadow: none;
+    color: #1a0f26; background: var(--hw-orange);
+  }
+  :root {
+    --hw-orange: #ff9a2e;
+    --hw-purple: #8a4dff;
+    --hw-purple-light: #b48cff;
+  }
+  html.halloween {
+    --start-btn-bg: linear-gradient(160deg, #ffb057, #ff6a00);
+    --start-btn-bg-active: linear-gradient(160deg, #ffc98a, #ff8a33);
+    --start-btn-glow: rgba(255,120,20,0.5);
+  }
+  html.halloween .overlay { background: rgba(18,6,30,0.85); }
+  html.halloween #howtoOverlay, html.halloween #rankingOverlay { background: rgba(14,5,24,0.95); }
+  html.halloween .overlay h1, html.halloween #topInfo b { color: var(--hw-orange); }
+  html.halloween .quiz-meaning { color: #ffb45e; }
+  html.halloween #xpFill { background: linear-gradient(90deg, var(--hw-purple), var(--hw-orange)); }
+  html.halloween .select-btn.selected { background: var(--hw-purple); border-color: var(--hw-purple); color: #fff; }
+  html.halloween .ui-lang-toggle button.selected { background: var(--hw-orange); border-color: var(--hw-orange); }
+  html.halloween .home-highscore, html.halloween .home-howto-brief, html.halloween .howto-section {
+    background: rgba(138,77,255,0.1); border-color: rgba(180,140,255,0.3);
+  }
+  html.halloween .howto-section h2, html.halloween .card .title, html.halloween .skill-row .name { color: var(--hw-orange); }
+  html.halloween #rankingBtn { border-color: rgba(255,154,46,0.6); background: rgba(255,154,46,0.14); color: var(--hw-orange); }
+  html.halloween .card { background: linear-gradient(160deg, #2e1d45, #170f22); border-color: rgba(180,140,255,0.3); }
+  html.halloween .card:active { background: linear-gradient(160deg, #3e2860, #21152f); }
+  html.halloween .tile-btn { background: linear-gradient(160deg, #3a2458, #1f1430); border-color: rgba(180,140,255,0.4); }
+  html.halloween .tile-btn:active { background: linear-gradient(160deg, #4d3075, #2a1a40); }
+  html.halloween #resumeBtn, html.halloween #howtoCloseBtn, html.halloween #rankingCloseBtn { background: var(--hw-purple-light); color: #1a0f26; }
+  html.halloween .volume-slider { accent-color: var(--hw-purple-light); }
 </style>
 </head>
 <body>
@@ -425,7 +473,8 @@
     <button data-lang="en">English</button>
   </div>
   <div class="home-inner">
-  <h1 data-i18n="appTitle">Vocab Survivor</h1>
+  <h1><span class="halloween-only" aria-hidden="true">🎃 </span><span data-i18n="appTitle">Vocab Survivor</span><span class="halloween-only" aria-hidden="true"> 👻</span></h1>
+  <div class="event-banner halloween-only" id="halloweenBanner"></div>
   <p data-i18n="homeSubtitle"></p>
   <div class="select-group" id="langGroup"></div>
   <div class="select-group" id="diffGroup"></div>
@@ -745,6 +794,8 @@
       howtoHealTitle: '❤️ 回復',
       howtoHeal1: '回復は敵が落とすアイテムだけ',
       howtoClose: '閉じる',
+      halloweenNotice: 'ハロウィン開催中（{month}/{day}まで）',
+      halloweenWordMark: '🎃 ハロウィン限定',
     },
     en: {
       appTitle: 'Vocab Survivor',
@@ -913,6 +964,8 @@
       howtoHealTitle: '❤️ Healing',
       howtoHeal1: 'You can only heal with items dropped by enemies',
       howtoClose: 'Close',
+      halloweenNotice: 'Halloween event on (until {month}/{day})',
+      halloweenWordMark: '🎃 Halloween',
     },
   };
 
@@ -941,6 +994,7 @@
     document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
     document.getElementById('pauseBtn').setAttribute('aria-label', t('pauseAria'));
     renderUiLangToggle();
+    renderEventBanner();
     renderHomeSelectors();
     renderSkillBar();
   }
@@ -952,6 +1006,32 @@
   document.querySelectorAll('#uiLangToggle button').forEach(btn => {
     btn.addEventListener('click', () => setUiLang(btn.getAttribute('data-lang')));
   });
+
+  // ---------- seasonal events (periods live in CONFIG.EVENTS) ----------
+  function monthDayKey(month, day){ return month * 100 + day; }
+  function isEventActive(id, now){
+    const ev = CONFIG.EVENTS && CONFIG.EVENTS[id];
+    if (!ev) return false;
+    if (ev.forceEnable) return true;
+    now = now || new Date(); // the player's local time
+    const key = monthDayKey(now.getMonth() + 1, now.getDate());
+    const start = monthDayKey(ev.start.month, ev.start.day);
+    const end = monthDayKey(ev.end.month, ev.end.day);
+    // both days inclusive; start > end means the period wraps past New Year
+    return start <= end ? (key >= start && key <= end) : (key >= start || key <= end);
+  }
+  let halloweenMode = false;
+  // returns true when the mode changed
+  function refreshEvents(){
+    const was = halloweenMode;
+    halloweenMode = isEventActive('halloween');
+    document.documentElement.classList.toggle('halloween', halloweenMode);
+    return was !== halloweenMode;
+  }
+  function renderEventBanner(){
+    const end = CONFIG.EVENTS.halloween.end;
+    document.getElementById('halloweenBanner').textContent = tf('halloweenNotice', { month: end.month, day: end.day });
+  }
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1590,6 +1670,47 @@
       { word: 'じゅんばん', meaning: { ja: '前から後への並び方', en: 'the order things come in' } },
       { word: 'ぜんたい', meaning: { ja: 'すべてをひとまとめにしたもの', en: 'the whole of something' } },
       { word: 'ぶぶん', meaning: { ja: '全体のうちの一部', en: 'a piece of the whole' } },
+      // halloween only
+      { word: 'おばけ', halloween: true, meaning: { ja: '正体のわからない怖いもの', en: 'a frightening thing of unknown form' } },
+      { word: 'かぼちゃ', halloween: true, meaning: { ja: '秋に実るオレンジ色の野菜', en: 'an orange vegetable of autumn' } },
+      { word: 'まじょ', halloween: true, meaning: { ja: '魔法を使う女の人', en: 'a woman who uses magic' } },
+      { word: 'こうもり', halloween: true, meaning: { ja: '夜に飛ぶ羽のある動物', en: 'a winged animal that flies at night' } },
+      { word: 'ほね', halloween: true, meaning: { ja: '体を支えている硬い部分', en: 'the hard parts that hold up a body' } },
+      { word: 'くものす', halloween: true, meaning: { ja: '虫を捕まえるために張られた糸', en: 'threads spun to catch insects' } },
+      { word: 'まんげつ', halloween: true, meaning: { ja: 'まるく光る夜の月', en: 'the moon when it is fully round' } },
+      { word: 'ひめい', halloween: true, meaning: { ja: 'こわくて思わず出る声', en: 'a cry of fear' } },
+      { word: 'やみ', halloween: true, meaning: { ja: '何も見えない暗さ', en: 'darkness where nothing can be seen' } },
+      { word: 'よみがえる', halloween: true, meaning: { ja: '死んだものが生き返ること', en: 'to come back to life' } },
+      { word: 'ようかい', halloween: true, meaning: { ja: '人ではない不思議な生きもの', en: 'a strange creature that is not human' } },
+      { word: 'のろい', halloween: true, meaning: { ja: '相手に悪いことが起きるよう願うこと', en: 'a wish that harm comes to someone' } },
+      { word: 'まほう', halloween: true, meaning: { ja: 'ふつうではできないことを起こす力', en: 'a power that does the impossible' } },
+      { word: 'ぼち', halloween: true, meaning: { ja: '死んだ人を葬る場所', en: 'a place where the dead are buried' } },
+      { word: 'かいぶつ', halloween: true, meaning: { ja: '見たことのない恐ろしい生きもの', en: 'a frightening unknown creature' } },
+      { word: 'きば', halloween: true, meaning: { ja: '鋭くとがった歯', en: 'a sharp pointed tooth' } },
+      { word: 'くろねこ', halloween: true, meaning: { ja: '黒い毛の猫', en: 'a cat with black fur' } },
+      { word: 'ほうき', halloween: true, meaning: { ja: 'ごみを掃くための道具', en: 'a tool for sweeping' } },
+      { word: 'ランタン', halloween: true, meaning: { ja: '持ち運べる明かり', en: 'a light you can carry' } },
+      { word: 'おとずれる', halloween: true, meaning: { ja: 'そこへ行くこと', en: 'to go to a place' } },
+      { word: 'さまよう', halloween: true, meaning: { ja: 'あてもなく歩き回ること', en: 'to wander with no goal' } },
+      { word: 'しのびよる', halloween: true, meaning: { ja: '気づかれないように近づくこと', en: 'to approach without being noticed' } },
+      { word: 'おどろく', halloween: true, meaning: { ja: '思いがけないことに心が動くこと', en: 'to be startled' } },
+      { word: 'ふるえる', halloween: true, meaning: { ja: 'こわくて体が小さく動くこと', en: 'to shake with fear' } },
+      { word: 'いたずら', halloween: true, meaning: { ja: '人を困らせる遊び', en: 'a playful trick' } },
+      { word: 'かそう', halloween: true, meaning: { ja: '別のものに見えるよう装うこと', en: 'dressing up as something else' } },
+      { word: 'なぞ', halloween: true, meaning: { ja: '答えの分からないこと', en: 'something with no known answer' } },
+      { word: 'ぶきみ', halloween: true, meaning: { ja: 'なんとなく気持ちが悪いようす', en: 'vaguely unsettling' } },
+      { word: 'しずけさ', halloween: true, meaning: { ja: '音がしない状態', en: 'the state of having no sound' } },
+      { word: 'きり', halloween: true, meaning: { ja: '空気中の水で白くかすむもの', en: 'a white haze of water in the air' } },
+      { word: 'つき', halloween: true, meaning: { ja: '夜に空で光る星', en: 'the body that shines in the night sky' } },
+      { word: 'よなか', halloween: true, meaning: { ja: '夜のいちばん深い時間', en: 'the deepest hours of night' } },
+      { word: 'かげぼうし', halloween: true, meaning: { ja: '光でできた人の形の影', en: 'a person-shaped shadow' } },
+      { word: 'うらみ', halloween: true, meaning: { ja: 'ひどい目に遭って残る悪い気持ち', en: 'lasting resentment after being wronged' } },
+      { word: 'たましい', halloween: true, meaning: { ja: '体に宿っていると言われるもの', en: 'what is said to dwell in a body' } },
+      { word: 'ふっかつ', halloween: true, meaning: { ja: 'もう一度よみがえること', en: 'coming back once more' } },
+      { word: 'おそれる', halloween: true, meaning: { ja: 'こわいと思うこと', en: 'to feel fear toward something' } },
+      { word: 'さけぶ', halloween: true, meaning: { ja: '大きな声を出すこと', en: 'to shout loudly' } },
+      { word: 'にげる', halloween: true, meaning: { ja: '危ない場所から離れること', en: 'to get away from danger' } },
+      { word: 'かくれる', halloween: true, meaning: { ja: '見つからないように身を隠すこと', en: 'to keep out of sight' } },
     ] },
     { id: 'japanese_2', langId: 'japanese', difficultyId: 2, words: [
       { word: 'ありがとう', meaning: { ja: '感謝を伝える言葉', en: 'A word used to express thanks' } },
@@ -1629,7 +1750,7 @@
       { word: 'custom', meaning: { ja: 'その土地で続いているやり方', en: 'a usual way of doing things in a place' } },
       { word: 'choice', meaning: { ja: 'いくつかから選ぶこと', en: 'the act of picking one thing' } },
       { word: 'damage', meaning: { ja: '物が壊れること', en: 'harm done to something' } },
-      { word: 'escape', meaning: { ja: '危ない場所から逃げること', en: 'to get away from danger' } },
+      { word: 'escape', halloween: true, meaning: { ja: '危ない場所から逃げること', en: 'to get away from danger' } },
       { word: 'follow', meaning: { ja: '後についていくこと', en: 'to go behind someone' } },
       { word: 'happen', meaning: { ja: '物事が起きること', en: 'to take place' } },
       { word: 'notice', meaning: { ja: '何かに気づくこと', en: 'to become aware of something' } },
@@ -1656,6 +1777,46 @@
       { word: 'history', meaning: { ja: '昔から今までに起きたこと', en: 'what happened in the past' } },
       { word: 'freedom', meaning: { ja: '自分で決められる状態', en: 'being able to choose for yourself' } },
       { word: 'discover', meaning: { ja: '今まで知られていなかったものを見つけること', en: 'to find something not known before' } },
+      // halloween only
+      { word: 'ghost', halloween: true, meaning: { ja: '死んだ人の姿をしたもの', en: 'the spirit of a dead person' } },
+      { word: 'pumpkin', halloween: true, meaning: { ja: '秋に実るオレンジ色の野菜', en: 'a large orange vegetable of autumn' } },
+      { word: 'witch', halloween: true, meaning: { ja: '魔法を使う女の人', en: 'a woman who uses magic' } },
+      { word: 'spooky', halloween: true, meaning: { ja: '少し怖い感じがするようす', en: 'slightly frightening' } },
+      { word: 'candle', halloween: true, meaning: { ja: '火をつけて明かりにする棒', en: 'a wax stick that gives light' } },
+      { word: 'shadow', halloween: true, meaning: { ja: '光がさえぎられてできる暗い形', en: 'a dark shape made by blocked light' } },
+      { word: 'haunted', halloween: true, meaning: { ja: 'おばけが出ると言われている', en: 'said to be visited by ghosts' } },
+      { word: 'costume', halloween: true, meaning: { ja: '何かに扮するための服', en: 'clothes worn to look like someone else' } },
+      { word: 'midnight', halloween: true, meaning: { ja: '夜の12時', en: "twelve o'clock at night" } },
+      { word: 'skeleton', halloween: true, meaning: { ja: '体の骨だけが残った形', en: 'the bones of a body' } },
+      { word: 'spider', halloween: true, meaning: { ja: '8本足の虫', en: 'an eight-legged creature' } },
+      { word: 'monster', halloween: true, meaning: { ja: '恐ろしい姿の生きもの', en: 'a frightening creature' } },
+      { word: 'vampire', halloween: true, meaning: { ja: '血を吸うと言われるもの', en: 'a being said to drink blood' } },
+      { word: 'zombie', halloween: true, meaning: { ja: '死んだあと動き出したもの', en: 'a dead body that moves again' } },
+      { word: 'coffin', halloween: true, meaning: { ja: '死んだ人を納める箱', en: 'a box for a dead body' } },
+      { word: 'grave', halloween: true, meaning: { ja: '死んだ人を埋めた場所', en: 'a place where a body is buried' } },
+      { word: 'curse', halloween: true, meaning: { ja: '相手に不幸が起きるよう願うこと', en: 'a wish for harm on someone' } },
+      { word: 'magic', halloween: true, meaning: { ja: 'ふつうでは起きないことを起こす力', en: 'a power beyond the ordinary' } },
+      { word: 'potion', halloween: true, meaning: { ja: '不思議な力のある飲み物', en: 'a drink with strange power' } },
+      { word: 'broom', halloween: true, meaning: { ja: '床を掃くための道具', en: 'a tool for sweeping floors' } },
+      { word: 'lantern', halloween: true, meaning: { ja: '持ち運べる明かり', en: 'a light you can carry' } },
+      { word: 'mask', halloween: true, meaning: { ja: '顔を覆って隠すもの', en: 'something worn over the face' } },
+      { word: 'trick', halloween: true, meaning: { ja: '人をだます行い', en: 'an act meant to fool someone' } },
+      { word: 'treat', halloween: true, meaning: { ja: 'もらって嬉しい食べ物', en: 'a sweet given as a gift' } },
+      { word: 'scream', halloween: true, meaning: { ja: 'こわくて大きな声を出すこと', en: 'to cry out in fear' } },
+      { word: 'fright', halloween: true, meaning: { ja: '突然おそってくる恐れ', en: 'a sudden feeling of fear' } },
+      { word: 'creepy', halloween: true, meaning: { ja: 'なんとなく気味が悪い', en: 'vaguely unsettling' } },
+      { word: 'whisper', halloween: true, meaning: { ja: '小さな声で話すこと', en: 'to speak very quietly' } },
+      { word: 'silence', halloween: true, meaning: { ja: '音がまったくない状態', en: 'complete absence of sound' } },
+      { word: 'darkness', halloween: true, meaning: { ja: '光がない状態', en: 'the absence of light' } },
+      { word: 'moonlight', halloween: true, meaning: { ja: '月から届く光', en: 'the light from the moon' } },
+      { word: 'graveyard', halloween: true, meaning: { ja: '墓が集まっている場所', en: 'a place full of graves' } },
+      { word: 'mystery', halloween: true, meaning: { ja: '答えの分からないこと', en: 'something that cannot be explained' } },
+      { word: 'chase', halloween: true, meaning: { ja: '追いかけること', en: 'to run after something' } },
+      { word: 'hide', halloween: true, meaning: { ja: '見つからないよう身を隠すこと', en: 'to keep out of sight' } },
+      { word: 'float', halloween: true, meaning: { ja: '宙に浮かんでいること', en: 'to hang in the air' } },
+      { word: 'howl', halloween: true, meaning: { ja: '長く尾を引く鳴き声を出すこと', en: 'to make a long wailing cry' } },
+      { word: 'candy', halloween: true, meaning: { ja: '甘いお菓子', en: 'a sweet food' } },
+      { word: 'wicked', halloween: true, meaning: { ja: 'とても悪い性質の', en: 'very evil in nature' } },
     ] },
     { id: 'english_2', langId: 'english', difficultyId: 2, words: [
       { word: 'orange', meaning: { ja: 'みかん', en: 'A round citrus fruit with a thick orange peel' } },
@@ -1712,6 +1873,8 @@
     ] },
   ];
   function getPack(id){ return WORD_PACKS.find(p => p.id === id) || WORD_PACKS[0]; }
+  // words flagged `halloween: true` are only asked while the halloween event is active
+  function activeWords(pack){ return pack.words.filter(w => !w.halloween || halloweenMode); }
   function wordMeaning(wordObj){
     const dict = wordObj.meaning;
     return (dict && dict[uiLang]) || (dict && dict.ja) || '';
@@ -1746,7 +1909,9 @@
     if (filtered.length !== list.length) lsSet(wrongKey(packId), filtered);
   }
   function wrongWordCount(packId){
-    return lsGet(wrongKey(packId), []).length;
+    // out-of-season event words can't be asked, so they don't count as pending review
+    const words = activeWords(getPack(packId));
+    return lsGet(wrongKey(packId), []).filter(r => words.some(w => w.word === r.word)).length;
   }
 
   let selectedLangId = lsGet('vs_selected_lang', LANGUAGES[0].id);
@@ -1824,6 +1989,7 @@
   }
 
   function resetGame(){
+    refreshEvents(); // a run keeps the mode it started with
     player = newPlayer();
     enemies = [];
     bullets = [];
@@ -1933,6 +2099,7 @@
     document.getElementById('bossHpBar').classList.add('hidden');
     document.getElementById('bossWarning').classList.add('hidden');
     setPauseButtonVisible(false);
+    refreshEvents();
     renderHomeSelectors();
     document.getElementById('homeOverlay').classList.remove('hidden');
   }
@@ -2653,13 +2820,14 @@
   const WRONG_WORD_PRIORITY = 0.6;
 
   function pickRandomWord(pack){
+    const words = activeWords(pack);
     const wrongList = lsGet(wrongKey(pack.id), []);
     const wrongWords = wrongList.length
-      ? pack.words.filter(w => wrongList.some(r => r.word === w.word))
+      ? words.filter(w => wrongList.some(r => r.word === w.word))
       : [];
     const otherWords = wrongWords.length
-      ? pack.words.filter(w => !wrongWords.includes(w))
-      : pack.words;
+      ? words.filter(w => !wrongWords.includes(w))
+      : words;
 
     let pool;
     if (wrongWords.length > 0 && otherWords.length > 0){
@@ -2671,7 +2839,7 @@
   }
   function buildDummyPool(pack, currentWord){
     const set = new Set();
-    pack.words.forEach(w => {
+    activeWords(pack).forEach(w => {
       if (w === currentWord) return;
       for (const ch of w.word) set.add(ch);
     });
@@ -2732,7 +2900,14 @@
     };
 
     document.getElementById('quizResult').textContent = '';
-    document.getElementById('quizMeaning').textContent = wordMeaning(wordObj);
+    const meaningEl = document.getElementById('quizMeaning');
+    meaningEl.textContent = wordMeaning(wordObj);
+    if (wordObj.halloween){
+      const mark = document.createElement('span');
+      mark.className = 'event-word-mark';
+      mark.textContent = t('halloweenWordMark');
+      meaningEl.appendChild(mark);
+    }
     const fillEl = document.getElementById('quizTimerFill');
     const numEl = document.getElementById('quizTimerNum');
     fillEl.style.width = '100%';
@@ -3421,25 +3596,29 @@
       ctx.strokeStyle = bright ? 'rgba(255,170,40,0.95)' : 'rgba(255,170,40,0.25)';
       ctx.lineWidth = 3;
       ctx.stroke();
-      // body
-      ctx.beginPath();
-      ctx.arc(0, 2, r, 0, Math.PI * 2);
-      ctx.fillStyle = bright ? '#3a3a52' : '#22222e';
-      ctx.fill();
-      ctx.strokeStyle = '#ffe066';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      // fuse + spark
-      ctx.beginPath();
-      ctx.moveTo(r * 0.4, -r * 0.7);
-      ctx.quadraticCurveTo(r * 0.9, -r * 1.4, r * 0.5, -r * 1.7);
-      ctx.strokeStyle = '#c9a26b';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(r * 0.5, -r * 1.7, bright ? 4.5 : 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = bright ? '#ffe066' : '#ff8a3c';
-      ctx.fill();
+      if (halloweenMode){
+        drawPumpkin(r, bright);
+      } else {
+        // body
+        ctx.beginPath();
+        ctx.arc(0, 2, r, 0, Math.PI * 2);
+        ctx.fillStyle = bright ? '#3a3a52' : '#22222e';
+        ctx.fill();
+        ctx.strokeStyle = '#ffe066';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // fuse + spark
+        ctx.beginPath();
+        ctx.moveTo(r * 0.4, -r * 0.7);
+        ctx.quadraticCurveTo(r * 0.9, -r * 1.4, r * 0.5, -r * 1.7);
+        ctx.strokeStyle = '#c9a26b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(r * 0.5, -r * 1.7, bright ? 4.5 : 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = bright ? '#ffe066' : '#ff8a3c';
+        ctx.fill();
+      }
       ctx.restore();
     }
     for (const b of bombBlasts){
@@ -3468,10 +3647,83 @@
     }
   }
 
+  // ---------- halloween sprites (drawn around the current origin) ----------
+  // jack-o'-lantern bomb: the face lights up on the bright blink frames
+  function drawPumpkin(r, bright){
+    ctx.fillStyle = bright ? '#ff9a2e' : '#c85f12';
+    ctx.strokeStyle = '#7a3500';
+    ctx.lineWidth = 1.2;
+    [-0.5, 0.5, 0].forEach(ox => {
+      ctx.beginPath();
+      ctx.ellipse(ox * r, 2, r * 0.62, r * 0.9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+    ctx.fillStyle = '#4c8a2e';
+    ctx.fillRect(-2, -r * 0.9 - 3, 4, 6);
+    ctx.fillStyle = bright ? '#ffe066' : '#4a2000';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, -r * 0.05); ctx.lineTo(-r * 0.15, -r * 0.05); ctx.lineTo(-r * 0.35, -r * 0.4);
+    ctx.moveTo(r * 0.55, -r * 0.05); ctx.lineTo(r * 0.15, -r * 0.05); ctx.lineTo(r * 0.35, -r * 0.4);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, r * 0.3);
+    ctx.quadraticCurveTo(0, r * 0.95, r * 0.55, r * 0.3);
+    ctx.quadraticCurveTo(0, r * 0.55, -r * 0.55, r * 0.3);
+    ctx.fill();
+  }
+  // wrapped candy heal item (about the same size as the normal cross)
+  function drawCandy(){
+    ctx.fillStyle = '#ffb3d1';
+    ctx.beginPath();
+    ctx.moveTo(-4, 0); ctx.lineTo(-11, -5); ctx.lineTo(-11, 5); ctx.closePath();
+    ctx.moveTo(4, 0); ctx.lineTo(11, -5); ctx.lineTo(11, 5); ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ff4f9a';
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 1.5);
+    ctx.stroke();
+  }
+  // ghost silhouette for elites; stays inside the collision circle of radius r
+  function traceGhost(x, y, r){
+    const hw = r * 0.85, hemY = y + r * 0.6, w = hw * 2 / 3;
+    ctx.arc(x, y - r * 0.15, hw, Math.PI, 0);
+    ctx.lineTo(x + hw, hemY);
+    for (let i = 0; i < 3; i++){
+      const x0 = x + hw - i * w;
+      ctx.quadraticCurveTo(x0 - w / 2, hemY + r * 0.4, x0 - w, hemY);
+    }
+    ctx.closePath();
+  }
+  function drawGhostFace(x, y, r){
+    ctx.fillStyle = '#2a1840';
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.3, y - r * 0.25, r * 0.13, r * 0.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + r * 0.3, y - r * 0.25, r * 0.13, r * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.15, r * 0.12, r * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ---------- canvas palette (seasonal) ----------
+  // the background stays dark in every theme so enemies, bullets and gems remain easy to read
+  const CANVAS_THEMES = {
+    normal: { grid: 'rgba(255,255,255,0.06)', enemy: '#ff5566', minion: '#ff9f43', elite: '#c04dff' },
+    // minions take the old red so they don't blend into the orange normal enemies
+    halloween: { grid: 'rgba(168,108,255,0.16)', enemy: '#ff8a1f', minion: '#ff5566', elite: '#e6defa' },
+  };
+  function canvasTheme(){ return halloweenMode ? CANVAS_THEMES.halloween : CANVAS_THEMES.normal; }
+
   // ---------- draw ----------
   function drawGrid(){
     const cell = 64;
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.strokeStyle = canvasTheme().grid;
     ctx.lineWidth = 1;
     const offX = -((camera.x % cell) + cell) % cell;
     const offY = -((camera.y % cell) + cell) % cell;
@@ -3504,8 +3756,11 @@
       ctx.fillStyle = '#ff6b81';
       ctx.save();
       ctx.translate(sx, sy);
-      ctx.fillRect(-8, -2.5, 16, 5);
-      ctx.fillRect(-2.5, -8, 5, 16);
+      if (halloweenMode) drawCandy();
+      else {
+        ctx.fillRect(-8, -2.5, 16, 5);
+        ctx.fillRect(-2.5, -8, 5, 16);
+      }
       ctx.restore();
     }
 
@@ -3551,21 +3806,25 @@
       ctx.restore();
     }
 
+    const theme = canvasTheme();
     for (const e of enemies){
       const sx = e.x - camera.x, sy = e.y - camera.y;
       if (sx < -60 || sx > width + 60 || sy < -60 || sy > height + 60) continue;
       const isElite = e.type === 'elite';
       const isBoss = e.type === 'boss';
       const isMinion = e.type === 'minion';
-      ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : (isBoss ? '#ff2d55' : (isElite ? '#c04dff' : (isMinion ? '#ff9f43' : '#ff5566')));
+      const ghost = isElite && halloweenMode;
+      ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : (isBoss ? '#ff2d55' : (isElite ? theme.elite : (isMinion ? theme.minion : theme.enemy)));
       ctx.beginPath();
-      ctx.arc(sx, sy, e.radius, 0, Math.PI * 2);
+      if (ghost) traceGhost(sx, sy, e.radius);
+      else ctx.arc(sx, sy, e.radius, 0, Math.PI * 2);
       ctx.fill();
       if (isElite){
         ctx.lineWidth = 3;
         ctx.strokeStyle = e.eliteState === 'dashing' ? '#ffe066' : 'rgba(255,224,102,0.6)';
         ctx.stroke();
       }
+      if (ghost) drawGhostFace(sx, sy, e.radius);
       if (isBoss){
         ctx.lineWidth = 4;
         ctx.strokeStyle = e.isMainBoss ? '#ffe066' : 'rgba(255,224,102,0.6)';
@@ -3677,6 +3936,9 @@
   enemies = []; bullets = []; gems = []; heals = []; enemyBullets = [];
   gameState = 'title';
   setPauseButtonVisible(false);
+  refreshEvents();
+  // the period can start or end while the home screen sits open
+  setInterval(() => { if (gameState === 'title' && refreshEvents()) renderHomeSelectors(); }, 30000);
   applyI18n();
   updateHud();
   if (!lsGet('vs_seen_howto', false)){
