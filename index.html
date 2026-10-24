@@ -1,1423 +1,324 @@
-<!DOCTYPE html>
-<html lang="ja" data-theme="dark">
+<!doctype html>
+<html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>高校生100日開発記録 — 65 Apps in 100 Days</title>
-<script>
-  (function() {
-    var t = localStorage.getItem('portfolio-theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', t);
-  })();
-</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enube Arcade — 無料で遊べるゲーム・診断・ツール</title>
+<meta name="description" content="ブラウザですぐ遊べるゲーム・クイズ・診断・便利ツールが60本以上。登録不要・無料。">
+<meta property="og:title" content="Enube Arcade">
+<meta property="og:description" content="ブラウザですぐ遊べるゲーム・クイズ・診断・ツールが60本以上。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-  /* ── TOKENS ── */
-  :root {
-    --bg: #08080e;
-    --bg2: #0f0f1a;
-    --surface: rgba(255,255,255,0.045);
-    --surface-hover: rgba(255,255,255,0.085);
-    --border: rgba(255,255,255,0.08);
-    --border-hover: rgba(255,255,255,0.22);
-    --text: #eae8f5;
-    --text-sub: #6e6e9a;
-    --accent: #7c5cfc;
-    --accent2: #fc5c9c;
-    --accent3: #5cf0c8;
-    --gold: #fbbf24;
-    --gold2: #f59e0b;
-    --glow: rgba(124,92,252,0.28);
-    --gold-glow: rgba(251,191,36,0.28);
-    --card-radius: 18px;
-    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+:root{
+  --bg:#f6f6f3; --surface:#fff; --ink:#151515; --sub:#626260; --mute:#a2a29e;
+  --line:#e7e6e1; --accent:#ff5a36; --chip:#ecebe6; --radius:16px; --max:1200px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e0e10; --surface:#18181b; --ink:#f3f3f0; --sub:#a9a9a5; --mute:#6d6d6a;
+    --line:#2a2a2e; --accent:#ff7a5c; --chip:#222226;
   }
-  [data-theme="light"] {
-    --bg: #f2f2fa;
-    --bg2: #e6e6f2;
-    --surface: rgba(255,255,255,0.72);
-    --surface-hover: rgba(255,255,255,0.96);
-    --border: rgba(0,0,0,0.07);
-    --border-hover: rgba(124,92,252,0.4);
-    --text: #1a1a2e;
-    --text-sub: #6060a0;
-    --glow: rgba(124,92,252,0.15);
-    --gold-glow: rgba(245,158,11,0.15);
-  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e0e10; --surface:#18181b; --ink:#f3f3f0; --sub:#a9a9a5; --mute:#6d6d6a;
+  --line:#2a2a2e; --accent:#ff7a5c; --chip:#222226;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:"Inter","Noto Sans JP",system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+@media (max-width:600px){.wrap{padding:0 16px}}
 
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.bar{height:64px;display:flex;align-items:center;gap:16px}
+.logo{font-weight:900;font-size:19px;letter-spacing:-.01em;white-space:nowrap}
+.logo i{font-style:normal;color:var(--accent)}
+.search{flex:1;max-width:420px;margin-left:auto;position:relative}
+.search input{width:100%;height:42px;border-radius:999px;border:1px solid var(--line);background:var(--surface);padding:0 16px 0 40px;font:inherit;font-size:14px;color:var(--ink);outline:none}
+.search input:focus{border-color:var(--ink)}
+.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--mute)}
+.theme-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;flex-shrink:0}
 
-  body {
-    font-family: 'Segoe UI','Hiragino Kaku Gothic ProN',system-ui,sans-serif;
-    background:var(--bg); color:var(--text);
-    min-height:100vh; overflow-x:hidden;
-  }
+/* hero */
+.hero{padding:56px 0 40px;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+@media (max-width:860px){.hero{grid-template-columns:1fr;padding-top:36px}}
+.hero h1{font-size:clamp(32px,5.5vw,56px);font-weight:900;line-height:1.2;letter-spacing:-.02em}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{color:var(--sub);margin:16px 0 28px;font-size:16px}
+.hero-btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn{height:50px;padding:0 24px;border-radius:999px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:8px;transition:.15s}
+.btn-main{background:var(--ink);color:var(--bg)}
+.btn-main:hover{transform:translateY(-1px)}
+.btn-sub{border:1px solid var(--line);background:var(--surface)}
+.btn-sub:hover{border-color:var(--ink)}
+.hero-art{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.hero-art span{aspect-ratio:1;border-radius:14px;display:grid;place-items:center;font-size:clamp(22px,3.4vw,34px);transition:.3s}
+.hero-art span:hover{transform:rotate(-6deg) scale(1.06)}
+@media (max-width:860px){.hero-art{display:none}}
 
-  /* ── BG ORBS ── */
-  .bg-orbs { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
-  .orb { position:absolute; border-radius:50%; filter:blur(80px); opacity:0.13; animation:float 14s ease-in-out infinite; }
-  .orb1 { width:600px; height:600px; background:var(--accent);  top:-150px; left:-150px; animation-delay:0s; }
-  .orb2 { width:500px; height:500px; background:var(--accent2); bottom:-100px; right:-100px; animation-delay:-5s; }
-  .orb3 { width:400px; height:400px; background:var(--accent3); top:35%; left:55%; animation-delay:-9s; }
-  .orb4 { width:350px; height:350px; background:var(--gold);    top:8%; right:18%; opacity:0.06; animation-delay:-3s; }
-  @keyframes float {
-    0%,100%{ transform:translate(0,0) scale(1); }
-    33%{ transform:translate(24px,-24px) scale(1.04); }
-    66%{ transform:translate(-18px,18px) scale(0.96); }
-  }
+/* sections */
+.sec{padding:28px 0}
+.sec-title{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+.sec-title h2{font-size:20px;font-weight:800}
+.sec-title small{color:var(--mute);font-size:13px}
 
-  /* ── HERO ── */
-  .hero {
-    position:relative; z-index:10;
-    padding:64px 24px 72px;
-    text-align:center; overflow:hidden;
-  }
-  .hero-watermark {
-    position:absolute;
-    font-size:min(56vw,320px); font-weight:900;
-    color:transparent;
-    -webkit-text-stroke:2px rgba(255,255,255,0.025);
-    pointer-events:none; user-select:none;
-    line-height:0.85; top:50%; left:50%;
-    transform:translate(-50%,-50%);
-    letter-spacing:-0.06em; white-space:nowrap; z-index:0;
-  }
-  [data-theme="light"] .hero-watermark { -webkit-text-stroke:2px rgba(0,0,0,0.035); }
+/* featured */
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:860px){.feat{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:520px){.feat{grid-template-columns:1fr}}
+.fcard{border-radius:var(--radius);overflow:hidden;background:var(--surface);border:1px solid var(--line);transition:.2s;display:block}
+.fcard:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.08)}
+.fcard .art{aspect-ratio:16/9;display:grid;place-items:center;font-size:64px;position:relative}
+.fcard .art b{position:absolute;top:12px;left:12px;font-size:11px;font-weight:800;letter-spacing:.08em;background:rgba(0,0,0,.55);color:#fff;padding:4px 9px;border-radius:999px}
+.fcard .txt{padding:16px 18px 18px}
+.fcard h3{font-size:16px;font-weight:800}
+.fcard p{font-size:13.5px;color:var(--sub);margin-top:4px}
 
-  .sparkle {
-    position:absolute; pointer-events:none; z-index:0;
-    font-size:1rem; color:var(--gold);
-    opacity:0;
-    animation:sparkle-anim var(--dur,3s) ease-in-out var(--delay,0s) infinite;
-  }
-  @keyframes sparkle-anim {
-    0%,100%{ opacity:0; transform:scale(0) rotate(0deg); }
-    40%,60%{ opacity:0.65; transform:scale(1) rotate(180deg); }
-  }
+/* recent */
+.recent{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.recent::-webkit-scrollbar{display:none}
+.rchip{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap;font-size:14px;font-weight:600}
+.rchip span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:16px}
 
-  .hero-inner { position:relative; z-index:1; max-width:700px; margin:0 auto; }
+/* tabs */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.tab{height:38px;padding:0 16px;border-radius:999px;background:var(--chip);font-size:14px;font-weight:600;color:var(--sub);transition:.15s}
+.tab:hover{color:var(--ink)}
+.tab.on{background:var(--ink);color:var(--bg)}
+.tab sup{font-size:11px;opacity:.6;margin-left:4px;vertical-align:baseline}
 
-  /* Milestone badge */
-  .milestone-badge {
-    display:inline-flex; align-items:center; gap:8px;
-    border:1px solid rgba(251,191,36,0.45); border-radius:100px;
-    padding:9px 24px; font-size:0.74rem; font-weight:800;
-    letter-spacing:0.2em; color:var(--gold); text-transform:uppercase;
-    margin-bottom:30px;
-    background:linear-gradient(90deg,rgba(251,191,36,0.04),rgba(251,191,36,0.14),rgba(251,191,36,0.04));
-    background-size:200% auto;
-    animation:badge-shimmer 4s linear infinite;
-    backdrop-filter:blur(12px);
-  }
-  @keyframes badge-shimmer {
-    0%{ background-position:0% center; }
-    100%{ background-position:200% center; }
-  }
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+@media (max-width:520px){.grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:10px;transition:.15s}
+.card:hover{border-color:var(--ink);transform:translateY(-2px)}
+.card .ic{aspect-ratio:1.4;border-radius:12px;display:grid;place-items:center;font-size:40px;position:relative}
+.badge{position:absolute;top:8px;right:8px;font-size:10px;font-weight:800;background:var(--accent);color:#fff;padding:2px 7px;border-radius:999px}
+.card h3{font-size:14.5px;font-weight:700;line-height:1.35}
+.card p{font-size:12.5px;color:var(--sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .cat{font-size:11px;color:var(--mute);font-weight:600;margin-top:auto}
+.empty{text-align:center;padding:60px 0;color:var(--sub)}
+.empty b{display:block;font-size:40px;margin-bottom:8px}
 
-  /* Hero title */
-  .hero-title { margin-bottom:18px; line-height:1.15; }
-  .hero-title .t-line1 {
-    display:block;
-    font-size:clamp(1.2rem,4vw,2rem); font-weight:800; letter-spacing:0.03em;
-    background:linear-gradient(90deg, var(--gold) 0%, var(--accent2) 55%, var(--accent) 100%);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-    margin-bottom:6px;
-  }
-  .hero-title .t-line2 {
-    display:block;
-    font-size:clamp(2.4rem,7.5vw,4.4rem); font-weight:900; letter-spacing:-0.04em;
-    background:linear-gradient(130deg, #ffffff 0%, #ddd0ff 40%, var(--accent2) 100%);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-  }
-
-  .hero-sub {
-    font-size:1rem; color:var(--text-sub); line-height:1.75;
-    max-width:480px; margin:0 auto 38px;
-  }
-
-  /* Progress bar */
-  .hero-progress { max-width:560px; margin:0 auto 40px; }
-  .progress-labels {
-    display:flex; justify-content:space-between; align-items:center;
-    font-size:0.72rem; color:var(--text-sub); letter-spacing:0.06em; margin-bottom:9px;
-  }
-  .progress-labels .pct { color:var(--gold); font-weight:800; font-size:0.82rem; }
-  .progress-track {
-    height:6px; background:rgba(255,255,255,0.08); border-radius:10px; overflow:hidden;
-  }
-  .progress-fill {
-    height:100%; width:0%;
-    background:linear-gradient(90deg, var(--accent), var(--accent2), var(--gold));
-    border-radius:10px;
-    transition:width 1.6s cubic-bezier(0.22,1,0.36,1);
-    box-shadow:0 0 14px rgba(251,191,36,0.4);
-  }
-
-  /* Featured stat cards */
-  .hero-main-stats {
-    display:flex; gap:16px; justify-content:center; align-items:stretch;
-    max-width:540px; margin:0 auto 28px;
-  }
-  .hms {
-    flex:1; background:var(--surface); border:1px solid var(--border);
-    border-radius:22px; padding:28px 20px; text-align:center;
-    backdrop-filter:blur(20px); position:relative; overflow:hidden;
-    transition:transform var(--transition), box-shadow var(--transition);
-  }
-  .hms:hover { transform:translateY(-3px); }
-  .hms::before {
-    content:''; position:absolute; inset:0;
-    background:linear-gradient(135deg, rgba(124,92,252,0.07) 0%, transparent 60%);
-    pointer-events:none;
-  }
-  .hms.gold-card { border-color:rgba(251,191,36,0.3); box-shadow:0 0 28px rgba(251,191,36,0.07); }
-  .hms.gold-card::before { background:linear-gradient(135deg, rgba(251,191,36,0.09) 0%, transparent 60%); }
-  .hms-icon { font-size:1.5rem; margin-bottom:10px; }
-  .hms-num {
-    font-size:clamp(3rem,9vw,4.6rem); font-weight:900; line-height:1;
-    background:linear-gradient(135deg, var(--accent), var(--accent3));
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-    margin-bottom:10px;
-  }
-  .hms.gold-card .hms-num {
-    background:linear-gradient(135deg, #fff9c4, var(--gold), var(--gold2));
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-  }
-  .hms-label { font-size:0.78rem; font-weight:700; color:var(--text-sub); letter-spacing:0.1em; }
-  .hms.gold-card .hms-label { color:rgba(251,191,36,0.7); }
-
-  /* Mini category stats */
-  .hero-mini-stats {
-    display:flex; flex-wrap:wrap; gap:16px;
-    justify-content:center; align-items:center;
-    max-width:600px; margin:0 auto;
-  }
-  .mstat { display:flex; align-items:center; gap:7px; font-size:0.82rem; color:var(--text-sub); }
-  .mstat-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-
-  /* ── CONTROLS PANEL ── */
-  .controls-wrap {
-    position:relative; z-index:10;
-    max-width:1100px; margin:0 auto;
-    padding:0 20px;
-  }
-  .controls-panel {
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:20px; padding:18px 20px;
-    backdrop-filter:blur(24px); margin-bottom:20px;
-    display:flex; flex-direction:column; gap:14px;
-  }
-  .search-row { display:flex; gap:10px; align-items:center; }
-  .search-wrap { position:relative; flex:1; }
-  .search-wrap svg {
-    position:absolute; left:14px; top:50%; transform:translateY(-50%);
-    color:var(--text-sub); pointer-events:none;
-  }
-  #search {
-    width:100%; background:rgba(255,255,255,0.05);
-    border:1px solid var(--border); border-radius:12px;
-    padding:11px 16px 11px 42px; color:var(--text); font-size:0.95rem;
-    outline:none;
-    transition:border-color var(--transition), box-shadow var(--transition);
-  }
-  #search::placeholder { color:var(--text-sub); }
-  #search:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--glow); }
-
-  .icon-btn {
-    background:rgba(255,255,255,0.05); border:1px solid var(--border);
-    border-radius:12px; width:42px; height:42px;
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer; color:var(--text-sub);
-    transition:all var(--transition); flex-shrink:0;
-  }
-  .icon-btn:hover { border-color:var(--border-hover); color:var(--text); background:rgba(255,255,255,0.09); }
-
-  .sort-select {
-    background:rgba(255,255,255,0.05); border:1px solid var(--border);
-    border-radius:12px; padding:10px 30px 10px 14px;
-    color:var(--text); font-size:0.85rem; outline:none; cursor:pointer;
-    transition:border-color var(--transition); appearance:none;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237878a0' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat:no-repeat; background-position:right 10px center;
-  }
-  .sort-select:focus { border-color:var(--accent); }
-  [data-theme="light"] .sort-select option { background:#f2f2fa; }
-  [data-theme="dark"]  .sort-select option { background:#0f0f1a; }
-
-  .filter-row { display:flex; gap:8px; flex-wrap:wrap; }
-  .filter-btn {
-    display:flex; align-items:center; gap:5px;
-    background:rgba(255,255,255,0.04); border:1px solid var(--border);
-    border-radius:100px; padding:7px 15px;
-    font-size:0.82rem; color:var(--text-sub); cursor:pointer;
-    transition:all var(--transition); white-space:nowrap;
-  }
-  .filter-btn .dot { width:7px; height:7px; border-radius:50%; }
-  .filter-btn:hover { border-color:var(--border-hover); color:var(--text); }
-  .filter-btn.active {
-    background:var(--accent); border-color:var(--accent);
-    color:#fff; box-shadow:0 4px 18px var(--glow);
-  }
-  .filter-btn.active .dot { background:rgba(255,255,255,0.6); }
-
-  /* ── RESULT INFO ── */
-  .result-info {
-    position:relative; z-index:10;
-    max-width:1100px; margin:0 auto 18px;
-    padding:0 20px;
-    font-size:0.84rem; color:var(--text-sub);
-  }
-  .result-info strong { color:var(--text); }
-
-  /* ── GRID ── */
-  .grid {
-    position:relative; z-index:10;
-    max-width:1100px; margin:0 auto;
-    padding:0 20px 100px;
-    display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
-    gap:18px;
-  }
-
-  /* ── CARD ── */
-  .card {
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:var(--card-radius); padding:22px;
-    text-decoration:none; color:inherit;
-    display:flex; flex-direction:column; gap:11px;
-    backdrop-filter:blur(16px);
-    transition:transform var(--transition), border-color var(--transition), box-shadow var(--transition), background var(--transition);
-    position:relative; overflow:hidden; cursor:pointer;
-  }
-  .card::before {
-    content:''; position:absolute; inset:0;
-    background:linear-gradient(135deg, rgba(255,255,255,0.025) 0%, transparent 60%);
-    pointer-events:none;
-  }
-  .card-shine {
-    position:absolute; width:200%; height:200%; top:-50%; left:-50%;
-    background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.06) 0%, transparent 50%);
-    pointer-events:none; opacity:0; transition:opacity 0.3s;
-  }
-  .card:hover .card-shine { opacity:1; }
-  .card:hover {
-    transform:translateY(-4px) scale(1.01);
-    border-color:var(--border-hover);
-    box-shadow:0 20px 50px rgba(0,0,0,0.3), 0 0 0 1px rgba(124,92,252,0.12);
-    background:var(--surface-hover);
-  }
-  .card.hidden { display:none; }
-
-  .card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
-  .card-icon {
-    width:46px; height:46px; border-radius:13px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:23px; flex-shrink:0; position:relative; overflow:hidden;
-  }
-  .card-icon::after { content:''; position:absolute; inset:0; background:rgba(255,255,255,0.08); }
-
-  .card-tag {
-    display:inline-flex; align-items:center; gap:4px;
-    font-size:0.68rem; padding:3px 10px; border-radius:100px;
-    font-weight:700; letter-spacing:0.05em; white-space:nowrap;
-  }
-  .card-title { font-size:1.05rem; font-weight:700; line-height:1.3; color:var(--text); }
-  .card-desc  { font-size:0.83rem; color:var(--text-sub); line-height:1.65; flex:1; }
-  .card-footer { display:flex; align-items:center; justify-content:space-between; margin-top:4px; }
-  .card-link-text {
-    font-size:0.78rem; color:var(--accent); font-weight:700;
-    display:flex; align-items:center; gap:4px;
-    transition:gap var(--transition);
-  }
-  .card:hover .card-link-text { gap:8px; }
-  .card-new {
-    font-size:0.62rem;
-    background:linear-gradient(135deg, var(--accent), var(--accent2));
-    color:#fff; padding:2px 8px; border-radius:100px; font-weight:800; letter-spacing:0.06em;
-  }
-
-  /* ── CATEGORY COLORS ── */
-  .cat-game     { --cat-color:#fc5c9c; --cat-bg:rgba(252,92,156,0.12); }
-  .cat-tool     { --cat-color:#7c5cfc; --cat-bg:rgba(124,92,252,0.12); }
-  .cat-lifestyle{ --cat-color:#5cf0c8; --cat-bg:rgba(92,240,200,0.12); }
-  .cat-fun      { --cat-color:#fcb45c; --cat-bg:rgba(252,180,92,0.12); }
-  .cat-life     { --cat-color:#f472b6; --cat-bg:rgba(244,114,182,0.12); }
-  .card-icon { background:var(--cat-bg); }
-  .card-tag  { background:var(--cat-bg); color:var(--cat-color); }
-
-  /* ── EMPTY STATE ── */
-  .empty { grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--text-sub); display:none; }
-  .empty-icon { font-size:3rem; margin-bottom:12px; }
-  .empty h3 { font-size:1.2rem; color:var(--text); margin-bottom:8px; }
-  .empty.show { display:block; }
-
-  /* ── SCROLL TO TOP ── */
-  #scrollTop {
-    position:fixed; bottom:24px; right:24px;
-    width:46px; height:46px; background:var(--accent);
-    border:none; border-radius:13px; color:#fff; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 8px 24px var(--glow);
-    transition:all var(--transition); opacity:0; pointer-events:none; z-index:100;
-  }
-  #scrollTop.show { opacity:1; pointer-events:auto; }
-  #scrollTop:hover { transform:translateY(-3px); box-shadow:0 12px 32px var(--glow); }
-
-  /* ── FOOTER ── */
-  footer {
-    position:relative; z-index:10; text-align:center;
-    padding:32px 24px; color:var(--text-sub);
-    font-size:0.8rem; border-top:1px solid var(--border); line-height:2.2;
-  }
-  footer strong { color:var(--text); }
-  .f-badge {
-    display:inline-flex; align-items:center; gap:6px;
-    background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.22);
-    border-radius:100px; padding:5px 16px;
-    font-size:0.72rem; color:var(--gold); margin-bottom:6px;
-  }
-
-  /* ── RESPONSIVE ── */
-  @media(max-width:640px){
-    .hero-main-stats { flex-direction:column; align-items:center; }
-    .hms { width:100%; max-width:300px; }
-    .hero-title .t-line2 { font-size:2.4rem; }
-    .grid { grid-template-columns:1fr; }
-    .search-row { flex-wrap:wrap; }
-    .sort-select { width:100%; }
-  }
-
-  /* ── ANIMATIONS ── */
-  @keyframes cardIn {
-    from{ opacity:0; transform:translateY(14px); }
-    to  { opacity:1; transform:translateY(0); }
-  }
-  .card { animation:cardIn 0.4s ease both; }
+footer{border-top:1px solid var(--line);margin-top:56px;padding:32px 0 48px;font-size:13px;color:var(--mute)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer a:hover{color:var(--ink)}
+.hidden{display:none!important}
 </style>
 </head>
 <body>
 
-<div class="bg-orbs">
-  <div class="orb orb1"></div>
-  <div class="orb orb2"></div>
-  <div class="orb orb3"></div>
-  <div class="orb orb4"></div>
-</div>
-
-<!-- HERO -->
-<header class="hero">
-  <div class="hero-watermark">100</div>
-
-  <!-- Sparkle decorations -->
-  <div class="sparkle" style="top:7%;left:6%;--dur:3.8s;--delay:0s">✦</div>
-  <div class="sparkle" style="top:10%;right:10%;--dur:4.2s;--delay:0.9s">✦</div>
-  <div class="sparkle" style="top:68%;left:4%;--dur:3.2s;--delay:1.8s">✦</div>
-  <div class="sparkle" style="top:72%;right:6%;--dur:4.6s;--delay:0.5s">✦</div>
-  <div class="sparkle" style="top:22%;left:14%;--dur:5s;--delay:2.2s">✧</div>
-  <div class="sparkle" style="top:50%;right:3%;--dur:3.6s;--delay:1.4s">✧</div>
-  <div class="sparkle" style="top:40%;left:2%;--dur:4s;--delay:3s">✦</div>
-  <div class="sparkle" style="top:30%;right:3%;--dur:3.4s;--delay:0.2s">✧</div>
-
-  <div class="hero-inner">
-    <div class="milestone-badge">🎊 &nbsp;100 DAYS MILESTONE &nbsp;✦</div>
-
-    <h1 class="hero-title">
-      <span class="t-line1">100日間 · 65個のアプリを</span>
-      <span class="t-line2">作った高校生</span>
-    </h1>
-
-    <p class="hero-sub">毎日コードを書き続けた100日間のすべてを公開しています。<br>ゲームから占い、便利ツールまで — 全部触ってみてください。</p>
-
-    <div class="hero-progress">
-      <div class="progress-labels">
-        <span>Day 1</span>
-        <span class="pct">🎉 &thinsp;100 / 100日 達成！</span>
-        <span>Day 100</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progressFill"></div>
-      </div>
-    </div>
-
-    <div class="hero-main-stats">
-      <div class="hms">
-        <div class="hms-icon">📱</div>
-        <div class="hms-num" id="totalCount">0</div>
-        <div class="hms-label">累計アプリ数</div>
-      </div>
-      <div class="hms gold-card">
-        <div class="hms-icon">🔥</div>
-        <div class="hms-num" id="daysCount">0</div>
-        <div class="hms-label">連続制作日数</div>
-      </div>
-    </div>
-
-    <div class="hero-mini-stats">
-      <div class="mstat">
-        <span class="mstat-dot" style="background:#fc5c9c"></span>
-        <span id="gameCount">0</span>&thinsp;ゲーム
-      </div>
-      <div class="mstat">
-        <span class="mstat-dot" style="background:#7c5cfc"></span>
-        <span id="toolCount">0</span>&thinsp;ツール
-      </div>
-      <div class="mstat">
-        <span class="mstat-dot" style="background:#5cf0c8"></span>
-        <span id="lifeCount">0</span>&thinsp;ライフスタイル
-      </div>
-      <div class="mstat">
-        <span class="mstat-dot" style="background:#fcb45c"></span>
-        <span id="funCount">0</span>&thinsp;エンタメ・その他
-      </div>
-    </div>
+<header>
+  <div class="wrap bar">
+    <a href="#" class="logo">Enube<i>Arcade</i></a>
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="ゲームや診断を探す" aria-label="検索">
+    </label>
+    <button class="theme-btn" id="themeBtn" aria-label="テーマ切り替え">◐</button>
   </div>
 </header>
 
-<!-- CONTROLS -->
-<div class="controls-wrap">
-  <div class="controls-panel">
-    <div class="search-row">
-      <div class="search-wrap">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="search" placeholder="アプリを検索..." autocomplete="off">
+<main class="wrap">
+  <section class="hero" id="hero">
+    <div>
+      <h1>すぐ遊べる、<br><em id="total">60</em>本のミニゲーム。</h1>
+      <p>ゲーム・クイズ・診断・便利ツール。登録なし、無料、ブラウザだけで遊べます。</p>
+      <div class="hero-btns">
+        <button class="btn btn-main" id="randomBtn">🎲 ランダムで遊ぶ</button>
+        <a href="#all" class="btn btn-sub">すべて見る</a>
       </div>
-      <select class="sort-select" id="sort">
-        <option value="default">デフォルト順</option>
-        <option value="az">名前 A→Z</option>
-        <option value="za">名前 Z→A</option>
-      </select>
-      <button class="icon-btn" id="themeToggle" title="テーマ切替">
-        <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-      </button>
     </div>
-    <div class="filter-row" id="filterRow">
-      <button class="filter-btn active" data-cat="all">
-        <span class="dot" style="background:#7878a0"></span> すべて
-      </button>
-      <button class="filter-btn cat-game" data-cat="game">
-        <span class="dot" style="background:#fc5c9c"></span> ゲーム
-      </button>
-      <button class="filter-btn cat-tool" data-cat="tool">
-        <span class="dot" style="background:#7c5cfc"></span> ツール
-      </button>
-      <button class="filter-btn cat-lifestyle" data-cat="lifestyle">
-        <span class="dot" style="background:#5cf0c8"></span> ライフスタイル
-      </button>
-      <button class="filter-btn cat-fun" data-cat="fun">
-        <span class="dot" style="background:#fcb45c"></span> エンタメ
-      </button>
-    </div>
-  </div>
-</div>
-
-<div class="result-info"><strong id="resultCount">0</strong> 件表示中</div>
-
-<!-- CARD GRID -->
-<div class="grid" id="grid">
-
-  <!-- GAMES -->
-  <a class="card cat-game" href="battleship.html" data-cat="game" data-title="バトルシップ Battleship" data-order="2">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🚢</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">バトルシップ</div>
-    <div class="card-desc">艦隊を配置してCPUと戦う海戦ゲーム。10×10グリッドに戦略を組み立てろ。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="gacha_simulator.html" data-cat="game" data-title="Deck Rush ガチャ" data-order="3">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎴</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">Deck Rush</div>
-    <div class="card-desc">カードを引いてデッキを強化するガチャシミュレーター。レアリティ別の演出がアツい。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="pinball.html" data-cat="game" data-title="PINBALL ピンボール" data-order="4">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎯</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">PINBALL</div>
-    <div class="card-desc">クラシックなピンボールゲーム。フリッパーを操作してボールを弾き、ハイスコアを狙え。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="rpg.html" data-cat="game" data-title="遺された祈り RPG" data-order="5">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">⚔️</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">遺された祈り</div>
-    <div class="card-desc">テキストベースのブラウザRPG。敵を倒してレベルアップし、世界の謎を解き明かせ。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="snake.html" data-cat="game" data-title="NEON SNAKE スネーク" data-order="6">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🐍</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">NEON SNAKE</div>
-    <div class="card-desc">サイバーパンク風のネオンビジュアルで蘇るスネークゲーム。どこまで伸ばせるか。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="tetris.html" data-cat="game" data-title="NEON TETRIS テトリス" data-order="7">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🟦</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">NEON TETRIS</div>
-    <div class="card-desc">グロウエフェクトが光るテトリス。スピードが上がるにつれて手に汗握る展開に。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="word_master.html" data-cat="game" data-title="WordMaster ワードマスター" data-order="8">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔤</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">WordMaster</div>
-    <div class="card-desc">英単語当てゲーム（Wordle風）。6回以内に5文字の単語を推理して正解を導け。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="colorwordle.html" data-cat="game" data-title="ColorWordle カラーワードル" data-order="26">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎨</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">ColorWordle</div>
-    <div class="card-desc">毎日1つのカラーコードを6回以内に当てるWordle風ゲーム。色の感覚を磨け。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="grid_wars.html" data-cat="game" data-title="Grid Wars グリッドウォーズ 戦略" data-order="27">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">♟️</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">Grid Wars</div>
-    <div class="card-desc">10×10グリッドで領地を広げる戦略ゲーム。CPUと対戦して盤面を制圧せよ。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="game_engine.html" data-cat="game" data-title="ビジュアルゲームエンジン game engine" data-order="28">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎮</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">ビジュアルゲームエンジン</div>
-    <div class="card-desc">ブロックを並べるだけでゲームが作れるビジュアルプログラミングエンジン</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="car_chase.html" data-cat="game" data-title="カーチェイス car chase パトカー" data-order="29">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🚔</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">カーチェイス</div>
-    <div class="card-desc">パトカーから逃げろ！ミサイル・天気イベント・道路障害物あり</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <!-- TOOLS -->
-  <a class="card cat-tool" href="break_even_calculator.html" data-cat="tool" data-title="元取り計算ツール 損益分岐" data-order="9">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">💰</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">元取り計算ツール</div>
-    <div class="card-desc">商品・サービスの価格と使用期間から損益分岐点を計算。本当に元取れてる？</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="taipa_calculator.html" data-cat="tool" data-title="タイパ計算ツール タイムパフォーマンス" data-order="10">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">⚡</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">タイパ計算ツール</div>
-    <div class="card-desc">作業時間と成果からタイムパフォーマンスを数値化。どの作業が最もコスパいい？</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="calendar.html" data-cat="tool" data-title="カレンダー Calendar" data-order="11">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">📅</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">カレンダー</div>
-    <div class="card-desc">予定を登録・管理できるブラウザカレンダー。月表示でスケジュールを一目で把握。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="goal_tracker.html" data-cat="tool" data-title="Goal Tracker 目標管理" data-order="12">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎯</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">Goal Tracker</div>
-    <div class="card-desc">目標を設定して進捗を追跡。マイルストーン管理で大きな夢を小さな一歩に分解。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="habit_tracker.html" data-cat="tool" data-title="Habit Tracker 習慣管理" data-order="13">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">✅</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">Habit Tracker</div>
-    <div class="card-desc">毎日の習慣をチェックインして継続日数を記録。ストリークを伸ばして習慣化を達成。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="pomodoro.html" data-cat="tool" data-title="Pomodoro Timer ポモドーロ" data-order="14">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🍅</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">Pomodoro Timer</div>
-    <div class="card-desc">25分集中×5分休憩のポモドーロテクニックタイマー。集中力を最大化して生産性UP。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="book_tracker.html" data-cat="tool" data-title="読書記録 Book Tracker" data-order="15">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">📚</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">読書記録</div>
-    <div class="card-desc">読んだ本・読みたい本を管理。評価やメモも残せる自分だけの読書ライブラリ。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <!-- LIFESTYLE -->
-  <a class="card cat-lifestyle" href="meal_planner_v2.html" data-cat="lifestyle" data-title="AI献立プランナー 食事 料理" data-order="16">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🍱</div>
-      <span class="card-tag">ライフスタイル</span>
-    </div>
-    <div class="card-title">AI献立プランナー v2</div>
-    <div class="card-desc">AIが1週間分の献立を自動生成。食材・カロリー・予算まで考慮した最新版。</div>
-    <div class="card-footer">
-      <span class="card-link-text">使う →</span>
-      <span class="card-new">v2</span>
-    </div>
-  </a>
-
-  <a class="card cat-lifestyle" href="meal_planner.html" data-cat="lifestyle" data-title="献立プランナー 食事 料理" data-order="17">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🥗</div>
-      <span class="card-tag">ライフスタイル</span>
-    </div>
-    <div class="card-title">献立プランナー</div>
-    <div class="card-desc">今日の朝・昼・夜の献立をランダム提案。食材リストも自動生成してくれる初代版。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-lifestyle" href="oshi_budget.html" data-cat="lifestyle" data-title="推し活 家計簿 oshi budget" data-order="18">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">💜</div>
-      <span class="card-tag">ライフスタイル</span>
-    </div>
-    <div class="card-title">推し活 家計簿</div>
-    <div class="card-desc">推し活の出費を記録・可視化。グッズ・ライブ・配信など カテゴリ別に管理できる。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-lifestyle" href="health_tracker.html" data-cat="lifestyle" data-title="健康管理 HealthTracker 体重 体脂肪 睡眠 水分" data-order="30">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">💪</div>
-      <span class="card-tag">ライフスタイル</span>
-    </div>
-    <div class="card-title">健康管理</div>
-    <div class="card-desc">体重・体脂肪・水分・睡眠を毎日記録してグラフで推移を確認。目標体重の達成をサポート。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <!-- ENTERTAINMENT / FUN -->
-  <a class="card cat-fun" href="aisho_shindan.html" data-cat="fun" data-title="相性診断 恋愛 aisho" data-order="19">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">💑</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">相性診断ツール</div>
-    <div class="card-desc">名前を入力するだけで2人の相性をパーセンテージで診断。友達や推しと試してみて。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="digital_pet.html" data-cat="fun" data-title="ゴッチペット デジタルペット" data-order="20">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🐾</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">ゴッチペット</div>
-    <div class="card-desc">ブラウザで育てるデジタルペット。えさやりや遊びで機嫌を管理して可愛がろう。</div>
-    <div class="card-footer"><span class="card-link-text">育てる →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="fortune.html" data-cat="fun" data-title="今日の運勢 占い fortune" data-order="21">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔮</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">今日の運勢占い</div>
-    <div class="card-desc">名前と生年月日から今日の運勢を占う。恋愛・仕事・健康の運気をチェック。</div>
-    <div class="card-footer"><span class="card-link-text">占う →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="korean_quiz.html" data-cat="fun" data-title="韓国語クイズ ハングル 語学" data-order="22">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🇰🇷</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">韓国語クイズ</div>
-    <div class="card-desc">ハングル・単語・フレーズを楽しく学べる4択クイズ。K-POPファン必見。</div>
-    <div class="card-footer"><span class="card-link-text">挑戦する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="personality_quiz.html" data-cat="fun" data-title="性格タイプ診断 MBTI 16タイプ" data-order="23">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🧠</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">性格タイプ診断</div>
-    <div class="card-desc">MBTI対応の16タイプ性格診断。質問に答えるだけで自分のタイプと詳しい解説が出る。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="quote_generator.html" data-cat="fun" data-title="QUOTOPIA 名言 quote" data-order="24">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">💬</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">QUOTOPIA</div>
-    <div class="card-desc">世界の偉人・哲学者・作家たちの名言をランダム表示。今日の一言で気分を上げよう。</div>
-    <div class="card-footer"><span class="card-link-text">見る →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="business_idea_generator.html" data-cat="tool" data-title="Business Idea Generator ビジネス アイデア" data-order="25">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">💡</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">Business Idea Generator</div>
-    <div class="card-desc">キーワードを入力するとビジネスアイデアを自動生成。起業や副業のヒントに。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-game" href="soccer_pk.html" data-cat="game" data-title="サッカーPK soccer penalty kick" data-order="33">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">⚽</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">サッカーPK</div>
-    <div class="card-desc">心拍数メーター・スーパーシュート・実況コメント付きのPKゲーム</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="blood_type.html" data-cat="fun" data-title="血液型診断 blood type 相性 性格" data-order="35">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🩸</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">血液型診断</div>
-    <div class="card-desc">A・B・O・AB型の性格・恋愛・仕事の特徴を詳しく解説。タイプ間の相性診断もできる。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="hiragana_quiz.html" data-cat="fun" data-title="50音クイズ ひらがな カタカナ ローマ字 語学" data-order="36">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🈶</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">50音クイズ</div>
-    <div class="card-desc">ひらがな・カタカナ・ローマ字の4択クイズ。難易度3段階で初心者から上級者まで楽しめる。</div>
-    <div class="card-footer"><span class="card-link-text">挑戦する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="mbti_compatibility.html" data-cat="fun" data-title="MBTI相性診断 mbti パーソナリティ 相性 恋愛 勉強法" data-order="37">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🧩</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">MBTI相性診断</div>
-    <div class="card-desc">20問診断でタイプ特定→256パターンの相性分析・勉強法・恋愛傾向まで</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-life" href="stress_resilience.html" data-cat="life" data-title="ストレス耐性診断 メンタル 仕事 人間関係 変化 resilience stress mental" data-order="44">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🧘</div>
-      <span class="card-tag">ライフ</span>
-    </div>
-    <div class="card-title">ストレス耐性診断</div>
-    <div class="card-desc">仕事・人間関係・変化への適応力を15問で分析。強み・弱み・改善アドバイス付き。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-life" href="love_language.html" data-cat="life" data-title="恋愛スタイル診断 愛情言語 ラブランゲージ カップル 相性 love language compatibility" data-order="43">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">💕</div>
-      <span class="card-tag">ライフ</span>
-    </div>
-    <div class="card-title">恋愛スタイル診断</div>
-    <div class="card-desc">5つの愛情言語（言葉・行動・贈り物・時間・スキンシップ）を診断。カップルの相性診断機能付き。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-life" href="enneagram.html" data-cat="life" data-title="エニアグラム 性格診断 タイプ 心理 personality enneagram type" data-order="42">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔮</div>
-      <span class="card-tag">ライフ</span>
-    </div>
-    <div class="card-title">エニアグラム診断</div>
-    <div class="card-desc">20問の質問で9タイプの性格を診断。特徴・強み・弱み・成長のヒントをスコア分布グラフ付きで表示。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-game" href="timer_challenge.html" data-cat="game" data-title="タイマーチャレンジ 時間 ストップウォッチ 反射神経 精度 timer challenge accuracy" data-order="41">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">⏱️</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">Timer Challenge</div>
-    <div class="card-desc">目標時間ピッタリでタイマーを止めろ！難易度が上がるほど許容誤差が小さくなる。スコア・連続成功数を記録。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="class_quest.html" data-cat="game" data-title="クラスクエスト RPG ロールプレイ モンスター バトル レベルアップ スキル アイテム" data-order="40">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">⚔️</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">Class Quest</div>
-    <div class="card-desc">戦士・魔法使い・僧侶・盗賊から職業を選んでモンスターと戦うRPG。レベルアップ・スキル・アイテムあり。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-life" href="psychology_test.html" data-cat="life" data-title="心理テスト ストレスチェック 自尊心 共感力 メンタル 心理 self-esteem empathy mental" data-order="39">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🌸</div>
-      <span class="card-tag">ライフ</span>
-    </div>
-    <div class="card-title">心理テスト</div>
-    <div class="card-desc">ストレスチェック・自尊心・共感力・メンタル強度の4種類。各10〜15問で結果にアドバイス付き。</div>
-    <div class="card-footer"><span class="card-link-text">試す →</span></div>
-  </a>
-
-  <a class="card cat-game" href="slot_machine.html" data-cat="game" data-title="スロットマシン slot casino ゲーム コイン jackpot" data-order="38">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎰</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">スロットマシン</div>
-    <div class="card-desc">コインを賭けて3リールをスピン！絵柄の組み合わせで最大100倍の配当。ボーナスゲームあり。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="janken.html" data-cat="game" data-title="じゃんけん janken rock paper scissors" data-order="34">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">✊</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">じゃんけん</div>
-    <div class="card-desc">CPUと3本勝負または無限対戦できるじゃんけんゲーム</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="calculator_app.html" data-cat="tool" data-title="電卓 calculator 計算" data-order="32">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔢</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">電卓</div>
-    <div class="card-desc">四則演算・パーセント・キーボード操作対応のシンプルな電卓</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-game" href="sudoku.html" data-cat="game" data-title="数独 sudoku パズル ナンプレ ヒント メモ 難易度" data-order="45">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔢</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">数独</div>
-    <div class="card-desc">ヒント・メモ機能付きの本格数独ゲーム。難易度3段階（かんたん・ふつう・むずかしい）でじっくり楽しめる。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="astrology.html" data-cat="fun" data-title="占星術診断 astrology 星座 12星座 性格 恋愛 仕事 相性 運勢 ホロスコープ" data-order="46">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔮</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">占星術診断</div>
-    <div class="card-desc">12星座の性格・恋愛・仕事分析と相性診断・今日の運勢。星が語るあなたの本質を読み解く。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-lifestyle" href="workout_planner.html" data-cat="lifestyle" data-title="ワークアウトプランナー 筋トレ トレーニング 筋肥大 ダイエット 体力向上 メニュー 記録" data-order="47">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🏋️</div>
-      <span class="card-tag">ライフスタイル</span>
-    </div>
-    <div class="card-title">ワークアウトプランナー</div>
-    <div class="card-desc">目標と部位を選ぶだけで筋トレメニューを自動生成。セット数・回数・休憩タイマー付き。記録機能あり。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-game" href="2048.html" data-cat="game" data-title="2048 パズル 数字 タイル 合体 スワイプ" data-order="48">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔢</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">2048</div>
-    <div class="card-desc">数字タイルを合体させて2048を目指すパズルゲーム。矢印キー・スワイプ操作対応。最高スコア記録付き。</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="color_palette.html" data-cat="tool" data-title="カラーパレット生成 color palette 配色 補色 類似色 HEX デザイン" data-order="49">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎨</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">カラーパレット生成</div>
-    <div class="card-desc">キーワードや配色理論からカラーパレットを生成。補色・類似色・トライアドなど6種の配色理論対応。HEXコードをコピーできる。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="world_clock.html" data-cat="tool" data-title="世界時計 world clock タイムゾーン 時刻 都市 アナログ 変換" data-order="50">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🌍</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">世界時計</div>
-    <div class="card-desc">主要都市の現在時刻をアナログ＋デジタルで表示。タイムゾーン変換機能付き。都市の追加・削除もできる。</div>
-    <div class="card-footer"><span class="card-link-text">使う →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="music_genre.html" data-cat="fun" data-title="音楽ジャンル診断 music genre ポップ ロック ジャズ クラシック ヒップホップ K-POP メタル エレクトロニック" data-order="51">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎵</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">音楽ジャンル診断</div>
-    <div class="card-desc">15問に答えるとあなたに合う音楽ジャンルを診断。ポップ・ロック・ジャズなど10ジャンル対応。おすすめアーティストも紹介。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-game" href="reaction_test.html" data-cat="game" data-title="反応速度テスト reaction time 反射神経 クリック タップ 測定 ランキング" data-order="56">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">⚡</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">反応速度テスト</div>
-    <div class="card-desc">あなたの反応速度を測定しよう</div>
-    <div class="card-footer"><span class="card-link-text">挑戦する →</span></div>
-  </a>
-
-  <a class="card cat-tool" href="mindmap.html" data-cat="tool" data-title="マインドマップ mind map ブランチ アイデア 思考整理 ノード ドラッグ" data-order="55">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🧠</div>
-      <span class="card-tag">ツール</span>
-    </div>
-    <div class="card-title">マインドマップ</div>
-    <div class="card-desc">テーマを中心にブランチを追加してアイデアを整理。ノードをドラッグで移動・ダブルクリックで編集・SVG出力対応。</div>
-    <div class="card-footer"><span class="card-link-text">作る →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="horoscope.html" data-cat="fun" data-title="星座占い horoscope 運勢 恋愛 仕事 金運 健康 ラッキー zodiac" data-order="54">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">✨</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">星座占い</div>
-    <div class="card-desc">12星座の今日の運勢を毎日更新。総合・恋愛・仕事・金運・健康運＋ラッキーアイテム・カラー・ナンバーを表示。</div>
-    <div class="card-footer"><span class="card-link-text">占う →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="career_diagnosis.html" data-cat="fun" data-title="将来職業診断 career 職業 仕事 向いてる 適性 diagnosis" data-order="53">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔭</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">将来職業診断</div>
-    <div class="card-desc">15問の質問で自分に向いている職業を診断。特徴・必要スキル・性格・平均年収まで表示。22職業対応。</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="country_quiz.html" data-cat="fun" data-title="国当てクイズ 国旗 首都 ヒント 世界 地理 quiz country flag capital" data-order="52">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🌍</div>
-      <span class="card-tag">エンタメ</span>
-    </div>
-    <div class="card-title">国当てクイズ</div>
-    <div class="card-desc">国旗・首都・ヒントから国名を当てる4択クイズ。80カ国以上・難易度3段階・スコア＆連続正解数表示。</div>
-    <div class="card-footer"><span class="card-link-text">挑戦する →</span></div>
-  </a>
-
-  <a class="card cat-game" href="prefecture_quiz.html" data-cat="game" data-title="都道府県クイズ 日本地図 geography" data-order="57">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🗾</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">都道府県クイズ</div>
-    <div class="card-desc">日本地図で都道府県を当てよう</div>
-    <div class="card-footer"><span class="card-link-text">挑戦する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="travel_planner.html" data-cat="fun" data-title="ランダム旅行プランナー 旅行 日本 観光 グルメ 都道府県 travel" data-order="58">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">✈️</div>
-      <span class="card-tag">たのしむ</span>
-    </div>
-    <div class="card-title">ランダム旅行プランナー</div>
-    <div class="card-desc">どこに行く？ランダムで旅行先を提案</div>
-    <div class="card-footer"><span class="card-link-text">旅に出る →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="koi_mikuji.html" data-cat="fun" data-title="恋みくじ 恋愛運 おみくじ 占い 恋愛 告白 縁結び 片思い" data-order="59">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎋</div>
-      <span class="card-tag">たのしむ</span>
-    </div>
-    <div class="card-title">恋みくじ</div>
-    <div class="card-desc">今日の恋愛運をおみくじで占おう</div>
-    <div class="card-footer"><span class="card-link-text">占ってみる →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="past_life.html" data-cat="fun" data-title="前世診断 前世 過去世 占い 生年月日 前世の職業 神秘" data-order="60">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔮</div>
-      <span class="card-tag">たのしむ</span>
-    </div>
-    <div class="card-title">前世診断</div>
-    <div class="card-desc">あなたの前世を診断しよう</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-game" href="mole_game.html" data-cat="game" data-title="もぐらたたき モグラ whack mole スコア ゲーム" data-order="61">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔨</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">もぐらたたき</div>
-    <div class="card-desc">モグラを叩いてスコアを稼ごう</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-game" href="memory_game.html" data-cat="game" data-title="神経衰弱 メモリーゲーム カード ペア memory game" data-order="62">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🃏</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">神経衰弱</div>
-    <div class="card-desc">同じ絵柄のペアを揃えよう</div>
-    <div class="card-footer"><span class="card-link-text">遊ぶ →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="yume_uranai.html" data-cat="fun" data-title="夢占い 夢 占い 夢解読 キーワード 潜在意識 dream" data-order="64">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🌙</div>
-      <span class="card-tag">たのしむ</span>
-    </div>
-    <div class="card-title">夢占い</div>
-    <div class="card-desc">夢に出てきたものから意味を占おう</div>
-    <div class="card-footer"><span class="card-link-text">占う →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="quote_gacha.html" data-cat="fun" data-title="名言ガチャ 偉人 名言 quote ガチャ" data-order="63">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">💬</div>
-      <span class="card-tag">たのしむ</span>
-    </div>
-    <div class="card-title">名言ガチャ</div>
-    <div class="card-desc">偉人の名言をランダムで引こう</div>
-    <div class="card-footer"><span class="card-link-text">引く →</span></div>
-  </a>
-
-  <a class="card cat-lifestyle" href="daily_challenge.html" data-cat="lifestyle" data-title="今日のチャレンジ ミッション 習慣 運動 勉強 毎日 challenge streak" data-order="65">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🎯</div>
-      <span class="card-tag">ライフスタイル</span>
-    </div>
-    <div class="card-title">今日のチャレンジ</div>
-    <div class="card-desc">毎日ミッションをクリアしよう</div>
-    <div class="card-footer"><span class="card-link-text">挑戦する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="blood_type_compatibility.html" data-cat="fun" data-title="血液型相性診断 血液型 相性 A型 B型 O型 AB型 恋愛 友達 仕事 compatibility" data-order="66">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🩸</div>
-      <span class="card-tag">たのしむ</span>
-    </div>
-    <div class="card-title">血液型相性診断</div>
-    <div class="card-desc">2人の血液型から相性を診断しよう</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <a class="card cat-game" href="number_memory.html" data-cat="game" data-title="数字記憶ゲーム 数字 記憶 メモリー number memory 桁 脳トレ" data-order="67">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">🔢</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">数字記憶ゲーム</div>
-    <div class="card-desc">何桁まで覚えられる？</div>
-    <div class="card-footer"><span class="card-link-text">挑戦する →</span></div>
-  </a>
-
-  <a class="card cat-game" href="quick_quiz.html" data-cat="game" data-title="早押しクイズ クイズ 雑学 歴史 科学 スポーツ 速答 trivia quiz" data-order="68">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">⚡</div>
-      <span class="card-tag">ゲーム</span>
-    </div>
-    <div class="card-title">早押しクイズ</div>
-    <div class="card-desc">素早く答えて高得点を狙おう</div>
-    <div class="card-footer"><span class="card-link-text">挑戦する →</span></div>
-  </a>
-
-  <a class="card cat-fun" href="biorhythm.html" data-cat="fun" data-title="バイオリズム診断 生年月日 身体 感情 知性 biorhythm 波 周期 運勢" data-order="69">
-    <div class="card-shine"></div>
-    <div class="card-header">
-      <div class="card-icon">📈</div>
-      <span class="card-tag">たのしむ</span>
-    </div>
-    <div class="card-title">バイオリズム診断</div>
-    <div class="card-desc">身体・感情・知性のリズムを確認しよう</div>
-    <div class="card-footer"><span class="card-link-text">診断する →</span></div>
-  </a>
-
-  <!-- EMPTY STATE -->
-  <div class="empty" id="empty">
-    <div class="empty-icon">🔍</div>
-    <h3>見つかりませんでした</h3>
-    <p>別のキーワードやカテゴリを試してみてください。</p>
-  </div>
-
-</div>
-
-<button id="scrollTop" title="トップへ戻る">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
-</button>
+    <div class="hero-art" id="heroArt"></div>
+  </section>
+
+  <section class="sec hidden" id="recentSec">
+    <div class="sec-title"><h2>最近遊んだ</h2></div>
+    <div class="recent" id="recent"></div>
+  </section>
+
+  <section class="sec" id="featSec">
+    <div class="sec-title"><h2>おすすめ</h2><small>まずはこれから</small></div>
+    <div class="feat" id="feat"></div>
+  </section>
+
+  <section class="sec" id="all">
+    <div class="sec-title"><h2>すべての作品</h2><small id="count"></small></div>
+    <div class="tabs" id="tabs"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty hidden" id="empty"><b>🔍</b>見つかりませんでした。別のキーワードで試してみてください。</div>
+  </section>
+</main>
 
 <footer>
-  <div class="f-badge">🎊 100日間、ありがとうございました！</div><br>
-  <strong>高校生100日開発記録</strong> &nbsp;·&nbsp; Made with Claude Code &nbsp;·&nbsp; 2025–2026
+  <div class="wrap">
+    <span>Enube Arcade · Made by えぬべえ with Claude Code</span>
+    <span><a href="privacy.html">プライバシーポリシー</a> · <a href="terms.html">利用規約</a> · <a href="https://x.com/Enube_1115" target="_blank" rel="noopener">X @Enube_1115</a></span>
+  </div>
 </footer>
 
 <script>
-  const cards = Array.from(document.querySelectorAll('.card[data-cat]'));
-  const searchInput  = document.getElementById('search');
-  const filterBtns   = document.querySelectorAll('.filter-btn');
-  const sortSelect   = document.getElementById('sort');
-  const empty        = document.getElementById('empty');
-  const resultCount  = document.getElementById('resultCount');
-  const scrollTopBtn = document.getElementById('scrollTop');
-  const themeToggle  = document.getElementById('themeToggle');
-  const themeIcon    = document.getElementById('themeIcon');
+const CATS = {
+  game:  {name:"ゲーム",       color:["#ffe3d9","#3b1a10"]},
+  quiz:  {name:"クイズ",       color:["#dff1ff","#0f2c44"]},
+  shindan:{name:"診断・占い",  color:["#efe3ff","#2a1744"]},
+  tool:  {name:"ツール・生活", color:["#e2f5e8","#12301d"]},
+};
 
-  // ── NEW badge for recently added apps ──
-  cards.forEach(card => {
-    if (parseInt(card.dataset.order) >= 60) {
-      const footer = card.querySelector('.card-footer');
-      if (!footer.querySelector('.card-new')) {
-        const span = document.createElement('span');
-        span.className = 'card-new';
-        span.textContent = 'NEW';
-        footer.appendChild(span);
-      }
-    }
-  });
+// [file, emoji, name, desc, cat, isNew]
+const APPS = [
+  ["vocab_survivor","🧟","Vocab Survivor","敵をなぎ倒しながら単語を並べる、サバイバー系×単語パズル。","game",1],
+  ["game_engine","🎮","ビジュアルゲームエンジン","ブロックを並べるだけで自分のゲームが作れる。","game"],
+  ["tetris","🟦","NEON TETRIS","グロウエフェクトが光るテトリス。","game"],
+  ["snake","🐍","NEON SNAKE","サイバーパンク風のネオンスネーク。","game"],
+  ["pinball","🎯","PINBALL","フリッパーでボールを弾いてハイスコアを狙え。","game"],
+  ["battleship","🚢","バトルシップ","艦隊を配置してCPUと戦う海戦ゲーム。","game"],
+  ["rpg","⚔️","遺された祈り","敵を倒して世界の謎を解くテキストRPG。","game"],
+  ["class_quest","🛡️","Class Quest","職業を選んでモンスターと戦うRPG。","game"],
+  ["car_chase","🚔","カーチェイス","パトカーから逃げろ！ミサイルや天気イベントあり。","game"],
+  ["grid_wars","♟️","Grid Wars","10×10の盤面で領地を奪い合う戦略ゲーム。","game"],
+  ["soccer_pk","⚽","サッカーPK","実況コメント付きのPK対決。","game"],
+  ["2048","🔢","2048","タイルを合体させて2048を目指すパズル。","game"],
+  ["sudoku","🧮","数独","ヒント・メモ機能付き、難易度3段階。","game"],
+  ["gacha_simulator","🎴","Deck Rush","カードを引いてデッキを強化するガチャシミュレーター。","game"],
+  ["slot_machine","🎰","スロットマシン","3リールを回して最大100倍を狙え。","game"],
+  ["digital_pet","🐾","ゴッチペット","えさやりや遊びで育てるデジタルペット。","game"],
+  ["timer_challenge","⏱️","Timer Challenge","目標時間ピッタリでタイマーを止めろ。","game"],
+  ["reaction_test","⚡","反応速度テスト","あなたの反応速度を測定。","game"],
+  ["mole_game","🔨","もぐらたたき","モグラを叩いてスコアを稼ごう。","game"],
+  ["memory_game","🃏","神経衰弱","同じ絵柄のペアを揃えよう。","game"],
+  ["number_memory","🧠","数字記憶ゲーム","何桁まで覚えられる？","game"],
+  ["janken","✊","じゃんけん","CPUと3本勝負または無限対戦。","game"],
 
-  // ── Category counts ──
-  const nGame = cards.filter(c => c.dataset.cat === 'game').length;
-  const nTool = cards.filter(c => c.dataset.cat === 'tool').length;
-  const nLife = cards.filter(c => c.dataset.cat === 'lifestyle' || c.dataset.cat === 'life').length;
-  const nFun  = cards.filter(c => c.dataset.cat === 'fun').length;
+  ["word_master","🔤","WordMaster","6回以内に5文字の英単語を当てるWordle風ゲーム。","quiz"],
+  ["colorwordle","🎨","ColorWordle","毎日1つのカラーコードを当てる。","quiz"],
+  ["prefecture_quiz","🗾","都道府県クイズ","日本地図で都道府県を当てよう。","quiz"],
+  ["country_quiz","🌍","国当てクイズ","国旗・首都・ヒントから80カ国以上を当てる。","quiz"],
+  ["quick_quiz","🔔","早押しクイズ","素早く答えて高得点を狙おう。","quiz"],
+  ["korean_quiz","🇰🇷","韓国語クイズ","ハングル・単語・フレーズを4択で学ぶ。","quiz"],
+  ["hiragana_quiz","🈶","50音クイズ","ひらがな・カタカナ・ローマ字の4択。","quiz"],
 
-  let currentCat = 'all';
-  let currentSearch = '';
+  ["mbti_compatibility","🧩","MBTI相性診断","20問でタイプ特定、256パターンの相性分析。","shindan"],
+  ["personality_quiz","🪞","性格タイプ診断","16タイプの性格診断と詳しい解説。","shindan"],
+  ["enneagram","🔮","エニアグラム診断","20問で9タイプの性格を診断。","shindan"],
+  ["career_diagnosis","🔭","将来職業診断","15問で向いている職業を22種から診断。","shindan"],
+  ["love_language","💕","恋愛スタイル診断","5つの愛情言語を診断。カップル相性も。","shindan"],
+  ["music_genre","🎵","音楽ジャンル診断","あなたに合う音楽ジャンルとアーティスト。","shindan"],
+  ["stress_resilience","🧘","ストレス耐性診断","15問で適応力を分析、改善アドバイス付き。","shindan"],
+  ["psychology_test","🌸","心理テスト","自尊心・共感力・メンタル強度など4種類。","shindan"],
+  ["aisho_shindan","💑","相性診断","名前を入れるだけで2人の相性を診断。","shindan"],
+  ["blood_type","🩸","血液型診断","性格・恋愛・仕事の特徴を解説。","shindan"],
+  ["blood_type_compatibility","🅰️","血液型相性診断","2人の血液型から相性を診断。","shindan"],
+  ["past_life","🏺","前世診断","あなたの前世を診断しよう。","shindan"],
+  ["fortune","🍀","今日の運勢占い","名前と生年月日から今日の運勢を占う。","shindan"],
+  ["horoscope","✨","星座占い","12星座の今日の運勢とラッキーアイテム。","shindan"],
+  ["astrology","♈","占星術診断","12星座の性格分析と相性診断。","shindan"],
+  ["koi_mikuji","🎋","恋みくじ","今日の恋愛運をおみくじで。","shindan"],
+  ["yume_uranai","🌙","夢占い","夢に出てきたものから意味を占う。","shindan"],
+  ["biorhythm","📈","バイオリズム診断","身体・感情・知性のリズムを確認。","shindan"],
 
-  function applyFilters() {
-    const query = currentSearch.toLowerCase();
-    let visible = 0;
-    cards.forEach((card, i) => {
-      const matchCat    = currentCat === 'all' || card.dataset.cat === currentCat;
-      const matchSearch = !query
-        || card.dataset.title.toLowerCase().includes(query)
-        || card.querySelector('.card-desc').textContent.toLowerCase().includes(query);
-      const show = matchCat && matchSearch;
-      const wasHidden = card.classList.contains('hidden');
-      card.classList.toggle('hidden', !show);
-      if (show) {
-        visible++;
-        card.style.animationDelay = (visible * 0.035) + 's';
-        if (wasHidden) { card.style.animation = 'none'; card.offsetHeight; card.style.animation = ''; }
-      }
-    });
-    resultCount.textContent = visible;
-    empty.classList.toggle('show', visible === 0);
-  }
+  ["meal_planner_v2","🍱","AI献立プランナー v2","1週間分の献立を食材・予算まで考えて自動生成。","tool"],
+  ["meal_planner","🥗","献立プランナー","今日の献立をランダム提案。","tool"],
+  ["oshi_budget","💜","推し活 家計簿","推し活の出費をカテゴリ別に記録・可視化。","tool"],
+  ["break_even_calculator","💰","元取り計算ツール","それ、本当に元取れてる？を計算。","tool"],
+  ["taipa_calculator","⏳","タイパ計算ツール","作業のタイムパフォーマンスを数値化。","tool"],
+  ["mindmap","🗺️","マインドマップ","ドラッグで動かせる思考整理ツール。SVG出力対応。","tool"],
+  ["habit_tracker","✅","Habit Tracker","毎日の習慣を記録してストリークを伸ばそう。","tool"],
+  ["goal_tracker","🏁","Goal Tracker","目標をマイルストーンに分解して進捗管理。","tool"],
+  ["pomodoro","🍅","Pomodoro Timer","25分集中×5分休憩のタイマー。","tool"],
+  ["calendar","📅","カレンダー","予定を登録できるブラウザカレンダー。","tool"],
+  ["book_tracker","📚","読書記録","読んだ本・読みたい本を管理。","tool"],
+  ["health_tracker","💪","健康管理","体重・睡眠などをグラフで記録。","tool"],
+  ["workout_planner","🏋️","ワークアウトプランナー","目標と部位から筋トレメニューを自動生成。","tool"],
+  ["daily_challenge","🎯","今日のチャレンジ","毎日のミッションをクリアしよう。","tool"],
+  ["travel_planner","✈️","ランダム旅行プランナー","次の旅行先をランダムで提案。","tool"],
+  ["color_palette","🖌️","カラーパレット生成","配色理論からパレットを作ってHEXをコピー。","tool"],
+  ["world_clock","🕰️","世界時計","主要都市の時刻とタイムゾーン変換。","tool"],
+  ["calculator_app","🧾","電卓","キーボード操作対応のシンプル電卓。","tool"],
+  ["quote_generator","💬","QUOTOPIA","偉人の名言をランダム表示。","tool"],
+  ["quote_gacha","🎁","名言ガチャ","偉人の名言をガチャで引こう。","tool"],
+].map(([file,emoji,name,desc,cat,isNew])=>({file,emoji,name,desc,cat,isNew:!!isNew,url:file+".html"}));
 
-  function applySort() {
-    const val = sortSelect.value;
-    const vis = cards.filter(c => !c.classList.contains('hidden'));
-    const sorted = [...vis].sort((a, b) => {
-      if (val === 'az') return a.querySelector('.card-title').textContent.localeCompare(b.querySelector('.card-title').textContent, 'ja');
-      if (val === 'za') return b.querySelector('.card-title').textContent.localeCompare(a.querySelector('.card-title').textContent, 'ja');
-      return parseInt(a.dataset.order) - parseInt(b.dataset.order);
-    });
-    sorted.forEach((c, i) => { c.style.order = i; });
-    cards.forEach(c => { if (!sorted.includes(c)) c.style.order = 999; });
-  }
+const FEATURED = ["vocab_survivor","game_engine","tetris","mbti_compatibility","prefecture_quiz","meal_planner_v2"];
 
-  filterBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      filterBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentCat = btn.dataset.cat;
-      applyFilters(); applySort();
-    });
-  });
+const $ = s=>document.querySelector(s);
+const dark = ()=>{
+  const t=document.documentElement.dataset.theme;
+  return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+};
+const bg = cat => CATS[cat].color[dark()?1:0];
+const store = {
+  get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
 
-  searchInput.addEventListener('input', () => {
-    currentSearch = searchInput.value;
-    applyFilters(); applySort();
-  });
-  sortSelect.addEventListener('change', applySort);
+let state = {cat:"all", q:""};
 
-  // Shine effect
-  cards.forEach(card => {
-    card.addEventListener('mousemove', e => {
-      const r = card.getBoundingClientRect();
-      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
-    });
-  });
+function remember(file){
+  const r = store.get("recent",[]).filter(f=>f!==file);
+  r.unshift(file); store.set("recent",r.slice(0,8));
+}
+function link(a, inner, cls){
+  return `<a class="${cls}" href="${a.url}" data-file="${a.file}">${inner}</a>`;
+}
 
-  // Scroll to top
-  window.addEventListener('scroll', () => scrollTopBtn.classList.toggle('show', window.scrollY > 300));
-  scrollTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+function renderHero(){
+  $("#total").textContent = APPS.length;
+  const picks = ["🎮","🧟","🟦","🔮","🗾","🍱","🎰","♟️","🧩","🚢","🌙","🐍"];
+  const cats = ["game","game","game","shindan","quiz","tool","game","game","shindan","game","shindan","game"];
+  $("#heroArt").innerHTML = picks.map((e,i)=>`<span style="background:${bg(cats[i])}">${e}</span>`).join("");
+}
+function renderFeatured(){
+  $("#feat").innerHTML = FEATURED.map(f=>APPS.find(a=>a.file===f)).map(a=>link(a,
+    `<div class="art" style="background:${bg(a.cat)}"><b>${CATS[a.cat].name}</b>${a.emoji}</div>
+     <div class="txt"><h3>${a.name}</h3><p>${a.desc}</p></div>`,"fcard")).join("");
+}
+function renderRecent(){
+  const r = store.get("recent",[]).map(f=>APPS.find(a=>a.file===f)).filter(Boolean);
+  $("#recentSec").classList.toggle("hidden", !r.length || !!state.q);
+  $("#recent").innerHTML = r.map(a=>link(a,`<span style="background:${bg(a.cat)}">${a.emoji}</span>${a.name}`,"rchip")).join("");
+}
+function renderTabs(){
+  const tabs = [["all","すべて",APPS.length], ...Object.entries(CATS).map(([k,v])=>[k,v.name,APPS.filter(a=>a.cat===k).length])];
+  $("#tabs").innerHTML = tabs.map(([k,n,c])=>`<button class="tab ${state.cat===k?"on":""}" data-cat="${k}">${n}<sup>${c}</sup></button>`).join("");
+}
+function renderGrid(){
+  const q = state.q.trim().toLowerCase();
+  const list = APPS.filter(a=>(state.cat==="all"||a.cat===state.cat) &&
+    (!q || (a.name+a.desc+CATS[a.cat].name).toLowerCase().includes(q)));
+  $("#grid").innerHTML = list.map(a=>link(a,
+    `<div class="ic" style="background:${bg(a.cat)}">${a.isNew?'<span class="badge">NEW</span>':""}${a.emoji}</div>
+     <h3>${a.name}</h3><p>${a.desc}</p><span class="cat">${CATS[a.cat].name}</span>`,"card")).join("");
+  $("#count").textContent = list.length+"件";
+  $("#empty").classList.toggle("hidden", list.length>0);
+  const searching = !!q;
+  $("#hero").classList.toggle("hidden", searching);
+  $("#featSec").classList.toggle("hidden", searching);
+}
+function renderAll(){renderHero();renderFeatured();renderRecent();renderTabs();renderGrid();}
 
-  // Theme toggle
-  const moonSvg = `<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>`;
-  const sunSvg  = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
-  const saved = localStorage.getItem('portfolio-theme') || 'dark';
-  document.documentElement.dataset.theme = saved;
-  themeIcon.innerHTML = saved === 'dark' ? moonSvg : sunSvg;
-  themeToggle.addEventListener('click', () => {
-    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem('portfolio-theme', next);
-    themeIcon.innerHTML = next === 'dark' ? moonSvg : sunSvg;
-  });
-
-  // Keyboard shortcut
-  document.addEventListener('keydown', e => {
-    if (e.key === '/' && document.activeElement !== searchInput) { e.preventDefault(); searchInput.focus(); }
-    if (e.key === 'Escape') searchInput.blur();
-  });
-
-  // ── Animated count-up ──
-  function animateNum(el, target, duration = 900) {
-    if (!el) return;
-    let start = null;
-    const step = ts => {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.floor(eased * target);
-      if (p < 1) requestAnimationFrame(step);
-      else el.textContent = target;
-    };
-    requestAnimationFrame(step);
-  }
-
-  animateNum(document.getElementById('totalCount'), cards.length, 1000);
-  animateNum(document.getElementById('daysCount'),  100, 1400);
-  animateNum(document.getElementById('gameCount'),  nGame, 700);
-  animateNum(document.getElementById('toolCount'),  nTool, 700);
-  animateNum(document.getElementById('lifeCount'),  nLife, 700);
-  animateNum(document.getElementById('funCount'),   nFun,  700);
-
-  // Progress bar fill
-  setTimeout(() => { document.getElementById('progressFill').style.width = '100%'; }, 350);
-
-  // Initialize
-  applyFilters();
-  applySort();
+document.addEventListener("click",e=>{
+  const a = e.target.closest("a[data-file]"); if(a) remember(a.dataset.file);
+  const t = e.target.closest(".tab"); if(t){state.cat=t.dataset.cat;renderTabs();renderGrid();}
+});
+$("#q").addEventListener("input",e=>{
+  state.q=e.target.value; renderGrid(); renderRecent();
+  if(state.q) $("#all").scrollIntoView({block:"start"});
+});
+$("#randomBtn").addEventListener("click",()=>{
+  const a = APPS[Math.floor(Math.random()*APPS.length)];
+  remember(a.file); location.href=a.url;
+});
+$("#themeBtn").addEventListener("click",()=>{
+  const next = dark()?"light":"dark";
+  document.documentElement.dataset.theme=next; store.set("theme",next); renderAll();
+});
+const saved = store.get("theme",null); if(saved) document.documentElement.dataset.theme=saved;
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",renderAll);
+renderAll();
 </script>
 </body>
 </html>
