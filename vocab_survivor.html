@@ -31,10 +31,20 @@
     QUIZ_TIER_NOTICE_TIME: 2,  // 段階が上がったときの通知の表示時間（プレイ中の秒数）
 
     // 期間限定イベント（判定はプレイヤー端末のローカル時刻。開始日0:00〜終了日23:59、年またぎも可）
+    // 同時に有効になるのは「現在のイベント」1つだけ。告知・配色・アイテムの見た目・単語はすべてそれに従う
+    // 単語データに <イベントID>: true（例 valentine: true）を付けると、そのイベントの間だけ出題される
+    // priority: 期間が重なったときは数値が大きいイベントを採用（forceEnable 中のものは期間内のものより常に優先）
     // forceEnable: true にすると期間外でも有効になる（デバッグ用）
+    // icon: 告知と単語の目印に使う絵文字 / titleDeco: タイトル左右の飾り（省略可）
+    // minWordRate: 1プレイ内のイベント単語の出題割合をこれ以上に保つ（0〜1。省略時は通常の単語と同じ確率）
+    // 配色は CSS の html.<イベントID>、ゲーム画面は CANVAS_THEMES / EVENT_SPRITES に同じIDで追加する
     EVENTS: {
-      // minWordRate: 期間中、1プレイ内のハロウィン単語の出題割合をこれ以上に保つ（0〜1）
-      halloween: { start: { month: 10, day: 25 }, end: { month: 11, day: 1 }, forceEnable: false, minWordRate: 0.6 },
+      newyear:   { start: { month: 12, day: 31 }, end: { month: 1, day: 3 },   priority: 50, forceEnable: false, icon: '🎍' },
+      christmas: { start: { month: 12, day: 20 }, end: { month: 12, day: 26 }, priority: 40, forceEnable: false, icon: '🎄' },
+      valentine: { start: { month: 2, day: 10 },  end: { month: 2, day: 15 },  priority: 30, forceEnable: false, icon: '💝' },
+      tanabata:  { start: { month: 7, day: 1 },   end: { month: 7, day: 7 },   priority: 20, forceEnable: false, icon: '🎋' },
+      halloween: { start: { month: 10, day: 25 }, end: { month: 11, day: 1 },  priority: 10, forceEnable: false, icon: '🎃',
+                   titleDeco: ['🎃', '👻'], minWordRate: 0.6 },
     },
   };
 </script>
@@ -414,14 +424,14 @@
   .mute-btn:active { background: rgba(255,255,255,0.2); }
   .volume-slider { flex: 1; accent-color: #4dd0ff; }
 
-  /* ---------- halloween event (html.halloween while the event is active) ---------- */
-  html:not(.halloween) .halloween-only { display: none !important; }
+  /* ---------- seasonal events (html.event-active + html.<event id> while an event is current) ---------- */
+  html:not(.event-active) .event-only { display: none !important; }
   .event-banner {
     font-size: 13px; font-weight: 800; margin: 2px 0 6px; padding: 6px 16px; border-radius: 16px;
     color: #1a0f26; background: linear-gradient(90deg, var(--hw-orange), #ffc36b);
     box-shadow: 0 0 14px rgba(255,140,40,0.45);
   }
-  html.halloween #quizMeaning { max-width: 100%; }
+  html.event-active #quizMeaning { max-width: 100%; }
   .event-word-mark {
     display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 8px; white-space: nowrap;
     font-size: 12px; font-weight: 800; border-radius: 10px; text-shadow: none;
@@ -432,6 +442,7 @@
     --hw-purple: #8a4dff;
     --hw-purple-light: #b48cff;
   }
+  /* halloween theme */
   html.halloween {
     --start-btn-bg: linear-gradient(160deg, #ffb057, #ff6a00);
     --start-btn-bg-active: linear-gradient(160deg, #ffc98a, #ff8a33);
@@ -502,8 +513,8 @@
     <button data-lang="en">English</button>
   </div>
   <div class="home-inner">
-  <h1><span class="halloween-only" aria-hidden="true">🎃 </span><span data-i18n="appTitle">Vocab Survivor</span><span class="halloween-only" aria-hidden="true"> 👻</span></h1>
-  <div class="event-banner halloween-only" id="halloweenBanner"></div>
+  <h1><span class="event-only" id="titleDecoL" aria-hidden="true"></span><span data-i18n="appTitle">Vocab Survivor</span><span class="event-only" id="titleDecoR" aria-hidden="true"></span></h1>
+  <div class="event-banner event-only" id="eventBanner"></div>
   <div class="rank-status" id="homeRankStatus"></div>
   <p data-i18n="homeSubtitle"></p>
   <div class="select-group" id="langGroup"></div>
@@ -828,8 +839,13 @@
       howtoHealTitle: '❤️ 回復',
       howtoHeal1: '回復は敵が落とすアイテムだけ',
       howtoClose: '閉じる',
-      halloweenNotice: 'ハロウィン開催中（{month}/{day}まで）',
-      halloweenWordMark: '🎃 ハロウィン限定',
+      eventNotice: '{name}開催中（{month}/{day}まで）',
+      eventWordMark: '{icon} {name}限定',
+      event_halloween_name: 'ハロウィン',
+      event_valentine_name: 'バレンタイン',
+      event_tanabata_name: '七夕',
+      event_christmas_name: 'クリスマス',
+      event_newyear_name: 'お正月',
     },
     en: {
       appTitle: 'Vocab Survivor',
@@ -1001,8 +1017,13 @@
       howtoHealTitle: '❤️ Healing',
       howtoHeal1: 'You can only heal with items dropped by enemies',
       howtoClose: 'Close',
-      halloweenNotice: 'Halloween event on (until {month}/{day})',
-      halloweenWordMark: '🎃 Halloween',
+      eventNotice: '{name} event on (until {month}/{day})',
+      eventWordMark: '{icon} {name}',
+      event_halloween_name: 'Halloween',
+      event_valentine_name: "Valentine's",
+      event_tanabata_name: 'Tanabata',
+      event_christmas_name: 'Christmas',
+      event_newyear_name: 'New Year',
     },
   };
 
@@ -1057,17 +1078,33 @@
     // both days inclusive; start > end means the period wraps past New Year
     return start <= end ? (key >= start && key <= end) : (key >= start || key <= end);
   }
-  let halloweenMode = false;
-  // returns true when the mode changed
-  function refreshEvents(){
-    const was = halloweenMode;
-    halloweenMode = isEventActive('halloween');
-    document.documentElement.classList.toggle('halloween', halloweenMode);
-    return was !== halloweenMode;
+  const EVENT_IDS = Object.keys(CONFIG.EVENTS);
+  let activeEventId = null; // the one event in effect now, or null
+  // forced (debug) events beat in-period ones, then higher priority wins; ties go to the earlier CONFIG entry
+  function currentEventId(){
+    const rank = id => (CONFIG.EVENTS[id].forceEnable ? 1e6 : 0) + (CONFIG.EVENTS[id].priority || 0);
+    return EVENT_IDS.filter(id => isEventActive(id))
+      .reduce((best, id) => (best === null || rank(id) > rank(best)) ? id : best, null);
   }
+  // returns true when the current event changed
+  function refreshEvents(){
+    const was = activeEventId;
+    activeEventId = currentEventId();
+    const cl = document.documentElement.classList;
+    EVENT_IDS.forEach(id => cl.toggle(id, id === activeEventId));
+    cl.toggle('event-active', activeEventId !== null);
+    renderEventBanner();
+    return was !== activeEventId;
+  }
+  function eventName(id){ return t('event_' + id + '_name'); }
   function renderEventBanner(){
-    const end = CONFIG.EVENTS.halloween.end;
-    document.getElementById('halloweenBanner').textContent = tf('halloweenNotice', { month: end.month, day: end.day });
+    if (!activeEventId) return; // hidden by CSS
+    const ev = CONFIG.EVENTS[activeEventId];
+    const deco = ev.titleDeco || [];
+    document.getElementById('eventBanner').textContent =
+      tf('eventNotice', { name: eventName(activeEventId), month: ev.end.month, day: ev.end.day });
+    document.getElementById('titleDecoL').textContent = deco[0] ? deco[0] + ' ' : '';
+    document.getElementById('titleDecoR').textContent = deco[1] ? ' ' + deco[1] : '';
   }
 
   const canvas = document.getElementById('game');
@@ -1911,8 +1948,12 @@
     ] },
   ];
   function getPack(id){ return WORD_PACKS.find(p => p.id === id) || WORD_PACKS[0]; }
-  // words flagged `halloween: true` are only asked while the halloween event is active
-  function activeWords(pack){ return pack.words.filter(w => !w.halloween || halloweenMode); }
+  // the event a word belongs to (flagged `<event id>: true`), or null for a regular word
+  function wordEventId(w){ return EVENT_IDS.find(id => w[id] === true) || null; }
+  // event words are only asked while their event is the current one
+  function activeWords(pack){
+    return pack.words.filter(w => { const id = wordEventId(w); return id === null || id === activeEventId; });
+  }
   function wordMeaning(wordObj){
     const dict = wordObj.meaning;
     return (dict && dict[uiLang]) || (dict && dict.ja) || '';
@@ -1984,7 +2025,7 @@
   let keys = {};
   let killCount = 0;
   let runQuizCorrect = 0, runQuizWrong = 0; // this run only (stats.correctCount is cumulative per pack)
-  let runWordsPicked = 0, runHalloweenPicked = 0; // this run only, for CONFIG.EVENTS.halloween.minWordRate
+  let runWordsPicked = 0, runEventPicked = 0; // this run only, for CONFIG.EVENTS[id].minWordRate
   // ranking: every send in one run updates the same row (keyed by runId)
   let runId = null, runPackId = null;
   let runActive = false; // true while a started run hasn't ended (game over / stage clear / quit / home)
@@ -2049,7 +2090,7 @@
     runQuizCorrect = 0;
     runQuizWrong = 0;
     runWordsPicked = 0;
-    runHalloweenPicked = 0;
+    runEventPicked = 0;
     runId = newRunId();
     runPackId = currentPackId();
     runActive = true;
@@ -2908,15 +2949,15 @@
 
   function pickRandomWord(pack){
     const words = activeWords(pack);
-    const seasonal = words.filter(w => w.halloween);
-    if (seasonal.length === 0 || seasonal.length === words.length) return pickWithReviewPriority(pack, words);
-    // keep this run's share of halloween words at or above minWordRate after every question:
+    const seasonal = words.filter(w => wordEventId(w) !== null);
+    const minRate = activeEventId ? CONFIG.EVENTS[activeEventId].minWordRate : 0;
+    if (!minRate || seasonal.length === 0 || seasonal.length === words.length) return pickWithReviewPriority(pack, words);
+    // keep this run's share of event words at or above minWordRate after every question:
     // force one when a normal word would drop below it, otherwise roll at that rate
-    const minRate = CONFIG.EVENTS.halloween.minWordRate;
-    const useSeasonal = runHalloweenPicked < minRate * (runWordsPicked + 1) || Math.random() < minRate;
+    const useSeasonal = runEventPicked < minRate * (runWordsPicked + 1) || Math.random() < minRate;
     runWordsPicked += 1;
-    if (useSeasonal) runHalloweenPicked += 1;
-    return pickWithReviewPriority(pack, useSeasonal ? seasonal : words.filter(w => !w.halloween));
+    if (useSeasonal) runEventPicked += 1;
+    return pickWithReviewPriority(pack, useSeasonal ? seasonal : words.filter(w => wordEventId(w) === null));
   }
   // words answered wrong before are asked first WRONG_WORD_PRIORITY of the time
   function pickWithReviewPriority(pack, words){
@@ -3010,10 +3051,11 @@
     document.getElementById('quizResult').textContent = '';
     const meaningEl = document.getElementById('quizMeaning');
     meaningEl.textContent = wordMeaning(wordObj);
-    if (wordObj.halloween){
+    const wordEvent = wordEventId(wordObj);
+    if (wordEvent){
       const mark = document.createElement('span');
       mark.className = 'event-word-mark';
-      mark.textContent = t('halloweenWordMark');
+      mark.textContent = tf('eventWordMark', { icon: CONFIG.EVENTS[wordEvent].icon, name: eventName(wordEvent) });
       meaningEl.appendChild(mark);
     }
     const fillEl = document.getElementById('quizTimerFill');
@@ -3761,8 +3803,9 @@
       ctx.strokeStyle = bright ? 'rgba(255,170,40,0.95)' : 'rgba(255,170,40,0.25)';
       ctx.lineWidth = 3;
       ctx.stroke();
-      if (halloweenMode){
-        drawPumpkin(r, bright);
+      const drawEventBomb = eventSprites().bomb;
+      if (drawEventBomb){
+        drawEventBomb(r, bright);
       } else {
         // body
         ctx.beginPath();
@@ -3877,13 +3920,20 @@
   }
 
   // ---------- canvas palette (seasonal) ----------
-  // the background stays dark in every theme so enemies, bullets and gems remain easy to read
+  // the background stays dark in every theme so enemies, bullets and gems remain easy to read.
+  // keyed by event id; an event without an entry uses `normal`
   const CANVAS_THEMES = {
     normal: { grid: 'rgba(255,255,255,0.06)', enemy: '#ff5566', minion: '#ff9f43', elite: '#c04dff' },
     // minions take the old red so they don't blend into the orange normal enemies
     halloween: { grid: 'rgba(168,108,255,0.16)', enemy: '#ff8a1f', minion: '#ff5566', elite: '#e6defa' },
   };
-  function canvasTheme(){ return halloweenMode ? CANVAS_THEMES.halloween : CANVAS_THEMES.normal; }
+  function canvasTheme(){ return CANVAS_THEMES[activeEventId] || CANVAS_THEMES.normal; }
+  // per-event sprite overrides, keyed by event id; any part left out keeps the normal look
+  // bomb(r, bright) / heal() draw around the current origin; eliteShape(x, y, r) traces a path, eliteFace(x, y, r) draws on top
+  const EVENT_SPRITES = {
+    halloween: { bomb: drawPumpkin, heal: drawCandy, eliteShape: traceGhost, eliteFace: drawGhostFace },
+  };
+  function eventSprites(){ return EVENT_SPRITES[activeEventId] || {}; }
 
   // ---------- draw ----------
   function drawGrid(){
@@ -3921,7 +3971,8 @@
       ctx.fillStyle = '#ff6b81';
       ctx.save();
       ctx.translate(sx, sy);
-      if (halloweenMode) drawCandy();
+      const drawEventHeal = eventSprites().heal;
+      if (drawEventHeal) drawEventHeal();
       else {
         ctx.fillRect(-8, -2.5, 16, 5);
         ctx.fillRect(-2.5, -8, 5, 16);
@@ -3972,16 +4023,17 @@
     }
 
     const theme = canvasTheme();
+    const sprites = eventSprites();
     for (const e of enemies){
       const sx = e.x - camera.x, sy = e.y - camera.y;
       if (sx < -60 || sx > width + 60 || sy < -60 || sy > height + 60) continue;
       const isElite = e.type === 'elite';
       const isBoss = e.type === 'boss';
       const isMinion = e.type === 'minion';
-      const ghost = isElite && halloweenMode;
+      const customElite = isElite && sprites.eliteShape;
       ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : (isBoss ? '#ff2d55' : (isElite ? theme.elite : (isMinion ? theme.minion : theme.enemy)));
       ctx.beginPath();
-      if (ghost) traceGhost(sx, sy, e.radius);
+      if (customElite) sprites.eliteShape(sx, sy, e.radius);
       else ctx.arc(sx, sy, e.radius, 0, Math.PI * 2);
       ctx.fill();
       if (isElite){
@@ -3989,7 +4041,7 @@
         ctx.strokeStyle = e.eliteState === 'dashing' ? '#ffe066' : 'rgba(255,224,102,0.6)';
         ctx.stroke();
       }
-      if (ghost) drawGhostFace(sx, sy, e.radius);
+      if (customElite && sprites.eliteFace) sprites.eliteFace(sx, sy, e.radius);
       if (isBoss){
         ctx.lineWidth = 4;
         ctx.strokeStyle = e.isMainBoss ? '#ffe066' : 'rgba(255,224,102,0.6)';
