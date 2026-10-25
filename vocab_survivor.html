@@ -80,6 +80,7 @@
     text-shadow: 0 1px 2px #000; gap: 8px;
   }
   #topInfo b { font-size: 15px; color: #ffe066; }
+  #topInfo > span { white-space: nowrap; }
 
   #joystick {
     position: fixed; left: 50%; z-index: 5;
@@ -895,7 +896,7 @@
       acquiredSkillsLabel: 'Acquired Skills',
       resumeButton: 'Resume',
       quitSubmitButton: 'Quit & Submit Score',
-      quizTierLabel: 'Difficulty {n}/{max}',
+      quizTierLabel: 'Tier {n}/{max}',
       quizTierUp: '⚠️ Difficulty up! ({n}/{max})',
       restartButton: 'Restart',
       homeButton: 'Back to Home',
@@ -2097,7 +2098,6 @@
     autoSendTimer = CFG.rankingAutoSendInterval;
     quizTier = 0;
     quizTierNoticeTimer = 0;
-    document.getElementById('quizTierNotice').classList.add('hidden');
     camera.x = 0; camera.y = 0;
     survivalTime = 0;
     spawnTimer = 0.6;
@@ -2198,7 +2198,6 @@
     document.getElementById('bossRewardOverlay').classList.add('hidden');
     document.getElementById('bossHpBar').classList.add('hidden');
     document.getElementById('bossWarning').classList.add('hidden');
-    document.getElementById('quizTierNotice').classList.add('hidden');
     setPauseButtonVisible(false);
     refreshEvents();
     renderHomeSelectors();
@@ -2933,13 +2932,15 @@
       const text = document.createElement('span'); // fresh node restarts the pop-in animation
       text.textContent = tf('quizTierUp', { n: quizTier + 1, max: CONFIG.QUIZ_TIERS.length });
       el.appendChild(text);
-      el.classList.remove('hidden');
       quizTierNoticeTimer = CONFIG.QUIZ_TIER_NOTICE_TIME;
     }
-    if (quizTierNoticeTimer > 0){
-      quizTierNoticeTimer -= dt;
-      if (quizTierNoticeTimer <= 0) document.getElementById('quizTierNotice').classList.add('hidden');
-    }
+    if (quizTierNoticeTimer > 0) quizTierNoticeTimer -= dt;
+  }
+  // shown only during play: overlays (quiz, pause, ...) are translucent, so it would bleed through them;
+  // whatever time is left is shown once play resumes
+  function syncQuizTierNotice(){
+    const show = gameState === 'playing' && quizTierNoticeTimer > 0;
+    document.getElementById('quizTierNotice').classList.toggle('hidden', !show);
   }
 
   // ---------- level up quiz (word fill-in-the-blank) ----------
@@ -3534,6 +3535,8 @@
   // ---------- update ----------
   function update(dt){
     survivalTime += dt;
+    // before anything that can level up, so a quiz opened this frame already uses the new tier
+    updateQuizTier(dt);
 
     const iv = inputVector();
     const spd = CFG.baseSpeed * player.speedMult;
@@ -3720,8 +3723,6 @@
     }
 
     updateBomb(dt);
-
-    updateQuizTier(dt);
 
     autoSendTimer -= dt;
     if (autoSendTimer <= 0){
@@ -4143,6 +4144,7 @@
 
     if (gameState === 'playing') update(dt);
     else if (gameState === 'quiz') updateQuizTimer(dt);
+    syncQuizTierNotice();
     updateJoystickVisibility();
     draw();
     requestAnimationFrame(loop);
