@@ -174,10 +174,21 @@ function stopAll(keepUI){
 }
 
 async function listDevices(){
-  const sel=$('device'), cur = stream.getAudioTracks()[0].getSettings().deviceId;
-  const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
+  const sel=$('device');
+  const cur = stream ? stream.getAudioTracks()[0].getSettings().deviceId : sel.value;
+  let devs=[];
+  try{ devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput'); }catch(e){}
   sel.innerHTML='';
-  devs.forEach((d,i)=>{ const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('マイク '+(i+1)); if(d.deviceId===cur) o.selected=true; sel.appendChild(o); });
+  if(!devs.length){
+    const o=document.createElement('option'); o.value=''; o.textContent='マイクが見つかりません'; sel.appendChild(o);
+    if(stream) showError('マイクの一覧を取得できませんでした。OSの設定でブラウザにマイクの使用を許可しているか確認してください。');
+    return;
+  }
+  devs.forEach((d,i)=>{
+    const o=document.createElement('option'); o.value=d.deviceId;
+    o.textContent=d.label || ('マイク '+(i+1)+'（開始すると名前が出ます）');
+    if(d.deviceId===cur) o.selected=true; sel.appendChild(o);
+  });
 }
 
 function showInfo(){
@@ -253,7 +264,17 @@ $('monitor').onchange=()=>{ if(monitorGain) monitorGain.gain.value=$('monitor').
 $('resetpk').onclick=()=>{ peakDb=-Infinity; clipCount=0; $('pk').textContent='-∞'; $('clip').textContent='0'; };
 $('rec').onclick=toggleRec;
 $('sr').onclick=toggleSR;
-if(!navigator.mediaDevices?.getUserMedia) showError('このブラウザではマイクが使えません。ChromeかEdgeで開いてください。');
+let inFrame=false; try{ inFrame = window.top !== window.self; }catch(e){ inFrame=true; }
+if(inFrame){
+  showError('プレビュー画面の中ではマイクが使えません。ファイルをダウンロードするか、GitHub PagesのURLをブラウザで直接開いてください。');
+}else if(!window.isSecureContext){
+  showError('このURLではマイクが使えません。https:// で始まるURLか、ダウンロードしたファイルを直接開いてください。');
+}else if(!navigator.mediaDevices?.getUserMedia){
+  showError('このブラウザではマイクが使えません。ChromeかEdgeで開いてください。');
+}else{
+  listDevices();
+  navigator.mediaDevices.addEventListener('devicechange', listDevices);
+}
 </script>
 </body>
 </html>
