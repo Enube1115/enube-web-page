@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>レポート提出管理</title>
+<meta name="apple-mobile-web-app-title" content="レポート管理">
+<style>
+  :root {
+    --bg: #000; --panel: #121212; --fg: #fff;
+    --line: rgba(255,255,255,0.18); --line-soft: rgba(255,255,255,0.12);
+    --muted: rgba(255,255,255,0.55); --muted2: rgba(255,255,255,0.78);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    color: var(--fg);
+  }
+  .wrap {
+    max-width: 560px; margin: 0 auto;
+    padding: 16px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
+  }
+  h1 { font-size: 22px; margin: 4px 0 2px; color: var(--fg); letter-spacing: 0.02em; }
+  .sub { margin: 0 0 16px; font-size: 13px; opacity: 0.6; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 10px; color: var(--muted2); }
+
+  label { display: block; font-size: 12px; opacity: 0.75; margin: 10px 0 4px; }
+  label:first-of-type { margin-top: 0; }
+  input, select {
+    width: 100%; padding: 10px 12px; font-size: 16px;
+    background: var(--bg); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 10px;
+    font-family: inherit;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--fg); border-width: 2px; padding: 9px 11px; }
+  input[type="date"] { color-scheme: dark; min-height: 44px; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; min-width: 0; }
+
+  .btn {
+    padding: 12px 24px; font-size: 15px; font-weight: 700;
+    border: none; border-radius: 24px; cursor: pointer; font-family: inherit;
+  }
+  .btn-primary { background: var(--fg); color: #000; width: 100%; margin-top: 14px; }
+  .btn-primary:active { background: var(--muted2); }
+  .error { color: var(--fg); font-size: 12px; margin-top: 8px; min-height: 1em; font-weight: 700; }
+  .error:not(:empty)::before { content: "！ "; }
+
+  .summary { display: flex; gap: 8px; margin-bottom: 12px; }
+  .summary div {
+    flex: 1; text-align: center; padding: 8px 4px;
+    background: var(--panel); border: 1px solid var(--line-soft); border-radius: 10px;
+    font-size: 11px; opacity: 0.85;
+  }
+  .summary b { display: block; font-size: 18px; margin-bottom: 2px; color: var(--fg); }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .toolbar h2 { font-size: 15px; margin: 0; color: var(--muted2); }
+  .toggle { font-size: 13px; opacity: 0.8; display: flex; align-items: center; gap: 6px; margin: 0; }
+  .toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--fg); }
+
+  #list { display: flex; flex-direction: column; gap: 10px; }
+  .item {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--line);
+    border-radius: 14px; padding: 12px 14px;
+  }
+  .item.over { border-color: var(--muted2); border-left: 5px solid var(--fg); background: #181818; }
+  .item.soon { border-left: 4px dashed var(--muted2); background: #141414; }
+  .item.finished { opacity: 0.55; }
+
+  .item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .subject { font-size: 12px; color: var(--muted2); font-weight: 700; letter-spacing: 0.02em; }
+  .title { font-size: 16px; font-weight: 700; margin-top: 2px; word-break: break-word; }
+  .due { font-size: 13px; margin-top: 6px; opacity: 0.85; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px; margin-left: 6px; vertical-align: 1px;
+  }
+  .over .badge { background: var(--fg); color: #000; }
+  .soon .badge { background: transparent; border: 1px solid var(--fg); color: var(--fg); }
+
+  .del {
+    flex-shrink: 0; background: none; border: 1px solid var(--line);
+    color: var(--muted); font-size: 12px; padding: 4px 10px; border-radius: 12px;
+    cursor: pointer; font-family: inherit;
+  }
+  .del:active { background: rgba(255,255,255,0.12); }
+  .del.confirm { border-color: var(--fg); color: #000; background: var(--fg); font-weight: 700; }
+
+  .statuses { display: flex; gap: 4px; margin-top: 10px; }
+  .statuses button {
+    flex: 1; min-width: 0; padding: 9px 0; font-size: 12px; font-weight: 700;
+    background: rgba(255,255,255,0.06); color: var(--muted);
+    border: 1px solid var(--line-soft); border-radius: 8px;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .statuses button.on { background: var(--fg); color: #000; border-color: var(--fg); }
+
+  .empty { text-align: center; font-size: 14px; opacity: 0.55; padding: 28px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>レポート提出管理</h1>
+  <p class="sub">期限が近い順に表示。データはこの端末のブラウザに保存されます。</p>
+
+  <form class="panel" id="form" autocomplete="off">
+    <h2>レポートを登録</h2>
+    <label for="subject">科目名</label>
+    <input id="subject" list="subjectList" placeholder="例：数学I" maxlength="40">
+    <datalist id="subjectList"></datalist>
+    <label for="title">レポート名</label>
+    <input id="title" placeholder="例：第3回レポート" maxlength="60">
+    <div class="row">
+      <div>
+        <label for="due">提出期限</label>
+        <input id="due" type="date">
+      </div>
+      <div>
+        <label for="status">状態</label>
+        <select id="status"></select>
+      </div>
+    </div>
+    <button class="btn btn-primary" type="submit">登録する</button>
+    <div class="error" id="error"></div>
+  </form>
+
+  <div class="summary">
+    <div class="s-over"><b id="cntOver">0</b>期限切れ</div>
+    <div class="s-soon"><b id="cntSoon">0</b>7日以内</div>
+    <div><b id="cntTodo">0</b>未提出</div>
+    <div class="s-done"><b id="cntDone">0</b>合格</div>
+  </div>
+
+  <div class="toolbar">
+    <h2>一覧</h2>
+    <label class="toggle"><input type="checkbox" id="hideDone">合格を隠す</label>
+  </div>
+  <div id="list"></div>
+</div>
+
+<script>
+  const STATUSES = ['未着手', '作成中', '提出済み', '添削中', '合格'];
+  // 期限の色分けをするのはまだ提出していない状態だけ
+  const UNSUBMITTED = ['未着手', '作成中'];
+  const SOON_DAYS = 7;
+  const STORAGE_KEY = 'reportTracker.v1';
+  const PREF_KEY = 'reportTracker.hideDone';
+
+  const $ = id => document.getElementById(id);
+
+  function load() {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      return Array.isArray(data) ? data : [];
+    } catch (e) { return []; }
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(reports)); } catch (e) {}
+  }
+
+  let reports = load();
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  // 'YYYY-MM-DD' 同士の日数差（ローカル日付で計算）
+  function daysUntil(due) {
+    const [y, m, d] = due.split('-').map(Number);
+    const [ty, tm, td] = todayStr().split('-').map(Number);
+    return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ty, tm - 1, td)) / 86400000);
+  }
+  function formatDue(due) {
+    const [y, m, d] = due.split('-').map(Number);
+    const w = '日月火水木金土'[new Date(y, m - 1, d).getDay()];
+    return `${m}月${d}日（${w}）`;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function urgency(r) {
+    if (!UNSUBMITTED.includes(r.status)) return '';
+    const n = daysUntil(r.due);
+    if (n < 0) return 'over';
+    if (n <= SOON_DAYS) return 'soon';
+    return '';
+  }
+  function badgeText(r) {
+    const n = daysUntil(r.due);
+    if (n < 0) return `${-n}日超過`;
+    if (n === 0) return '今日まで';
+    return `あと${n}日`;
+  }
+
+  function render() {
+    const hideDone = $('hideDone').checked;
+    const sorted = [...reports].sort((a, b) => a.due.localeCompare(b.due) || a.created - b.created);
+    const shown = hideDone ? sorted.filter(r => r.status !== '合格') : sorted;
+
+    $('cntOver').textContent = reports.filter(r => urgency(r) === 'over').length;
+    $('cntSoon').textContent = reports.filter(r => urgency(r) === 'soon').length;
+    $('cntTodo').textContent = reports.filter(r => UNSUBMITTED.includes(r.status)).length;
+    $('cntDone').textContent = reports.filter(r => r.status === '合格').length;
+
+    const subjects = [...new Set(reports.map(r => r.subject))];
+    $('subjectList').innerHTML = subjects.map(s => `<option value="${escapeHtml(s)}">`).join('');
+
+    if (!shown.length) {
+      $('list').innerHTML = `<div class="empty">${reports.length ? '表示するレポートはありません' : 'まだレポートが登録されていません'}</div>`;
+      return;
+    }
+
+    $('list').innerHTML = shown.map(r => {
+      const u = urgency(r);
+      const cls = ['item', u, r.status === '合格' ? 'finished' : ''].filter(Boolean).join(' ');
+      const badge = u ? `<span class="badge">${badgeText(r)}</span>` : '';
+      const buttons = STATUSES.map(s =>
+        `<button type="button" data-s="${s}" class="${s === r.status ? 'on' : ''}">${s}</button>`
+      ).join('');
+      return `
+        <div class="${cls}" data-id="${r.id}">
+          <div class="item-head">
+            <div>
+              <div class="subject">${escapeHtml(r.subject)}</div>
+              <div class="title">${escapeHtml(r.title)}</div>
+            </div>
+            <button type="button" class="del">削除</button>
+          </div>
+          <div class="due">期限 ${formatDue(r.due)}${badge}</div>
+          <div class="statuses">${buttons}</div>
+        </div>`;
+    }).join('');
+  }
+
+  $('status').innerHTML = STATUSES.map(s => `<option>${s}</option>`).join('');
+  $('due').value = todayStr();
+
+  $('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const subject = $('subject').value.trim();
+    const title = $('title').value.trim();
+    const due = $('due').value;
+    if (!subject || !title || !due) {
+      $('error').textContent = '科目名・レポート名・提出期限を入力してください';
+      return;
+    }
+    $('error').textContent = '';
+    reports.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      subject, title, due,
+      status: $('status').value,
+      created: Date.now(),
+    });
+    save();
+    // 同じ科目を続けて登録しやすいよう科目名と期限は残す
+    $('title').value = '';
+    $('status').value = STATUSES[0];
+    render();
+  });
+
+  $('list').addEventListener('click', e => {
+    const item = e.target.closest('.item');
+    if (!item) return;
+    const r = reports.find(x => x.id === item.dataset.id);
+    if (!r) return;
+
+    const statusBtn = e.target.closest('.statuses button');
+    if (statusBtn) {
+      r.status = statusBtn.dataset.s;
+      save();
+      render();
+      return;
+    }
+
+    // 誤タップ防止のため、削除は2回タップで確定
+    const del = e.target.closest('.del');
+    if (del) {
+      if (del.classList.contains('confirm')) {
+        reports = reports.filter(x => x.id !== r.id);
+        save();
+        render();
+      } else {
+        del.classList.add('confirm');
+        del.textContent = 'もう一度で削除';
+        setTimeout(() => {
+          if (del.isConnected) { del.classList.remove('confirm'); del.textContent = '削除'; }
+        }, 3000);
+      }
+    }
+  });
+
+  try { $('hideDone').checked = localStorage.getItem(PREF_KEY) === '1'; } catch (e) {}
+  $('hideDone').addEventListener('change', () => {
+    try { localStorage.setItem(PREF_KEY, $('hideDone').checked ? '1' : '0'); } catch (e) {}
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
