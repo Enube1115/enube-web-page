@@ -56,6 +56,18 @@
   .error { color: var(--fg); font-size: 12px; margin-top: 8px; min-height: 1em; font-weight: 700; }
   .error:not(:empty)::before { content: "！ "; }
 
+  /* 種類の選択・絞り込みに使う区切りボタン */
+  .seg { display: flex; gap: 4px; }
+  .seg button {
+    flex: 1; min-width: 0; padding: 9px 0; font-size: 13px; font-weight: 700;
+    background: rgba(255,255,255,0.06); color: var(--muted);
+    border: 1px solid var(--line-soft); border-radius: 8px;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .seg button.on { background: var(--fg); color: #000; border-color: var(--fg); }
+  #kindSeg { margin-bottom: 4px; }
+  #filterSeg { margin-bottom: 12px; }
+
   .summary { display: flex; gap: 8px; margin-bottom: 12px; }
   .summary div {
     flex: 1; text-align: center; padding: 8px 4px;
@@ -82,6 +94,11 @@
 
   .item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
   .subject { font-size: 12px; color: var(--muted2); font-weight: 700; letter-spacing: 0.02em; }
+  .kind {
+    display: inline-block; font-size: 10px; font-weight: 700; color: var(--muted2);
+    border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; margin-right: 6px;
+    vertical-align: 1px;
+  }
   .title { font-size: 16px; font-weight: 700; margin-top: 2px; word-break: break-word; }
   .due { font-size: 13px; margin-top: 6px; opacity: 0.85; }
   .badge {
@@ -114,18 +131,20 @@
 <body>
 <div class="wrap">
   <h1>レポート提出管理</h1>
-  <p class="sub">期限が近い順に表示。データはこの端末のブラウザに保存されます。</p>
+  <p class="sub">レポート・スクーリング・テストを日付が近い順に表示。データはこの端末のブラウザに保存されます。</p>
 
   <form class="panel" id="form" autocomplete="off">
-    <h2>レポートを登録</h2>
+    <h2 id="formTitle">レポートを登録</h2>
+    <label>種類</label>
+    <div class="seg" id="kindSeg"></div>
     <label for="subject">科目名</label>
     <input id="subject" list="subjectList" placeholder="例：数学I" maxlength="40">
     <datalist id="subjectList"></datalist>
-    <label for="title">レポート名</label>
+    <label for="title" id="titleLabel">レポート名</label>
     <input id="title" placeholder="例：第3回レポート" maxlength="60">
     <div class="row">
       <div>
-        <label for="due">提出期限</label>
+        <label for="due" id="dueLabel">提出期限</label>
         <input id="due" type="date">
       </div>
       <div>
@@ -138,33 +157,59 @@
   </form>
 
   <div class="summary">
-    <div class="s-over"><b id="cntOver">0</b>期限切れ</div>
-    <div class="s-soon"><b id="cntSoon">0</b>7日以内</div>
-    <div><b id="cntTodo">0</b>未提出</div>
-    <div class="s-done"><b id="cntDone">0</b>合格</div>
+    <div><b id="cntOver">0</b>期限切れ</div>
+    <div><b id="cntSoon">0</b>7日以内</div>
+    <div><b id="cntTodo">0</b>未完了</div>
+    <div><b id="cntDone">0</b>完了</div>
   </div>
 
   <div class="toolbar">
     <h2>一覧</h2>
-    <label class="toggle"><input type="checkbox" id="hideDone">合格を隠す</label>
+    <label class="toggle"><input type="checkbox" id="hideDone">完了を隠す</label>
   </div>
+  <div class="seg" id="filterSeg"></div>
   <div id="list"></div>
 </div>
 
 <script>
-  const STATUSES = ['未着手', '作成中', '提出済み', '添削中', '合格'];
-  // 期限の色分けをするのはまだ提出していない状態だけ
-  const UNSUBMITTED = ['未着手', '作成中'];
+  // pending: 日付による色分けをする「まだ終わっていない」状態 / done: 完了扱い（薄く表示・非表示の対象）
+  const KINDS = {
+    report: {
+      name: 'レポート', titleLabel: 'レポート名', titlePh: '例：第3回レポート',
+      dateLabel: '提出期限', dateShort: '期限', today: '今日まで', past: '超過',
+      statuses: ['未着手', '作成中', '提出済み', '添削中', '合格'],
+      pending: ['未着手', '作成中'], done: '合格',
+    },
+    schooling: {
+      name: 'スクーリング', titleLabel: '内容', titlePh: '例：第2回 面接指導',
+      dateLabel: '開催日', dateShort: '開催日', today: '今日', past: '経過',
+      statuses: ['未予約', '予約済み', '受講済み'],
+      pending: ['未予約', '予約済み'], done: '受講済み',
+    },
+    test: {
+      name: 'テスト', titleLabel: 'テスト名', titlePh: '例：前期単位認定試験',
+      dateLabel: '試験日', dateShort: '試験日', today: '今日', past: '経過',
+      statuses: ['未確認', '受験予定', '受験済み'],
+      pending: ['未確認', '受験予定'], done: '受験済み',
+    },
+  };
   const SOON_DAYS = 7;
+  // 保存形式は v1 のまま。type を持たない古いデータはレポートとして読み込む
   const STORAGE_KEY = 'reportTracker.v1';
   const PREF_KEY = 'reportTracker.hideDone';
+  const FILTER_KEY = 'reportTracker.filter';
 
   const $ = id => document.getElementById(id);
 
+  function normalize(r) {
+    const type = KINDS[r.type] ? r.type : 'report';
+    const statuses = KINDS[type].statuses;
+    return { ...r, type, status: statuses.includes(r.status) ? r.status : statuses[0] };
+  }
   function load() {
     try {
       const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      return Array.isArray(data) ? data : [];
+      return Array.isArray(data) ? data.map(normalize) : [];
     } catch (e) { return []; }
   }
   function save() {
@@ -172,6 +217,8 @@
   }
 
   let reports = load();
+  let formKind = 'report';
+  let filter = 'all';
 
   function todayStr() {
     const d = new Date();
@@ -192,83 +239,127 @@
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  const isPending = r => KINDS[r.type].pending.includes(r.status);
+  const isDone = r => KINDS[r.type].done === r.status;
+
   function urgency(r) {
-    if (!UNSUBMITTED.includes(r.status)) return '';
+    if (!isPending(r)) return '';
     const n = daysUntil(r.due);
     if (n < 0) return 'over';
     if (n <= SOON_DAYS) return 'soon';
     return '';
   }
   function badgeText(r) {
+    const k = KINDS[r.type];
     const n = daysUntil(r.due);
-    if (n < 0) return `${-n}日超過`;
-    if (n === 0) return '今日まで';
+    if (n < 0) return `${-n}日${k.past}`;
+    if (n === 0) return k.today;
     return `あと${n}日`;
+  }
+
+  function renderForm() {
+    const k = KINDS[formKind];
+    $('kindSeg').innerHTML = Object.entries(KINDS).map(([key, v]) =>
+      `<button type="button" data-k="${key}" class="${key === formKind ? 'on' : ''}">${v.name}</button>`
+    ).join('');
+    $('formTitle').textContent = `${k.name}を登録`;
+    $('titleLabel').textContent = k.titleLabel;
+    $('title').placeholder = k.titlePh;
+    $('dueLabel').textContent = k.dateLabel;
+    $('status').innerHTML = k.statuses.map(s => `<option>${s}</option>`).join('');
   }
 
   function render() {
     const hideDone = $('hideDone').checked;
     const sorted = [...reports].sort((a, b) => a.due.localeCompare(b.due) || a.created - b.created);
-    const shown = hideDone ? sorted.filter(r => r.status !== '合格') : sorted;
+    const inFilter = sorted.filter(r => filter === 'all' || r.type === filter);
+    const shown = hideDone ? inFilter.filter(r => !isDone(r)) : inFilter;
 
-    $('cntOver').textContent = reports.filter(r => urgency(r) === 'over').length;
-    $('cntSoon').textContent = reports.filter(r => urgency(r) === 'soon').length;
-    $('cntTodo').textContent = reports.filter(r => UNSUBMITTED.includes(r.status)).length;
-    $('cntDone').textContent = reports.filter(r => r.status === '合格').length;
+    $('filterSeg').innerHTML = [['all', '全部'], ...Object.entries(KINDS).map(([key, v]) => [key, v.name])]
+      .map(([key, name]) => `<button type="button" data-f="${key}" class="${key === filter ? 'on' : ''}">${name}</button>`)
+      .join('');
+
+    // 件数は絞り込み中の種類に合わせる
+    $('cntOver').textContent = inFilter.filter(r => urgency(r) === 'over').length;
+    $('cntSoon').textContent = inFilter.filter(r => urgency(r) === 'soon').length;
+    $('cntTodo').textContent = inFilter.filter(r => !isDone(r)).length;
+    $('cntDone').textContent = inFilter.filter(isDone).length;
 
     const subjects = [...new Set(reports.map(r => r.subject))];
     $('subjectList').innerHTML = subjects.map(s => `<option value="${escapeHtml(s)}">`).join('');
 
     if (!shown.length) {
-      $('list').innerHTML = `<div class="empty">${reports.length ? '表示するレポートはありません' : 'まだレポートが登録されていません'}</div>`;
+      const what = filter === 'all' ? '項目' : KINDS[filter].name;
+      $('list').innerHTML = `<div class="empty">${inFilter.length ? `表示する${what}はありません` : `まだ${what}が登録されていません`}</div>`;
       return;
     }
 
     $('list').innerHTML = shown.map(r => {
+      const k = KINDS[r.type];
       const u = urgency(r);
-      const cls = ['item', u, r.status === '合格' ? 'finished' : ''].filter(Boolean).join(' ');
+      const cls = ['item', u, isDone(r) ? 'finished' : ''].filter(Boolean).join(' ');
       const badge = u ? `<span class="badge">${badgeText(r)}</span>` : '';
-      const buttons = STATUSES.map(s =>
+      const buttons = k.statuses.map(s =>
         `<button type="button" data-s="${s}" class="${s === r.status ? 'on' : ''}">${s}</button>`
       ).join('');
       return `
         <div class="${cls}" data-id="${r.id}">
           <div class="item-head">
             <div>
-              <div class="subject">${escapeHtml(r.subject)}</div>
+              <div class="subject"><span class="kind">${k.name}</span>${escapeHtml(r.subject)}</div>
               <div class="title">${escapeHtml(r.title)}</div>
             </div>
             <button type="button" class="del">削除</button>
           </div>
-          <div class="due">期限 ${formatDue(r.due)}${badge}</div>
+          <div class="due">${k.dateShort} ${formatDue(r.due)}${badge}</div>
           <div class="statuses">${buttons}</div>
         </div>`;
     }).join('');
   }
 
-  $('status').innerHTML = STATUSES.map(s => `<option>${s}</option>`).join('');
-  $('due').value = todayStr();
+  $('kindSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    formKind = btn.dataset.k;
+    $('error').textContent = '';
+    renderForm();
+  });
+
+  $('filterSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    filter = btn.dataset.f;
+    try { localStorage.setItem(FILTER_KEY, filter); } catch (e) {}
+    render();
+  });
 
   $('form').addEventListener('submit', e => {
     e.preventDefault();
+    const k = KINDS[formKind];
     const subject = $('subject').value.trim();
     const title = $('title').value.trim();
     const due = $('due').value;
     if (!subject || !title || !due) {
-      $('error').textContent = '科目名・レポート名・提出期限を入力してください';
+      $('error').textContent = `科目名・${k.titleLabel}・${k.dateLabel}を入力してください`;
       return;
     }
     $('error').textContent = '';
     reports.push({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      type: formKind,
       subject, title, due,
       status: $('status').value,
       created: Date.now(),
     });
     save();
-    // 同じ科目を続けて登録しやすいよう科目名と期限は残す
+    // 登録したものが見えるよう、別の種類で絞り込み中なら全部に戻す
+    if (filter !== 'all' && filter !== formKind) {
+      filter = 'all';
+      try { localStorage.setItem(FILTER_KEY, filter); } catch (e) {}
+    }
+    // 同じ科目を続けて登録しやすいよう科目名と日付は残す
     $('title').value = '';
-    $('status').value = STATUSES[0];
+    $('status').value = k.statuses[0];
     render();
   });
 
@@ -304,11 +395,17 @@
   });
 
   try { $('hideDone').checked = localStorage.getItem(PREF_KEY) === '1'; } catch (e) {}
+  try {
+    const f = localStorage.getItem(FILTER_KEY);
+    if (f === 'all' || KINDS[f]) filter = f;
+  } catch (e) {}
   $('hideDone').addEventListener('change', () => {
     try { localStorage.setItem(PREF_KEY, $('hideDone').checked ? '1' : '0'); } catch (e) {}
     render();
   });
 
+  $('due').value = todayStr();
+  renderForm();
   render();
 </script>
 </body>
