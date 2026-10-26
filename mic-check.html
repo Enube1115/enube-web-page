@@ -3,11 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>マイクチェック</title>
+<title>通話前チェック</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* 計測器のパネル：上にメーター、下に操作ブロックを縦に積む */
 :root{
   --bg:#e9ecef; --panel:#f7f8f9; --ink:#1c2128; --muted:#5f6b78; --line:#cdd3da;
   --accent:#c4661f; --ok:#2f8f4e; --warn:#c99a10; --bad:#c23b2e; --track:#d8dde3;
@@ -26,6 +25,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans)}
 header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
 h1{font-size:22px;margin:0;letter-spacing:.02em}
 .sub{color:var(--muted);font-size:13px}
+h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-family:var(--mono);margin:0}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.order-btns{display:flex;gap:4px}
+.order-btns button{padding:3px 9px;font-size:13px;line-height:1.3;font-family:var(--mono)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;display:grid;gap:12px}
 .label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-family:var(--mono)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -52,19 +55,48 @@ audio{width:100%}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0;font-size:13px}
 dt{color:var(--muted)} dd{margin:0;font-family:var(--mono)}
 .err{color:var(--bad);font-size:14px}
+video{width:100%;max-height:360px;background:#000;border-radius:4px;display:block;object-fit:contain}
+#snap{width:100%;border-radius:4px;display:block;border:1px solid var(--line)}
+.bars{display:grid;gap:8px}
+.bar-row{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:center;font-size:13px}
+.bar-track{height:14px;background:var(--track);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;width:0;background:var(--accent)}
+.bar-val{font-family:var(--mono);text-align:right;min-width:88px}
+.verdict{font-size:13px;padding:8px 10px;border-radius:4px;background:var(--track)}
+.verdict.ok{color:var(--ok)} .verdict.warn{color:var(--warn)} .verdict.bad{color:var(--bad)}
+input[type=range]{flex:1}
 @media (max-width:480px){.big{font-size:22px}}
-@media (prefers-reduced-motion:reduce){.meter .fill{transition:none}}
+@media (prefers-reduced-motion:reduce){.meter .fill,.bar-fill{transition:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>マイクチェック</h1>
-    <span class="sub">音声はこのブラウザの中だけで処理されます</span>
+    <h1>通話前チェック</h1>
+    <span class="sub">すべてこのブラウザの中だけで処理されます</span>
   </header>
 
-  <section class="panel">
-    <span class="label">入力デバイス</span>
+  <!-- カメラ -->
+  <section class="panel" data-key="cam">
+    <div class="panel-head"><h2>カメラ</h2><div class="order-btns"><button type="button" data-move="-1" aria-label="上へ移動">▲</button><button type="button" data-move="1" aria-label="下へ移動">▼</button></div></div>
+    <div class="row">
+      <select id="cam-device" aria-label="カメラを選択"><option>カメラを開始すると一覧が出ます</option></select>
+      <button id="cam-start" class="primary">カメラを開始</button>
+      <button id="cam-stop" disabled>停止</button>
+    </div>
+    <div id="cam-error" class="err" hidden></div>
+    <video id="cam-video" autoplay playsinline muted></video>
+    <div class="row">
+      <button id="cam-snap" disabled>静止画で確認</button>
+      <span class="note" id="cam-info"></span>
+    </div>
+    <img id="snap" hidden>
+    <canvas id="snap-canvas" hidden></canvas>
+  </section>
+
+  <!-- マイク -->
+  <section class="panel" data-key="mic">
+    <div class="panel-head"><h2>マイク</h2><div class="order-btns"><button type="button" data-move="-1" aria-label="上へ移動">▲</button><button type="button" data-move="1" aria-label="下へ移動">▼</button></div></div>
     <div class="row">
       <select id="device" aria-label="マイクを選択"><option>マイクを開始すると一覧が出ます</option></select>
       <button id="start" class="primary">マイクを開始</button>
@@ -76,10 +108,6 @@ dt{color:var(--muted)} dd{margin:0;font-family:var(--mono)}
       <label><input type="checkbox" id="agc" checked> 自動音量調整</label>
     </div>
     <div id="error" class="err" hidden></div>
-  </section>
-
-  <section class="panel">
-    <span class="label">入力レベル</span>
     <div class="readout">
       <div><span class="label">現在</span><span class="big" id="db">-∞</span></div>
       <div><span class="label">ピーク</span><span class="big" id="pk">-∞</span></div>
@@ -93,95 +121,119 @@ dt{color:var(--muted)} dd{margin:0;font-family:var(--mono)}
       <label class="toggles"><input type="checkbox" id="monitor"> 自分の声をそのまま聞く（ヘッドホン推奨）</label>
       <button id="resetpk">ピークをリセット</button>
     </div>
-  </section>
-
-  <section class="panel">
-    <span class="label">録音して聞き直す</span>
     <div class="row">
       <button id="rec" disabled>録音開始</button>
       <span class="big" id="rectime" style="font-size:18px">0:00</span>
       <a id="dl" hidden download="mic-test.webm">ファイルを保存</a>
     </div>
     <audio id="player" controls hidden></audio>
-  </section>
-
-  <section class="panel">
-    <span class="label">音声認識テスト</span>
     <div class="row">
-      <button id="sr" disabled>認識を開始</button>
+      <button id="sr" disabled>音声認識テストを開始</button>
       <span class="note" id="srnote"></span>
     </div>
     <div id="transcript" aria-live="polite"></div>
-    <p class="note">ChromeとEdgeでは、音声認識のときだけ音声がGoogleやMicrosoftのサーバーに送られます。</p>
+    <dl id="info"><dt>状態</dt><dd>未接続</dd></dl>
   </section>
 
-  <section class="panel">
-    <span class="label">デバイス情報</span>
-    <dl id="info"><dt>状態</dt><dd>未接続</dd></dl>
+  <!-- スピーカー -->
+  <section class="panel" data-key="spk">
+    <div class="panel-head"><h2>スピーカー</h2><div class="order-btns"><button type="button" data-move="-1" aria-label="上へ移動">▲</button><button type="button" data-move="1" aria-label="下へ移動">▼</button></div></div>
+    <div class="row">
+      <select id="spk-device" aria-label="出力先を選択"><option value="">既定の出力</option></select>
+      <button id="spk-refresh">一覧を更新</button>
+    </div>
+    <div id="spk-error" class="err" hidden></div>
+    <div class="row">
+      <span class="label" style="width:48px">音量</span>
+      <input type="range" id="spk-vol" min="0" max="100" value="30">
+    </div>
+    <div class="row">
+      <button id="spk-test" class="primary">テスト音を再生</button>
+      <button id="spk-lr">左右チェック</button>
+    </div>
+    <span class="note" id="spk-note">「左右チェック」は左→右→両方の順でテスト音を鳴らします</span>
+    <audio id="spk-audio" hidden></audio>
+  </section>
+
+  <!-- ネットワーク速度 -->
+  <section class="panel" data-key="net">
+    <div class="panel-head"><h2>ネットワーク速度</h2><div class="order-btns"><button type="button" data-move="-1" aria-label="上へ移動">▲</button><button type="button" data-move="1" aria-label="下へ移動">▼</button></div></div>
+    <div class="bars">
+      <div class="bar-row"><span>応答速度</span><div class="bar-track"><div class="bar-fill" id="bar-ping"></div></div><span class="bar-val" id="val-ping">—</span></div>
+      <div class="bar-row"><span>ダウンロード</span><div class="bar-track"><div class="bar-fill" id="bar-down"></div></div><span class="bar-val" id="val-down">—</span></div>
+      <div class="bar-row"><span>アップロード</span><div class="bar-track"><div class="bar-fill" id="bar-up"></div></div><span class="bar-val" id="val-up">—</span></div>
+    </div>
+    <div class="row">
+      <button id="net-start" class="primary">速度を計測</button>
+      <span class="status" id="net-status"></span>
+    </div>
+    <div id="net-verdict" class="verdict" hidden></div>
+    <span class="note">Cloudflareの公開計測用サーバーを使った目安値です。混雑状況やWi-Fiの電波状態で結果は変わります。</span>
   </section>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
-let stream, ctx, analyser, source, monitorGain, raf, recorder, recTimer, recognition;
-let peakDb = -Infinity, clipCount = 0, lastClip = 0, holdUntil = 0, peakHold = -Infinity;
+function showError(id, msg){ const e=$(id); e.textContent=msg; e.hidden=!msg; }
 
-function showError(msg){ const e=$('error'); e.textContent=msg; e.hidden=!msg; }
-
-function dbToPct(db){ return Math.max(0, Math.min(100, (db + 60) / 60 * 100)); }
+/* ===================== マイク ===================== */
+let micStream, ctx, analyser, source, monitorGain, raf, recorder, recTimer, recognition;
+let peakDb=-Infinity, clipCount=0, lastClip=0, holdUntil=0, peakHold=-Infinity;
+function dbToPct(db){ return Math.max(0, Math.min(100,(db+60)/60*100)); }
 function fmt(db){ return isFinite(db) ? db.toFixed(1) : '-∞'; }
 
-async function start(){
-  showError('');
-  stopAll(true);
-  const deviceId = $('device').value && $('device').value !== 'default' ? {exact:$('device').value} : undefined;
+async function startMic(){
+  showError('error','');
+  stopMic(true);
+  const deviceId = $('device').value && $('device').value!=='default' ? {exact:$('device').value} : undefined;
+  $('status').textContent='マイクの許可を待っています… アドレスバー付近に確認が出ていないか見てください';
+  const waitHint=setTimeout(()=>{ showError('error','許可の確認が出ていない場合は、アドレスバー右側のマイク（斜線つき）アイコンか、左側の設定アイコンを押して「許可」にしてください。'); },5000);
   try{
-    stream = await navigator.mediaDevices.getUserMedia({audio:{
+    micStream = await navigator.mediaDevices.getUserMedia({audio:{
       deviceId, echoCancellation:$('ec').checked, noiseSuppression:$('ns').checked, autoGainControl:$('agc').checked
     }});
   }catch(e){
-    showError(e.name==='NotAllowedError' ? 'マイクの使用が許可されていません。アドレスバーの鍵アイコンから許可してください。'
+    clearTimeout(waitHint); $('status').textContent='停止中';
+    showError('error', e.name==='NotAllowedError' ? 'マイクの使用が許可されていません。アドレスバーの鍵アイコンから許可してください。'
       : e.name==='NotFoundError' ? 'マイクが見つかりません。接続を確認してください。'
-      : 'マイクを開始できませんでした: ' + e.message);
+      : 'マイクを開始できませんでした: '+e.message);
     return;
   }
+  clearTimeout(waitHint); showError('error','');
   ctx = new (window.AudioContext||window.webkitAudioContext)();
-  source = ctx.createMediaStreamSource(stream);
-  analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
+  source = ctx.createMediaStreamSource(micStream);
+  analyser = ctx.createAnalyser(); analyser.fftSize=2048;
   source.connect(analyser);
-  monitorGain = ctx.createGain(); monitorGain.gain.value = $('monitor').checked ? 1 : 0;
+  monitorGain = ctx.createGain(); monitorGain.gain.value = $('monitor').checked?1:0;
   source.connect(monitorGain).connect(ctx.destination);
-  await listDevices();
-  showInfo();
+  await listMics();
+  showMicInfo();
   $('start').textContent='再接続'; $('stop').disabled=false; $('rec').disabled=false;
   $('sr').disabled = !(window.SpeechRecognition||window.webkitSpeechRecognition);
   if($('sr').disabled) $('srnote').textContent='このブラウザは音声認識に対応していません（Chrome推奨）';
-  loop();
+  micLoop();
 }
-
-function stopAll(keepUI){
+function stopMic(keepUI){
   cancelAnimationFrame(raf);
   if(recorder && recorder.state==='recording') recorder.stop();
   if(recognition) recognition.stop();
-  if(stream) stream.getTracks().forEach(t=>t.stop());
+  if(micStream) micStream.getTracks().forEach(t=>t.stop());
   if(ctx) ctx.close();
-  stream=ctx=null;
+  micStream=ctx=null;
   if(!keepUI){
     $('status').textContent='停止中'; $('fill').style.width='0'; $('db').textContent='-∞';
     $('start').textContent='マイクを開始'; $('stop').disabled=true; $('rec').disabled=true; $('sr').disabled=true;
-    $('info').innerHTML='<dt>状態</dt><dd>未接続</dd>';
   }
 }
-
-async function listDevices(){
+async function listMics(){
   const sel=$('device');
-  const cur = stream ? stream.getAudioTracks()[0].getSettings().deviceId : sel.value;
+  const cur = micStream ? micStream.getAudioTracks()[0].getSettings().deviceId : sel.value;
   let devs=[];
   try{ devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput'); }catch(e){}
   sel.innerHTML='';
   if(!devs.length){
     const o=document.createElement('option'); o.value=''; o.textContent='マイクが見つかりません'; sel.appendChild(o);
-    if(stream) showError('マイクの一覧を取得できませんでした。OSの設定でブラウザにマイクの使用を許可しているか確認してください。');
+    if(micStream) showError('error','マイクの一覧を取得できませんでした。OSの設定でブラウザにマイクの使用を許可しているか確認してください。');
     return;
   }
   devs.forEach((d,i)=>{
@@ -190,15 +242,13 @@ async function listDevices(){
     if(d.deviceId===cur) o.selected=true; sel.appendChild(o);
   });
 }
-
-function showInfo(){
-  const t=stream.getAudioTracks()[0], s=t.getSettings();
+function showMicInfo(){
+  const t=micStream.getAudioTracks()[0], s=t.getSettings();
   const rows=[['デバイス',t.label],['サンプルレート',(s.sampleRate||ctx.sampleRate)+' Hz'],['チャンネル数',s.channelCount??'不明'],
     ['エコー除去',s.echoCancellation?'オン':'オフ'],['ノイズ抑制',s.noiseSuppression?'オン':'オフ'],['自動音量調整',s.autoGainControl?'オン':'オフ']];
   $('info').innerHTML=''; rows.forEach(([k,v])=>{ const dt=document.createElement('dt'),dd=document.createElement('dd'); dt.textContent=k; dd.textContent=v; $('info').append(dt,dd); });
 }
-
-function loop(){
+function micLoop(){
   const buf=new Float32Array(analyser.fftSize);
   const cv=$('wave'), g=cv.getContext('2d');
   const css=getComputedStyle(document.documentElement);
@@ -226,10 +276,9 @@ function loop(){
   };
   tick();
 }
-
 function toggleRec(){
   if(recorder && recorder.state==='recording'){ recorder.stop(); return; }
-  const chunks=[]; recorder=new MediaRecorder(stream);
+  const chunks=[]; recorder=new MediaRecorder(micStream);
   recorder.ondataavailable=e=>chunks.push(e.data);
   recorder.onstop=()=>{
     clearInterval(recTimer); $('rec').textContent='録音開始';
@@ -240,7 +289,6 @@ function toggleRec(){
   recorder.start(); const t0=Date.now(); $('rec').textContent='録音停止';
   recTimer=setInterval(()=>{ const s=Math.floor((Date.now()-t0)/1000); $('rectime').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); },250);
 }
-
 function toggleSR(){
   if(recognition){ recognition.stop(); return; }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -252,28 +300,243 @@ function toggleSR(){
     const box=$('transcript'); box.textContent=finalText; const sp=document.createElement('span'); sp.className='interim'; sp.textContent=interim; box.appendChild(sp);
   };
   recognition.onerror=e=>{ $('srnote').textContent='エラー: '+e.error; };
-  recognition.onend=()=>{ recognition=null; $('sr').textContent='認識を開始'; };
+  recognition.onend=()=>{ recognition=null; $('sr').textContent='音声認識テストを開始'; };
   recognition.start(); $('sr').textContent='認識を停止'; $('srnote').textContent='話してみてください';
 }
 
-$('start').onclick=start;
-$('stop').onclick=()=>stopAll(false);
-$('device').onchange=()=>{ if(stream) start(); };
-['ec','ns','agc'].forEach(id=>$(id).onchange=()=>{ if(stream) start(); });
+/* ===================== カメラ ===================== */
+let camStream;
+async function startCam(){
+  showError('cam-error','');
+  stopCam(true);
+  const deviceId = $('cam-device').value && $('cam-device').value!=='default' ? {exact:$('cam-device').value} : undefined;
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({video:{deviceId, width:{ideal:1280}, height:{ideal:720}}});
+  }catch(e){
+    showError('cam-error', e.name==='NotAllowedError' ? 'カメラの使用が許可されていません。アドレスバーの鍵アイコンから許可してください。'
+      : e.name==='NotFoundError' ? 'カメラが見つかりません。接続を確認してください。'
+      : 'カメラを開始できませんでした: '+e.message);
+    return;
+  }
+  $('cam-video').srcObject=camStream;
+  await listCams();
+  const t=camStream.getVideoTracks()[0], s=t.getSettings();
+  $('cam-info').textContent = (t.label||'カメラ')+'　'+(s.width||'?')+'×'+(s.height||'?');
+  $('cam-start').textContent='再接続'; $('cam-stop').disabled=false; $('cam-snap').disabled=false;
+}
+function stopCam(keepUI){
+  if(camStream) camStream.getTracks().forEach(t=>t.stop());
+  camStream=null; $('cam-video').srcObject=null;
+  if(!keepUI){ $('cam-start').textContent='カメラを開始'; $('cam-stop').disabled=true; $('cam-snap').disabled=true; $('cam-info').textContent=''; $('snap').hidden=true; }
+}
+async function listCams(){
+  const sel=$('cam-device');
+  const cur = camStream ? camStream.getVideoTracks()[0].getSettings().deviceId : sel.value;
+  let devs=[];
+  try{ devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'); }catch(e){}
+  sel.innerHTML='';
+  if(!devs.length){ const o=document.createElement('option'); o.value=''; o.textContent='カメラが見つかりません'; sel.appendChild(o); return; }
+  devs.forEach((d,i)=>{
+    const o=document.createElement('option'); o.value=d.deviceId;
+    o.textContent=d.label || ('カメラ '+(i+1)+'（開始すると名前が出ます）');
+    if(d.deviceId===cur) o.selected=true; sel.appendChild(o);
+  });
+}
+function snapCam(){
+  const v=$('cam-video'), c=$('snap-canvas');
+  c.width=v.videoWidth; c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  $('snap').src=c.toDataURL('image/png'); $('snap').hidden=false;
+}
+
+/* ===================== スピーカー ===================== */
+async function listSpeakers(){
+  const sel=$('spk-device'); const cur=sel.value;
+  let devs=[];
+  try{ devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audiooutput'); }catch(e){}
+  sel.innerHTML='<option value="">既定の出力</option>';
+  devs.forEach((d,i)=>{
+    const o=document.createElement('option'); o.value=d.deviceId;
+    o.textContent=d.label || ('出力 '+(i+1));
+    if(d.deviceId===cur) o.selected=true; sel.appendChild(o);
+  });
+  if(!('setSinkId' in HTMLMediaElement.prototype)) $('spk-note').textContent='このブラウザは出力先の切り替えに対応していません（Chrome/Edge推奨）。音は既定のスピーカーで再生されます。';
+}
+async function playTone(sequence){
+  showError('spk-error','');
+  const audio=$('spk-audio');
+  const vol=$('spk-vol').value/100;
+  const ac=new (window.AudioContext||window.webkitAudioContext)();
+  const dest=ac.createMediaStreamDestination();
+  audio.srcObject=dest.stream;
+  const sinkId=$('spk-device').value;
+  try{
+    if(sinkId && 'setSinkId' in audio) await audio.setSinkId(sinkId);
+  }catch(e){ showError('spk-error','その出力先には切り替えられませんでした: '+e.message); }
+  try{ await audio.play(); }catch(e){ showError('spk-error','再生できませんでした: '+e.message); ac.close(); return; }
+  let t=ac.currentTime;
+  for(const step of sequence){
+    const osc=ac.createOscillator(), gain=ac.createGain(), pan=ac.createStereoPanner();
+    osc.frequency.value=step.freq||440; pan.pan.value=step.pan||0;
+    gain.gain.value=vol;
+    osc.connect(gain).connect(pan).connect(dest);
+    osc.start(t); osc.stop(t+step.dur);
+    t+=step.dur+0.15;
+  }
+  setTimeout(()=>{ audio.pause(); ac.close(); }, (t-ac.currentTime+1)*1000+200);
+}
+$('spk-test').onclick=()=>playTone([{freq:440,dur:0.8,pan:0}]);
+$('spk-lr').onclick=()=>playTone([{freq:523,dur:0.7,pan:-1},{freq:659,dur:0.7,pan:1},{freq:440,dur:0.6,pan:0}]);
+$('spk-refresh').onclick=listSpeakers;
+
+/* ===================== ネットワーク速度 ===================== */
+const SPEED_HOST='https://speed.cloudflare.com';
+function setBar(barId,valId,pct,text){ $(barId).style.width=Math.max(2,Math.min(100,pct))+'%'; $(valId).textContent=text; }
+async function pingTest(){
+  const times=[];
+  for(let i=0;i<5;i++){
+    const t0=performance.now();
+    try{ await fetch(SPEED_HOST+'/__down?bytes=0',{cache:'no-store',mode:'cors'}); times.push(performance.now()-t0); }catch(e){}
+  }
+  return times;
+}
+async function downloadTest(onProgress){
+  const t0=performance.now();
+  const resp=await fetch(SPEED_HOST+'/__down?bytes=30000000',{cache:'no-store',mode:'cors'});
+  const reader=resp.body.getReader();
+  let received=0;
+  while(true){
+    const {done,value}=await reader.read();
+    if(done) break;
+    received+=value.length;
+    const elapsed=(performance.now()-t0)/1000;
+    onProgress(received,elapsed);
+    if(elapsed>6){ reader.cancel(); break; }
+  }
+  const elapsed=(performance.now()-t0)/1000;
+  return (received*8)/elapsed/1e6;
+}
+async function uploadTest(onProgress){
+  const bytes=6000000;
+  const data=new Uint8Array(bytes);
+  const t0=performance.now();
+  await fetch(SPEED_HOST+'/__up',{method:'POST',body:data,cache:'no-store',mode:'cors'});
+  const elapsed=(performance.now()-t0)/1000;
+  onProgress(bytes,elapsed);
+  return (bytes*8)/elapsed/1e6;
+}
+function verdict(down,up,pingAvg){
+  const probs=[];
+  if(pingAvg>150) probs.push('応答に遅れがあり、映像や音声が乱れやすい状態です');
+  if(down<1.5) probs.push('ダウンロード速度が不足気味です（相手の映像が止まりやすい）');
+  if(up<1.5) probs.push('アップロード速度が不足気味です（自分の映像が相手側で乱れやすい）');
+  if(!probs.length) return {cls:'ok', text:'通話には十分な回線状態です'};
+  if(down<1 || up<1 || pingAvg>300) return {cls:'bad', text:probs.join('／')};
+  return {cls:'warn', text:probs.join('／')+'。画質を下げると安定しやすいです'};
+}
+async function runNetTest(){
+  $('net-start').disabled=true; $('net-verdict').hidden=true;
+  $('net-status').textContent='応答速度を計測中…';
+  setBar('bar-ping','val-ping',0,'—'); setBar('bar-down','val-down',0,'—'); setBar('bar-up','val-up',0,'—');
+  const times=await pingTest();
+  const pingAvg = times.length ? times.reduce((a,b)=>a+b,0)/times.length : null;
+  if(pingAvg==null){
+    $('net-status').textContent='計測サーバーに接続できませんでした。時間をおいて試してください。';
+    $('net-start').disabled=false; return;
+  }
+  setBar('bar-ping','val-ping', 100-Math.min(100,pingAvg/3), pingAvg.toFixed(0)+' ms');
+
+  $('net-status').textContent='ダウンロード速度を計測中…';
+  const down=await downloadTest((received,elapsed)=>{
+    const mbps=(received*8)/elapsed/1e6;
+    setBar('bar-down','val-down', mbps/0.5, mbps.toFixed(1)+' Mbps');
+  });
+  setBar('bar-down','val-down', down/0.5, down.toFixed(1)+' Mbps');
+
+  $('net-status').textContent='アップロード速度を計測中…';
+  const up=await uploadTest((sent,elapsed)=>{});
+  setBar('bar-up','val-up', up/0.5, up.toFixed(1)+' Mbps');
+
+  $('net-status').textContent='完了';
+  const v=verdict(down,up,pingAvg);
+  const el=$('net-verdict'); el.hidden=false; el.className='verdict '+v.cls; el.textContent=v.text;
+  $('net-start').disabled=false;
+}
+$('net-start').onclick=runNetTest;
+
+/* ===================== 並び順 ===================== */
+function updateOrderButtons(){
+  const panels=Array.from(document.querySelectorAll('.panel'));
+  panels.forEach((p,i)=>{
+    const up=p.querySelector('[data-move="-1"]'), down=p.querySelector('[data-move="1"]');
+    if(up) up.disabled = (i===0);
+    if(down) down.disabled = (i===panels.length-1);
+  });
+}
+function saveOrder(){
+  try{
+    const order=Array.from(document.querySelectorAll('.panel')).map(p=>p.dataset.key);
+    localStorage.setItem('callcheck-order', JSON.stringify(order));
+  }catch(e){}
+}
+function loadOrder(){
+  try{
+    const order=JSON.parse(localStorage.getItem('callcheck-order')||'null');
+    if(!Array.isArray(order)) return;
+    const wrap=document.querySelector('.wrap');
+    order.forEach(key=>{
+      const el=document.querySelector('.panel[data-key="'+key+'"]');
+      if(el) wrap.appendChild(el);
+    });
+  }catch(e){}
+}
+function moveSection(key,dir){
+  const el=document.querySelector('.panel[data-key="'+key+'"]');
+  if(!el) return;
+  const sib = dir<0 ? el.previousElementSibling : el.nextElementSibling;
+  if(!sib || !sib.classList.contains('panel')) return;
+  if(dir<0) el.parentNode.insertBefore(el,sib); else el.parentNode.insertBefore(sib,el);
+  saveOrder(); updateOrderButtons();
+}
+loadOrder();
+document.querySelectorAll('.order-btns button').forEach(b=>{
+  b.onclick=()=>moveSection(b.closest('.panel').dataset.key, parseInt(b.dataset.move,10));
+});
+updateOrderButtons();
+
+/* ===================== 配線とイベント ===================== */
+$('start').onclick=startMic; $('stop').onclick=()=>stopMic(false);
+$('device').onchange=()=>{ if(micStream) startMic(); };
+['ec','ns','agc'].forEach(id=>$(id).onchange=()=>{ if(micStream) startMic(); });
 $('monitor').onchange=()=>{ if(monitorGain) monitorGain.gain.value=$('monitor').checked?1:0; };
 $('resetpk').onclick=()=>{ peakDb=-Infinity; clipCount=0; $('pk').textContent='-∞'; $('clip').textContent='0'; };
-$('rec').onclick=toggleRec;
-$('sr').onclick=toggleSR;
+$('rec').onclick=toggleRec; $('sr').onclick=toggleSR;
+
+$('cam-start').onclick=startCam; $('cam-stop').onclick=()=>stopCam(false);
+$('cam-device').onchange=()=>{ if(camStream) startCam(); };
+$('cam-snap').onclick=snapCam;
+
 let inFrame=false; try{ inFrame = window.top !== window.self; }catch(e){ inFrame=true; }
 if(inFrame){
-  showError('プレビュー画面の中ではマイクが使えません。ファイルをダウンロードするか、GitHub PagesのURLをブラウザで直接開いてください。');
+  showError('error','プレビュー画面の中ではマイクが使えません。ファイルをダウンロードするか、GitHub PagesのURLをブラウザで直接開いてください。');
+  showError('cam-error','プレビュー画面の中ではカメラが使えません。GitHub PagesのURLをブラウザで直接開いてください。');
 }else if(!window.isSecureContext){
-  showError('このURLではマイクが使えません。https:// で始まるURLか、ダウンロードしたファイルを直接開いてください。');
+  showError('error','このURLではマイクが使えません。https:// で始まるURLか、ダウンロードしたファイルを直接開いてください。');
+  showError('cam-error','このURLではカメラが使えません。https:// で始まるURLで開いてください。');
 }else if(!navigator.mediaDevices?.getUserMedia){
-  showError('このブラウザではマイクが使えません。ChromeかEdgeで開いてください。');
+  showError('error','このブラウザではマイクが使えません。ChromeかEdgeで開いてください。');
+  showError('cam-error','このブラウザではカメラが使えません。ChromeかEdgeで開いてください。');
 }else{
-  listDevices();
-  navigator.mediaDevices.addEventListener('devicechange', listDevices);
+  listMics(); listCams(); listSpeakers();
+  navigator.mediaDevices.addEventListener('devicechange', ()=>{ listMics(); listCams(); listSpeakers(); });
+  const labels={granted:'許可済み',denied:'ブロック中',prompt:'まだ聞かれていない'};
+  navigator.permissions?.query({name:'microphone'}).then(p=>{
+    const show=()=>{
+      if(!micStream) $('info').innerHTML='<dt>状態</dt><dd>未接続</dd><dt>ブラウザの許可</dt><dd>'+(labels[p.state]||p.state)+'</dd>';
+      if(p.state==='denied') showError('error','このサイトのマイクがブロックされています。アドレスバー左の設定アイコン →「マイク」を「許可」に変えて、ページを再読み込みしてください。');
+    };
+    show(); p.onchange=show;
+  }).catch(()=>{});
 }
 </script>
 </body>
