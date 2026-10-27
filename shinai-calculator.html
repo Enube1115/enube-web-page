@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>内申点計算ツール</title>
+<meta name="apple-mobile-web-app-title" content="内申点計算">
+<style>
+  :root {
+    --bg: #000; --panel: #121212; --fg: #fff;
+    --line: rgba(255,255,255,0.18); --line-soft: rgba(255,255,255,0.12);
+    --muted: rgba(255,255,255,0.55); --muted2: rgba(255,255,255,0.78);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    color: var(--fg);
+  }
+  .wrap {
+    max-width: 560px; margin: 0 auto;
+    padding: 16px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  }
+  h1 { font-size: 22px; margin: 4px 0 2px; color: var(--fg); letter-spacing: 0.02em; }
+  .sub { margin: 0 0 16px; font-size: 13px; opacity: 0.6; }
+
+  /* 注意書きは結果の数字より先に目に入るよう、白枠で目立たせる */
+  .notice {
+    border: 2px solid var(--fg); border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 16px;
+    font-size: 13px; line-height: 1.7; font-weight: 700;
+  }
+  .notice b { display: block; font-size: 12px; letter-spacing: 0.08em; margin-bottom: 4px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 10px; color: var(--muted2); }
+
+  label, .label { display: block; font-size: 12px; opacity: 0.75; margin: 12px 0 4px; }
+  .panel h2 + .label { margin-top: 0; }
+  .hint { font-size: 11px; opacity: 0.55; margin: 6px 0 0; line-height: 1.5; }
+
+  select {
+    width: 100%; padding: 8px 10px; font-size: 16px;
+    background: var(--bg); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 10px;
+    font-family: inherit;
+  }
+  select:focus { outline: none; border-color: var(--fg); }
+
+  /* 方式の切り替え・学年タブに使う区切りボタン */
+  .seg { display: flex; gap: 4px; }
+  .seg button {
+    flex: 1; min-width: 0; padding: 9px 0; font-size: 13px; font-weight: 700;
+    background: rgba(255,255,255,0.06); color: var(--muted);
+    border: 1px solid var(--line-soft); border-radius: 8px;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .seg button.on { background: var(--fg); color: #000; border-color: var(--fg); }
+  .seg button small { font-size: 10px; font-weight: 400; }
+
+  .weights { display: flex; gap: 8px; }
+  .weights > div { flex: 1; min-width: 0; }
+  .weights label { margin-top: 0; }
+  #weightBox { display: none; }
+  #weightBox.show { display: block; }
+
+  /* 結果 */
+  .result { text-align: center; padding: 18px 16px 14px; }
+  .result .cap { font-size: 12px; color: var(--muted2); font-weight: 700; }
+  .big { font-size: 52px; font-weight: 800; line-height: 1.1; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 18px; font-weight: 700; opacity: 0.6; margin-left: 4px; }
+  .progress { font-size: 12px; opacity: 0.6; }
+  .bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin: 12px 0 0; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--fg); width: 0; transition: width .2s; }
+
+  .summary { display: flex; gap: 8px; margin-bottom: 16px; }
+  .summary div {
+    flex: 1; text-align: center; padding: 8px 4px;
+    background: var(--panel); border: 1px solid var(--line-soft); border-radius: 10px;
+    font-size: 11px; opacity: 0.85;
+  }
+  .summary b { display: block; font-size: 18px; margin-bottom: 2px; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  table.breakdown { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .breakdown th, .breakdown td { padding: 8px 4px; border-bottom: 1px solid var(--line-soft); text-align: right; }
+  .breakdown th:first-child, .breakdown td:first-child { text-align: left; }
+  .breakdown th { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .breakdown tr.total td { font-weight: 800; border-bottom: none; }
+  .breakdown .dim { opacity: 0.45; }
+  #breakdownPanel { display: none; }
+  #breakdownPanel.show { display: block; }
+
+  /* 評定入力 */
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .toolbar h2 { margin: 0; }
+  #gradeSeg { margin-bottom: 12px; }
+  .group { font-size: 11px; color: var(--muted); font-weight: 700; margin: 14px 0 6px; letter-spacing: 0.04em; }
+  .group:first-child { margin-top: 0; }
+  .subj { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .subj .name { width: 72px; flex-shrink: 0; font-size: 14px; font-weight: 700; }
+  .subj .name small { display: block; font-size: 10px; font-weight: 400; opacity: 0.55; }
+  .scores { flex: 1; display: flex; gap: 4px; min-width: 0; }
+  .scores button {
+    flex: 1; min-width: 0; height: 42px; font-size: 16px; font-weight: 700;
+    background: rgba(255,255,255,0.06); color: var(--muted);
+    border: 1px solid var(--line-soft); border-radius: 8px;
+    cursor: pointer; font-family: inherit;
+  }
+  .scores button.on { background: var(--fg); color: #000; border-color: var(--fg); }
+
+  .del {
+    flex-shrink: 0; background: none; border: 1px solid var(--line);
+    color: var(--muted); font-size: 12px; padding: 4px 10px; border-radius: 12px;
+    cursor: pointer; font-family: inherit;
+  }
+  .del:active { background: rgba(255,255,255,0.12); }
+  .del.confirm { border-color: var(--fg); color: #000; background: var(--fg); font-weight: 700; }
+
+  /* 入力中も合計が見えるよう画面下に固定 */
+  .sticky {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.92); border-top: 1px solid var(--line);
+    padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 10px);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .sticky .in {
+    max-width: 528px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  }
+  .sticky .lbl { font-size: 12px; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sticky .val { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sticky .val small { font-size: 13px; opacity: 0.6; font-weight: 700; margin-left: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>内申点計算ツール</h1>
+  <p class="sub">通知表の評定（1〜5）をタップすると合計がすぐに出ます。入力した評定はこの端末のブラウザに保存されます。</p>
+
+  <div class="notice" role="note">
+    <b>ご注意</b>
+    この結果は一般的な計算方法による目安です。実際の制度は都道府県ごとに異なります。正式な内申点は、学校の先生か、お住まいの都道府県の教育委員会の資料で確認してください。
+  </div>
+
+  <div class="panel">
+    <h2>計算方法</h2>
+    <div class="label">点数の出し方</div>
+    <div class="seg" id="methodSeg"></div>
+    <p class="hint" id="methodHint"></p>
+
+    <div class="label">使う学年</div>
+    <div class="seg" id="scopeSeg"></div>
+    <p class="hint" id="scopeHint"></p>
+
+    <div id="weightBox">
+      <div class="label">学年ごとの倍率</div>
+      <div class="weights">
+        <div><label for="w1">1年</label><select id="w1"></select></div>
+        <div><label for="w2">2年</label><select id="w2"></select></div>
+        <div><label for="w3">3年</label><select id="w3"></select></div>
+      </div>
+      <p class="hint">例：1年×1・2年×1・3年×2 など。倍率を0にした学年は計算に入りません。</p>
+    </div>
+  </div>
+
+  <div class="panel result">
+    <div class="cap" id="resultCap">内申点の目安</div>
+    <div class="big"><span id="total">0</span><small id="max">/ 45</small></div>
+    <div class="progress" id="progress"></div>
+    <div class="bar"><i id="barFill"></i></div>
+  </div>
+
+  <div class="summary">
+    <div><b id="sum9">0</b>9教科合計</div>
+    <div><b id="sum5">0</b>5教科</div>
+    <div><b id="sum4">0</b>実技4教科</div>
+    <div><b id="avg">-</b>平均評定</div>
+  </div>
+
+  <div class="panel" id="breakdownPanel">
+    <h2>学年ごとの内訳</h2>
+    <table class="breakdown">
+      <thead><tr><th>学年</th><th>評定合計</th><th>換算点</th><th>倍率</th><th>点数</th></tr></thead>
+      <tbody id="breakdownBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <h2 id="inputTitle">評定を入力</h2>
+      <button type="button" class="del" id="clear">この学年をリセット</button>
+    </div>
+    <div class="seg" id="gradeSeg"></div>
+    <div id="subjects"></div>
+    <p class="hint" id="inputHint">選んだ数字をもう一度タップすると未入力に戻せます。</p>
+  </div>
+</div>
+
+<div class="sticky">
+  <div class="in">
+    <div class="lbl" id="stickyLbl">内申点の目安</div>
+    <div class="val"><span id="stickyTotal">0</span><small id="stickyMax">/ 45</small></div>
+  </div>
+</div>
+
+<script>
+  const SUBJECTS = [
+    { name: '国語', core: true }, { name: '数学', core: true }, { name: '英語', core: true },
+    { name: '理科', core: true }, { name: '社会', core: true },
+    { name: '音楽', core: false }, { name: '美術', core: false },
+    { name: '保健体育', core: false }, { name: '技術家庭', core: false },
+  ];
+  const METHODS = {
+    plain: {
+      name: '9教科合計', short: '45点満点',
+      hint: '9教科の評定をそのまま足します（9〜45点）。',
+    },
+    double: {
+      name: '実技2倍', short: '90点満点',
+      hint: '9教科合計に実技4教科の合計をもう一度足します（実技が2倍・45〜90点）。',
+    },
+  };
+  const SCOPES = {
+    g3: { name: '3年のみ', hint: '3年生の2学期（または後期）の評定だけを使う方式です。3年のタブに入力してください。' },
+    all: { name: '1〜3年', hint: '各学年の点数に倍率をかけて合計する方式です。学年のタブを切り替えてそれぞれ入力してください。' },
+  };
+  const WEIGHT_CHOICES = [0, 1, 2, 3, 4, 5];
+  const STORAGE_KEY = 'shinaiCalc.v1';
+
+  const $ = id => document.getElementById(id);
+
+  function emptyGrades() {
+    return { 1: Array(9).fill(0), 2: Array(9).fill(0), 3: Array(9).fill(0) };
+  }
+  function load() {
+    const state = { grades: emptyGrades(), method: 'double', scope: 'g3', weights: [1, 1, 2], tab: 3 };
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!data) return state;
+      for (const g of [1, 2, 3]) {
+        const arr = data.grades && data.grades[g];
+        if (Array.isArray(arr)) state.grades[g] = SUBJECTS.map((_, i) => [1, 2, 3, 4, 5].includes(arr[i]) ? arr[i] : 0);
+      }
+      if (METHODS[data.method]) state.method = data.method;
+      if (SCOPES[data.scope]) state.scope = data.scope;
+      if (Array.isArray(data.weights) && data.weights.length === 3 && data.weights.every(w => WEIGHT_CHOICES.includes(w))) {
+        state.weights = data.weights;
+      }
+      if ([1, 2, 3].includes(data.tab)) state.tab = data.tab;
+    } catch (e) {}
+    return state;
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  const state = load();
+
+  // 1学年分の集計。未入力（0）の教科は合計に入れない
+  function gradeStats(scores) {
+    const filled = scores.filter(v => v > 0);
+    const sum9 = filled.reduce((a, b) => a + b, 0);
+    const sum5 = scores.reduce((a, v, i) => a + (SUBJECTS[i].core ? v : 0), 0);
+    const sum4 = sum9 - sum5;
+    const point = state.method === 'double' ? sum9 + sum4 : sum9;
+    return { filled: filled.length, sum9, sum5, sum4, point };
+  }
+  const perGradeMax = () => state.method === 'double' ? 90 : 45;
+  const fmt = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
+
+  // 3年のみ方式では3年タブだけを使うので、他の学年は選べないようにする
+  const visibleTabs = () => state.scope === 'g3' ? [3] : [1, 2, 3];
+
+  function renderSettings() {
+    $('methodSeg').innerHTML = Object.entries(METHODS).map(([key, m]) =>
+      `<button type="button" data-m="${key}" class="${key === state.method ? 'on' : ''}">${m.name} <small>${m.short}</small></button>`
+    ).join('');
+    $('methodHint').textContent = METHODS[state.method].hint;
+    $('scopeSeg').innerHTML = Object.entries(SCOPES).map(([key, s]) =>
+      `<button type="button" data-s="${key}" class="${key === state.scope ? 'on' : ''}">${s.name}</button>`
+    ).join('');
+    $('scopeHint').textContent = SCOPES[state.scope].hint;
+    $('weightBox').classList.toggle('show', state.scope === 'all');
+    [1, 2, 3].forEach((g, i) => {
+      $('w' + g).innerHTML = WEIGHT_CHOICES.map(w =>
+        `<option value="${w}"${w === state.weights[i] ? ' selected' : ''}>×${w}</option>`
+      ).join('');
+    });
+  }
+
+  function renderInputs() {
+    if (!visibleTabs().includes(state.tab)) state.tab = 3;
+    const tabs = visibleTabs();
+    $('gradeSeg').style.display = tabs.length > 1 ? '' : 'none';
+    $('gradeSeg').innerHTML = tabs.map(g => {
+      const st = gradeStats(state.grades[g]);
+      return `<button type="button" data-g="${g}" class="${g === state.tab ? 'on' : ''}">${g}年 <small>${st.filled}/9</small></button>`;
+    }).join('');
+    $('inputTitle').textContent = state.scope === 'g3' ? '3年の評定を入力' : `${state.tab}年の評定を入力`;
+
+    const scores = state.grades[state.tab];
+    let html = '';
+    SUBJECTS.forEach((s, i) => {
+      if (i === 0) html += '<div class="group">5教科</div>';
+      if (i === 5) html += `<div class="group">実技4教科${state.method === 'double' ? '（2倍で計算）' : ''}</div>`;
+      const btns = [1, 2, 3, 4, 5].map(v =>
+        `<button type="button" data-i="${i}" data-v="${v}" class="${scores[i] === v ? 'on' : ''}" aria-label="${s.name} ${v}">${v}</button>`
+      ).join('');
+      html += `<div class="subj"><div class="name">${s.name}</div><div class="scores">${btns}</div></div>`;
+    });
+    $('subjects').innerHTML = html;
+  }
+
+  function renderResult() {
+    const pmax = perGradeMax();
+    let total, max, shown, progress;
+
+    if (state.scope === 'g3') {
+      shown = gradeStats(state.grades[3]);
+      total = shown.point;
+      max = pmax;
+      progress = shown.filled === 9 ? '9教科すべて入力済み' : `入力済み ${shown.filled} / 9教科（未入力は0点として計算）`;
+      $('resultCap').textContent = `内申点の目安（3年・${METHODS[state.method].short}）`;
+      $('breakdownPanel').classList.remove('show');
+    } else {
+      const rows = [1, 2, 3].map((g, i) => ({ g, w: state.weights[i], st: gradeStats(state.grades[g]) }));
+      total = rows.reduce((a, r) => a + r.st.point * r.w, 0);
+      max = rows.reduce((a, r) => a + pmax * r.w, 0);
+      // 下の4つの数字は倍率をかける前の、3学年分の評定の合計
+      shown = rows.reduce((a, r) => r.w ? {
+        filled: a.filled + r.st.filled, sum9: a.sum9 + r.st.sum9, sum5: a.sum5 + r.st.sum5, sum4: a.sum4 + r.st.sum4,
+      } : a, { filled: 0, sum9: 0, sum5: 0, sum4: 0 });
+      const used = rows.filter(r => r.w);
+      const need = used.length * 9;
+      progress = !used.length ? '倍率がすべて0です'
+        : shown.filled === need ? '必要な学年はすべて入力済み'
+        : `入力済み ${shown.filled} / ${need}教科（未入力は0点として計算）`;
+      $('resultCap').textContent = `内申点の目安（1〜3年・倍率 ${state.weights.join(':')}）`;
+
+      $('breakdownBody').innerHTML = rows.map(r => `
+        <tr class="${r.w ? '' : 'dim'}">
+          <td>${r.g}年</td><td>${r.st.sum9}</td><td>${r.st.point} / ${pmax}</td><td>×${r.w}</td><td>${r.st.point * r.w}</td>
+        </tr>`).join('') + `
+        <tr class="total"><td>合計</td><td></td><td></td><td></td><td>${total} / ${max}</td></tr>`;
+      $('breakdownPanel').classList.add('show');
+    }
+
+    $('total').textContent = total;
+    $('max').textContent = `/ ${max}`;
+    $('progress').textContent = progress;
+    $('barFill').style.width = max ? `${Math.min(100, total / max * 100)}%` : '0';
+    $('sum9').textContent = shown.sum9;
+    $('sum5').textContent = shown.sum5;
+    $('sum4').textContent = shown.sum4;
+    $('avg').textContent = shown.filled ? fmt(shown.sum9 / shown.filled) : '-';
+
+    $('stickyLbl').textContent = $('resultCap').textContent;
+    $('stickyTotal').textContent = total;
+    $('stickyMax').textContent = `/ ${max}`;
+  }
+
+  function render() {
+    renderInputs();
+    renderResult();
+  }
+
+  $('methodSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.method = btn.dataset.m;
+    save(); renderSettings(); render();
+  });
+  $('scopeSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.scope = btn.dataset.s;
+    save(); renderSettings(); render();
+  });
+  [1, 2, 3].forEach((g, i) => {
+    $('w' + g).addEventListener('change', e => {
+      state.weights[i] = Number(e.target.value);
+      save(); render();
+    });
+  });
+  $('gradeSeg').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.tab = Number(btn.dataset.g);
+    save(); render();
+  });
+  $('subjects').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-v]');
+    if (!btn) return;
+    const i = Number(btn.dataset.i), v = Number(btn.dataset.v);
+    const scores = state.grades[state.tab];
+    // 同じ数字をもう一度押したら未入力に戻す
+    scores[i] = scores[i] === v ? 0 : v;
+    save(); render();
+  });
+
+  // 誤タップ防止のため、リセットは2回タップで確定
+  $('clear').addEventListener('click', e => {
+    const btn = e.currentTarget;
+    if (btn.classList.contains('confirm')) {
+      state.grades[state.tab] = Array(9).fill(0);
+      btn.classList.remove('confirm');
+      btn.textContent = 'この学年をリセット';
+      save(); render();
+    } else {
+      btn.classList.add('confirm');
+      btn.textContent = 'もう一度でリセット';
+      setTimeout(() => { btn.classList.remove('confirm'); btn.textContent = 'この学年をリセット'; }, 3000);
+    }
+  });
+
+  renderSettings();
+  render();
+</script>
+</body>
+</html>
