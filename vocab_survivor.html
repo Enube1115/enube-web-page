@@ -259,6 +259,8 @@
   .ranking-table td:nth-child(2), .ranking-table th:nth-child(2) { text-align: left; word-break: break-all; }
   .ranking-table td:nth-child(n+3), .ranking-table th:nth-child(n+3) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .ranking-table tr.me td { color: #ffe066; font-weight: 700; background: rgba(255,224,102,0.1); }
+  .ranking-table tr.rank-sep td { padding: 14px 6px 4px; border-top: 1px dashed rgba(255,255,255,0.35); border-bottom: none; font-size: 11px; opacity: 0.6; text-align: left; }
+  .ranking-table td.rank-none { text-align: center; opacity: 0.7; padding: 10px 6px; }
   #rankingRetryBtn, #rankingCloseBtn {
     margin-top: 6px; padding: 10px 32px; font-size: 15px; font-weight: 700;
     border: none; border-radius: 24px; background: #4dd0ff; color: #0a0a12;
@@ -682,6 +684,8 @@
       rankingLoading: '読み込み中…',
       rankingError: 'ランキングを読み込めませんでした',
       rankingEmpty: 'まだ記録がありません',
+      rankingYourBest: 'あなたの最高記録',
+      rankingNoMyRecord: 'まだ記録がありません',
       rankingNotConfigured: 'オンラインランキングは未設定です',
       rankingRetry: '再読み込み',
       rankingClose: '閉じる',
@@ -860,6 +864,8 @@
       rankingLoading: 'Loading…',
       rankingError: 'Could not load the ranking',
       rankingEmpty: 'No records yet',
+      rankingYourBest: 'Your best',
+      rankingNoMyRecord: 'No record yet',
       rankingNotConfigured: 'Online ranking is not set up',
       rankingRetry: 'Retry',
       rankingClose: 'Close',
@@ -3273,7 +3279,7 @@
   // ---------- online ranking ----------
   // Supabase REST via fetch. Any failure only shows a small message; local high scores are unaffected.
   const RANK_NAME_MAX = 12;
-  const RANK_LIMIT = 50;
+  const RANK_LIMIT = 5;
   const RANK_TIMEOUT_MS = 8000;
   function rankingEnabled(){
     if (typeof CONFIG === 'undefined') return false;
@@ -3350,6 +3356,27 @@
       '?select=name,survival_time,level&pack_id=eq.' + encodeURIComponent(packId) +
       '&order=survival_time.desc&limit=' + RANK_LIMIT)
       .then(res => res.json());
+  }
+  // The player's best row in this pack and its rank (rows with a longer time + 1).
+  // Resolves null when there is no nickname or no record yet.
+  function fetchMyRank(packId){
+    const name = getPlayerName();
+    if (!name) return Promise.resolve(null);
+    const base = encodeURIComponent(CONFIG.RANKING_TABLE) + '?pack_id=eq.' + encodeURIComponent(packId);
+    return rankingFetch(base + '&select=name,survival_time,level&name=eq.' + encodeURIComponent(name) +
+      '&order=survival_time.desc&limit=1')
+      .then(res => res.json())
+      .then(rows => {
+        const best = Array.isArray(rows) ? rows[0] : null;
+        if (!best) return null;
+        return rankingFetch(base + '&select=survival_time&survival_time=gt.' + Number(best.survival_time),
+          { method: 'HEAD', headers: { Prefer: 'count=exact' } })
+          .then(res => {
+            const above = Number((res.headers.get('Content-Range') || '').split('/')[1]);
+            if (!Number.isFinite(above)) throw new Error('no count');
+            return Object.assign({ rank: above + 1 }, best);
+          });
+      });
   }
   function getPlayerName(){
     const n = lsGet('vs_name', '');
@@ -3462,7 +3489,8 @@
     msg.textContent = text;
     body.appendChild(msg);
   }
-  function renderRankingTable(rows){
+  // mine: the player's best ({rank, ...row}), null if none, undefined if it couldn't be loaded
+  function renderRankingTable(rows, mine){
     const myName = getPlayerName();
     const table = document.createElement('table');
     table.className = 'ranking-table';
@@ -3472,12 +3500,28 @@
       th.textContent = t(key);
       head.appendChild(th);
     });
-    rows.forEach((r, i) => {
+    const addRow = (rank, r, isMe) => {
       const tr = table.insertRow();
-      if (myName && r.name === myName) tr.className = 'me';
-      [String(i + 1), String(r.name || ''), formatSurvival(Number(r.survival_time) || 0), 'Lv.' + (r.level | 0)]
+      if (isMe) tr.className = 'me';
+      [String(rank), String(r.name || ''), formatSurvival(Number(r.survival_time) || 0), 'Lv.' + (r.level | 0)]
         .forEach(text => { tr.insertCell().textContent = text; });
-    });
+    };
+    rows.forEach((r, i) => addRow(i + 1, r, myName && r.name === myName));
+    // outside the top list: a divider, then the player's own best (or a "no record" note)
+    if (mine !== undefined && !rows.some(r => myName && r.name === myName)){
+      const sep = table.insertRow();
+      sep.className = 'rank-sep';
+      const sepCell = sep.insertCell();
+      sepCell.colSpan = 4;
+      sepCell.textContent = t('rankingYourBest');
+      if (mine) addRow(mine.rank, mine, true);
+      else {
+        const none = table.insertRow().insertCell();
+        none.colSpan = 4;
+        none.className = 'rank-none';
+        none.textContent = t('rankingNoMyRecord');
+      }
+    }
     const body = document.getElementById('rankingBody');
     body.innerHTML = '';
     body.appendChild(table);
@@ -3491,10 +3535,11 @@
 
     setRankingMessage(t('rankingLoading'));
     const reqId = ++rankingRequestId;
-    fetchRanking(packId).then(rows => {
+    // the player's own row is optional: if it fails, the top list still shows
+    Promise.all([fetchRanking(packId), fetchMyRank(packId).catch(() => undefined)]).then(([rows, mine]) => {
       if (reqId !== rankingRequestId) return;
       if (!Array.isArray(rows) || rows.length === 0){ setRankingMessage(t('rankingEmpty')); return; }
-      renderRankingTable(rows);
+      renderRankingTable(rows, mine);
     }).catch(() => {
       if (reqId !== rankingRequestId) return;
       setRankingMessage(t('rankingError'), true);
