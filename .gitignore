@@ -1,0 +1,4 @@
+.DS_Store
+*.py
+*.py.save
+todos.json
