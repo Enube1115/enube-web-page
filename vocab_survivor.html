@@ -3280,6 +3280,8 @@
   // Supabase REST via fetch. Any failure only shows a small message; local high scores are unaffected.
   const RANK_NAME_MAX = 12;
   const RANK_LIMIT = 5;
+  // every row of a pack is fetched and narrowed to one best per player in JS (assumes few records)
+  const RANK_FETCH_MAX = 1000;
   const RANK_TIMEOUT_MS = 8000;
   function rankingEnabled(){
     if (typeof CONFIG === 'undefined') return false;
@@ -3354,29 +3356,19 @@
   function fetchRanking(packId){
     return rankingFetch(encodeURIComponent(CONFIG.RANKING_TABLE) +
       '?select=name,survival_time,level&pack_id=eq.' + encodeURIComponent(packId) +
-      '&order=survival_time.desc&limit=' + RANK_LIMIT)
+      '&order=survival_time.desc&limit=' + RANK_FETCH_MAX)
       .then(res => res.json());
   }
-  // The player's best row in this pack and its rank (rows with a longer time + 1).
-  // Resolves null when there is no nickname or no record yet.
-  function fetchMyRank(packId){
-    const name = getPlayerName();
-    if (!name) return Promise.resolve(null);
-    const base = encodeURIComponent(CONFIG.RANKING_TABLE) + '?pack_id=eq.' + encodeURIComponent(packId);
-    return rankingFetch(base + '&select=name,survival_time,level&name=eq.' + encodeURIComponent(name) +
-      '&order=survival_time.desc&limit=1')
-      .then(res => res.json())
-      .then(rows => {
-        const best = Array.isArray(rows) ? rows[0] : null;
-        if (!best) return null;
-        return rankingFetch(base + '&select=survival_time&survival_time=gt.' + Number(best.survival_time),
-          { method: 'HEAD', headers: { Prefer: 'count=exact' } })
-          .then(res => {
-            const above = Number((res.headers.get('Content-Range') || '').split('/')[1]);
-            if (!Number.isFinite(above)) throw new Error('no count');
-            return Object.assign({ rank: above + 1 }, best);
-          });
-      });
+  // rows come sorted by time, so the first row seen for a name is that player's best
+  // (players are told apart by nickname only)
+  function bestPerPlayer(rows){
+    const seen = new Set();
+    return rows.filter(r => {
+      const name = String(r.name || '');
+      if (seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    });
   }
   function getPlayerName(){
     const n = lsGet('vs_name', '');
@@ -3489,7 +3481,7 @@
     msg.textContent = text;
     body.appendChild(msg);
   }
-  // mine: the player's best ({rank, ...row}), null if none, undefined if it couldn't be loaded
+  // rows: one best per player, sorted. mine: the player's best ({rank, ...row}) or null if none
   function renderRankingTable(rows, mine){
     const myName = getPlayerName();
     const table = document.createElement('table');
@@ -3508,7 +3500,7 @@
     };
     rows.forEach((r, i) => addRow(i + 1, r, myName && r.name === myName));
     // outside the top list: a divider, then the player's own best (or a "no record" note)
-    if (mine !== undefined && !rows.some(r => myName && r.name === myName)){
+    if (!rows.some(r => myName && r.name === myName)){
       const sep = table.insertRow();
       sep.className = 'rank-sep';
       const sepCell = sep.insertCell();
@@ -3535,11 +3527,14 @@
 
     setRankingMessage(t('rankingLoading'));
     const reqId = ++rankingRequestId;
-    // the player's own row is optional: if it fails, the top list still shows
-    Promise.all([fetchRanking(packId), fetchMyRank(packId).catch(() => undefined)]).then(([rows, mine]) => {
+    fetchRanking(packId).then(rows => {
       if (reqId !== rankingRequestId) return;
       if (!Array.isArray(rows) || rows.length === 0){ setRankingMessage(t('rankingEmpty')); return; }
-      renderRankingTable(rows, mine);
+      const best = bestPerPlayer(rows);
+      const myName = getPlayerName();
+      const myIndex = myName ? best.findIndex(r => r.name === myName) : -1;
+      const mine = myIndex < 0 ? null : Object.assign({ rank: myIndex + 1 }, best[myIndex]);
+      renderRankingTable(best.slice(0, RANK_LIMIT), mine);
     }).catch(() => {
       if (reqId !== rankingRequestId) return;
       setRankingMessage(t('rankingError'), true);
