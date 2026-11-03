@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HARBOUR GP — 港町ストリートレース</title>
+<style>
+  :root { --hud: rgba(8, 10, 14, 0.72); --line: rgba(255,255,255,0.14); --accent: #ff3b30; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: "Helvetica Neue", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif; color: #fff; }
+  canvas#view { display: block; width: 100vw; height: 100vh; }
+  .hud { position: fixed; pointer-events: none; font-variant-numeric: tabular-nums; }
+  .panel { background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; backdrop-filter: blur(6px); }
+  #tl { top: 16px; left: 16px; display: flex; gap: 10px; }
+  #tl .big { font-size: 34px; font-weight: 800; letter-spacing: 0.02em; line-height: 1; }
+  #tl .lab { font-size: 11px; opacity: 0.6; letter-spacing: 0.14em; margin-bottom: 4px; }
+  #times { top: 16px; left: 50%; transform: translateX(-50%); text-align: center; min-width: 220px; }
+  #times .cur { font-size: 26px; font-weight: 700; }
+  #times .sub { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+  #board { top: 92px; left: 16px; font-size: 12px; width: 210px; padding: 8px 10px; }
+  #board .row { display: flex; gap: 6px; align-items: center; padding: 2px 0; opacity: 0.9; }
+  #board .row.me { color: #000; background: #fff; border-radius: 4px; padding: 2px 4px; margin: 0 -4px; font-weight: 700; }
+  #board .sw { width: 4px; height: 12px; border-radius: 2px; }
+  #board .p { width: 18px; text-align: right; opacity: 0.7; }
+  #board .gap { margin-left: auto; opacity: 0.7; }
+  #map { top: 16px; right: 16px; width: 220px; height: 220px; padding: 6px; }
+  #speedo { right: 16px; bottom: 16px; width: 250px; text-align: right; }
+  #speedo .spd { font-size: 64px; font-weight: 800; line-height: 1; }
+  #speedo .unit { font-size: 13px; opacity: 0.6; margin-left: 4px; }
+  #speedo .gear { position: absolute; left: 16px; bottom: 14px; font-size: 44px; font-weight: 800; opacity: 0.9; }
+  #rpm { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.12); margin-top: 8px; overflow: hidden; }
+  #rpm > div { height: 100%; width: 0; background: linear-gradient(90deg, #3ddc84 0 60%, #ffcc00 60% 85%, #ff3b30 85%); }
+  #msg { top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 64px; font-weight: 900; letter-spacing: 0.04em; text-shadow: 0 4px 24px rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.25s; }
+  #lights { top: 18%; left: 50%; transform: translateX(-50%); display: none; gap: 14px; padding: 14px 18px; }
+  #lights .l { width: 44px; height: 44px; border-radius: 50%; background: #2a0606; border: 3px solid #111; }
+  #lights .l.on { background: radial-gradient(circle at 40% 35%, #ff9a8a, #ff1a0a 55%, #8a0000); box-shadow: 0 0 24px #ff2a1a; }
+  #help { left: 16px; bottom: 16px; font-size: 12px; opacity: 0.8; line-height: 1.6; }
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(0,0,0,0.35), rgba(0,0,0,0.85)); z-index: 10; }
+  .card { max-height: 92vh; overflow-y: auto; width: min(560px, 92vw); background: rgba(10,12,16,0.92); border: 1px solid var(--line); border-radius: 16px; padding: 28px 30px; }
+  .card h1 { margin: 0 0 4px; font-size: 40px; letter-spacing: 0.06em; font-weight: 900; }
+  .card h1 span { color: var(--accent); }
+  .card p { margin: 6px 0; opacity: 0.85; line-height: 1.6; font-size: 14px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 16px 0 20px; font-size: 14px; }
+  .keys b { display: inline-block; min-width: 26px; padding: 2px 7px; border: 1px solid rgba(255,255,255,0.35); border-radius: 5px; text-align: center; font-weight: 600; margin-right: 3px; font-size: 12px; }
+  .btn { pointer-events: auto; display: inline-block; padding: 12px 26px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-weight: 800; font-size: 16px; letter-spacing: 0.06em; cursor: pointer; }
+  .btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.4); margin-left: 8px; }
+  .opts { display: flex; gap: 10px; align-items: center; margin: 10px 0 18px; font-size: 14px; flex-wrap: wrap; }
+  .opts select { background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 5px 8px; font-size: 14px; }
+  #loadbar { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; margin-top: 14px; }
+  #loadbar > div { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+  table.res { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0 18px; }
+  table.res td { padding: 2px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  table.res tr.me td { background: #fff; color: #000; font-weight: 700; }
+  .hidden { display: none !important; }
+  #flag { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<canvas id="flag"></canvas>
+
+<div id="tl" class="hud hidden">
+  <div class="panel"><div class="lab">POS</div><div class="big" id="pos">-/22</div></div>
+  <div class="panel"><div class="lab">LAP</div><div class="big" id="lap">1/3</div></div>
+</div>
+<div id="times" class="hud panel hidden"><div class="cur" id="cur">0:00.000</div><div class="sub" id="last">LAST --:--.--- &nbsp; BEST --:--.---</div></div>
+<div id="board" class="hud panel hidden"></div>
+<div class="hud panel hidden" id="map"><canvas id="mapc" width="208" height="208"></canvas></div>
+<div id="speedo" class="hud panel hidden"><div class="gear" id="gear">N</div><span class="spd" id="spd">0</span><span class="unit">km/h</span><div id="rpm"><div></div></div></div>
+<div id="help" class="hud hidden">↑ アクセル　↓ ブレーキ　← → ハンドル　C カメラ　R コースに戻る　M 音　Esc 一時停止</div>
+<div id="lights" class="hud panel"><div class="l"></div><div class="l"></div><div class="l"></div><div class="l"></div><div class="l"></div></div>
+<div id="msg" class="hud"></div>
+
+<div id="title" class="screen">
+  <div class="card">
+    <h1>HARBOUR <span>GP</span></h1>
+    <p>港町の市街地サーキットで22台のマシンと3周レース。あなたは黒い <b>#27</b>。11番手スタートから優勝を狙え。</p>
+    <div class="keys">
+      <div><b>↑</b><b>W</b></div><div>アクセル</div>
+      <div><b>↓</b><b>S</b></div><div>ブレーキ（コーナー手前でしっかり減速）</div>
+      <div><b>←</b><b>→</b></div><div>ハンドル（高速ほど切れにくい）</div>
+      <div><b>C</b></div><div>カメラ切替（後ろ / 車載）</div>
+      <div><b>R</b></div><div>コースに戻る（壁にはまった時）</div>
+      <div><b>M</b> <b>Esc</b></div><div>音のON/OFF・一時停止</div>
+    </div>
+    <div class="opts">
+      周回数 <select id="laps"><option>1</option><option>2</option><option selected>3</option><option>5</option></select>
+      相手の強さ <select id="diff"><option value="0.92">やさしい</option><option value="0.97" selected>ふつう</option><option value="1.0">つよい</option></select>
+      画質 <select id="quality"><option value="low">軽い</option><option value="high" selected>きれい</option></select>
+    </div>
+    <button class="btn" id="startBtn" disabled>読み込み中…</button>
+    <div id="loadbar"><div></div></div>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="card"><h1>PAUSE</h1><p>Esc で再開</p><button class="btn" id="resumeBtn">再開</button><button class="btn ghost" id="restartBtn">最初から</button></div>
+</div>
+
+<div id="result" class="screen hidden">
+  <div class="card"><h1 id="resTitle">FINISH</h1><p id="resSub"></p><table class="res" id="resTable"></table>
+  <button class="btn" id="againBtn">もう一度</button></div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
