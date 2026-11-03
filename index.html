@@ -1,327 +1,110 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Enube Arcade — 無料で遊べるゲーム・診断・ツール</title>
-<meta name="description" content="ブラウザですぐ遊べるゲーム・クイズ・診断・便利ツールが60本以上。登録不要・無料。">
-<meta property="og:title" content="Enube Arcade">
-<meta property="og:description" content="ブラウザですぐ遊べるゲーム・クイズ・診断・ツールが60本以上。">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<title>HARBOUR GP — 港町ストリートレース</title>
 <style>
-:root{
-  --bg:#f6f6f3; --surface:#fff; --ink:#151515; --sub:#626260; --mute:#a2a29e;
-  --line:#e7e6e1; --accent:#ff5a36; --chip:#ecebe6; --radius:16px; --max:1200px;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0e0e10; --surface:#18181b; --ink:#f3f3f0; --sub:#a9a9a5; --mute:#6d6d6a;
-    --line:#2a2a2e; --accent:#ff7a5c; --chip:#222226;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0e0e10; --surface:#18181b; --ink:#f3f3f0; --sub:#a9a9a5; --mute:#6d6d6a;
-  --line:#2a2a2e; --accent:#ff7a5c; --chip:#222226;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:"Inter","Noto Sans JP",system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
-a{color:inherit;text-decoration:none}
-button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
-@media (max-width:600px){.wrap{padding:0 16px}}
-
-header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-.bar{height:64px;display:flex;align-items:center;gap:16px}
-.logo{font-weight:900;font-size:19px;letter-spacing:-.01em;white-space:nowrap}
-.logo i{font-style:normal;color:var(--accent)}
-.search{flex:1;max-width:420px;margin-left:auto;position:relative}
-.search input{width:100%;height:42px;border-radius:999px;border:1px solid var(--line);background:var(--surface);padding:0 16px 0 40px;font:inherit;font-size:14px;color:var(--ink);outline:none}
-.search input:focus{border-color:var(--ink)}
-.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--mute)}
-.theme-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;flex-shrink:0}
-
-/* hero */
-.hero{padding:56px 0 40px;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
-@media (max-width:860px){.hero{grid-template-columns:1fr;padding-top:36px}}
-.hero h1{font-size:clamp(32px,5.5vw,56px);font-weight:900;line-height:1.2;letter-spacing:-.02em}
-.hero h1 em{font-style:normal;color:var(--accent)}
-.hero p{color:var(--sub);margin:16px 0 28px;font-size:16px}
-.hero-btns{display:flex;gap:10px;flex-wrap:wrap}
-.btn{height:50px;padding:0 24px;border-radius:999px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:8px;transition:.15s}
-.btn-main{background:var(--ink);color:var(--bg)}
-.btn-main:hover{transform:translateY(-1px)}
-.btn-sub{border:1px solid var(--line);background:var(--surface)}
-.btn-sub:hover{border-color:var(--ink)}
-.hero-art{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.hero-art span{aspect-ratio:1;border-radius:14px;display:grid;place-items:center;font-size:clamp(22px,3.4vw,34px);transition:.3s}
-.hero-art span:hover{transform:rotate(-6deg) scale(1.06)}
-@media (max-width:860px){.hero-art{display:none}}
-
-/* sections */
-.sec{padding:28px 0}
-.sec-title{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
-.sec-title h2{font-size:20px;font-weight:800}
-.sec-title small{color:var(--mute);font-size:13px}
-
-/* featured */
-.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-@media (max-width:860px){.feat{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:520px){.feat{grid-template-columns:1fr}}
-.fcard{border-radius:var(--radius);overflow:hidden;background:var(--surface);border:1px solid var(--line);transition:.2s;display:block}
-.fcard:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.08)}
-.fcard .art{aspect-ratio:16/9;display:grid;place-items:center;font-size:64px;position:relative}
-.fcard .art b{position:absolute;top:12px;left:12px;font-size:11px;font-weight:800;letter-spacing:.08em;background:rgba(0,0,0,.55);color:#fff;padding:4px 9px;border-radius:999px}
-.fcard .txt{padding:16px 18px 18px}
-.fcard h3{font-size:16px;font-weight:800}
-.fcard p{font-size:13.5px;color:var(--sub);margin-top:4px}
-
-/* recent */
-.recent{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
-.recent::-webkit-scrollbar{display:none}
-.rchip{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap;font-size:14px;font-weight:600}
-.rchip span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:16px}
-
-/* tabs */
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
-.tab{height:38px;padding:0 16px;border-radius:999px;background:var(--chip);font-size:14px;font-weight:600;color:var(--sub);transition:.15s}
-.tab:hover{color:var(--ink)}
-.tab.on{background:var(--ink);color:var(--bg)}
-.tab sup{font-size:11px;opacity:.6;margin-left:4px;vertical-align:baseline}
-
-/* grid */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
-@media (max-width:520px){.grid{grid-template-columns:repeat(2,1fr);gap:10px}}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:10px;transition:.15s}
-.card:hover{border-color:var(--ink);transform:translateY(-2px)}
-.card .ic{aspect-ratio:1.4;border-radius:12px;display:grid;place-items:center;font-size:40px;position:relative}
-.badge{position:absolute;top:8px;right:8px;font-size:10px;font-weight:800;background:var(--accent);color:#fff;padding:2px 7px;border-radius:999px}
-.card h3{font-size:14.5px;font-weight:700;line-height:1.35}
-.card p{font-size:12.5px;color:var(--sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card .cat{font-size:11px;color:var(--mute);font-weight:600;margin-top:auto}
-.empty{text-align:center;padding:60px 0;color:var(--sub)}
-.empty b{display:block;font-size:40px;margin-bottom:8px}
-
-footer{border-top:1px solid var(--line);margin-top:56px;padding:32px 0 48px;font-size:13px;color:var(--mute)}
-footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-footer a:hover{color:var(--ink)}
-.hidden{display:none!important}
+  :root { --hud: rgba(8, 10, 14, 0.72); --line: rgba(255,255,255,0.14); --accent: #ff3b30; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: "Helvetica Neue", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif; color: #fff; }
+  canvas#view { display: block; width: 100vw; height: 100vh; }
+  .hud { position: fixed; pointer-events: none; font-variant-numeric: tabular-nums; }
+  .panel { background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; backdrop-filter: blur(6px); }
+  #tl { top: 16px; left: 16px; display: flex; gap: 10px; }
+  #tl .big { font-size: 34px; font-weight: 800; letter-spacing: 0.02em; line-height: 1; }
+  #tl .lab { font-size: 11px; opacity: 0.6; letter-spacing: 0.14em; margin-bottom: 4px; }
+  #times { top: 16px; left: 50%; transform: translateX(-50%); text-align: center; min-width: 220px; }
+  #times .cur { font-size: 26px; font-weight: 700; }
+  #times .sub { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+  #board { top: 92px; left: 16px; font-size: 12px; width: 210px; padding: 8px 10px; }
+  #board .row { display: flex; gap: 6px; align-items: center; padding: 2px 0; opacity: 0.9; }
+  #board .row.me { color: #000; background: #fff; border-radius: 4px; padding: 2px 4px; margin: 0 -4px; font-weight: 700; }
+  #board .sw { width: 4px; height: 12px; border-radius: 2px; }
+  #board .p { width: 18px; text-align: right; opacity: 0.7; }
+  #board .gap { margin-left: auto; opacity: 0.7; }
+  #map { top: 16px; right: 16px; width: 220px; height: 220px; padding: 6px; }
+  #speedo { right: 16px; bottom: 16px; width: 250px; text-align: right; }
+  #speedo .spd { font-size: 64px; font-weight: 800; line-height: 1; }
+  #speedo .unit { font-size: 13px; opacity: 0.6; margin-left: 4px; }
+  #speedo .gear { position: absolute; left: 16px; bottom: 14px; font-size: 44px; font-weight: 800; opacity: 0.9; }
+  #rpm { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.12); margin-top: 8px; overflow: hidden; }
+  #rpm > div { height: 100%; width: 0; background: linear-gradient(90deg, #3ddc84 0 60%, #ffcc00 60% 85%, #ff3b30 85%); }
+  #msg { top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 64px; font-weight: 900; letter-spacing: 0.04em; text-shadow: 0 4px 24px rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.25s; }
+  #lights { top: 18%; left: 50%; transform: translateX(-50%); display: none; gap: 14px; padding: 14px 18px; }
+  #lights .l { width: 44px; height: 44px; border-radius: 50%; background: #2a0606; border: 3px solid #111; }
+  #lights .l.on { background: radial-gradient(circle at 40% 35%, #ff9a8a, #ff1a0a 55%, #8a0000); box-shadow: 0 0 24px #ff2a1a; }
+  #help { left: 16px; bottom: 16px; font-size: 12px; opacity: 0.8; line-height: 1.6; }
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(0,0,0,0.35), rgba(0,0,0,0.85)); z-index: 10; }
+  .card { max-height: 92vh; overflow-y: auto; width: min(560px, 92vw); background: rgba(10,12,16,0.92); border: 1px solid var(--line); border-radius: 16px; padding: 28px 30px; }
+  .card h1 { margin: 0 0 4px; font-size: 40px; letter-spacing: 0.06em; font-weight: 900; }
+  .card h1 span { color: var(--accent); }
+  .card p { margin: 6px 0; opacity: 0.85; line-height: 1.6; font-size: 14px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 16px 0 20px; font-size: 14px; }
+  .keys b { display: inline-block; min-width: 26px; padding: 2px 7px; border: 1px solid rgba(255,255,255,0.35); border-radius: 5px; text-align: center; font-weight: 600; margin-right: 3px; font-size: 12px; }
+  .btn { pointer-events: auto; display: inline-block; padding: 12px 26px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-weight: 800; font-size: 16px; letter-spacing: 0.06em; cursor: pointer; }
+  .btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.4); margin-left: 8px; }
+  .opts { display: flex; gap: 10px; align-items: center; margin: 10px 0 18px; font-size: 14px; flex-wrap: wrap; }
+  .opts select { background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 5px 8px; font-size: 14px; }
+  #loadbar { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; margin-top: 14px; }
+  #loadbar > div { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+  table.res { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0 18px; }
+  table.res td { padding: 2px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  table.res tr.me td { background: #fff; color: #000; font-weight: 700; }
+  .hidden { display: none !important; }
+  #flag { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
 </style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
 </head>
 <body>
+<canvas id="view"></canvas>
+<canvas id="flag"></canvas>
 
-<header>
-  <div class="wrap bar">
-    <a href="#" class="logo">Enube<i>Arcade</i></a>
-    <label class="search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="ゲームや診断を探す" aria-label="検索">
-    </label>
-    <button class="theme-btn" id="themeBtn" aria-label="テーマ切り替え">◐</button>
-  </div>
-</header>
+<div id="tl" class="hud hidden">
+  <div class="panel"><div class="lab">POS</div><div class="big" id="pos">-/22</div></div>
+  <div class="panel"><div class="lab">LAP</div><div class="big" id="lap">1/3</div></div>
+</div>
+<div id="times" class="hud panel hidden"><div class="cur" id="cur">0:00.000</div><div class="sub" id="last">LAST --:--.--- &nbsp; BEST --:--.---</div></div>
+<div id="board" class="hud panel hidden"></div>
+<div class="hud panel hidden" id="map"><canvas id="mapc" width="208" height="208"></canvas></div>
+<div id="speedo" class="hud panel hidden"><div class="gear" id="gear">N</div><span class="spd" id="spd">0</span><span class="unit">km/h</span><div id="rpm"><div></div></div></div>
+<div id="help" class="hud hidden">↑ アクセル　↓ ブレーキ　← → ハンドル　C カメラ　R コースに戻る　M 音　Esc 一時停止</div>
+<div id="lights" class="hud panel"><div class="l"></div><div class="l"></div><div class="l"></div><div class="l"></div><div class="l"></div></div>
+<div id="msg" class="hud"></div>
 
-<main class="wrap">
-  <section class="hero" id="hero">
-    <div>
-      <h1>すぐ遊べる、<br><em id="total">60</em>本のミニゲーム。</h1>
-      <p>ゲーム・クイズ・診断・便利ツール。登録なし、無料、ブラウザだけで遊べます。</p>
-      <div class="hero-btns">
-        <button class="btn btn-main" id="randomBtn">🎲 ランダムで遊ぶ</button>
-        <a href="#all" class="btn btn-sub">すべて見る</a>
-      </div>
+<div id="title" class="screen">
+  <div class="card">
+    <h1>HARBOUR <span>GP</span></h1>
+    <p>港町の市街地サーキットで22台のマシンと3周レース。あなたは黒い <b>#27</b>。11番手スタートから優勝を狙え。</p>
+    <div class="keys">
+      <div><b>↑</b><b>W</b></div><div>アクセル</div>
+      <div><b>↓</b><b>S</b></div><div>ブレーキ（コーナー手前でしっかり減速）</div>
+      <div><b>←</b><b>→</b></div><div>ハンドル（高速ほど切れにくい）</div>
+      <div><b>C</b></div><div>カメラ切替（後ろ / 車載）</div>
+      <div><b>R</b></div><div>コースに戻る（壁にはまった時）</div>
+      <div><b>M</b> <b>Esc</b></div><div>音のON/OFF・一時停止</div>
     </div>
-    <div class="hero-art" id="heroArt"></div>
-  </section>
-
-  <section class="sec hidden" id="recentSec">
-    <div class="sec-title"><h2>最近遊んだ</h2></div>
-    <div class="recent" id="recent"></div>
-  </section>
-
-  <section class="sec" id="featSec">
-    <div class="sec-title"><h2>おすすめ</h2><small>まずはこれから</small></div>
-    <div class="feat" id="feat"></div>
-  </section>
-
-  <section class="sec" id="all">
-    <div class="sec-title"><h2>すべての作品</h2><small id="count"></small></div>
-    <div class="tabs" id="tabs"></div>
-    <div class="grid" id="grid"></div>
-    <div class="empty hidden" id="empty"><b>🔍</b>見つかりませんでした。別のキーワードで試してみてください。</div>
-  </section>
-</main>
-
-<footer>
-  <div class="wrap">
-    <span>Enube Arcade · Made by えぬべえ with Claude Code</span>
-    <span><a href="privacy.html">プライバシーポリシー</a> · <a href="terms.html">利用規約</a> · <a href="https://x.com/Enube_1115" target="_blank" rel="noopener">X @Enube_1115</a></span>
+    <div class="opts">
+      周回数 <select id="laps"><option>1</option><option>2</option><option selected>3</option><option>5</option></select>
+      相手の強さ <select id="diff"><option value="0.92">やさしい</option><option value="0.97" selected>ふつう</option><option value="1.0">つよい</option></select>
+      画質 <select id="quality"><option value="low">軽い</option><option value="high" selected>きれい</option></select>
+    </div>
+    <button class="btn" id="startBtn" disabled>読み込み中…</button>
+    <div id="loadbar"><div></div></div>
   </div>
-</footer>
+</div>
 
-<script>
-const CATS = {
-  game:  {name:"ゲーム",       color:["#ffe3d9","#3b1a10"]},
-  quiz:  {name:"クイズ",       color:["#dff1ff","#0f2c44"]},
-  shindan:{name:"診断・占い",  color:["#efe3ff","#2a1744"]},
-  tool:  {name:"ツール・生活", color:["#e2f5e8","#12301d"]},
-};
+<div id="pause" class="screen hidden">
+  <div class="card"><h1>PAUSE</h1><p>Esc で再開</p><button class="btn" id="resumeBtn">再開</button><button class="btn ghost" id="restartBtn">最初から</button></div>
+</div>
 
-// [file, emoji, name, desc, cat, isNew]
-const APPS = [
-  ["vocab_survivor","🧟","Vocab Survivor","敵をなぎ倒しながら単語を並べる、サバイバー系×単語パズル。","game",1],
-  ["game_engine","🎮","ビジュアルゲームエンジン","ブロックを並べるだけで自分のゲームが作れる。","game"],
-  ["tetris","🟦","NEON TETRIS","グロウエフェクトが光るテトリス。","game"],
-  ["snake","🐍","NEON SNAKE","サイバーパンク風のネオンスネーク。","game"],
-  ["pinball","🎯","PINBALL","フリッパーでボールを弾いてハイスコアを狙え。","game"],
-  ["battleship","🚢","バトルシップ","艦隊を配置してCPUと戦う海戦ゲーム。","game"],
-  ["rpg","⚔️","遺された祈り","敵を倒して世界の謎を解くテキストRPG。","game"],
-  ["class_quest","🛡️","Class Quest","職業を選んでモンスターと戦うRPG。","game"],
-  ["car_chase","🚔","カーチェイス","パトカーから逃げろ！ミサイルや天気イベントあり。","game"],
-  ["grid_wars","♟️","Grid Wars","10×10の盤面で領地を奪い合う戦略ゲーム。","game"],
-  ["soccer_pk","⚽","サッカーPK","実況コメント付きのPK対決。","game"],
-  ["2048","🔢","2048","タイルを合体させて2048を目指すパズル。","game"],
-  ["sudoku","🧮","数独","ヒント・メモ機能付き、難易度3段階。","game"],
-  ["gacha_simulator","🎴","Deck Rush","カードを引いてデッキを強化するガチャシミュレーター。","game"],
-  ["slot_machine","🎰","スロットマシン","3リールを回して最大100倍を狙え。","game"],
-  ["digital_pet","🐾","ゴッチペット","えさやりや遊びで育てるデジタルペット。","game"],
-  ["timer_challenge","⏱️","Timer Challenge","目標時間ピッタリでタイマーを止めろ。","game"],
-  ["reaction_test","⚡","反応速度テスト","あなたの反応速度を測定。","game"],
-  ["mole_game","🔨","もぐらたたき","モグラを叩いてスコアを稼ごう。","game"],
-  ["memory_game","🃏","神経衰弱","同じ絵柄のペアを揃えよう。","game"],
-  ["number_memory","🧠","数字記憶ゲーム","何桁まで覚えられる？","game"],
-  ["janken","✊","じゃんけん","CPUと3本勝負または無限対戦。","game"],
+<div id="result" class="screen hidden">
+  <div class="card"><h1 id="resTitle">FINISH</h1><p id="resSub"></p><table class="res" id="resTable"></table>
+  <button class="btn" id="againBtn">もう一度</button></div>
+</div>
 
-  ["word_master","🔤","WordMaster","6回以内に5文字の英単語を当てるWordle風ゲーム。","quiz"],
-  ["colorwordle","🎨","ColorWordle","毎日1つのカラーコードを当てる。","quiz"],
-  ["prefecture_quiz","🗾","都道府県クイズ","日本地図で都道府県を当てよう。","quiz"],
-  ["country_quiz","🌍","国当てクイズ","国旗・首都・ヒントから80カ国以上を当てる。","quiz"],
-  ["quick_quiz","🔔","早押しクイズ","素早く答えて高得点を狙おう。","quiz"],
-  ["korean_quiz","🇰🇷","韓国語クイズ","ハングル・単語・フレーズを4択で学ぶ。","quiz"],
-  ["hiragana_quiz","🈶","50音クイズ","ひらがな・カタカナ・ローマ字の4択。","quiz"],
-
-  ["mbti_compatibility","🧩","MBTI相性診断","20問でタイプ特定、256パターンの相性分析。","shindan"],
-  ["personality_quiz","🪞","性格タイプ診断","16タイプの性格診断と詳しい解説。","shindan"],
-  ["enneagram","🔮","エニアグラム診断","20問で9タイプの性格を診断。","shindan"],
-  ["career_diagnosis","🔭","将来職業診断","15問で向いている職業を22種から診断。","shindan"],
-  ["love_language","💕","恋愛スタイル診断","5つの愛情言語を診断。カップル相性も。","shindan"],
-  ["music_genre","🎵","音楽ジャンル診断","あなたに合う音楽ジャンルとアーティスト。","shindan"],
-  ["stress_resilience","🧘","ストレス耐性診断","15問で適応力を分析、改善アドバイス付き。","shindan"],
-  ["psychology_test","🌸","心理テスト","自尊心・共感力・メンタル強度など4種類。","shindan"],
-  ["aisho_shindan","💑","相性診断","名前を入れるだけで2人の相性を診断。","shindan"],
-  ["blood_type","🩸","血液型診断","性格・恋愛・仕事の特徴を解説。","shindan"],
-  ["blood_type_compatibility","🅰️","血液型相性診断","2人の血液型から相性を診断。","shindan"],
-  ["past_life","🏺","前世診断","あなたの前世を診断しよう。","shindan"],
-  ["fortune","🍀","今日の運勢占い","名前と生年月日から今日の運勢を占う。","shindan"],
-  ["horoscope","✨","星座占い","12星座の今日の運勢とラッキーアイテム。","shindan"],
-  ["astrology","♈","占星術診断","12星座の性格分析と相性診断。","shindan"],
-  ["koi_mikuji","🎋","恋みくじ","今日の恋愛運をおみくじで。","shindan"],
-  ["yume_uranai","🌙","夢占い","夢に出てきたものから意味を占う。","shindan"],
-  ["biorhythm","📈","バイオリズム診断","身体・感情・知性のリズムを確認。","shindan"],
-
-  ["meal_planner_v2","🍱","AI献立プランナー v2","1週間分の献立を食材・予算まで考えて自動生成。","tool"],
-  ["meal_planner","🥗","献立プランナー","今日の献立をランダム提案。","tool"],
-  ["oshi_budget","💜","推し活 家計簿","推し活の出費をカテゴリ別に記録・可視化。","tool"],
-  ["break_even_calculator","💰","元取り計算ツール","それ、本当に元取れてる？を計算。","tool"],
-  ["taipa_calculator","⏳","タイパ計算ツール","作業のタイムパフォーマンスを数値化。","tool"],
-  ["mindmap","🗺️","マインドマップ","ドラッグで動かせる思考整理ツール。SVG出力対応。","tool"],
-  ["habit_tracker","✅","Habit Tracker","毎日の習慣を記録してストリークを伸ばそう。","tool"],
-  ["goal_tracker","🏁","Goal Tracker","目標をマイルストーンに分解して進捗管理。","tool"],
-  ["report-tracker","📋","レポート提出管理","通信制高校生向けの、提出期限と状態を管理するツール。","tool",1],
-  ["pomodoro","🍅","Pomodoro Timer","25分集中×5分休憩のタイマー。","tool"],
-  ["calendar","📅","カレンダー","予定を登録できるブラウザカレンダー。","tool"],
-  ["book_tracker","📚","読書記録","読んだ本・読みたい本を管理。","tool"],
-  ["health_tracker","💪","健康管理","体重・睡眠などをグラフで記録。","tool"],
-  ["workout_planner","🏋️","ワークアウトプランナー","目標と部位から筋トレメニューを自動生成。","tool"],
-  ["daily_challenge","🎯","今日のチャレンジ","毎日のミッションをクリアしよう。","tool"],
-  ["travel_planner","✈️","ランダム旅行プランナー","次の旅行先をランダムで提案。","tool"],
-  ["color_palette","🖌️","カラーパレット生成","配色理論からパレットを作ってHEXをコピー。","tool"],
-  ["world_clock","🕰️","世界時計","主要都市の時刻とタイムゾーン変換。","tool"],
-  ["calculator_app","🧾","電卓","キーボード操作対応のシンプル電卓。","tool"],
-  ["quote_generator","💬","QUOTOPIA","偉人の名言をランダム表示。","tool"],
-  ["quote_gacha","🎁","名言ガチャ","偉人の名言をガチャで引こう。","tool"],
-  ["report-tracker","📋","レポート提出管理","提出期限と状態を管理するツール。","tool"],
-  ["shinai-calculator","🧮","内申点計算ツール","通知表の評定から内申点の目安を計算するツール。","tool"],
-].map(([file,emoji,name,desc,cat,isNew])=>({file,emoji,name,desc,cat,isNew:!!isNew,url:file+".html"}));
-
-const FEATURED = ["vocab_survivor","game_engine","tetris","mbti_compatibility","prefecture_quiz","meal_planner_v2"];
-
-const $ = s=>document.querySelector(s);
-const dark = ()=>{
-  const t=document.documentElement.dataset.theme;
-  return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-};
-const bg = cat => CATS[cat].color[dark()?1:0];
-const store = {
-  get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-};
-
-let state = {cat:"all", q:""};
-
-function remember(file){
-  const r = store.get("recent",[]).filter(f=>f!==file);
-  r.unshift(file); store.set("recent",r.slice(0,8));
-}
-function link(a, inner, cls){
-  return `<a class="${cls}" href="${a.url}" data-file="${a.file}">${inner}</a>`;
-}
-
-function renderHero(){
-  $("#total").textContent = APPS.length;
-  const picks = ["🎮","🧟","🟦","🔮","🗾","🍱","🎰","♟️","🧩","🚢","🌙","🐍"];
-  const cats = ["game","game","game","shindan","quiz","tool","game","game","shindan","game","shindan","game"];
-  $("#heroArt").innerHTML = picks.map((e,i)=>`<span style="background:${bg(cats[i])}">${e}</span>`).join("");
-}
-function renderFeatured(){
-  $("#feat").innerHTML = FEATURED.map(f=>APPS.find(a=>a.file===f)).map(a=>link(a,
-    `<div class="art" style="background:${bg(a.cat)}"><b>${CATS[a.cat].name}</b>${a.emoji}</div>
-     <div class="txt"><h3>${a.name}</h3><p>${a.desc}</p></div>`,"fcard")).join("");
-}
-function renderRecent(){
-  const r = store.get("recent",[]).map(f=>APPS.find(a=>a.file===f)).filter(Boolean);
-  $("#recentSec").classList.toggle("hidden", !r.length || !!state.q);
-  $("#recent").innerHTML = r.map(a=>link(a,`<span style="background:${bg(a.cat)}">${a.emoji}</span>${a.name}`,"rchip")).join("");
-}
-function renderTabs(){
-  const tabs = [["all","すべて",APPS.length], ...Object.entries(CATS).map(([k,v])=>[k,v.name,APPS.filter(a=>a.cat===k).length])];
-  $("#tabs").innerHTML = tabs.map(([k,n,c])=>`<button class="tab ${state.cat===k?"on":""}" data-cat="${k}">${n}<sup>${c}</sup></button>`).join("");
-}
-function renderGrid(){
-  const q = state.q.trim().toLowerCase();
-  const list = APPS.filter(a=>(state.cat==="all"||a.cat===state.cat) &&
-    (!q || (a.name+a.desc+CATS[a.cat].name).toLowerCase().includes(q)));
-  $("#grid").innerHTML = list.map(a=>link(a,
-    `<div class="ic" style="background:${bg(a.cat)}">${a.isNew?'<span class="badge">NEW</span>':""}${a.emoji}</div>
-     <h3>${a.name}</h3><p>${a.desc}</p><span class="cat">${CATS[a.cat].name}</span>`,"card")).join("");
-  $("#count").textContent = list.length+"件";
-  $("#empty").classList.toggle("hidden", list.length>0);
-  const searching = !!q;
-  $("#hero").classList.toggle("hidden", searching);
-  $("#featSec").classList.toggle("hidden", searching);
-}
-function renderAll(){renderHero();renderFeatured();renderRecent();renderTabs();renderGrid();}
-
-document.addEventListener("click",e=>{
-  const a = e.target.closest("a[data-file]"); if(a) remember(a.dataset.file);
-  const t = e.target.closest(".tab"); if(t){state.cat=t.dataset.cat;renderTabs();renderGrid();}
-});
-$("#q").addEventListener("input",e=>{
-  state.q=e.target.value; renderGrid(); renderRecent();
-  if(state.q) $("#all").scrollIntoView({block:"start"});
-});
-$("#randomBtn").addEventListener("click",()=>{
-  const a = APPS[Math.floor(Math.random()*APPS.length)];
-  remember(a.file); location.href=a.url;
-});
-$("#themeBtn").addEventListener("click",()=>{
-  const next = dark()?"light":"dark";
-  document.documentElement.dataset.theme=next; store.set("theme",next); renderAll();
-});
-const saved = store.get("theme",null); if(saved) document.documentElement.dataset.theme=saved;
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change",renderAll);
-renderAll();
-</script>
+<script type="module" src="./game.js"></script>
 </body>
 </html>
