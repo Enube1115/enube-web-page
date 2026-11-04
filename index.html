@@ -1,327 +1,365 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Enube Arcade — 無料で遊べるゲーム・診断・ツール</title>
-<meta name="description" content="ブラウザですぐ遊べるゲーム・クイズ・診断・便利ツールが60本以上。登録不要・無料。">
-<meta property="og:title" content="Enube Arcade">
-<meta property="og:description" content="ブラウザですぐ遊べるゲーム・クイズ・診断・ツールが60本以上。">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<title>HARBOUR GP — 港町ストリートレース</title>
 <style>
-:root{
-  --bg:#f6f6f3; --surface:#fff; --ink:#151515; --sub:#626260; --mute:#a2a29e;
-  --line:#e7e6e1; --accent:#ff5a36; --chip:#ecebe6; --radius:16px; --max:1200px;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0e0e10; --surface:#18181b; --ink:#f3f3f0; --sub:#a9a9a5; --mute:#6d6d6a;
-    --line:#2a2a2e; --accent:#ff7a5c; --chip:#222226;
+  :root { --hud: rgba(8, 10, 14, 0.72); --line: rgba(255,255,255,0.14); --accent: #ff3b30; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: "Helvetica Neue", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif; color: #fff; }
+  canvas#view { outline: none; display: block; width: 100vw; height: 100vh; }
+  .hud { position: fixed; pointer-events: none; font-variant-numeric: tabular-nums; }
+  .panel { background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; backdrop-filter: blur(6px); }
+  #tl { top: 16px; left: 16px; display: flex; gap: 10px; }
+  #tl .big { font-size: 34px; font-weight: 800; letter-spacing: 0.02em; line-height: 1; }
+  #tl .lab { font-size: 11px; opacity: 0.6; letter-spacing: 0.14em; margin-bottom: 4px; }
+  #times { top: 16px; left: 50%; transform: translateX(-50%); text-align: center; min-width: 220px; }
+  #times .cur { font-size: 26px; font-weight: 700; }
+  #times .sub { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+  #board { top: 92px; left: 16px; font-size: 12px; width: 210px; padding: 8px 10px; }
+  #board .row { display: flex; gap: 6px; align-items: center; padding: 2px 0; opacity: 0.9; }
+  #board .row.me { color: #000; background: #fff; border-radius: 4px; padding: 2px 4px; margin: 0 -4px; font-weight: 700; }
+  #board .sw { width: 4px; height: 12px; border-radius: 2px; }
+  #board .p { width: 18px; text-align: right; opacity: 0.7; }
+  #board .gap { margin-left: auto; opacity: 0.7; }
+  #map { top: 16px; right: 16px; width: 220px; height: 220px; padding: 6px; }
+  #speedo { right: 16px; bottom: 16px; width: 250px; text-align: right; }
+  #speedo .spd { font-size: 64px; font-weight: 800; line-height: 1; }
+  #speedo .unit { font-size: 13px; opacity: 0.6; margin-left: 4px; }
+  #speedo .gear { position: absolute; left: 16px; bottom: 14px; font-size: 44px; font-weight: 800; opacity: 0.9; }
+  #rpm { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.12); margin-top: 8px; overflow: hidden; }
+  #rpm > div { height: 100%; width: 0; background: linear-gradient(90deg, #3ddc84 0 60%, #ffcc00 60% 85%, #ff3b30 85%); }
+  #msg { top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 64px; font-weight: 900; letter-spacing: 0.04em; text-shadow: 0 4px 24px rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.25s; }
+  #lights { top: 18%; left: 50%; transform: translateX(-50%); display: none; gap: 14px; padding: 14px 18px; }
+  #lights .l { width: 44px; height: 44px; border-radius: 50%; background: #2a0606; border: 3px solid #111; }
+  #lights .l.on { background: radial-gradient(circle at 40% 35%, #ff9a8a, #ff1a0a 55%, #8a0000); box-shadow: 0 0 24px #ff2a1a; }
+  #help { left: 16px; bottom: 16px; font-size: 12px; opacity: 0.8; line-height: 1.6; }
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(0,0,0,0.35), rgba(0,0,0,0.85)); z-index: 10; }
+  .card { max-height: 92vh; overflow-y: auto; width: min(620px, 92vw); background: rgba(10,12,16,0.92); border: 1px solid var(--line); border-radius: 16px; padding: 28px 30px; }
+  .card h1 { margin: 0 0 4px; font-size: 40px; letter-spacing: 0.06em; font-weight: 900; }
+  .card h1 span { color: var(--accent); }
+  .card p { margin: 6px 0; opacity: 0.85; line-height: 1.6; font-size: 14px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 16px 0 20px; font-size: 14px; }
+  .keys b { display: inline-block; min-width: 26px; padding: 2px 7px; border: 1px solid rgba(255,255,255,0.35); border-radius: 5px; text-align: center; font-weight: 600; margin-right: 3px; font-size: 12px; }
+  .btn { pointer-events: auto; display: inline-block; padding: 12px 26px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-weight: 800; font-size: 16px; letter-spacing: 0.06em; cursor: pointer; }
+  .btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.4); margin-left: 8px; }
+  .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 6px 0 12px; font-size: 13px; }
+  .opts .opt { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+  .opts .opt.wide { grid-column: 1 / -1; }
+  .opts .opt span { opacity: .8; white-space: nowrap; }
+  .opts .opt select { width: 60%; min-width: 0; }
+  .opts .opt.wide select { width: 72%; }
+  .optHead { font-size: 11px; letter-spacing: .14em; opacity: .55; margin-top: 12px; font-weight: 700; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .btnrow .btn { margin-left: 0; padding: 11px 10px; font-size: 14px; }
+  .btnrow:not(.small) .btn { flex: 1 1 0; white-space: nowrap; }
+  @media (max-width: 560px) { .opts { grid-template-columns: 1fr; } }
+  .opts select { background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 5px 8px; font-size: 14px; }
+  #loadbar { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; margin-top: 14px; }
+  #loadbar > div { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+  table.res { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0 18px; }
+  table.res td { padding: 2px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  table.res tr.me td { background: #fff; color: #000; font-weight: 700; }
+  .hidden { display: none !important; }
+  #flag { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  /* ---- 観戦モード ---- */
+  #tower { top: 16px; left: 16px; width: 200px; padding: 0; overflow: hidden; border-radius: 8px; max-height: calc(100vh - 32px); }
+  #tower .th { background: #e10600; color: #fff; font-weight: 900; letter-spacing: .12em; font-size: 12px; padding: 6px 10px; display:flex; justify-content:space-between; }
+  .trow { display: flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 2.5px 8px; border-top: 1px solid rgba(255,255,255,0.05); font-weight: 600; }
+  .trow .p { width: 18px; text-align: right; opacity: .85; font-weight: 800; }
+  .trow .sw, .fname .sw, .brow .sw { width: 4px; height: 13px; border-radius: 2px; display: inline-block; }
+  .trow .cd { letter-spacing: .06em; }
+  .trow .gap { white-space: nowrap; margin-left: auto; opacity: .75; font-weight: 500; }
+  .trow.foc { background: rgba(255,255,255,0.16); }
+  .trow.bet .cd::after { content: " ★"; color: #ffcc00; }
+  .trow .drs { background: #1fd15a; color: #000; font-size: 9px; padding: 0 3px; border-radius: 2px; }
+  .trow .fl { width: 8px; height: 8px; border-radius: 50%; background: #c86bff; display: inline-block; }
+  .trow .out { background: #ffcc00; color: #000; font-size: 9px; padding: 0 4px; border-radius: 2px; }
+  #wtop { top: 16px; left: 232px; right: 252px; display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: nowrap; pointer-events: auto; }
+  #wtop > * { flex: 0 0 auto; white-space: nowrap; }
+  #wlap { white-space: nowrap; font-weight: 900; letter-spacing: .1em; font-size: 18px; padding: 8px 16px; }
+  .chip { pointer-events: auto; background: rgba(8,10,14,.72); border: 1px solid rgba(255,255,255,.2); color: #fff; border-radius: 8px; padding: 7px 10px; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .chip.on { background: #fff; color: #000; }
+  #ticker { left: 50%; bottom: 128px; max-width: calc(100vw - 500px); white-space: normal; transform: translateX(-50%); text-align: center; font-size: 15px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,.8); line-height: 1.6; }
+  #fcard { left: 232px; bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; max-width: min(520px, calc(100vw - 232px - 290px)); overflow: hidden; }
+  #fcard .fname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #fcard .fpos { font-size: 34px; font-weight: 900; }
+  #fcard .fname { font-weight: 800; font-size: 15px; display: flex; gap: 6px; align-items: center; }
+  #fcard .fteam { font-size: 11px; opacity: .65; letter-spacing: .12em; }
+  #fcard .fbet { width: 100%; font-size: 12px; color: #ffcc00; }
+  #bet .card { width: min(880px, 96vw); }
+  #betList { max-height: 46vh; overflow-y: auto; margin: 10px 0; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; }
+  .brow { display: grid; grid-template-columns: 22px 6px 1fr 150px 150px 64px; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.06); cursor: pointer; font-size: 13px; }
+  .brow:hover { background: rgba(255,255,255,.06); }
+  .brow.sel { background: #fff; color: #000; }
+  .brow small { opacity: .65; font-size: 11px; }
+  .brow .gp { font-weight: 800; text-align: right; opacity: .7; }
+  .brow .bs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 10px; }
+  .brow .bs > span { display: flex; gap: 4px; align-items: center; }
+  .brow .bs i { display: block; height: 5px; background: #e10600; border-radius: 3px; }
+  .brow.sel .bs i { background: #000; }
+  .brow .bq { font-size: 12px; text-align: right; }
+  .brow .bo { font-weight: 900; font-size: 15px; text-align: right; color: #ffcc00; }
+  .brow.sel .bo { color: #b07800; }
+  .row2 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; font-size: 14px; }
+  #betInfo { margin: 8px 0 14px; font-size: 14px; }
+  .betres { font-size: 18px; font-weight: 800; margin: 6px 0; padding: 10px 12px; border-radius: 8px; }
+  .betres.win { background: rgba(52,199,89,.2); color: #7dffa0; }
+  .betres.lose { background: rgba(255,59,48,.15); color: #ff9a92; }
+  .coins { font-size: 14px; opacity: .9; margin: 4px 0 10px; }
+  .podium { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
+  .pod { background: rgba(255,255,255,.06); border-radius: 10px; padding: 10px; text-align: center; }
+  .pod.p1 { background: rgba(255,204,0,.18); }
+  .pod .pn { font-size: 26px; font-weight: 900; } .pod .pc { font-weight: 900; font-size: 18px; letter-spacing: .08em; }
+  .pod .sw { width: 30px; height: 5px; margin: 4px auto; border-radius: 3px; }
+  .pod .pd { font-size: 12px; } .pod .pt { font-size: 10px; opacity: .6; letter-spacing: .1em; }
+
+  @media (max-width: 1100px) {
+    #map { width: 160px; height: 160px; } #map canvas { width: 148px; height: 148px; }
+    #wtop { right: 192px; gap: 4px; }
+    .chip { padding: 6px 7px; font-size: 12px; }
+    #wlap { font-size: 15px; padding: 7px 10px; }
+    #camBet .lbl, #wPause .lbl, .wcam .lbl { display: none; }
+    #speedo { width: 200px; } #speedo .spd { font-size: 48px; }
+    #fcard { max-width: calc(100vw - 232px - 230px); }
+    #ticker { max-width: calc(100vw - 460px); font-size: 13px; bottom: 150px; }
   }
-}
-:root[data-theme="dark"]{
-  --bg:#0e0e10; --surface:#18181b; --ink:#f3f3f0; --sub:#a9a9a5; --mute:#6d6d6a;
-  --line:#2a2a2e; --accent:#ff7a5c; --chip:#222226;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:"Inter","Noto Sans JP",system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
-a{color:inherit;text-decoration:none}
-button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
-@media (max-width:600px){.wrap{padding:0 16px}}
+  @media (max-height: 640px) {
+    .trow { padding-top: 1px; padding-bottom: 1px; font-size: 11px; }
+  }
 
-header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-.bar{height:64px;display:flex;align-items:center;gap:16px}
-.logo{font-weight:900;font-size:19px;letter-spacing:-.01em;white-space:nowrap}
-.logo i{font-style:normal;color:var(--accent)}
-.search{flex:1;max-width:420px;margin-left:auto;position:relative}
-.search input{width:100%;height:42px;border-radius:999px;border:1px solid var(--line);background:var(--surface);padding:0 16px 0 40px;font:inherit;font-size:14px;color:var(--ink);outline:none}
-.search input:focus{border-color:var(--ink)}
-.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--mute)}
-.theme-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;flex-shrink:0}
+  #flagBanner { top: 64px; left: 232px; right: 252px; text-align: center; pointer-events: none; }
+  #flagBanner span { display: inline-block; font-weight: 900; letter-spacing: .08em; font-size: 15px; padding: 7px 18px; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+  #flagBanner.sc span, #flagBanner.yellow span { background: #ffcc00; color: #000; }
+  #flagBanner.sc span { animation: fbBlink 1s steps(2) infinite; }
+  #flagBanner.green span { background: #1fd15a; color: #000; }
+  #flagBanner.rain span { background: #2a6fd6; color: #fff; }
+  @keyframes fbBlink { 50% { background: #ffa000; } }
+  .trow.dnf { opacity: .45; }
+  .trow.scrow { background: #ffcc00; color: #000; font-weight: 900; letter-spacing: .1em; justify-content: center; }
+  #betWx { margin: 6px 0 8px; font-size: 13px; padding: 7px 10px; border-radius: 6px; background: rgba(255,255,255,.06); }
+  .brow .rw { background: #2a6fd6; color: #fff; font-size: 9px; padding: 0 4px; border-radius: 3px; margin-left: 4px; font-style: normal; }
+  @media (max-width: 1100px) { #flagBanner { right: 192px; } #flagBanner span { font-size: 13px; padding: 6px 12px; } }
 
-/* hero */
-.hero{padding:56px 0 40px;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
-@media (max-width:860px){.hero{grid-template-columns:1fr;padding-top:36px}}
-.hero h1{font-size:clamp(32px,5.5vw,56px);font-weight:900;line-height:1.2;letter-spacing:-.02em}
-.hero h1 em{font-style:normal;color:var(--accent)}
-.hero p{color:var(--sub);margin:16px 0 28px;font-size:16px}
-.hero-btns{display:flex;gap:10px;flex-wrap:wrap}
-.btn{height:50px;padding:0 24px;border-radius:999px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:8px;transition:.15s}
-.btn-main{background:var(--ink);color:var(--bg)}
-.btn-main:hover{transform:translateY(-1px)}
-.btn-sub{border:1px solid var(--line);background:var(--surface)}
-.btn-sub:hover{border-color:var(--ink)}
-.hero-art{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.hero-art span{aspect-ratio:1;border-radius:14px;display:grid;place-items:center;font-size:clamp(22px,3.4vw,34px);transition:.3s}
-.hero-art span:hover{transform:rotate(-6deg) scale(1.06)}
-@media (max-width:860px){.hero-art{display:none}}
+  #tyreHud { right: 16px; bottom: 112px; font-size: 12px; line-height: 1.5; width: 250px; }
+  #tyreHud .twear { height: 5px; background: rgba(255,255,255,.15); border-radius: 3px; overflow: hidden; margin: 3px 0; }
+  #tyreHud .twear i { display: block; height: 100%; }
+  .ty { display: inline-flex; width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid #fff; background: #111; color: #fff; font-size: 8px; font-weight: 900; align-items: center; justify-content: center; font-style: normal; flex: 0 0 auto; box-sizing: border-box; }
+  .trow .ty { width: 13px; height: 13px; border-width: 2px; font-size: 7px; }
+  .trow .pit { background: #fff; color: #000; font-size: 9px; padding: 0 3px; border-radius: 2px; }
+  .trow .pen { color: #ff8a80; font-size: 9px; }
+  .trow .dmg { width: 9px; height: 9px; border-radius: 50%; background: #ff8a00; border: 2px solid #000; display: inline-block; }
+  /* 旗のアイコン */
+  .fl { display: inline-block; width: 30px; height: 20px; border-radius: 2px; vertical-align: middle; margin-right: 8px; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+  .fl-yellow, .fl-sc { background: #ffd400; }
+  .fl-dyellow { background: linear-gradient(90deg, #ffd400 0 45%, transparent 45% 55%, #ffd400 55%); box-shadow: none; }
+  .fl-red { background: #e10600; }
+  .fl-green { background: #19c24a; }
+  .fl-white { background: #fff; }
+  .fl-stripe { background: repeating-linear-gradient(90deg, #ffd400 0 5px, #e10600 5px 10px); }
+  .fl-blue { background: #1e6bff; }
+  .fl-bw { background: linear-gradient(135deg, #fff 0 50%, #111 50%); }
+  .fl-meatball { background: radial-gradient(circle, #ff7a00 0 38%, #111 40%); }
+  .fl-black { background: #111; box-shadow: 0 0 0 1px #fff; }
+  .fl-chequered { background: repeating-conic-gradient(#111 0 25%, #fff 0 50%) 0 0 / 10px 10px; }
+  #flagBanner span { display: inline-flex; align-items: center; }
+  #flagBanner.red span { background: #e10600; color: #fff; }
+  #flagBanner.blue span { background: #1e6bff; color: #fff; }
+  #flagBanner.white span, #flagBanner.chequered span { background: #fff; color: #000; }
+  #flagBanner.stripe span { background: #ffd400; color: #000; }
+  #flagBanner.bw span, #flagBanner.meatball span, #flagBanner.black span { background: #111; color: #fff; box-shadow: 0 0 0 2px #ff7a00; }
+  #flagBanner.dyellow span { background: #ffd400; color: #000; }
+  #flagBanner.drive { top: 118px; left: 50%; right: auto; transform: translateX(-50%); }
+  .brow .bt { display: inline-flex; gap: 3px; align-items: center; margin-left: 4px; vertical-align: middle; }
+  .res small { opacity: .6; }
 
-/* sections */
-.sec{padding:28px 0}
-.sec-title{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
-.sec-title h2{font-size:20px;font-weight:800}
-.sec-title small{color:var(--mute);font-size:13px}
-
-/* featured */
-.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-@media (max-width:860px){.feat{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:520px){.feat{grid-template-columns:1fr}}
-.fcard{border-radius:var(--radius);overflow:hidden;background:var(--surface);border:1px solid var(--line);transition:.2s;display:block}
-.fcard:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.08)}
-.fcard .art{aspect-ratio:16/9;display:grid;place-items:center;font-size:64px;position:relative}
-.fcard .art b{position:absolute;top:12px;left:12px;font-size:11px;font-weight:800;letter-spacing:.08em;background:rgba(0,0,0,.55);color:#fff;padding:4px 9px;border-radius:999px}
-.fcard .txt{padding:16px 18px 18px}
-.fcard h3{font-size:16px;font-weight:800}
-.fcard p{font-size:13.5px;color:var(--sub);margin-top:4px}
-
-/* recent */
-.recent{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
-.recent::-webkit-scrollbar{display:none}
-.rchip{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap;font-size:14px;font-weight:600}
-.rchip span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:16px}
-
-/* tabs */
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
-.tab{height:38px;padding:0 16px;border-radius:999px;background:var(--chip);font-size:14px;font-weight:600;color:var(--sub);transition:.15s}
-.tab:hover{color:var(--ink)}
-.tab.on{background:var(--ink);color:var(--bg)}
-.tab sup{font-size:11px;opacity:.6;margin-left:4px;vertical-align:baseline}
-
-/* grid */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
-@media (max-width:520px){.grid{grid-template-columns:repeat(2,1fr);gap:10px}}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:10px;transition:.15s}
-.card:hover{border-color:var(--ink);transform:translateY(-2px)}
-.card .ic{aspect-ratio:1.4;border-radius:12px;display:grid;place-items:center;font-size:40px;position:relative}
-.badge{position:absolute;top:8px;right:8px;font-size:10px;font-weight:800;background:var(--accent);color:#fff;padding:2px 7px;border-radius:999px}
-.card h3{font-size:14.5px;font-weight:700;line-height:1.35}
-.card p{font-size:12.5px;color:var(--sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card .cat{font-size:11px;color:var(--mute);font-weight:600;margin-top:auto}
-.empty{text-align:center;padding:60px 0;color:var(--sub)}
-.empty b{display:block;font-size:40px;margin-bottom:8px}
-
-footer{border-top:1px solid var(--line);margin-top:56px;padding:32px 0 48px;font-size:13px;color:var(--mute)}
-footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-footer a:hover{color:var(--ink)}
-.hidden{display:none!important}
+  #tip { top: 120px; left: 50%; transform: translateX(-50%); max-width: min(520px, 80vw); font-size: 14px; line-height: 1.6; border-left: 4px solid #ffcc00; pointer-events: none; }
+  #tip b { color: #ffcc00; }
+  #ghostDelta { top: 92px; left: 50%; transform: translateX(-50%); font-weight: 800; font-size: 15px; text-shadow: 0 2px 6px rgba(0,0,0,.8); }
+  #replayTag { top: 16px; left: 50%; transform: translateX(-50%); background: #e10600; color: #fff; font-weight: 900; letter-spacing: .14em; padding: 6px 14px; border-radius: 6px; }
+  #replayBar { left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: auto; width: min(900px, 94vw); justify-content: center; }
+  #replayBar input[type=range] { flex: 1 1 200px; }
+  #replayBar select { background: #111; color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 5px; font-size: 12px; max-width: 220px; }
+  #rpInfo { width: 100%; text-align: center; font-size: 12px; opacity: .8; }
+  #stats { margin-top: 12px; font-size: 12px; opacity: .8; line-height: 1.7; border-top: 1px solid rgba(255,255,255,.1); padding-top: 8px; }
+  #help2 h3 { margin: 14px 0 6px; font-size: 15px; }
+  .hlist { display: grid; grid-template-columns: 1fr; gap: 5px; font-size: 13px; }
+  .hlist b { margin-right: 6px; }
+  #seasonBox { margin: 10px 0; font-size: 13px; }
+  #seasonBox table { width: 100%; border-collapse: collapse; }
+  #seasonBox td { padding: 2px 6px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  #seasonBox tr.me { background: #fff; color: #000; font-weight: 700; }
+  #seasonBox .cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; }
+  #tower { pointer-events: auto; }
+  #tower .trow[data-code] { cursor: pointer; }
+  #tower .trow[data-code]:hover { background: rgba(255,255,255,0.1); }
+  #tower .trow.sel { box-shadow: inset 3px 0 0 #4cd2ff; background: rgba(76,210,255,0.18); }
+  @media (max-width: 900px) {
+    #wtop { gap: 3px; } #wtop .chip { padding: 5px 5px; font-size: 11px; } #wlap { font-size: 13px; padding: 6px 8px; letter-spacing: .04em; }
+  }
 </style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
 </head>
 <body>
+<canvas id="view"></canvas>
+<canvas id="flag"></canvas>
 
-<header>
-  <div class="wrap bar">
-    <a href="#" class="logo">Enube<i>Arcade</i></a>
-    <label class="search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="ゲームや診断を探す" aria-label="検索">
-    </label>
-    <button class="theme-btn" id="themeBtn" aria-label="テーマ切り替え">◐</button>
-  </div>
-</header>
+<div id="tl" class="hud hidden">
+  <div class="panel"><div class="lab">POS</div><div class="big" id="pos">-/22</div></div>
+  <div class="panel"><div class="lab">LAP</div><div class="big" id="lap">1/3</div></div>
+</div>
+<div id="times" class="hud panel hidden"><div class="cur" id="cur">0:00.000</div><div class="sub" id="last">LAST --:--.--- &nbsp; BEST --:--.---</div></div>
+<div id="board" class="hud panel hidden"></div>
+<div class="hud panel hidden" id="map"><canvas id="mapc" width="208" height="208"></canvas></div>
+<div id="speedo" class="hud panel hidden"><div class="gear" id="gear">N</div><span class="spd" id="spd">0</span><span class="unit">km/h</span><div id="rpm"><div></div></div></div>
+<div id="tyreHud" class="hud panel hidden"></div>
+<div id="draft" class="hud" style="right:16px;bottom:196px;font-weight:800;letter-spacing:.12em;font-size:14px;color:#7fdcff;opacity:0;transition:opacity .2s">SLIPSTREAM</div>
+<div id="help" class="hud hidden">↑ アクセル　↓ ブレーキ　← → ハンドル　B ピット予約　T 次のタイヤ　C カメラ　R コースに戻る　M 音　Esc 一時停止</div>
+<div id="lights" class="hud panel"><div class="l"></div><div class="l"></div><div class="l"></div><div class="l"></div><div class="l"></div></div>
+<div id="msg" class="hud"></div>
 
-<main class="wrap">
-  <section class="hero" id="hero">
-    <div>
-      <h1>すぐ遊べる、<br><em id="total">60</em>本のミニゲーム。</h1>
-      <p>ゲーム・クイズ・診断・便利ツール。登録なし、無料、ブラウザだけで遊べます。</p>
-      <div class="hero-btns">
-        <button class="btn btn-main" id="randomBtn">🎲 ランダムで遊ぶ</button>
-        <a href="#all" class="btn btn-sub">すべて見る</a>
-      </div>
+<!-- 観戦モードのHUD -->
+<div id="tower" class="hud panel hidden"><div class="th"><span>HARBOUR GP</span><span id="towerWx">LIVE</span></div><div id="towerList"></div></div>
+<div id="wtop" class="hud hidden"><div id="wlap" class="panel">LAP 1 / 5</div>
+  <button class="chip spd on" data-s="1">×1</button><button class="chip spd" data-s="2">×2</button><button class="chip spd" data-s="4">×4</button>
+  <button class="chip spd" data-s="8">×8</button>
+  <button class="chip wcam on" data-m="tv" title="中継カメラ（自動で切り替わる）">📺<span class="lbl"> 中継</span></button><button class="chip wcam" data-m="car" title="左の順位表で選んだ車を追う（もう一度押すと車載）">🚗<span class="lbl"> 車を選ぶ</span></button><button class="chip wcam" data-m="pit" title="ピットの映像">🔧<span class="lbl"> ピット</span></button>
+  <button class="chip" id="camBet">★<span class="lbl"> 予想した車を追う</span></button><button class="chip" id="wPause" title="一時停止（Esc / P / スペース）"><b style="letter-spacing:-1px">❙❙</b><span class="lbl"> 一時停止</span></button></div>
+<div id="ticker" class="hud hidden"></div>
+<div id="flagBanner" class="hud hidden"><span></span></div>
+<div id="fcard" class="hud panel hidden"></div>
+
+<div id="title" class="screen">
+  <div class="card">
+    <h1>HARBOUR <span>GP</span></h1>
+    <p>港町の市街地サーキット、11チーム22台のレース。<br><b>ドライブ</b>：黒い #27 を自分で操作して11番手から優勝を狙う。<br><b>観戦＆予想</b>：全車が自動で走るレースの勝者を予想してコインを賭ける。</p>
+    <div class="keys">
+      <div><b>↑</b><b>W</b></div><div>アクセル</div>
+      <div><b>↓</b><b>S</b></div><div>ブレーキ（コーナー手前でしっかり減速）</div>
+      <div><b>←</b><b>→</b></div><div>ハンドル（高速ほど切れにくい）</div>
+      <div><b>C</b></div><div>カメラ切替（後ろ / 車載）</div>
+      <div><b>R</b></div><div>コースに戻る（壁にはまった時）</div>
+      <div><b>B</b> <b>T</b></div><div>ピット予約・次のタイヤを選ぶ</div>
+      <div><b>M</b> <b>Esc</b></div><div>音のON/OFF・一時停止</div>
     </div>
-    <div class="hero-art" id="heroArt"></div>
-  </section>
-
-  <section class="sec hidden" id="recentSec">
-    <div class="sec-title"><h2>最近遊んだ</h2></div>
-    <div class="recent" id="recent"></div>
-  </section>
-
-  <section class="sec" id="featSec">
-    <div class="sec-title"><h2>おすすめ</h2><small>まずはこれから</small></div>
-    <div class="feat" id="feat"></div>
-  </section>
-
-  <section class="sec" id="all">
-    <div class="sec-title"><h2>すべての作品</h2><small id="count"></small></div>
-    <div class="tabs" id="tabs"></div>
-    <div class="grid" id="grid"></div>
-    <div class="empty hidden" id="empty"><b>🔍</b>見つかりませんでした。別のキーワードで試してみてください。</div>
-  </section>
-</main>
-
-<footer>
-  <div class="wrap">
-    <span>Enube Arcade · Made by えぬべえ with Claude Code</span>
-    <span><a href="privacy.html">プライバシーポリシー</a> · <a href="terms.html">利用規約</a> · <a href="https://x.com/Enube_1115" target="_blank" rel="noopener">X @Enube_1115</a></span>
+    <div class="optHead">レースの設定</div>
+    <div class="opts">
+      <label class="opt wide"><span>コース</span><select id="track"><option value="1">ハーバー市街地（高速・トンネル）</option><option value="2">マリーナ・ヘアピン（テクニカル）</option></select></label>
+      <label class="opt"><span>周回数</span><select id="laps"><option value="3" selected>3（ピットなし）</option><option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="30">30</option></select></label>
+      <label class="opt"><span>相手の強さ</span><select id="diff"><option value="0.93">やさしい（クラッシュなし）</option><option value="0.985" selected>ふつう</option><option value="1.015">つよい</option></select></label>
+      <label class="opt"><span>天気</span><select id="wx"><option value="random" selected>ランダム</option><option value="sun">晴れ</option><option value="cloud">くもり</option><option value="rain">雨</option><option value="shower">途中から雨</option><option value="storm">豪雨</option></select></label>
+      <label class="opt"><span>時間帯</span><select id="tod"><option value="random">ランダム</option><option value="day" selected>昼</option><option value="evening">夕方</option><option value="night">夜</option></select></label>
+      <label class="opt"><span>スタートのタイヤ</span><select id="tyreSel"><option value="auto" selected>おまかせ</option><option value="S">ソフト</option><option value="M">ミディアム</option><option value="H">ハード</option><option value="I">インター</option><option value="W">ウェット</option></select></label>
+      <label class="opt"><span>運転アシスト</span><select id="assistSel"><option value="off">なし</option><option value="line" selected>ブレーキライン</option><option value="brake">ライン＋自動ブレーキ</option></select></label>
+    </div>
+    <div class="optHead">表示・音</div>
+    <div class="opts">
+      <label class="opt"><span>ゴースト</span><select id="ghostSel"><option value="on" selected>出す</option><option value="off">出さない</option></select></label>
+      <label class="opt"><span>実況の声</span><select id="voiceSel"><option value="on" selected>ON</option><option value="off">OFF</option></select></label>
+      <label class="opt"><span>画質</span><select id="quality"><option value="low">軽い</option><option value="high" selected>きれい</option></select></label>
+    </div>
+    <div class="btnrow"><button class="btn" id="startBtn" disabled>読み込み中…</button><button class="btn" id="seasonBtn" disabled style="background:#7a3cff">シーズン（全5戦）</button><button class="btn" id="watchBtn" disabled style="background:#ffcc00;color:#000">観戦＆予想（全自動）</button></div>
+    <div class="btnrow small"><button class="chip" id="helpBtn">遊び方（旗・ピット・タイヤ）</button><button class="chip hidden" id="seasonQuit">シーズンをやめる</button><a class="btn ghost siteBtn hidden" style="text-decoration:none;margin-left:0;padding:6px 14px;font-size:13px">サイトのトップへ</a></div>
+    <div id="stats"></div>
+    <div id="loadbar"><div></div></div>
   </div>
-</footer>
+</div>
 
-<script>
-const CATS = {
-  game:  {name:"ゲーム",       color:["#ffe3d9","#3b1a10"]},
-  quiz:  {name:"クイズ",       color:["#dff1ff","#0f2c44"]},
-  shindan:{name:"診断・占い",  color:["#efe3ff","#2a1744"]},
-  tool:  {name:"ツール・生活", color:["#e2f5e8","#12301d"]},
-};
+<div id="bet" class="screen hidden">
+  <div class="card">
+    <h1 style="font-size:30px">予想して <span>観戦</span></h1>
+    <p>予選の結果が出ました。勝つと思うマシンを選んでコインを賭けよう。所持コイン <b id="coinsNow">1000</b>（ゲーム内だけの架空のコインです）</p>
+    <div class="row2">予想の種類 <button class="chip btype on" data-t="win">優勝</button><button class="chip btype" data-t="podium">3位以内</button>
+      &nbsp; 賭ける額 <button class="chip bamt on" data-a="100">100</button><button class="chip bamt" data-a="500">500</button><button class="chip bamt" data-a="1000">1000</button><button class="chip bamt" data-a="all">全部</button>
+      &nbsp; 周回数 <select id="wlaps"><option value="3">3（ピットインなし）</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option><option value="30">30</option></select>
+      <button class="chip hidden" id="resetCoins">コインを1000に戻す</button></div>
+    <div id="betWx"></div>
+    <div id="betList"></div>
+    <div id="betInfo"></div>
+    <button class="btn" id="betGo">この予想でスタート</button><button class="btn ghost" id="betBack">タイトルに戻る</button>
+    <p style="font-size:12px;opacity:.6;margin-top:10px">速=最高速 加=加速 曲=コーナー 止=ブレーキ。オッズは予選タイムとスタート位置から計算。レースは調子の波・ミス・DRS・抜き合い・天気・クラッシュとセーフティカーで毎回変わります。雨◎＝雨に強いドライバー。</p>
+  </div>
+</div>
 
-// [file, emoji, name, desc, cat, isNew]
-const APPS = [
-  ["vocab_survivor","🧟","Vocab Survivor","敵をなぎ倒しながら単語を並べる、サバイバー系×単語パズル。","game",1],
-  ["game_engine","🎮","ビジュアルゲームエンジン","ブロックを並べるだけで自分のゲームが作れる。","game"],
-  ["tetris","🟦","NEON TETRIS","グロウエフェクトが光るテトリス。","game"],
-  ["snake","🐍","NEON SNAKE","サイバーパンク風のネオンスネーク。","game"],
-  ["pinball","🎯","PINBALL","フリッパーでボールを弾いてハイスコアを狙え。","game"],
-  ["battleship","🚢","バトルシップ","艦隊を配置してCPUと戦う海戦ゲーム。","game"],
-  ["rpg","⚔️","遺された祈り","敵を倒して世界の謎を解くテキストRPG。","game"],
-  ["class_quest","🛡️","Class Quest","職業を選んでモンスターと戦うRPG。","game"],
-  ["car_chase","🚔","カーチェイス","パトカーから逃げろ！ミサイルや天気イベントあり。","game"],
-  ["grid_wars","♟️","Grid Wars","10×10の盤面で領地を奪い合う戦略ゲーム。","game"],
-  ["soccer_pk","⚽","サッカーPK","実況コメント付きのPK対決。","game"],
-  ["2048","🔢","2048","タイルを合体させて2048を目指すパズル。","game"],
-  ["sudoku","🧮","数独","ヒント・メモ機能付き、難易度3段階。","game"],
-  ["gacha_simulator","🎴","Deck Rush","カードを引いてデッキを強化するガチャシミュレーター。","game"],
-  ["slot_machine","🎰","スロットマシン","3リールを回して最大100倍を狙え。","game"],
-  ["digital_pet","🐾","ゴッチペット","えさやりや遊びで育てるデジタルペット。","game"],
-  ["timer_challenge","⏱️","Timer Challenge","目標時間ピッタリでタイマーを止めろ。","game"],
-  ["reaction_test","⚡","反応速度テスト","あなたの反応速度を測定。","game"],
-  ["mole_game","🔨","もぐらたたき","モグラを叩いてスコアを稼ごう。","game"],
-  ["memory_game","🃏","神経衰弱","同じ絵柄のペアを揃えよう。","game"],
-  ["number_memory","🧠","数字記憶ゲーム","何桁まで覚えられる？","game"],
-  ["janken","✊","じゃんけん","CPUと3本勝負または無限対戦。","game"],
+<div id="wresult" class="screen hidden">
+  <div class="card" style="width:min(640px,94vw)"><h1>RESULT</h1>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><button class="btn" id="wAgain">次のレースを予想</button><button class="btn ghost replayBtn" style="margin-left:0">リプレイを見る</button><button class="btn ghost homeBtn" style="margin-left:0">タイトルに戻る</button><a class="btn ghost siteBtn hidden" style="text-decoration:none;margin-left:0">サイトのトップへ</a></div>
+  <div id="wresBody"></div></div>
+</div>
 
-  ["word_master","🔤","WordMaster","6回以内に5文字の英単語を当てるWordle風ゲーム。","quiz"],
-  ["colorwordle","🎨","ColorWordle","毎日1つのカラーコードを当てる。","quiz"],
-  ["prefecture_quiz","🗾","都道府県クイズ","日本地図で都道府県を当てよう。","quiz"],
-  ["country_quiz","🌍","国当てクイズ","国旗・首都・ヒントから80カ国以上を当てる。","quiz"],
-  ["quick_quiz","🔔","早押しクイズ","素早く答えて高得点を狙おう。","quiz"],
-  ["korean_quiz","🇰🇷","韓国語クイズ","ハングル・単語・フレーズを4択で学ぶ。","quiz"],
-  ["hiragana_quiz","🈶","50音クイズ","ひらがな・カタカナ・ローマ字の4択。","quiz"],
+<div id="pause" class="screen hidden">
+  <div class="card">
+    <h1>一時停止</h1>
+    <p id="pauseInfo" style="font-size:15px"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">
+      <button class="btn" id="resumeBtn">▶ 再開</button>
+      <button class="btn ghost" id="restartBtn" style="margin-left:0">最初から</button>
+      <button class="btn ghost homeBtn" style="margin-left:0">タイトルに戻る</button>
+    </div>
+    <div class="row2" id="pWatchRow">早送り
+      <button class="chip pspd" data-s="1">×1</button><button class="chip pspd" data-s="2">×2</button><button class="chip pspd" data-s="4">×4</button><button class="chip pspd" data-s="8">×8</button>
+      <button class="chip" id="skipBtn" style="margin-left:8px">▶▶ 結果まで飛ばす</button></div>
+    <div class="row2" id="pDriveRow">カメラ <button class="chip pcam" data-c="0">後ろから</button><button class="chip pcam" data-c="1">車載</button>
+      &nbsp; アシスト <button class="chip pas" data-a="off">なし</button><button class="chip pas" data-a="line">ライン</button><button class="chip pas" data-a="brake">ライン＋自動ブレーキ</button><br>
+      &nbsp; ピット <button class="chip" id="pPit">予約しない</button> 次のタイヤ <button class="chip ptyre" data-t="S">ソフト</button><button class="chip ptyre" data-t="M">ミディアム</button><button class="chip ptyre" data-t="H">ハード</button><button class="chip ptyre" data-t="I">インター</button><button class="chip ptyre" data-t="W">ウェット</button></div>
+    <div class="row2">音 <button class="chip" id="pSound">ON</button> &nbsp; 画質 <button class="chip pq" data-q="low">軽い</button><button class="chip pq" data-q="high">きれい</button></div>
+    <div id="skipBar" class="hidden" style="margin-top:10px"><div style="font-size:13px;margin-bottom:4px">レースを計算中…</div><div id="loadbar2" style="height:6px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden"><div style="height:100%;width:0;background:#ffcc00"></div></div></div>
+    <p id="pKeys" style="font-size:12px;opacity:.65;margin-top:14px"></p>
+  </div>
+</div>
+<div id="resumeCount" class="hud" style="top:40%;left:50%;transform:translate(-50%,-50%);font-size:96px;font-weight:900;text-shadow:0 4px 24px rgba(0,0,0,.7);display:none"></div>
+<button id="pauseBtn" class="chip hidden" style="position:fixed;top:16px;right:252px;z-index:4;font-size:13px;padding:8px 12px" title="一時停止（Esc / P / スペース）"><b style="letter-spacing:-1px">❙❙</b><span class="lbl"> 一時停止</span></button>
 
-  ["mbti_compatibility","🧩","MBTI相性診断","20問でタイプ特定、256パターンの相性分析。","shindan"],
-  ["personality_quiz","🪞","性格タイプ診断","16タイプの性格診断と詳しい解説。","shindan"],
-  ["enneagram","🔮","エニアグラム診断","20問で9タイプの性格を診断。","shindan"],
-  ["career_diagnosis","🔭","将来職業診断","15問で向いている職業を22種から診断。","shindan"],
-  ["love_language","💕","恋愛スタイル診断","5つの愛情言語を診断。カップル相性も。","shindan"],
-  ["music_genre","🎵","音楽ジャンル診断","あなたに合う音楽ジャンルとアーティスト。","shindan"],
-  ["stress_resilience","🧘","ストレス耐性診断","15問で適応力を分析、改善アドバイス付き。","shindan"],
-  ["psychology_test","🌸","心理テスト","自尊心・共感力・メンタル強度など4種類。","shindan"],
-  ["aisho_shindan","💑","相性診断","名前を入れるだけで2人の相性を診断。","shindan"],
-  ["blood_type","🩸","血液型診断","性格・恋愛・仕事の特徴を解説。","shindan"],
-  ["blood_type_compatibility","🅰️","血液型相性診断","2人の血液型から相性を診断。","shindan"],
-  ["past_life","🏺","前世診断","あなたの前世を診断しよう。","shindan"],
-  ["fortune","🍀","今日の運勢占い","名前と生年月日から今日の運勢を占う。","shindan"],
-  ["horoscope","✨","星座占い","12星座の今日の運勢とラッキーアイテム。","shindan"],
-  ["astrology","♈","占星術診断","12星座の性格分析と相性診断。","shindan"],
-  ["koi_mikuji","🎋","恋みくじ","今日の恋愛運をおみくじで。","shindan"],
-  ["yume_uranai","🌙","夢占い","夢に出てきたものから意味を占う。","shindan"],
-  ["biorhythm","📈","バイオリズム診断","身体・感情・知性のリズムを確認。","shindan"],
+<div id="result" class="screen hidden">
+  <div class="card"><h1 id="resTitle">FINISH</h1><p id="resSub"></p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px"><button class="btn" id="againBtn">もう一度</button><button class="btn hidden" id="nextRaceBtn" style="background:#7a3cff">次のレースへ</button><button class="btn ghost replayBtn" style="margin-left:0">リプレイを見る</button><button class="btn ghost homeBtn" style="margin-left:0">タイトルに戻る</button><a class="btn ghost siteBtn hidden" style="text-decoration:none;margin-left:0">サイトのトップへ</a></div>
+  <div id="seasonBox"></div>
+  <table class="res" id="resTable"></table></div>
+</div>
 
-  ["meal_planner_v2","🍱","AI献立プランナー v2","1週間分の献立を食材・予算まで考えて自動生成。","tool"],
-  ["meal_planner","🥗","献立プランナー","今日の献立をランダム提案。","tool"],
-  ["oshi_budget","💜","推し活 家計簿","推し活の出費をカテゴリ別に記録・可視化。","tool"],
-  ["break_even_calculator","💰","元取り計算ツール","それ、本当に元取れてる？を計算。","tool"],
-  ["taipa_calculator","⏳","タイパ計算ツール","作業のタイムパフォーマンスを数値化。","tool"],
-  ["mindmap","🗺️","マインドマップ","ドラッグで動かせる思考整理ツール。SVG出力対応。","tool"],
-  ["habit_tracker","✅","Habit Tracker","毎日の習慣を記録してストリークを伸ばそう。","tool"],
-  ["goal_tracker","🏁","Goal Tracker","目標をマイルストーンに分解して進捗管理。","tool"],
-  ["report-tracker","📋","レポート提出管理","通信制高校生向けの、提出期限と状態を管理するツール。","tool",1],
-  ["pomodoro","🍅","Pomodoro Timer","25分集中×5分休憩のタイマー。","tool"],
-  ["calendar","📅","カレンダー","予定を登録できるブラウザカレンダー。","tool"],
-  ["book_tracker","📚","読書記録","読んだ本・読みたい本を管理。","tool"],
-  ["health_tracker","💪","健康管理","体重・睡眠などをグラフで記録。","tool"],
-  ["workout_planner","🏋️","ワークアウトプランナー","目標と部位から筋トレメニューを自動生成。","tool"],
-  ["daily_challenge","🎯","今日のチャレンジ","毎日のミッションをクリアしよう。","tool"],
-  ["travel_planner","✈️","ランダム旅行プランナー","次の旅行先をランダムで提案。","tool"],
-  ["color_palette","🖌️","カラーパレット生成","配色理論からパレットを作ってHEXをコピー。","tool"],
-  ["world_clock","🕰️","世界時計","主要都市の時刻とタイムゾーン変換。","tool"],
-  ["calculator_app","🧾","電卓","キーボード操作対応のシンプル電卓。","tool"],
-  ["quote_generator","💬","QUOTOPIA","偉人の名言をランダム表示。","tool"],
-  ["quote_gacha","🎁","名言ガチャ","偉人の名言をガチャで引こう。","tool"],
-  ["report-tracker","📋","レポート提出管理","提出期限と状態を管理するツール。","tool"],
-  ["shinai-calculator","🧮","内申点計算ツール","通知表の評定から内申点の目安を計算するツール。","tool"],
-].map(([file,emoji,name,desc,cat,isNew])=>({file,emoji,name,desc,cat,isNew:!!isNew,url:file+".html"}));
 
-const FEATURED = ["vocab_survivor","game_engine","tetris","mbti_compatibility","prefecture_quiz","meal_planner_v2"];
-
-const $ = s=>document.querySelector(s);
-const dark = ()=>{
-  const t=document.documentElement.dataset.theme;
-  return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-};
-const bg = cat => CATS[cat].color[dark()?1:0];
-const store = {
-  get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-};
-
-let state = {cat:"all", q:""};
-
-function remember(file){
-  const r = store.get("recent",[]).filter(f=>f!==file);
-  r.unshift(file); store.set("recent",r.slice(0,8));
-}
-function link(a, inner, cls){
-  return `<a class="${cls}" href="${a.url}" data-file="${a.file}">${inner}</a>`;
-}
-
-function renderHero(){
-  $("#total").textContent = APPS.length;
-  const picks = ["🎮","🧟","🟦","🔮","🗾","🍱","🎰","♟️","🧩","🚢","🌙","🐍"];
-  const cats = ["game","game","game","shindan","quiz","tool","game","game","shindan","game","shindan","game"];
-  $("#heroArt").innerHTML = picks.map((e,i)=>`<span style="background:${bg(cats[i])}">${e}</span>`).join("");
-}
-function renderFeatured(){
-  $("#feat").innerHTML = FEATURED.map(f=>APPS.find(a=>a.file===f)).map(a=>link(a,
-    `<div class="art" style="background:${bg(a.cat)}"><b>${CATS[a.cat].name}</b>${a.emoji}</div>
-     <div class="txt"><h3>${a.name}</h3><p>${a.desc}</p></div>`,"fcard")).join("");
-}
-function renderRecent(){
-  const r = store.get("recent",[]).map(f=>APPS.find(a=>a.file===f)).filter(Boolean);
-  $("#recentSec").classList.toggle("hidden", !r.length || !!state.q);
-  $("#recent").innerHTML = r.map(a=>link(a,`<span style="background:${bg(a.cat)}">${a.emoji}</span>${a.name}`,"rchip")).join("");
-}
-function renderTabs(){
-  const tabs = [["all","すべて",APPS.length], ...Object.entries(CATS).map(([k,v])=>[k,v.name,APPS.filter(a=>a.cat===k).length])];
-  $("#tabs").innerHTML = tabs.map(([k,n,c])=>`<button class="tab ${state.cat===k?"on":""}" data-cat="${k}">${n}<sup>${c}</sup></button>`).join("");
-}
-function renderGrid(){
-  const q = state.q.trim().toLowerCase();
-  const list = APPS.filter(a=>(state.cat==="all"||a.cat===state.cat) &&
-    (!q || (a.name+a.desc+CATS[a.cat].name).toLowerCase().includes(q)));
-  $("#grid").innerHTML = list.map(a=>link(a,
-    `<div class="ic" style="background:${bg(a.cat)}">${a.isNew?'<span class="badge">NEW</span>':""}${a.emoji}</div>
-     <h3>${a.name}</h3><p>${a.desc}</p><span class="cat">${CATS[a.cat].name}</span>`,"card")).join("");
-  $("#count").textContent = list.length+"件";
-  $("#empty").classList.toggle("hidden", list.length>0);
-  const searching = !!q;
-  $("#hero").classList.toggle("hidden", searching);
-  $("#featSec").classList.toggle("hidden", searching);
-}
-function renderAll(){renderHero();renderFeatured();renderRecent();renderTabs();renderGrid();}
-
-document.addEventListener("click",e=>{
-  const a = e.target.closest("a[data-file]"); if(a) remember(a.dataset.file);
-  const t = e.target.closest(".tab"); if(t){state.cat=t.dataset.cat;renderTabs();renderGrid();}
-});
-$("#q").addEventListener("input",e=>{
-  state.q=e.target.value; renderGrid(); renderRecent();
-  if(state.q) $("#all").scrollIntoView({block:"start"});
-});
-$("#randomBtn").addEventListener("click",()=>{
-  const a = APPS[Math.floor(Math.random()*APPS.length)];
-  remember(a.file); location.href=a.url;
-});
-$("#themeBtn").addEventListener("click",()=>{
-  const next = dark()?"light":"dark";
-  document.documentElement.dataset.theme=next; store.set("theme",next); renderAll();
-});
-const saved = store.get("theme",null); if(saved) document.documentElement.dataset.theme=saved;
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change",renderAll);
-renderAll();
-</script>
+<div id="tip" class="hud panel hidden"></div>
+<div id="ghostDelta" class="hud hidden"></div>
+<div id="replayTag" class="hud hidden">● REPLAY</div>
+<div id="replayBar" class="hud panel hidden">
+  <button class="chip" id="rpPlay">❚❚</button>
+  <span id="rpTime">0:00</span>
+  <input type="range" id="rpSeek" min="0" max="1000" value="0">
+  <button class="chip rpSpd" data-s="0.5">×0.5</button><button class="chip rpSpd on" data-s="1">×1</button><button class="chip rpSpd" data-s="2">×2</button><button class="chip rpSpd" data-s="4">×4</button>
+  <select id="rpEvents"></select>
+  <select id="rpCam"><option value="tv">テレビ中継カメラ</option><option value="me">自分（予想）の車を追う</option><option value="lead">トップを追う</option></select>
+  <button class="chip" id="rpClose">閉じる</button>
+  <div id="rpInfo"></div>
+</div>
+<div id="help2" class="screen hidden">
+  <div class="card" style="width:min(720px,94vw)">
+    <h1 style="font-size:30px">遊び方</h1>
+    <h3>旗（画面上部に出ます）</h3>
+    <div class="hlist">
+      <div><i class="fl fl-yellow"></i><b>イエロー</b> 危険あり。減速・追い越し禁止（抜くと5秒ペナルティ）</div>
+      <div><i class="fl fl-dyellow"></i><b>ダブルイエロー</b> コース上に止まった車。大きく減速</div>
+      <div><i class="fl fl-sc"></i><b>セーフティカー</b> 隊列で走る。追い越し禁止・速度は自動で抑えられる</div>
+      <div><i class="fl fl-red"></i><b>レッド</b> 中断。全車ピットに戻り、止まった状態から再スタート</div>
+      <div><i class="fl fl-green"></i><b>グリーン</b> 危険が終わった。全開でOK</div>
+      <div><i class="fl fl-white"></i><b>ホワイト</b> 前に遅い車がいる</div>
+      <div><i class="fl fl-stripe"></i><b>黄赤ストライプ</b> 雨・オイル・破片で滑りやすい</div>
+      <div><i class="fl fl-blue"></i><b>ブルー</b> 周回遅れ。後ろの速い車に道を譲る（無視するとペナルティ）</div>
+      <div><i class="fl fl-bw"></i><b>白黒</b> トラックリミット警告（コースからはみ出しすぎ）。次からペナルティ</div>
+      <div><i class="fl fl-meatball"></i><b>オレンジディスク</b> マシン損傷。B でピットへ（2周入らないと失格）</div>
+      <div><i class="fl fl-black"></i><b>ブラック</b> 失格</div>
+      <div><i class="fl fl-chequered"></i><b>チェッカー</b> レース終了</div>
+    </div>
+    <h3>タイヤとピット</h3>
+    <p><i class="ty" style="border-color:#ff3030">S</i> ソフト＝速いがすぐ減る ・ <i class="ty" style="border-color:#ffd21a">M</i> ミディアム ・ <i class="ty" style="border-color:#f2f2f2">H</i> ハード＝遅いが長持ち ・ <i class="ty" style="border-color:#2fd060">I</i> インター＝小雨 ・ <i class="ty" style="border-color:#2f80ff">W</i> ウェット＝大雨<br>
+    右下の「残り○%」が減ると急に遅くなります。<b>B</b> でピット予約 → スタート直線の入口を通ると自動でピットへ。<b>T</b> で替えるタイヤを選べます。3周レースはピットなし。</p>
+    <h3>その他</h3>
+    <p>シーズン＝5レースのポイント制（1位25点〜10位1点、ファステストラップ＋1点）。ゴースト＝自分のベストラップを半透明の車で再生。リプレイ＝レース後に結果画面から。</p>
+    <button class="btn" id="helpClose">閉じる</button> <button class="btn ghost" id="tipsReset" style="margin-left:0">ヒントをもう一度出す</button>
+  </div>
+</div>
+<script type="module" src="./game.js"></script>
 </body>
 </html>
